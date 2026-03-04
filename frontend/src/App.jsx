@@ -1,24 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
-
 import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
+  arrayMove, SortableContext, sortableKeyboardCoordinates,
+  useSortable, verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-
 import { CSS } from '@dnd-kit/utilities';
-
 import './App.css';
 
 // ─── localStorage helpers ──────────────────────────────────────────────────
@@ -28,6 +16,20 @@ const LS = {
 };
 
 const API = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
+const CUISINES = [
+  'American', 'British', 'Caribbean', 'Chinese', 'French', 'Greek',
+  'Indian', 'Italian', 'Japanese', 'Korean', 'Lebanese', 'Mediterranean',
+  'Mexican', 'Middle Eastern', 'Moroccan', 'Persian', 'Spanish',
+  'Thai', 'Turkish', 'Vietnamese',
+];
+
+const COMMON_UNITS = [
+  'tsp', 'tbsp', 'cup', 'cups', 'ml', 'l', 'g', 'kg', 'oz', 'lb',
+  'pinch', 'handful', 'bunch', 'clove', 'cloves', 'slice', 'slices',
+  'piece', 'pieces', 'can', 'jar', 'bag', 'sprig', 'sprigs',
+  'rasher', 'fillet', 'fillets', 'sheet', 'sheets',
+];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const pct = (score) => Math.round(score * 100);
@@ -73,6 +75,7 @@ const RecipeCard = ({ recipe, match, onClick }) => {
 
 // ─── Recipe Page ────────────────────────────────────────────────────────────
 const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onEdit, loading }) => {
+
   const [checkedIngredients, setCheckedIngredients] = useState(new Set());
   const [doneSteps, setDoneSteps] = useState(new Set());
 
@@ -102,29 +105,21 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onEd
   });
 
   if (loading) return (
-    <main className="view">
-      <div className="placeholder"><h2>Loading recipe…</h2></div>
-    </main>
+    <main className="view"><div className="placeholder"><h2>Loading recipe…</h2></div></main>
   );
-
   if (!recipe) return (
-    <main className="view">
-      <div className="placeholder">
-        <h2>Recipe not found</h2>
-        <button className="btn btn--ghost" onClick={onBack}>← Back</button>
-      </div>
-    </main>
+    <main className="view"><div className="placeholder"><h2>Recipe not found</h2><button className="btn btn--ghost" onClick={onBack}>← Back</button></div></main>
   );
 
   return (
     <main className="view recipe-page">
       <div className="recipe-page__topbar">
-        <button className="btn btn--ghost back-btn" onClick={onBack}>← Back</button>
+        <button className="btn btn--ghost" onClick={onBack}>← Back</button>
         <button className="btn btn--ghost" onClick={onEdit}>✏️ Edit</button>
       </div>
 
-      {/* Header */}
-      <div className="recipe-page__header">
+      {/* Hero: photo left, details right */}
+      <div className="recipe-page__hero">
         <div className="recipe-page__image">
           {recipe.coverImage
             ? <img src={recipe.coverImage} alt={recipe.name} />
@@ -139,45 +134,38 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onEd
             {recipe.time && <Badge variant="time">⏱ {recipe.time}</Badge>}
             {recipe.servings && <Badge variant="info">🍽 {recipe.servings}</Badge>}
           </div>
+          {/* Ingredients inline in hero */}
+          {ingredientGroups.length > 0 && (
+            <div className="recipe-page__ing-preview">
+              <h4 className="recipe-page__ing-title">Ingredients</h4>
+              {ingredientGroups.map(({ label, items }) => (
+                <div key={label}>
+                  {label && <p className="recipe-page__ing-group-label">{label}</p>}
+                  <ul className="rp-ing-list">
+                    {items.map((ing, idx) => {
+                      const key = `${label}-${idx}`;
+                      const isChecked = checkedIngredients.has(key);
+                      const amountStr = [ing.amount, ing.unit, ing.name].filter(Boolean).join(' ');
+                      return (
+                        <li key={key} className={`rp-ing-item ${isChecked ? 'rp-ing-item--checked' : ''}`} onClick={() => toggleIngredient(key)}>
+                          <div className={`rp-ing-item__checkbox ${isChecked ? 'rp-ing-item__checkbox--checked' : ''}`}>{isChecked && '✓'}</div>
+                          <div className="rp-ing-item__body">
+                            <span className="rp-ing-item__text">{amountStr}</span>
+                            {ing.optional && <span className="rp-ing-item__optional">Optional</span>}
+                            {ing.prep_note && <span className="rp-ing-item__prep">{ing.prep_note}</span>}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Ingredients */}
-      {ingredientGroups.length > 0 && (
-        <section className="rp-section">
-          <h3 className="rp-section__title">Ingredients</h3>
-          {ingredientGroups.map(({ label, items }) => (
-            <div key={label} className="rp-ing-group">
-              {label && <h4 className="rp-ing-group__label">{label}</h4>}
-              <ul className="rp-ing-list">
-                {items.map((ing, idx) => {
-                  const key = `${label}-${idx}`;
-                  const checked = checkedIngredients.has(key);
-                  const amountStr = [ing.amount, ing.unit, ing.name].filter(Boolean).join(' ');
-                  return (
-                    <li
-                      key={key}
-                      className={`rp-ing-item ${checked ? 'rp-ing-item--checked' : ''}`}
-                      onClick={() => toggleIngredient(key)}
-                    >
-                      <div className={`rp-ing-item__checkbox ${checked ? 'rp-ing-item__checkbox--checked' : ''}`}>
-                        {checked && '✓'}
-                      </div>
-                      <div className="rp-ing-item__body">
-                        <span className="rp-ing-item__text">{amountStr}</span>
-                        {ing.optional && <span className="rp-ing-item__optional">Optional</span>}
-                        {ing.prep_note && <span className="rp-ing-item__prep">{ing.prep_note}</span>}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {/* Instructions */}
+      {/* Instructions full width */}
       {instructions?.length > 0 && (
         <section className="rp-section">
           <h3 className="rp-section__title">Instructions</h3>
@@ -185,11 +173,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onEd
             {[...instructions].sort((a, b) => a.step_number - b.step_number).map(step => {
               const done = doneSteps.has(step.step_number);
               return (
-                <li
-                  key={step.step_number}
-                  className={`rp-step ${done ? 'rp-step--done' : ''}`}
-                  onClick={() => toggleStep(step.step_number)}
-                >
+                <li key={step.step_number} className={`rp-step ${done ? 'rp-step--done' : ''}`} onClick={() => toggleStep(step.step_number)}>
                   <div className="rp-step__num">{done ? '✓' : step.step_number}</div>
                   <p className="rp-step__body">{step.body_text}</p>
                 </li>
@@ -199,22 +183,170 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onEd
         </section>
       )}
 
-      {/* Notes */}
+      {/* Notes cards */}
       {notes?.length > 0 && (
         <section className="rp-section">
           <h3 className="rp-section__title">Notes &amp; Modifications</h3>
-          <ul className="rp-notes">
+          <div className="rp-notes-grid">
             {notes.map((n, i) => (
-              <li key={i} className="rp-notes__item">{n.text ?? n}</li>
+              <div key={i} className="rp-note-card">
+                <span className="rp-note-card__icon">💡</span>
+                <p>{n.text ?? n.body_text ?? n}</p>
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
       )}
     </main>
   );
 };
 
-// ─── Sortable Item (used in editor) ────────────────────────────────────────
+// ─── Ingredient Autocomplete Input ─────────────────────────────────────────
+const IngredientAutocomplete = ({ value, onChange, allIngredients }) => {
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+  const wrapperRef = useRef(null);
+
+  const suggestions = useMemo(() => {
+    const val = value ?? '';
+    if (!val.trim()) return [];
+    const q = val.toLowerCase();
+    // Fuzzy: score by how early the match appears, prefer starts-with
+    return allIngredients
+      .map(ing => {
+        if (!ing || typeof ing !== 'string') return null;
+        const lower = ing.toLowerCase();
+        if (!lower.includes(q)) return null;
+        const score = lower.startsWith(q) ? 0 : lower.indexOf(q);
+        return { ing, score };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 8)
+      .map(x => x.ing);
+  }, [value, allIngredients]);
+
+  useEffect(() => { setHighlighted(0); }, [suggestions]);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const select = (ing) => { onChange(ing); setOpen(false); };
+
+  const onKeyDown = (e) => {
+    if (!open || !suggestions.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, suggestions.length - 1)); }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
+    if (e.key === 'Enter' && suggestions[highlighted]) { e.preventDefault(); select(suggestions[highlighted]); }
+    if (e.key === 'Escape') setOpen(false);
+  };
+
+  return (
+    <div className="ing-ac-wrap" ref={wrapperRef}>
+      <input
+        className="editor-input"
+        value={value}
+        onChange={e => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={onKeyDown}
+        placeholder="soy sauce"
+        autoComplete="off"
+      />
+      {open && suggestions.length > 0 && (
+        <ul className="ing-ac-dropdown">
+          {suggestions.map((ing, i) => {
+            const q = (value ?? '').toLowerCase();
+            const idx = ing.toLowerCase().indexOf(q);
+            return (
+              <li
+                key={ing}
+                className={`ing-ac-option ${i === highlighted ? 'ing-ac-option--active' : ''}`}
+                onMouseDown={() => select(ing)}
+                onMouseEnter={() => setHighlighted(i)}
+              >
+                {idx >= 0 ? (
+                  <>{ing.slice(0, idx)}<strong>{ing.slice(idx, idx + q.length)}</strong>{ing.slice(idx + q.length)}</>
+                ) : ing}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+const UnitAutocomplete = ({ value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+  const wrapperRef = useRef(null);
+
+  const suggestions = useMemo(() => { 
+    const val = value ?? '';
+    if (!val.trim()) return COMMON_UNITS.slice(0, 8);
+    const q = val.toLowerCase();
+    return COMMON_UNITS
+      .filter(u => u.toLowerCase().startsWith(q) || u.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [value]);
+
+  useEffect(() => { setHighlighted(0); }, [suggestions]);
+
+  useEffect(() => {
+    const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const select = (u) => { onChange(u); setOpen(false); };
+
+  const onKeyDown = (e) => {
+    if (!open || !suggestions.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, suggestions.length - 1)); }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
+    if (e.key === 'Enter' && suggestions[highlighted]) { e.preventDefault(); select(suggestions[highlighted]); }
+    if (e.key === 'Escape') setOpen(false);
+  };
+
+  return (
+    <div className="ing-ac-wrap" ref={wrapperRef}>
+      <input
+        className="editor-input editor-input--sm"
+        value={value}
+        onChange={e => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={onKeyDown}
+        placeholder="tbsp"
+        autoComplete="off"
+      />
+      {open && suggestions.length > 0 && (
+        <ul className="ing-ac-dropdown">
+          {suggestions.map((u, i) => {
+            const q = (value ?? '').toLowerCase();
+            const idx = u.toLowerCase().indexOf(q);
+            return (
+              <li
+                key={u}
+                className={`ing-ac-option ${i === highlighted ? 'ing-ac-option--active' : ''}`}
+                onMouseDown={() => select(u)}
+                onMouseEnter={() => setHighlighted(i)}
+              >
+                {idx >= 0 && q ? (
+                  <>{u.slice(0, idx)}<strong>{u.slice(idx, idx + q.length)}</strong>{u.slice(idx + q.length)}</>
+                ) : u}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 const SortableItem = ({ id, children }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
@@ -232,7 +364,7 @@ const SortableItem = ({ id, children }) => {
 };
 
 // ─── Recipe Editor ──────────────────────────────────────────────────────────
-const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved }) => {
+const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredients, onBack, onSaved }) => {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -319,6 +451,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, onBack, on
         instructions: steps.map((s, idx) => ({ ...s, step_number: idx + 1 })),
         notes: notesList.map((n, idx) => ({ ...n, order_index: idx })),
       };
+      console.log('Saving payload:', JSON.stringify(payload, null, 2));
       const res = await fetch(`${API}/api/recipes/${recipe.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -342,7 +475,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, onBack, on
   return (
     <main className="view editor-page">
       <div className="editor-topbar">
-        <button className="btn btn--ghost" onClick={onBack}>← Back</button>
+        <button className="btn btn--ghost" onClick={onBack}>← Cancel</button>
         <h2 className="editor-title">Edit Recipe</h2>
         <button className="btn btn--primary" onClick={save} disabled={saving}>
           {saving ? 'Saving…' : 'Save Changes'}
@@ -362,7 +495,10 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, onBack, on
           </label>
           <label className="editor-field">
             <span>Cuisine</span>
-            <input className="editor-input" value={details.cuisine} onChange={e => setDetail('cuisine', e.target.value)} placeholder="e.g. Indian" />
+            <select className="editor-input editor-select" value={details.cuisine} onChange={e => setDetail('cuisine', e.target.value)}>
+              <option value="">— select —</option>
+              {CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </label>
           <label className="editor-field">
             <span>Time</span>
@@ -402,8 +538,12 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, onBack, on
               <SortableItem key={ing._id} id={ing._id}>
                 <div className="editor-ing-row">
                   <input className="editor-input editor-input--sm" value={ing.amount} onChange={e => updateIng(ing._id, 'amount', e.target.value)} placeholder="2" />
-                  <input className="editor-input editor-input--sm" value={ing.unit} onChange={e => updateIng(ing._id, 'unit', e.target.value)} placeholder="tbsp" />
-                  <input className="editor-input" value={ing.name} onChange={e => updateIng(ing._id, 'name', e.target.value)} placeholder="soy sauce" />
+                  <UnitAutocomplete value={ing.unit} onChange={v => updateIng(ing._id, 'unit', v)} />
+                  <IngredientAutocomplete
+                    value={ing.name}
+                    onChange={v => updateIng(ing._id, 'name', v)}
+                    allIngredients={allIngredients.filter(Boolean)}
+                  />
                   <input className="editor-input editor-input--sm" value={ing.group_label || ''} onChange={e => updateIng(ing._id, 'group_label', e.target.value)} placeholder="e.g. Sauce" list="group-labels" />
                   <input className="editor-input" value={ing.prep_note || ''} onChange={e => updateIng(ing._id, 'prep_note', e.target.value)} placeholder="finely chopped" />
                   <button
@@ -474,27 +614,36 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, onBack, on
   );
 };
 
+// Remove the old FRIDGE_KEYWORDS / PANTRY_KEYWORDS / classifyIngredient — no longer needed
+
 // ─── Fridge Tab ─────────────────────────────────────────────────────────────
+const FRIDGE_TYPES  = ['produce', 'meat', 'dairy'];
+const PANTRY_TYPES  = ['pantry', 'spice', 'sauce', 'alcohol'];
+
 const FridgeTab = ({ allIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples }) => {
   const [section, setSection] = useState('fridge');
   const [search, setSearch] = useState('');
 
+  const fridgeList  = useMemo(() => allIngredients.filter(i => FRIDGE_TYPES.includes(i.type)),  [allIngredients]);
+  const pantryList  = useMemo(() => allIngredients.filter(i => PANTRY_TYPES.includes(i.type)), [allIngredients]);
+  const sourceList  = section === 'fridge' ? fridgeList : pantryList;
+
   const grouped = useMemo(() => {
-    const filtered = allIngredients.filter(i => i.toLowerCase().includes(search.toLowerCase()));
+    const filtered = sourceList.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
     return filtered.reduce((acc, ing) => {
-      const letter = ing[0]?.toUpperCase() || '#';
+      const letter = ing.name[0]?.toUpperCase() || '#';
       if (!acc[letter]) acc[letter] = [];
-      acc[letter].push(ing);
+      acc[letter].push(ing.name);
       return acc;
     }, {});
-  }, [allIngredients, search]);
+  }, [sourceList, search]);
 
-  const isFridge = section === 'fridge';
-  const selected = isFridge ? fridgeIngredients : pantryStaples;
+  const isFridge   = section === 'fridge';
+  const selected   = isFridge ? fridgeIngredients : pantryStaples;
   const setSelected = isFridge ? setFridgeIngredients : setPantryStaples;
 
-  const toggle = (ing) => {
-    const lower = ing.toLowerCase();
+  const toggle = (name) => {
+    const lower = name.toLowerCase();
     setSelected(prev => prev.includes(lower) ? prev.filter(i => i !== lower) : [...prev, lower]);
   };
 
@@ -512,20 +661,20 @@ const FridgeTab = ({ allIngredients, fridgeIngredients, setFridgeIngredients, pa
           {fridgeIngredients.length > 0 && <span className="fridge-tab__count">{fridgeIngredients.length}</span>}
         </button>
         <button className={`fridge-tab ${section === 'pantry' ? 'fridge-tab--active' : ''}`} onClick={() => setSection('pantry')}>
-          🫙 Pantry Staples
+          🫙 Pantry &amp; Spices
           {pantryStaples.length > 0 && <span className="fridge-tab__count">{pantryStaples.length}</span>}
         </button>
       </div>
       <p className="fridge-section-hint">
         {isFridge
-          ? 'Perishables you currently have — update this regularly'
-          : 'Things you always keep stocked (rice, soy sauce, olive oil…) — set once and forget'}
+          ? 'Fresh produce, meat & dairy — update this regularly'
+          : 'Dry goods, sauces, spices & alcohol — set once and forget'}
       </p>
       <div className="picker__search-row">
         <input className="picker__search" type="search" placeholder="Search ingredients..." value={search} onChange={e => setSearch(e.target.value)} />
         <div className="picker__actions">
           <button className="btn btn--ghost" onClick={() => setSelected([])}>Clear</button>
-          <button className="btn btn--ghost" onClick={() => setSelected(allIngredients.map(i => i.toLowerCase()))}>All</button>
+          <button className="btn btn--ghost" onClick={() => setSelected(sourceList.map(i => i.name.toLowerCase()))}>All</button>
         </div>
       </div>
       <div className="picker__grid-wrapper picker__grid-wrapper--full">
@@ -533,19 +682,25 @@ const FridgeTab = ({ allIngredients, fridgeIngredients, setFridgeIngredients, pa
           <div key={letter} className="picker__group">
             <div className="picker__group-label">{letter}</div>
             <div className="picker__chips">
-              {items.map(ing => {
-                const isSelected = selected.includes(ing.toLowerCase());
+              {items.map(name => {
+                const isSelected = selected.includes(name.toLowerCase());
                 return (
-                  <button key={ing} className={`chip ${isSelected ? 'chip--selected' : ''}`} onClick={() => toggle(ing)}>
+                  <button key={name} className={`chip ${isSelected ? 'chip--selected' : ''}`} onClick={() => toggle(name)}>
                     {isSelected && <span className="chip__check">✓</span>}
-                    {ing}
+                    {name}
                   </button>
                 );
               })}
             </div>
           </div>
         ))}
-        {Object.keys(grouped).length === 0 && <p className="picker__empty">No ingredients match "{search}"</p>}
+        {Object.keys(grouped).length === 0 && (
+          <p className="picker__empty">
+            {sourceList.length === 0
+              ? 'No ingredients classified for this section yet'
+              : `No ingredients match "${search}"`}
+          </p>
+        )}
       </div>
     </main>
   );
@@ -554,7 +709,7 @@ const FridgeTab = ({ allIngredients, fridgeIngredients, setFridgeIngredients, pa
 // ─── Settings Tab ────────────────────────────────────────────────────────────
 const DIETARY_OPTIONS = ['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Halal', 'Nut-Free'];
 
-const SettingsTab = ({ units, setUnits, dietaryFilters, setDietaryFilters, lastSynced, onSync }) => {
+const SettingsTab = ({ units, setUnits, dietaryFilters, setDietaryFilters }) => {
   const toggleDiet = (d) => setDietaryFilters(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
 
   return (
@@ -588,15 +743,8 @@ const SettingsTab = ({ units, setUnits, dietaryFilters, setDietaryFilters, lastS
         )}
       </div>
       <div className="settings-section">
-        <h3 className="settings-section__title">🔄 Notion Sync</h3>
-        <p className="settings-section__hint">
-          {lastSynced ? `Last synced: ${new Date(lastSynced).toLocaleString()}` : 'Not yet synced this session'}
-        </p>
-        <button className="btn btn--primary" style={{ marginTop: 10 }} onClick={onSync}>Sync Now</button>
-      </div>
-      <div className="settings-section">
         <h3 className="settings-section__title">ℹ️ About</h3>
-        <p className="settings-section__hint">Recipe App v0.1 · Powered by Notion</p>
+        <p className="settings-section__hint">Recipe App v0.1 · Postgres backend</p>
       </div>
     </main>
   );
@@ -779,7 +927,7 @@ export default function App() {
         fetch(`${API}/api/ingredients`),
         fetch(`${API}/api/recipes`),
       ]);
-      if (!ingRes.ok || !recipeRes.ok) throw new Error('Failed to load from Notion');
+      if (!ingRes.ok || !recipeRes.ok) throw new Error('Failed to load data');
       const { ingredients } = await ingRes.json();
       const { recipes: recipeData } = await recipeRes.json();
       setAllIngredients(ingredients.sort());
@@ -798,8 +946,7 @@ export default function App() {
     return new Set([...fridgeIngredients, ...pantryStaples].map(i => i.toLowerCase().trim()));
   }, [fridgeIngredients, pantryStaples]);
 
-  const allTags = useMemo(() => {
-    const tagSet = new Set();
+  const allTags = useMemo(() => {    const tagSet = new Set();
     recipes.forEach(r => (r.tags || []).forEach(t => tagSet.add(t)));
     return Array.from(tagSet).sort();
   }, [recipes]);
@@ -865,14 +1012,14 @@ export default function App() {
   if (loading) return (
     <div className="loading-screen">
       <div className="loading-spinner" />
-      <p>Connecting to your Notion kitchen...</p>
+      <p>Loading your recipes...</p>
     </div>
   );
 
   if (error) return (
     <div className="error-screen">
       <div className="error-icon">⚠️</div>
-      <h2>Couldn't connect to Notion</h2>
+      <h2>Couldn't connect to the server</h2>
       <p>{error}</p>
       <p className="error-hint">Make sure your backend is running and your .env is configured.</p>
       <button className="btn btn--primary" onClick={() => window.location.reload()}>Try Again</button>
@@ -887,7 +1034,7 @@ export default function App() {
             <span className="app-header__logo">🍳</span>
             <div className="app-header__title-group">
               <span className="app-header__title">Recipe Library</span>
-              <span className="app-header__subtitle">Your personal cookbook, powered by Notion</span>
+              <span className="app-header__subtitle">Your personal cookbook</span>
             </div>
           </div>
           <nav className="nav-tabs">
@@ -930,11 +1077,21 @@ export default function App() {
           bodyIngredients={recipeBodyIngredients}
           instructions={recipeInstructions}
           notes={recipeNotes}
+          allIngredients={allIngredients}
           onBack={() => setEditingRecipe(false)}
-          onSaved={(updated) => {
+          onSaved={async (updated) => {
             setSelectedRecipe(updated);
             setEditingRecipe(false);
-            loadData(); // refresh recipe list
+            // Re-fetch the full recipe detail so the view page is fresh
+            try {
+              const res = await fetch(`${API}/api/recipes/${updated.id}`);
+              const data = await res.json();
+              setSelectedRecipe(data.recipe);
+              setRecipeBodyIngredients(data.bodyIngredients || []);
+              setRecipeInstructions(data.instructions || []);
+              setRecipeNotes(data.notes || []);
+            } catch {}
+            loadData();
           }}
         />
       )}
@@ -1058,8 +1215,6 @@ export default function App() {
           setUnits={setUnits}
           dietaryFilters={dietaryFilters}
           setDietaryFilters={setDietaryFilters}
-          lastSynced={lastSynced}
-          onSync={loadData}
         />
       )}
     </div>
