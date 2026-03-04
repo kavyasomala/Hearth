@@ -130,8 +130,8 @@ app.get('/api/recipes', async (req, res) => {
 // ─── GET /api/ingredients ───────────────────────────────────────────────────
 app.get('/api/ingredients', async (req, res) => {
   try {
-    const { rows } = await query('SELECT name FROM ingredients ORDER BY name ASC;');
-    res.json({ ingredients: rows.map(r => r.name) });
+    const { rows } = await query('SELECT name, type FROM ingredients ORDER BY name ASC;');
+    res.json({ ingredients: rows });
   } catch (err) {
     console.error('GET /api/ingredients error:', err);
     res.status(500).json({ error: 'Failed to load ingredients' });

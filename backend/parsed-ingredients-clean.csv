@@ -1,0 +1,787 @@
+notion_id,recipe_name,raw_text,amount,unit,name,prep_note,optional,group_label,order_index
+2f803a80-9ca1-80d8-a317-edbdb09396ff,Fish Tacos,0.5 lbs (220g) Fish or Shrimp,0.5,lbs,shrimp,220g,FALSE,,0
+2fe03a80-9ca1-80f7-a2e3-f048f3422e78,Chicken Paprikash,1.5 cups (350 ml) chicken broth,1.5,cups,better than bouillon roasted chicken,350 ml,FALSE,,8
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,1.5 tbsp (28g) fish sauce,1.5,tbsp,fish sauce,28g,FALSE,,5
+29903a80-9ca1-8035-921b-fbb15cee0d96,Picked Red Onions,1/2 cup (100g) white vinegar,2-Jan,cup,white vinegar,100g,FALSE,,0
+30003a80-9ca1-8051-b470-d2b8098c023d,Honey Harissa Marinade,"1 1/2 tbsp garlic, finely minced",1,,garlic clove,finely minced,FALSE,,3
+30003a80-9ca1-8033-b998-e507ab3a212a,Greek Marinade,1 1/2 teaspoons salt,1,,kosher salt,,FALSE,,5
+29903a80-9ca1-8035-921b-fbb15cee0d96,Picked Red Onions,1/2 tsp (2g) salt,2-Jan,tsp,kosher salt,2g,FALSE,,3
+30003a80-9ca1-8022-b27f-d02ec828eab5,Cilantro Jalapeno Marinade,"1 1/2 tsp salt, to taste",1,,kosher salt,to taste,FALSE,,3
+30003a80-9ca1-8062-a6a0-f93a8b92c481,Persian Marinade,1 1/2 tsp salt,1,,kosher salt,,FALSE,,7
+29303a80-9ca1-80a3-bf38-ce532d3566cb,Burnt Basque Cheesecake V1,1 1/3Â cupsÂ granulated sugar,1,,granulated sugar,,FALSE,,6
+25a03a80-9ca1-80b7-9a23-e556fe353446,Mushroom Orzo Risotto ,1 1/4 cups of orzo,1,,orzo,,FALSE,,1
+29903a80-9ca1-8035-921b-fbb15cee0d96,Picked Red Onions,1/8 cup (10g) sugar,8-Jan,cup,sugar,10g,FALSE,,2
+29303a80-9ca1-80a3-bf38-ce532d3566cb,Burnt Basque Cheesecake V1,1 2/3Â cupsÂ heavy whipping cream,1,,heavy cream,,FALSE,,3
+2e703a80-9ca1-8018-811d-d2eec1d1a7ec,Red Wine Poached Pear,2-3 tbsp (15.6g) powdered sugar (depending on how sweet you want the mascarpone cream to be),3-Feb,tbsp,powdered sugar,15.6g,FALSE,,8
+2e703a80-9ca1-8018-811d-d2eec1d1a7ec,Red Wine Poached Pear,3.5oz (100g) mascarpone cheese,3.5,oz,mascarpone,100g,FALSE,,6
+2e703a80-9ca1-8018-811d-d2eec1d1a7ec,Red Wine Poached Pear,6.7oz (190g) granulated sugar,6.7,oz,granulated sugar,190g,FALSE,,2
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,1 6â Corn Tortilla,1,,corn tortillas,,FALSE,,0
+28d03a80-9ca1-80c6-8b65-e8d115af5fdc,Arayes,"2 6â Pita Breads, cut in half",2,,pita breads,cut in half,FALSE,,0
+28e03a80-9ca1-80eb-a6e7-f221f9a50243,Smash Burger Tacos,3 6-in Corn Tortillas,3,,corn tortillas,,FALSE,,0
+2f803a80-9ca1-80d8-a317-edbdb09396ff,Fish Tacos,6 6-inch tortillas,6,,corn tortillas,,FALSE,,3
+2e703a80-9ca1-8018-811d-d2eec1d1a7ec,Red Wine Poached Pear,7oz (200g) whipped cream,7,oz,whipping cream,200g,FALSE,,7
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,1/2 teaspoon baking soda,1,,baking soda,,FALSE,,9
+25a03a80-9ca1-809b-9796-fc8dd66fdb27,Banana Bread,1 Â½Â cupsÂ mashed banana,1,,banana,,FALSE,,3
+2ad03a80-9ca1-803c-8a2e-da2fac4dc12d,Brie Puffs,About 1/2 cup Jam,,,jam,,FALSE,,3
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,250 g all purpose plain flour,250,g,all-purpose flour,,FALSE,,6
+25a03a80-9ca1-809b-9796-fc8dd66fdb27,Banana Bread,2Â cupsÂ all-purpose flour,2,cups,all-purpose flour,,FALSE,,4
+28e03a80-9ca1-8074-87aa-c1f0e9318fe8,Crepes,120 g all-purpose flour,120,g,all-purpose flour,,FALSE,,1
+30203a80-9ca1-80a0-b2b4-d5ce9541b216,Spicy Shawarma,2 tsp allspice,2,tsp,allspice,,FALSE,,5
+31003a80-9ca1-80d5-b3d9-e57163f7c163,Southwest Marinade,1/2 tsp allspice,2-Jan,tsp,allspice,,FALSE,,4
+27a03a80-9ca1-8059-8a77-c98cd47b502a,Hazelnut Macarons,2.5 oz almond flour,2.5,oz,almond flour,,FALSE,,2
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,"1 Lb of Any Flaky Fish: Salmon, Cod, Branzino - split into two even pieces",1,lb,salmon,"Cod, Branzino - split into two even pieces",FALSE,,0
+31103a80-9ca1-801d-9fff-db36e1d4edea,Apple Brie Crostini,Apple,,,apple,,FALSE,,2
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,1 tsp Apple Cider Vinegar,1,tsp,apple cider vinegar,,FALSE,,9
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,Optional: 1/2 Avocado before serving,2-Jan,,avocado,,TRUE,,12
+2b203a80-9ca1-804c-a06e-fa148812ffb6,Smash Potatoes,1 Bag of Mini Potatoes,1,,baby potatoes,,FALSE,,0
+31103a80-9ca1-801d-9fff-db36e1d4edea,Apple Brie Crostini,Baguette,,,baguette,,FALSE,,0
+31203a80-9ca1-804a-95e1-c106e51f888a,Espresso Martini Jell-o Shots,3/4 cup Baileys,4-Mar,cup,baileys,,FALSE,,5
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,1/2 tsp baking powder,2-Jan,tsp,baking powder,,FALSE,,10
+25a03a80-9ca1-80ff-8284-f7ef19104186,Chicken Wings,15g baking powder,15,g,baking powder,,FALSE,,2
+25a03a80-9ca1-809b-9796-fc8dd66fdb27,Banana Bread,1Â tsp baking soda,1,tsp,baking soda,,FALSE,,5
+29703a80-9ca1-80bb-a93e-d7bae46d7d44,Rosemary Roast Potatoes,1 tsp Baking Soda,1,tsp,baking soda,,FALSE,,1
+2b203a80-9ca1-804c-a06e-fa148812ffb6,Smash Potatoes,"Herb: Thyme, Sage, Oregano, Basil, etc.",,,basil,,FALSE,Herb,5.03
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,1 sprig basil,1,sprig,basil,,FALSE,,4
+2a803a80-9ca1-80ad-99f4-f436f71e6ff3,Panang Curry,1 cup basil leaves,1,cup,basil,,FALSE,,9
+25a03a80-9ca1-80b0-bd07-c19ff0bd6ad2,Fried Rice,"Any combo of veggies: Basil, 1 whole Bell Pepper, 1 cup/150g chopped Cherry Tomatoes, 1 cup Spinach, 1 cup chopped Carrot",,,basil,,FALSE,Any combo of veggies,8
+25a03a80-9ca1-8011-bdbd-cd44eaabd55d,Coconut Pulao,1.5 cups of basmati rice,1.5,cups,basmati rice,,FALSE,,0
+31003a80-9ca1-80ba-a691-e7477898fa34,Lamb Mandi,"0.75 cups basmati rice, washed and soaked for 30 minutes",0.75,cups,basmati rice,washed and soaked for 30 minutes,FALSE,,8
+29903a80-9ca1-8035-921b-fbb15cee0d96,Picked Red Onions,"Optional: Peppercorns, Smashed Clove of Garlic, Bay Leaf, Fresh Herbs, Red Pepper Flakes, Jalapeno Slices, Fennel Seeds, Mustard Seeds, etc.",,,bay leaf,,TRUE,,5.02
+2a803a80-9ca1-8066-9d4c-c3f0a4ce706f,Boursin Brown Butter Mashed Potatoes,Bay Leaf + Sage,,,bay leaf,,FALSE,,5
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,"Spices: Garlic powder, Oregano, Black Pepper, Cayenne, Italian Seasoning, Bay Leaf",,,bay leaf,,FALSE,Spices,9.05
+25a03a80-9ca1-80fc-a7c8-e8a1b59885a8,Mushroom Curry,"Whole Spices: 1 bay leaf, 1/2 tsp cumin seeds, 2 green cardamoms, 2 inch cinnamon piece",1,,bay leaf,,FALSE,Whole Spices,9
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,6Â cupsÂ chicken broth OR 6 cups of water + 2 tbsp of better than bouillon,2,tbsp,better than bouillon roasted chicken,,FALSE,,4.01
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,1/2 tsp black pepper,2-Jan,tsp,black pepper,,FALSE,,10
+2bd03a80-9ca1-803c-a020-fe803c5d63b3,Masala Chai,2 tbsp black pepper,2,tbsp,black pepper,,FALSE,,2
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,"Spices: Garlic powder, Oregano, Black Pepper, Cayenne, Italian Seasoning, Bay Leaf",,,black pepper,,FALSE,Spices,9.02
+30003a80-9ca1-8022-b27f-d02ec828eab5,Cilantro Jalapeno Marinade,1/4 tsp black pepper,4-Jan,tsp,black pepper,,FALSE,,6
+30003a80-9ca1-8062-a6a0-f93a8b92c481,Persian Marinade,1 tsp black pepper,1,tsp,black pepper,,FALSE,,9
+30003a80-9ca1-806a-8501-eac67f052fd5,Lemon Saffron,1 tsp black pepper,1,tsp,black pepper,,FALSE,,2
+30003a80-9ca1-80b3-9f1d-f9e6936947f2,Moroccan Marinade,1/2 tsp black pepper,2-Jan,tsp,black pepper,,FALSE,,8
+30003a80-9ca1-80c5-9522-fa1d71ca7e4e,Malai Tikka,1/2 tsp black pepper,2-Jan,tsp,black pepper,,FALSE,,3
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,1 tsp black pepper,1,tsp,black pepper,,FALSE,,3
+30203a80-9ca1-800b-b99d-c172f994486c,Miso Honey,1 tsp black pepper,1,tsp,black pepper,,FALSE,,7
+30203a80-9ca1-809c-b5df-d01d6309a67d,Lemon Herb Garlic,1/2 tsp black pepper,2-Jan,tsp,black pepper,,FALSE,,9
+30203a80-9ca1-80a0-b2b4-d5ce9541b216,Spicy Shawarma,1/4 tsp black pepper,4-Jan,tsp,black pepper,,FALSE,,11
+31003a80-9ca1-80c2-80d6-cb25604af766,Shawarma Marinade,1 tsp black pepper,1,tsp,black pepper,,FALSE,,9
+31203a80-9ca1-80d1-8105-d4775889923d,Peach Coladas,2 oz blanco tequila,2,oz,blanco tequila,,FALSE,,0
+31003a80-9ca1-80ba-a691-e7477898fa34,Lamb Mandi,"1.5 lb bone in lamb shoulder, cut into large pieces (ask butcher)",1.5,lb,lamb shoulder,ask butcher,FALSE,,0
+2e703a80-9ca1-8018-811d-d2eec1d1a7ec,Red Wine Poached Pear,"4 bosc pears (make sure theyâre firm, if they are ripe they will disintegrate)",4,,bosc pears,"make sure theyâre firm, if they are ripe they will disintegrate",FALSE,,0
+2e703a80-9ca1-8018-811d-d2eec1d1a7ec,Red Wine Poached Pear,1 bottle merlot red wine,1,,merlot red wine,,FALSE,,1
+31103a80-9ca1-80c9-a32c-ffffdd367e59,Twice Baked Apple Pie,Optional: 1-2 tbsp bourbon or apple cider,2-Jan,tbsp,bourbon,,TRUE,,1
+2a803a80-9ca1-8066-9d4c-c3f0a4ce706f,Boursin Brown Butter Mashed Potatoes,1 block of Boursin Garlic & Fine Herbs Cheese,1,block,boursin garlic & fine herbs cheese,,FALSE,,6
+30c03a80-9ca1-808d-8223-c1755a962b45,Creamy Brie Pasta,"120g brie, rind removed, cut into chunks",120,g,brie,"rind removed, cut into chunks",FALSE,,1
+31103a80-9ca1-801d-9fff-db36e1d4edea,Apple Brie Crostini,Brie Cheese,,,brie,,FALSE,,1
+25a03a80-9ca1-80b3-9e41-f83c73a27647,Lime and Brown Sugar Glazed Salmon,1.5 tbsp brown sugar,1.5,tbsp,brown sugar,,FALSE,,0
+30003a80-9ca1-8040-a4cb-f3b5ccefdfda,Teriyaki Marinade,3 tbsp brown sugar,3,tbsp,brown sugar,,FALSE,,2
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,1.5 tbsp brown sugar,1.5,tbsp,brown sugar,,FALSE,,6
+2c403a80-9ca1-80da-bf5e-c16003893a08, Matcha Latte w/ Cold Foam,Brown Sugar Cold Foam,,,brown sugar syrup,,FALSE,,3
+2c403a80-9ca1-80da-bf5e-c16003893a08, Matcha Latte w/ Cold Foam,3/4 oz brown sugar syrup,4-Mar,oz,brown sugar syrup,,FALSE,,2
+25a03a80-9ca1-809b-9796-fc8dd66fdb27,Banana Bread,Â½Â cupÂ butter,Â½,cup,unsalted butter,,FALSE,,1
+25a03a80-9ca1-80b7-9a23-e556fe353446,Mushroom Orzo Risotto ,2 tbsp butter,2,tbsp,unsalted butter,,FALSE,,6
+28e03a80-9ca1-8074-87aa-c1f0e9318fe8,Crepes,1 tbsp butter (melted),1,tbsp,unsalted butter,melted,FALSE,,4
+2a803a80-9ca1-8066-9d4c-c3f0a4ce706f,Boursin Brown Butter Mashed Potatoes,5 tbsp butter,5,tbsp,unsalted butter,,FALSE,,3
+30c03a80-9ca1-80ca-98d5-e8467f32c21b,Spicy Tuna Melt,"10g butter, room temp",10,g,unsalted butter,room temp,FALSE,,2
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,2 tbsp butter,2,tbsp,unsalted butter,,FALSE,,10
+31003a80-9ca1-8046-9d61-d37f67a630a3,Bolognese,1 tbsp butter for cooking + 1 tsp for tossing,1,tbsp,unsalted butter,,FALSE,,1
+31003a80-9ca1-8046-9d61-d37f67a630a3,Bolognese,120g canned plum tomatoes with juice,120,g,canned plum tomatoes,,FALSE,,8
+2bd03a80-9ca1-803c-a020-fe803c5d63b3,Masala Chai,10 cardamom pods,10,,cardamom pods,,FALSE,,1
+31003a80-9ca1-8046-9d61-d37f67a630a3,Bolognese,"1 carrot, chopped",1,,carrot,chopped,FALSE,,4
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,"Optional: Peas, Carrot cut into chunks",,,carrot,,TRUE,,8.01
+25a03a80-9ca1-8011-bdbd-cd44eaabd55d,Coconut Pulao,1 cup carrots,1,cup,carrot,diced,FALSE,,7
+2e703a80-9ca1-8026-a5b6-e8f83818762e,Blackberry Gin,Carton of Blackberries,,,blackberries,,FALSE,,0
+30c03a80-9ca1-80f7-bc00-d64f383de2c1,Hyderabadi Marag,35 Cashews (optionally use half almonds and half cashews),35,,cashews,optionally use half almonds and half cashews,FALSE,,1
+2b203a80-9ca1-804c-a06e-fa148812ffb6,Smash Potatoes,"Salt, Pepper, Cayenne",,,cayenne,,FALSE,,1.02
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,"Spices: Garlic powder, Oregano, Black Pepper, Cayenne, Italian Seasoning, Bay Leaf",,,cayenne,,FALSE,Spices,9.03
+2fe03a80-9ca1-80f7-a2e3-f048f3422e78,Chicken Paprikash,"Salt, Pepper, Cayenne",,,cayenne,,FALSE,,10.02
+31003a80-9ca1-80c2-80d6-cb25604af766,Shawarma Marinade,1/2 tsp cayenne,2-Jan,tsp,cayenne,,FALSE,,7
+31003a80-9ca1-80d5-b3d9-e57163f7c163,Southwest Marinade,1 tsp cayenne,1,tsp,cayenne,,FALSE,,6
+31003a80-9ca1-8046-9d61-d37f67a630a3,Bolognese,"1 stalk celery, chopped",1,stalk,celery,chopped,FALSE,,3
+2e703a80-9ca1-8026-a5b6-e8f83818762e,Blackberry Gin,Cheap Gin,,,gin,,FALSE,,1
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,1 container of cherry tomatoes,1,container,cherry tomatoes,,FALSE,,9
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,"Choose Veggies: Zucchini, Lemon, Onions, Shallots, Jalapenos, Cherry Tomatoes, sundried tomatoes",,,cherry tomatoes,,FALSE,Choose Veggies,6.05
+30c03a80-9ca1-808d-8223-c1755a962b45,Creamy Brie Pasta,"25 cherry tomatoes, halved",25,,cherry tomatoes,halved,FALSE,,3
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,"10 - 12 cherry tomatoes, diced",12-Oct,,cherry tomatoes,diced,FALSE,,5
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,1 tbsp Chicken Better than Bouillon,1,tbsp,better than bouillon roasted chicken,,FALSE,,1
+2fa03a80-9ca1-8059-a931-d526cc309735,Bowl Soup Dumplings ,1/4 cup chicken bone broth,4-Jan,cup,better than bouillon roasted chicken,,FALSE,,1
+25a03a80-9ca1-8068-b95b-d53c8c2c2c6c,Poached Cod,1 tbsp chicken bouillon,1,tbsp,better than bouillon roasted chicken,,FALSE,,7
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,1 tbsp Chicken Bouillon,1,tbsp,better than bouillon roasted chicken,,FALSE,,8
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,2 tbsp chicken bouillon,2,tbsp,better than bouillon roasted chicken,,FALSE,,8
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,1.5 cups water + 2 tsp chicken bouillon,2,tsp,better than bouillon roasted chicken,,FALSE,,3.01
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,3 - 4 Chicken Breast,4-Mar,,chicken breast,,FALSE,,0
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,6Â cupsÂ chicken broth OR 6 cups of water + 2 tbsp of better than bouillon,6,cups,better than bouillon roasted chicken,,FALSE,,4
+25a03a80-9ca1-80b7-9a23-e556fe353446,Mushroom Orzo Risotto ,3 cups chicken broth,3,cups,better than bouillon roasted chicken,,FALSE,,5
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,2 chicken leg quarters,2,,chicken leg quarters,,FALSE,,7
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,"0.5 lb Chicken Meat (Options: Chicken Breast, Thighs, Whole Chicken)",0.5,lb,chicken breast,"Options: Chicken Breast, Thighs, Whole Chicken",FALSE,,1
+31003a80-9ca1-80ba-a691-e7477898fa34,Lamb Mandi,1.25 cups chicken stock,1.25,cups,better than bouillon roasted chicken,,FALSE,,7
+2a803a80-9ca1-80ad-99f4-f436f71e6ff3,Panang Curry,1 lb chicken thigh (sliced),1,lb,chicken thighs,sliced,FALSE,,0
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,10 oz chicken thighs,10,oz,chicken thighs,,FALSE,,12
+2fe03a80-9ca1-80f7-a2e3-f048f3422e78,Chicken Paprikash,2 Chicken Thighs (bone-in),2,,chicken thighs,bone-in,FALSE,,0
+25a03a80-9ca1-8068-b95b-d53c8c2c2c6c,Poached Cod,"Spices: Turmeric, Chili Flakes, Salt, Pepper",,,chili flakes,,FALSE,Spices,9.01
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,"1 tsp chili flakes, salt, and pepper",1,tsp,chili flakes,"salt, and pepper",FALSE,,4
+29703a80-9ca1-80bb-a93e-d7bae46d7d44,Rosemary Roast Potatoes,1 tbsp chili flakes,1,tbsp,chili flakes,,FALSE,,5
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,"To Taste: Salt, Lime Juice, Chili Flakes, Smoked Paprika",,,chili flakes,,FALSE,To Taste,10.02
+25a03a80-9ca1-8080-984a-e17a81c31a9d,Dan Dan Noodles,Chili Oil,,,chili oil,,FALSE,,6
+2fa03a80-9ca1-8059-a931-d526cc309735,Bowl Soup Dumplings ,"Optional toppings:Â chili oil, soy sauce, scallions, sesame seeds.",,,chili oil,,TRUE,toppings,3
+25a03a80-9ca1-80b0-bd07-c19ff0bd6ad2,Fried Rice,4 chili peppers,4,,chili peppers,,FALSE,,6
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,2 tsp chili powder,2,tsp,chili powder,,FALSE,,7
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,"Seasoning (w/ your heart): Paprika, Chili Powder/Cayenne, Ground Cumin, Oregano, Garlic Powder, Cinnamon, Salt, Pepper",,,chili powder,,FALSE,,5.01
+25a03a80-9ca1-8068-b95b-d53c8c2c2c6c,Poached Cod,Chilies (sliced),4,,chili peppers,sliced,FALSE,,5
+27603a80-9ca1-803f-bd98-f6ed1b4100dc,Shrimp Fry,8 chilies,8,,chili peppers,,FALSE,,3
+25a03a80-9ca1-802b-8b4c-de161b241148,Pad Thai,Chilli flakes,,,chili flakes,,FALSE,,4
+25a03a80-9ca1-8080-984a-e17a81c31a9d,Dan Dan Noodles,3 oz of Chinese style egg or rice noodles,3,oz,egg,,FALSE,,3
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,Optional: Chives,,,chives,,TRUE,,10
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,"200g chocolate, chopped (I used a mix of both dark and milk chocolate, but use whatever you prefer)",200,g,chocolate,"chopped, I used a mix of both dark and milk chocolate, but use whatever you prefer",FALSE,,12
+25a03a80-9ca1-8089-ae27-d622ccac063e,Chocolate Covered Strawberries,8 oz chocolate,8,oz,chocolate,,FALSE,,2
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,1 tbsp chopped cilantro,1,tbsp,cilantro,,FALSE,,10
+30203a80-9ca1-809c-b5df-d01d6309a67d,Lemon Herb Garlic,1 tbsp chopped cilantro,1,tbsp,cilantro,,FALSE,,4
+30c03a80-9ca1-80f7-bc00-d64f383de2c1,Hyderabadi Marag,1/4 cup chopped cilantro,4-Jan,cup,cilantro,,FALSE,,13
+31003a80-9ca1-8093-8f7b-e714429da635,Perugu Charu,Chopped Cilantro,,,cilantro,,FALSE,,7
+30c03a80-9ca1-80f7-bc00-d64f383de2c1,Hyderabadi Marag,1/4 cup chopped mint,4-Jan,cup,mint,,FALSE,,12
+30203a80-9ca1-809c-b5df-d01d6309a67d,Lemon Herb Garlic,1 tbsp chopped parsley,1,tbsp,parsley,,FALSE,,5
+25a03a80-9ca1-809b-9796-fc8dd66fdb27,Banana Bread,Â½Â cupÂ chopped pecans,Â½,cup,pecans,,FALSE,,10
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,2 - 3 lbs of chuck roast,3-Feb,lbs,chuck roast,,FALSE,,0
+25a03a80-9ca1-8011-bdbd-cd44eaabd55d,Coconut Pulao,Handful of Cilantro,,,cilantro,,FALSE,,5
+25a03a80-9ca1-80fc-a7c8-e8a1b59885a8,Mushroom Curry,2 sprigs of cilantro,2,sprigs,cilantro,,FALSE,,8
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,"Choose an Herb: Sage, Dill, Cilantro, Mint or Green Onions",,,cilantro,,FALSE,Choose an Herb,5.02
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,"Toppings: Green onions, cilantro, sliced onions, thai basil, mint, thai chillies, jalapenos, sliced sweet onions, Sambal, hoisin sauce, lime slices",,,cilantro,,FALSE,Toppings,11.01
+2f803a80-9ca1-80d8-a317-edbdb09396ff,Fish Tacos,"Optional Toppings: Pickled Red Onions, Coleslaw, Cilantro",,,cilantro,,TRUE,Toppings,4.02
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,"Toppings: Cilantro, Jalapenos, Pickled Red Onions",,,cilantro,,FALSE,Toppings,6
+30003a80-9ca1-8051-b470-d2b8098c023d,Honey Harissa Marinade,"1 tbsp cilantro, finely chopped",1,tbsp,cilantro,finely chopped,FALSE,,6
+30003a80-9ca1-80b3-9f1d-f9e6936947f2,Moroccan Marinade,"2 tsp cilantro, finely chopped",2,tsp,cilantro,finely chopped,FALSE,,12
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,Toppings: Cilantro + green onion,,,cilantro,,FALSE,Toppings,12
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,"1/2 bunch cilantro, diced",2-Jan,bunch,cilantro,diced,FALSE,,7
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,Cilantro Bunch (stems and tops separated),,,cilantro,stems and tops separated,FALSE,,9
+25a03a80-9ca1-809b-9796-fc8dd66fdb27,Banana Bread,1 tsp cinnamon,1,tsp,cinnamon powder,,FALSE,,7
+2bd03a80-9ca1-803c-a020-fe803c5d63b3,Masala Chai,1/2 cinnamon,2-Jan,,cinnamon powder,,FALSE,,4
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,"Seasoning (w/ your heart): Paprika, Chili Powder/Cayenne, Ground Cumin, Oregano, Garlic Powder, Cinnamon, Salt, Pepper",,,cinnamon powder,,FALSE,,5.05
+31103a80-9ca1-80a4-9e5b-f2546361a0df,Halal Cart Rice Bowl,"Spices: paprika, cumin, coriander, curry powder, cinnamon, salt and pepper",,,cinnamon powder,,FALSE,Spices,1.04
+2e703a80-9ca1-8018-811d-d2eec1d1a7ec,Red Wine Poached Pear,1 cinnamon stick,1,,cinnamon stick,,FALSE,,4
+2fe03a80-9ca1-80f7-a2e3-f048f3422e78,Chicken Paprikash,"1 clove, garlic",1,,cloves,garlic,FALSE,,4
+28e03a80-9ca1-802b-9f84-f6a9fca8144f,Nutella,2 tbsp cocoa powder,2,tbsp,cocoa powder,,FALSE,,3
+25a03a80-9ca1-8011-bdbd-cd44eaabd55d,Coconut Pulao,Coconut Milk,,,coconut milk,,FALSE,,3
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,1 can of coconut milk,1,can,coconut milk,,FALSE,,10
+25a03a80-9ca1-80fc-a7c8-e8a1b59885a8,Mushroom Curry,1 cup coconut milk,1,cup,coconut milk,,FALSE,,4
+2a803a80-9ca1-80ad-99f4-f436f71e6ff3,Panang Curry,14 oz coconut milk,14,oz,coconut milk,,FALSE,,2
+2fe03a80-9ca1-80f7-a2e3-f048f3422e78,Chicken Paprikash,200 ml coconut milk,200,ml,coconut milk,,FALSE,,7
+25a03a80-9ca1-8089-ae27-d622ccac063e,Chocolate Covered Strawberries,1 tbsp coconut oil,1,tbsp,coconut oil,,FALSE,,3
+31203a80-9ca1-804a-95e1-c106e51f888a,Espresso Martini Jell-o Shots,Topping: Coffee Beans,,,coffee beans,,FALSE,Topping,7
+31203a80-9ca1-804a-95e1-c106e51f888a,Espresso Martini Jell-o Shots,3/4 cup coffee liquor,4-Mar,cup,coffee liqueur,,FALSE,,4
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,1/2 tsp coffee powder,2-Jan,tsp,coffee powder,,FALSE,,5
+31203a80-9ca1-80d1-8105-d4775889923d,Peach Coladas,1/4 oz cointreau,4-Jan,oz,cointreau,,FALSE,,1
+2f803a80-9ca1-80d8-a317-edbdb09396ff,Fish Tacos,"Optional Toppings: Pickled Red Onions, Coleslaw, Cilantro",,,coleslaw,,TRUE,Toppings,4.01
+2bd03a80-9ca1-80e6-a21b-e1f1c4dc5b81,Horchata,1 can Condensed Milk,1,can,condensed milk,,FALSE,,3
+2d403a80-9ca1-80f9-ad0b-fe7492549a0f,Thai Tea,Thai Version:  1.5 tbsp condensed milk + 3 tbsp evaporated milk / cup,1.5,tbsp,condensed milk,,FALSE,Thai Version,2
+27a03a80-9ca1-8059-8a77-c98cd47b502a,Hazelnut Macarons,7 oz confectionersâ sugar,7,oz,powdered sugar,,FALSE,,0
+30003a80-9ca1-8051-b470-d2b8098c023d,Honey Harissa Marinade,2 tsp coriander,2,tsp,coriander powder,,FALSE,,8
+30203a80-9ca1-80a0-b2b4-d5ce9541b216,Spicy Shawarma,1 tsp coriander,1,tsp,coriander powder,,FALSE,,6
+31103a80-9ca1-80a4-9e5b-f2546361a0df,Halal Cart Rice Bowl,"Spices: paprika, cumin, coriander, curry powder, cinnamon, salt and pepper",,,coriander powder,,FALSE,Spices,1.02
+27603a80-9ca1-803f-bd98-f6ed1b4100dc,Shrimp Fry,Coriander Leaves finely chopped,,,cilantro,,FALSE,,6
+30003a80-9ca1-80c5-9522-fa1d71ca7e4e,Malai Tikka,1.5 tbsp coriander powder,1.5,tbsp,coriander powder,,FALSE,,4
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,1 tbsp coriander powder,1,tbsp,coriander powder,,FALSE,,6
+31003a80-9ca1-80c2-80d6-cb25604af766,Shawarma Marinade,1/4 tbsp coriander powder,4-Jan,tbsp,coriander powder,,FALSE,,6
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,1 can of corn,1,can,corn,,FALSE,,1
+2dc03a80-9ca1-801c-af62-f6632b10be72,Burnt Basque Cheesecake V2,40g corn starch,40,g,cornstarch,,FALSE,,2
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,4 tbsp corn starch,4,tbsp,cornstarch,,FALSE,,6
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,1 tsp cornstarch,1,tsp,cornstarch,,FALSE,,7
+29303a80-9ca1-80a3-bf38-ce532d3566cb,Burnt Basque Cheesecake V1,3Â tbspÂ cornstarch,3,tbsp,cornstarch,,FALSE,,4
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,1/4 cup cotija cheese,4-Jan,cup,cotija cheese,,FALSE,,8
+2dc03a80-9ca1-801c-af62-f6632b10be72,Burnt Basque Cheesecake V2,600g cream cheese,600,g,cream cheese,,FALSE,,0
+29303a80-9ca1-80a3-bf38-ce532d3566cb,Burnt Basque Cheesecake V1,24Â ozÂ cream cheeseÂ room temperature,24,oz,cream cheese,,FALSE,,0
+31203a80-9ca1-80d1-8105-d4775889923d,Peach Coladas,3/4 oz cream of coconut,4-Mar,oz,cream of coconut,,FALSE,,3
+27a03a80-9ca1-8059-8a77-c98cd47b502a,Hazelnut Macarons,1/8 tsp cream of tartar,8-Jan,tsp,cream of tartar,,FALSE,,5
+30003a80-9ca1-80c4-b75a-e8c6c9a1217f,Nandos Peri Peri Chicken,1 tsp crushed black pepper,1,tsp,black pepper,,FALSE,,2
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,1 tsp crushed chili flakes,1,tsp,chili flakes,,FALSE,,5
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,1 tsp crushed kasuri methi or sub with crushed oregano,1,tsp,crushed kasuri methi,,FALSE,,9
+30003a80-9ca1-80c4-b75a-e8c6c9a1217f,Nandos Peri Peri Chicken,1 tsp crushed red chili flakes,1,tsp,chili flakes,,FALSE,,6
+31003a80-9ca1-80a9-b834-d78072c0ed59,Porcini Ragu,Â½ tsp crushed red pepper,Â½,tsp,chili flakes,,FALSE,,3
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,24ct Corn Tortillas Street Taco Size,24,,corn tortillas,,FALSE,,10
+30003a80-9ca1-8022-b27f-d02ec828eab5,Cilantro Jalapeno Marinade,1 tsp cumin,1,tsp,cumin powder,,FALSE,,5
+30003a80-9ca1-8051-b470-d2b8098c023d,Honey Harissa Marinade,2 tsp cumin,2,tsp,cumin powder,,FALSE,,9
+30003a80-9ca1-80b3-9f1d-f9e6936947f2,Moroccan Marinade,2 tsp cumin,2,tsp,cumin powder,,FALSE,,4
+30203a80-9ca1-8059-9445-e73e553faf9b,Pollo Asado,1 tsp cumin,1,tsp,cumin powder,,FALSE,,6
+30203a80-9ca1-80a0-b2b4-d5ce9541b216,Spicy Shawarma,1 tsp cumin,1,tsp,cumin powder,,FALSE,,8
+31003a80-9ca1-80c2-80d6-cb25604af766,Shawarma Marinade,1/2 tbsp cumin,2-Jan,tbsp,cumin powder,,FALSE,,5
+31003a80-9ca1-80d5-b3d9-e57163f7c163,Southwest Marinade,1 tsp cumin,1,tsp,cumin powder,,FALSE,,3
+31103a80-9ca1-80a4-9e5b-f2546361a0df,Halal Cart Rice Bowl,"Spices: paprika, cumin, coriander, curry powder, cinnamon, salt and pepper",,,cumin powder,,FALSE,Spices,1.01
+30003a80-9ca1-80c5-9522-fa1d71ca7e4e,Malai Tikka,1 tbsp cumin powder,1,tbsp,cumin powder,,FALSE,,5
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,1 tsp cumin powder,1,tsp,cumin powder,,FALSE,,7
+31003a80-9ca1-8022-bd14-ca6a427e868b,Keema Sausage Rolls,Topping: Cumin seeds or black mustard seeds or sesame seeds,,,cumin seeds,,FALSE,Topping,7
+2a803a80-9ca1-8074-b1e9-ece32c977a5f,Honey + Sage Butter Milk Buns,2.5 cups cups bread flour (300g),2.5,cups,bread flour,300g,FALSE,,0
+27603a80-9ca1-803f-bd98-f6ed1b4100dc,Shrimp Fry,Optional: Curry leaves,,,curry leaves,,TRUE,,7
+31003a80-9ca1-8093-8f7b-e714429da635,Perugu Charu,4 - 5 curry leaves,5-Apr,,curry leaves,,FALSE,,4
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,1 tbsp curry powder,1,tbsp,curry powder,,FALSE,,2
+31103a80-9ca1-80a4-9e5b-f2546361a0df,Halal Cart Rice Bowl,"Spices: paprika, cumin, coriander, curry powder, cinnamon, salt and pepper",,,curry powder,,FALSE,Spices,1.03
+31003a80-9ca1-8078-bfd7-f05d37afbe1c,Korean Marinated Eggs,2 tbsp dark soy sauce,2,tbsp,dark soy sauce,,FALSE,,7
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,0.5 tbsp dark soy sauce,0.5,tbsp,dark soy sauce,,FALSE,,4
+31203a80-9ca1-80d1-8105-d4775889923d,Peach Coladas,Dash of Cinnamon,,,cinnamon powder,,FALSE,,5
+2e603a80-9ca1-8031-915a-d3f92610fa67,Dirty Thai Tea Jello Shots,3/4 cups Demerara sugar,4-Mar,cups,demerara sugar,,FALSE,,4
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,"Choose an Herb: Sage, Dill, Cilantro, Mint or Green Onions",,,dill,,FALSE,Choose an Herb,5.01
+2dc03a80-9ca1-801c-af62-f6632b10be72,Burnt Basque Cheesecake V2,200ml double cream,200,ml,double cream,,FALSE,,4
+2ad03a80-9ca1-803c-8a2e-da2fac4dc12d,Brie Puffs,"16 oz double cream brie, cut into 1/2â inch squares",16,oz,brie,cut into 1/2â inch squares,FALSE,,2
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,3 Dried ancho,3,,dried ancho,,FALSE,,4
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,4 dried Arbol,4,,dried arbol,,FALSE,,5
+30003a80-9ca1-80c4-b75a-e8c6c9a1217f,Nandos Peri Peri Chicken,1 tsp dried parsley,1,tsp,dried parsley,,FALSE,,5
+31003a80-9ca1-80a9-b834-d78072c0ed59,Porcini Ragu,40g dried porcini mushrooms,40,g,dried porcini mushrooms,,FALSE,,0
+30c03a80-9ca1-808d-8223-c1755a962b45,Creamy Brie Pasta,120g dry pasta,120,g,pasta,,FALSE,,0
+31003a80-9ca1-8046-9d61-d37f67a630a3,Bolognese,80 ml dry white wine,80,ml,dry white wine,,FALSE,,7
+25a03a80-9ca1-801a-a3f2-de214fd1bee9,Stuffed Shells,1 egg,1,,egg,,FALSE,,8
+25a03a80-9ca1-802b-8b4c-de161b241148,Pad Thai,"1 egg, beaten",1,,egg,beaten,FALSE,,5
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,1 egg,1,,egg,,FALSE,,3
+2ad03a80-9ca1-803c-8a2e-da2fac4dc12d,Brie Puffs,"1 egg, beaten for egg wash",1,,egg,beaten for egg wash,FALSE,,1
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,1 Egg,1,,egg,,FALSE,,2
+31003a80-9ca1-8022-bd14-ca6a427e868b,Keema Sausage Rolls,1 egg,1,,egg,,FALSE,,3
+27a03a80-9ca1-8059-8a77-c98cd47b502a,Hazelnut Macarons,4 oz egg whites,4,oz,egg whites,,FALSE,,4
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,1 egg yolk,1,,egg yolk,,FALSE,,4
+25a03a80-9ca1-809b-9796-fc8dd66fdb27,Banana Bread,2Â eggs,2,,egg,,FALSE,,2
+25a03a80-9ca1-80b0-bd07-c19ff0bd6ad2,Fried Rice,2 eggs,2,,egg,,FALSE,,4
+29303a80-9ca1-80a3-bf38-ce532d3566cb,Burnt Basque Cheesecake V1,5Â eggs,5,,egg,,FALSE,,7
+2dc03a80-9ca1-801c-af62-f6632b10be72,Burnt Basque Cheesecake V2,4 eggs,4,,egg,,FALSE,,8
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,5 eggs,5,,egg,,FALSE,,4
+31203a80-9ca1-8079-81d0-c34021e7b1e1,Grapefruit Hugo Spritz,3/4 oz elderflower liqueur,4-Mar,oz,elderflower liqueur,,FALSE,,0
+31203a80-9ca1-804a-95e1-c106e51f888a,Espresso Martini Jell-o Shots,1.5 cups espresso or cold brew concentrate,1.5,cups,espresso,,FALSE,,0
+2bd03a80-9ca1-80e6-a21b-e1f1c4dc5b81,Horchata,1 can Evaporated Milk,1,can,evaporated milk,,FALSE,,2
+2e603a80-9ca1-8031-915a-d3f92610fa67,Dirty Thai Tea Jello Shots,1 cup evaporated milk,1,cup,evaporated milk,,FALSE,,2
+2d403a80-9ca1-80f9-ad0b-fe7492549a0f,Thai Tea,Thai Version:  1.5 tbsp condensed milk + 3 tbsp evaporated milk / cup,3,tbsp,evaporated milk,,FALSE,Thai Version,2.01
+2bd03a80-9ca1-803c-a020-fe803c5d63b3,Masala Chai,1 tbsp fennel seed,1,tbsp,fennel seeds,,FALSE,,3
+29903a80-9ca1-8035-921b-fbb15cee0d96,Picked Red Onions,"Optional: Peppercorns, Smashed Clove of Garlic, Bay Leaf, Fresh Herbs, Red Pepper Flakes, Jalapeno Slices, Fennel Seeds, Mustard Seeds, etc.",,,fennel seeds,,TRUE,,5.06
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,1 container of feta,1,container,feta,,FALSE,,8
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,20g Feta Cheese (or Cotija),20,g,feta,or Cotija,FALSE,,3
+30c03a80-9ca1-808d-8223-c1755a962b45,Creamy Brie Pasta,Optional Topping: 3 tbsp feta cheese,3,tbsp,feta,,TRUE,Topping,7
+25a03a80-9ca1-8068-b95b-d53c8c2c2c6c,Poached Cod,2 Filets of Frozen Cod (~200g),2,,cod,~200g,FALSE,,0
+31003a80-9ca1-80a9-b834-d78072c0ed59,Porcini Ragu,Â½ cup finely chopped fresh parsley (set a little aside for topping),Â½,cup,parsley,set a little aside for topping,FALSE,,4
+30003a80-9ca1-80e3-aea1-e417a2fa6ec5,Korean Marinade,1 tbsp finely minced garlic,1,tbsp,garlic clove,,FALSE,,6
+2c503a80-9ca1-803a-ba53-c4d0b65aad31,White Miso Glazed Fish,"2 Fillets of Fish (cod, black cod, salmon, branzino, tilapia, etc.) - abt 6 - 8 oz per person",2,fillets,cod,"cod, black cod, salmon, branzino, tilapia, etc.",FALSE,,1
+25a03a80-9ca1-80b3-9e41-f83c73a27647,Lime and Brown Sugar Glazed Salmon,1 tbsp fish sauce,1,tbsp,fish sauce,,FALSE,,4
+2a803a80-9ca1-80ad-99f4-f436f71e6ff3,Panang Curry,1 tbsp fish sauce,1,tbsp,fish sauce,,FALSE,,8
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,30ml fish sauce,30,ml,fish sauce,,FALSE,,7
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,1.5 tbsp fish sauce,1.5,tbsp,fish sauce,,FALSE,,8
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,flaky salt optional,,,flaky salt,,TRUE,,13
+29303a80-9ca1-80a3-bf38-ce532d3566cb,Burnt Basque Cheesecake V1,1Â tbspÂ flour,1,tbsp,all-purpose flour,,FALSE,,5
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,1 tbsp flour,1,tbsp,all-purpose flour,,FALSE,,7
+2fe03a80-9ca1-80f7-a2e3-f048f3422e78,Chicken Paprikash,1 tbsp flour,1,tbsp,all-purpose flour,,FALSE,,1
+30003a80-9ca1-806a-8501-eac67f052fd5,Lemon Saffron,2 tbsp fresh chopped parsley,2,tbsp,parsley,,FALSE,,10
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,8 oz fresh egg or wonton noodles,8,oz,egg,,FALSE,,10
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,1 tbsp fresh ginger + garlic paste,1,tbsp,ginger,,FALSE,,1
+31003a80-9ca1-80d5-b3d9-e57163f7c163,Southwest Marinade,Fresh ground pepper,,,black pepper,,FALSE,,9
+30003a80-9ca1-80c4-b75a-e8c6c9a1217f,Nandos Peri Peri Chicken,2 tbsp fresh lemon juice,2,tbsp,lemon juice,,FALSE,,10
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,1/4 cup of fresh mint - roughly chopped,4-Jan,cup,mint,,FALSE,,5
+25a03a80-9ca1-8089-ae27-d622ccac063e,Chocolate Covered Strawberries,1 lb fresh strawberries,1,lb,strawberries,,FALSE,,0
+30003a80-9ca1-80c5-9522-fa1d71ca7e4e,Malai Tikka,1/4 cup freshly squeezed lemon juice,4-Jan,cup,lemon juice,,FALSE,,6
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,2 tsp garam masala,2,tsp,garam masala,,FALSE,,11
+25a03a80-9ca1-8068-b95b-d53c8c2c2c6c,Poached Cod,3 cloves of garlic (smashed and sliced thinly into coins),3,cloves,garlic clove,smashed and sliced thinly into coins,FALSE,,2
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,"4 cloves of garlic, minced",4,cloves,garlic clove,minced,FALSE,,3
+25a03a80-9ca1-80b7-9a23-e556fe353446,Mushroom Orzo Risotto ,Garlic (3 cloves),,,garlic clove,3 cloves,FALSE,,4
+2b203a80-9ca1-804c-a06e-fa148812ffb6,Smash Potatoes,Garlic,,,garlic clove,,FALSE,,2
+30c03a80-9ca1-808d-8223-c1755a962b45,Creamy Brie Pasta,2 cloves garlic,2,cloves,garlic clove,,FALSE,,2
+31003a80-9ca1-80d5-b3d9-e57163f7c163,Southwest Marinade,2 cloves garlic,2,cloves,garlic clove,,FALSE,,8
+31103a80-9ca1-8059-aa3a-e6050361d925,Rose Noodles/Tteokboki,"3 cloves garlic, finely minced",3,cloves,garlic clove,finely minced,FALSE,,1
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,2 Cloves of garlic,2,cloves,garlic clove,,FALSE,,3
+25a03a80-9ca1-80b0-bd07-c19ff0bd6ad2,Fried Rice,6 garlic cloves,6,,garlic clove,,FALSE,,5
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,5-6 garlic cloves,6-May,,garlic clove,,FALSE,,2
+29703a80-9ca1-80bb-a93e-d7bae46d7d44,Rosemary Roast Potatoes,"3 garlic cloves, chopped",3,,garlic clove,chopped,FALSE,,4
+31003a80-9ca1-8078-bfd7-f05d37afbe1c,Korean Marinated Eggs,3 garlic cloves,3,,garlic clove,,FALSE,,3
+31003a80-9ca1-80a9-b834-d78072c0ed59,Porcini Ragu,"3 garlic cloves, minced",3,,garlic clove,minced,FALSE,,2
+2a803a80-9ca1-8066-9d4c-c3f0a4ce706f,Boursin Brown Butter Mashed Potatoes,4 tbsp garlic confit - mashed into a puree,4,tbsp,garlic clove,,FALSE,,0
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,1 tbsp fresh ginger + garlic paste,,,garlic clove,,FALSE,,1.01
+29703a80-9ca1-80bb-a93e-d7bae46d7d44,Rosemary Roast Potatoes,1 tbsp garlic powder,1,tbsp,garlic powder,,FALSE,,7
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,"Spices: Garlic powder, Oregano, Black Pepper, Cayenne, Italian Seasoning, Bay Leaf",,,garlic powder,,FALSE,Spices,9
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,"Seasoning (w/ your heart): Paprika, Chili Powder/Cayenne, Ground Cumin, Oregano, Garlic Powder, Cinnamon, Salt, Pepper",,,garlic powder,,FALSE,,5.04
+31003a80-9ca1-80c2-80d6-cb25604af766,Shawarma Marinade,1 tbsp garlic powder,1,tbsp,garlic powder,,FALSE,,3
+31003a80-9ca1-80d5-b3d9-e57163f7c163,Southwest Marinade,1 tsp garlic powder,1,tsp,garlic powder,,FALSE,,7
+25a03a80-9ca1-80fc-a7c8-e8a1b59885a8,Mushroom Curry,3 tbsp ghee,3,tbsp,ghee,,FALSE,,5
+30c03a80-9ca1-80f7-bc00-d64f383de2c1,Hyderabadi Marag,5 tbsp ghee,5,tbsp,ghee,,FALSE,,3
+31003a80-9ca1-80ba-a691-e7477898fa34,Lamb Mandi,2 tbsp ghee,2,tbsp,ghee,,FALSE,,1
+2bd03a80-9ca1-803c-a020-fe803c5d63b3,Masala Chai,40g ginger,40,g,ginger,,FALSE,,0
+30003a80-9ca1-80b3-9f1d-f9e6936947f2,Moroccan Marinade,1 tsp ginger,1,tsp,ginger,,FALSE,,7
+25a03a80-9ca1-8011-bdbd-cd44eaabd55d,Coconut Pulao,2 tsp ginger garlic paste,2,tsp,ginger garlic paste,,FALSE,,4
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,1 tbsp ginger garlic paste,1,tbsp,ginger garlic paste,,FALSE,,3
+25a03a80-9ca1-80a3-a176-e5157cf4600e,Homura Don,1 tsp Ginger Garlic Paste,1,tsp,ginger garlic paste,,FALSE,,3
+25a03a80-9ca1-80fc-a7c8-e8a1b59885a8,Mushroom Curry,1 tbsp ginger garlic paste,1,tbsp,ginger garlic paste,,FALSE,,2
+27603a80-9ca1-803f-bd98-f6ed1b4100dc,Shrimp Fry,1 tbsp ginger garlic paste,1,tbsp,ginger garlic paste,,FALSE,,1
+30203a80-9ca1-800b-b99d-c172f994486c,Miso Honey,2 tbsp ginger garlic paste,2,tbsp,ginger garlic paste,,FALSE,,5
+30c03a80-9ca1-80f7-bc00-d64f383de2c1,Hyderabadi Marag,2 tbsp ginger garlic paste,2,tbsp,ginger garlic paste,,FALSE,,5
+31003a80-9ca1-80ba-a691-e7477898fa34,Lamb Mandi,1 tbsp ginger garlic paste,1,tbsp,ginger garlic paste,,FALSE,,3
+31003a80-9ca1-8022-bd14-ca6a427e868b,Keema Sausage Rolls,"Spices: 2 tbsp ginger garlic paste, 1 tbsp chilli powder, 1 tsp ground coriander, 1 tsp cumin seeds, 1 tsp fennel seeds, 1 tsp pepper",2,tbsp,ginger garlic paste,,FALSE,Spices,2
+30003a80-9ca1-80e3-aea1-e417a2fa6ec5,Korean Marinade,1 tsp ginger paste,1,tsp,ginger,,FALSE,,7
+30003a80-9ca1-80e3-aea1-e417a2fa6ec5,Korean Marinade,Optional: 1/2 tsp gochugaru,2-Jan,tsp,gochugaru,,TRUE,,10
+31003a80-9ca1-8078-bfd7-f05d37afbe1c,Korean Marinated Eggs,2 tbsp gochujang,2,tbsp,gochujang,,FALSE,,9
+31103a80-9ca1-8059-aa3a-e6050361d925,Rose Noodles/Tteokboki,2 tbsp Gochujang,2,tbsp,gochujang,,FALSE,,3
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,1 tbsp of gochujang,1,tbsp,gochujang,,FALSE,,6
+30003a80-9ca1-80e3-aea1-e417a2fa6ec5,Korean Marinade,1/4 cup gochujang paste,4-Jan,cup,gochujang,,FALSE,,1
+31003a80-9ca1-8078-bfd7-f05d37afbe1c,Korean Marinated Eggs,1 tbsp gochutgaru,1,tbsp,gochugaru,,FALSE,,8
+31103a80-9ca1-8059-aa3a-e6050361d925,Rose Noodles/Tteokboki,1 tbsp gochutgaru,1,tbsp,gochugaru,,FALSE,,4
+29303a80-9ca1-80c2-a6cd-c75ca9d0786a,Baked Cheesecake,GRAHAM CRACKER CRUST,,,graham cracker,,FALSE,,0
+31003a80-9ca1-80a9-b834-d78072c0ed59,Porcini Ragu,250 grams pasta,250,,pasta,,FALSE,,6
+27a03a80-9ca1-8059-8a77-c98cd47b502a,Hazelnut Macarons,3.5 oz granulated sugar,3.5,oz,granulated sugar,,FALSE,,1
+2dc03a80-9ca1-801c-af62-f6632b10be72,Burnt Basque Cheesecake V2,240g granulated sugar,240,g,granulated sugar,,FALSE,,1
+31203a80-9ca1-8079-81d0-c34021e7b1e1,Grapefruit Hugo Spritz,1 oz grapefruit juice,1,oz,grapefruit juice,,FALSE,,2
+25a03a80-9ca1-80b3-9e41-f83c73a27647,Lime and Brown Sugar Glazed Salmon,0.5 tsp grated ginger,0.5,tsp,ginger,,FALSE,,6
+25a03a80-9ca1-80cd-a397-ce9e92e82652,Pan Pizza,Optional: Grated Parmesan,,,parmesan,,TRUE,,3
+2b203a80-9ca1-804c-a06e-fa148812ffb6,Smash Potatoes,Grated Parmesan,,,parmesan,,FALSE,,6
+31003a80-9ca1-8093-8f7b-e714429da635,Perugu Charu,150g greek yogurt,150,g,greek yogurt,,FALSE,,0
+30c03a80-9ca1-80f7-bc00-d64f383de2c1,Hyderabadi Marag,"4 green chilies, chopped",4,,chili peppers,chopped,FALSE,,6
+31103a80-9ca1-80a4-9e5b-f2546361a0df,Halal Cart Rice Bowl,2 - 3 green chilies,3-Feb,,chili peppers,,FALSE,,3
+25a03a80-9ca1-8068-b95b-d53c8c2c2c6c,Poached Cod,Green Onion (whites and greens seperated),1,,green onions,whites and greens seperated,FALSE,,4
+31003a80-9ca1-8078-bfd7-f05d37afbe1c,Korean Marinated Eggs,2 stalk of green onion,2,stalk,green onions,,FALSE,,4
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,Toppings: Cilantro + green onion,,,green onions,,FALSE,Toppings,12.01
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,"4 stalks green onion, sliced",4,stalks,green onions,sliced,FALSE,,6
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,1/4 cup of green onions,4-Jan,cup,green onions,roughly chopped,TRUE,,
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,"Toppings: Green onions, cilantro, sliced onions, thai basil, mint, thai chillies, jalapenos, sliced sweet onions, Sambal, hoisin sauce, lime slices",,,green onions,,FALSE,Toppings,11
+30003a80-9ca1-8040-a4cb-f3b5ccefdfda,Teriyaki Marinade,"2 green onions, finely chopped",2,,green onions,finely chopped,FALSE,,6
+31103a80-9ca1-8059-aa3a-e6050361d925,Rose Noodles/Tteokboki,"1 stalk green onions, sliced",1,stalk,green onions,sliced,FALSE,,12
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,Grilled Shrimp,,,shrimp,,FALSE,,9
+31003a80-9ca1-8046-9d61-d37f67a630a3,Bolognese,150g ground beef chuck,150,g,ground beef chuck,,FALSE,,5
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,1/4 teaspoon ground cinnamon,4-Jan,tsp,cinnamon powder,,TRUE,,11
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,"Seasoning (w/ your heart): Paprika, Chili Powder/Cayenne, Ground Cumin, Oregano, Garlic Powder, Cinnamon, Salt, Pepper",,,cumin powder,,FALSE,,5.02
+25a03a80-9ca1-80a3-a176-e5157cf4600e,Homura Don,1 lb ground pork (lean + flavorful),1,lb,ground pork,,FALSE,,0
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,2 oz Ground Turkey,2,oz,ground turkey,,FALSE,,1
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,3 Guajillo chillies,3,,guajillo chillies,,FALSE,,6
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,100g guanciale,100,g,guanciale,,FALSE,,0
+30c03a80-9ca1-80f7-bc00-d64f383de2c1,Hyderabadi Marag,Half an onion. sliced,,,yellow onion,,FALSE,,4
+25a03a80-9ca1-80a3-a176-e5157cf4600e,Homura Don,Half onion (chopped or as a paste?),,,yellow onion,chopped or as a paste?,FALSE,,2
+29903a80-9ca1-8035-921b-fbb15cee0d96,Picked Red Onions,"Half Red Onion, Sliced",,,red onion,,FALSE,,4
+31203a80-9ca1-8079-81d0-c34021e7b1e1,Grapefruit Hugo Spritz,Handful of mint leaves,,,mint,,FALSE,,3
+31103a80-9ca1-8059-aa3a-e6050361d925,Rose Noodles/Tteokboki,2 Hard Boiled Egg,2,,egg,,FALSE,,11
+30003a80-9ca1-8051-b470-d2b8098c023d,Honey Harissa Marinade,"3 tbsp harissa, more to taste",3,tbsp,harissa,more to taste,FALSE,,2
+30203a80-9ca1-80a0-b2b4-d5ce9541b216,Spicy Shawarma,2 tbsp harissa,2,tbsp,harissa,,FALSE,,2
+27a03a80-9ca1-8059-8a77-c98cd47b502a,Hazelnut Macarons,1.5 oz hazelnut flour,1.5,oz,hazelnut flour,,FALSE,,3
+28e03a80-9ca1-802b-9f84-f6a9fca8144f,Nutella,1 cup hazelnuts (150g),1,cup,hazelnuts,150g,FALSE,,0
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,Head of Garlic,,,garlic clove,,FALSE,,3
+2e603a80-9ca1-8091-829d-d299b5c2a161,Nutella Shots,Heaping spoonful of Nutella,,,nutella,,FALSE,,0
+2a803a80-9ca1-8066-9d4c-c3f0a4ce706f,Boursin Brown Butter Mashed Potatoes,2 heaping spoonfuls of sour cream,heaping 2,,sour cream,,FALSE,,4
+31003a80-9ca1-80a9-b834-d78072c0ed59,Porcini Ragu,3 tbsp heavy cream (or coconut milk),3,tbsp,heavy cream,or coconut milk,FALSE,,8
+31103a80-9ca1-8059-aa3a-e6050361d925,Rose Noodles/Tteokboki,Â½ cup heavy cream,Â½,cup,heavy cream,,FALSE,,7
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,230ml of heavy cream,230,ml,heavy cream,,FALSE,,9
+31203a80-9ca1-804a-95e1-c106e51f888a,Espresso Martini Jell-o Shots,"2 tbsp heavy cream, room temperature",2,tbsp,heavy cream,room temperature,FALSE,,6
+2d403a80-9ca1-80f9-ad0b-fe7492549a0f,Thai Tea,American Version: 3 tbsp Heavy Cream / cup,3,tbsp,heavy cream,,FALSE,American Version,1
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,"Toppings: Green onions, cilantro, sliced onions, thai basil, mint, thai chillies, jalapenos, sliced sweet onions, Sambal, hoisin sauce, lime slices",,,hoisin sauce,,FALSE,Toppings,11.09
+28e03a80-9ca1-8076-87da-cc87169a4cb5,Tiramisu,Homemade Ladyfingers (optional),,,ladyfingers,optional,FALSE,,0
+25a03a80-9ca1-80b3-9e41-f83c73a27647,Lime and Brown Sugar Glazed Salmon,0.5 tbsp honey,0.5,tbsp,honey,,FALSE,,1
+30203a80-9ca1-800b-b99d-c172f994486c,Miso Honey,3 tbsp honey,3,tbsp,honey,,FALSE,,4
+31103a80-9ca1-801d-9fff-db36e1d4edea,Apple Brie Crostini,Hot Honey,,,hot honey,,FALSE,,4
+2a803a80-9ca1-8074-b1e9-ece32c977a5f,Honey + Sage Butter Milk Buns,2 tsp instant yeast,2,tsp,instant yeast,,FALSE,,3
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,"Spices: Garlic powder, Oregano, Black Pepper, Cayenne, Italian Seasoning, Bay Leaf",,,italian seasoning,,FALSE,Spices,9.04
+30003a80-9ca1-8022-b27f-d02ec828eab5,Cilantro Jalapeno Marinade,"2 jalapeÃ±os, seeds and stems removed",2,,jalapeno,seeds and stems removed,FALSE,,2
+25a03a80-9ca1-80b0-bd07-c19ff0bd6ad2,Fried Rice,"Optional for Topping: Lime, Spring Onion, Jalapeno, Sesame Seeds",,,jalapeno,,TRUE,for Topping,9.02
+31003a80-9ca1-8078-bfd7-f05d37afbe1c,Korean Marinated Eggs,1 jalapeno,1,,jalapeno,,FALSE,,2
+29903a80-9ca1-8035-921b-fbb15cee0d96,Picked Red Onions,"Optional: Peppercorns, Smashed Clove of Garlic, Bay Leaf, Fresh Herbs, Red Pepper Flakes, Jalapeno Slices, Fennel Seeds, Mustard Seeds, etc.",,,jalapeno,,TRUE,,5.05
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,2 jalapenos,2,,jalapeno,,FALSE,,7
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,"Choose Veggies: Zucchini, Lemon, Onions, Shallots, Jalapenos, Cherry Tomatoes, sundried tomatoes",,,jalapeno,,FALSE,Choose Veggies,6.04
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,"Toppings: Green onions, cilantro, sliced onions, thai basil, mint, thai chillies, jalapenos, sliced sweet onions, Sambal, hoisin sauce, lime slices",,,jalapeno,,FALSE,Toppings,11.06
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,"Toppings: Cilantro, Jalapenos, Pickled Red Onions",,,jalapeno,,FALSE,Toppings,6.01
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,Juice of 1 Lemon,,,lemon juice,,FALSE,,3
+30203a80-9ca1-8059-9445-e73e553faf9b,Pollo Asado,Juice of 1 lime (2 tbsp lime juice),,,lime juice,2 tbsp lime juice,FALSE,,3
+30203a80-9ca1-8059-9445-e73e553faf9b,Pollo Asado,Juice of 1 orange,,,orange,,FALSE,,2
+30003a80-9ca1-8022-b27f-d02ec828eab5,Cilantro Jalapeno Marinade,Juice of 1 whole lime,,,lime juice,,FALSE,,10
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,juice of one lemon,,,lemon juice,,FALSE,,13
+25a03a80-9ca1-801a-a3f2-de214fd1bee9,Stuffed Shells,227g  jumbo pasta shells,227,g,jumbo pasta shells,,FALSE,,0
+2a803a80-9ca1-80ad-99f4-f436f71e6ff3,Panang Curry,4-5 kaffir lime leaves,5-Apr,,kaffir lime leaves,,FALSE,,3
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,"4 cups of kale, chopped",4,cups,kale,chopped,FALSE,,11
+25a03a80-9ca1-80fc-a7c8-e8a1b59885a8,Mushroom Curry,"1 tsp kashmiri red chili powder, garam masala, cumin powder, coriander powder, salt, kasthuri methi",1,tsp,kashmiri red chili powder,"garam masala, cumin powder, coriander powder, salt, kasthuri methi",FALSE,,7
+31203a80-9ca1-803e-bf2e-f00db3c7c023,Karaage,1 tbsp Kewpie Mayo for Dipping,1,tbsp,kewpie mayo,,FALSE,,4
+31103a80-9ca1-8059-aa3a-e6050361d925,Rose Noodles/Tteokboki,5-6 Korean mini sausages,6-May,,korean mini sausages,,FALSE,,2
+31003a80-9ca1-8022-bd14-ca6a427e868b,Keema Sausage Rolls,500 g lamb mince,500,g,lamb,,FALSE,,0
+30c03a80-9ca1-80f7-bc00-d64f383de2c1,Hyderabadi Marag,750g lamb/mutton (bone in),750,g,lamb,bone in,FALSE,,0
+2a803a80-9ca1-80ad-99f4-f436f71e6ff3,Panang Curry,1 large bell pepper - cut into slices,1,,bell pepper,,FALSE,,4
+2a803a80-9ca1-80ad-99f4-f436f71e6ff3,Panang Curry,1 - 2 large carrot - cut into 1/2 in. chunks,2-Jan,,carrot,,FALSE,,6
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,"2 large carrots, cut into big oddly shaped chunks",2,,carrot,cut into big oddly shaped chunks,FALSE,,7
+2a803a80-9ca1-8074-b1e9-ece32c977a5f,Honey + Sage Butter Milk Buns,1 large egg,1,,egg,,FALSE,,4
+2a803a80-9ca1-8074-b1e9-ece32c977a5f,Honey + Sage Butter Milk Buns,"1 large egg, whisked - for egg wash finish",1,,egg,whisked - for egg wash finish,FALSE,,8
+28e03a80-9ca1-8074-87aa-c1f0e9318fe8,Crepes,3 large eggs,3,,egg,,FALSE,,0
+31003a80-9ca1-8078-bfd7-f05d37afbe1c,Korean Marinated Eggs,3 Large eggs,3,,egg,,FALSE,,0
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,1 Large knob of Ginger - cut in half,1,,ginger,,FALSE,,3
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,"1 Large Onion - skin on, quartered",1,,yellow onion,quartered,FALSE,,2
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,"Choose Veggies: Zucchini, Lemon, Onions, Shallots, Jalapenos, Cherry Tomatoes, sundried tomatoes",,,lemon,,FALSE,Choose Veggies,6.01
+25a03a80-9ca1-80b7-9a23-e556fe353446,Mushroom Orzo Risotto ,Lemon Juice,,,lemon juice,,FALSE,,8
+30003a80-9ca1-8051-b470-d2b8098c023d,Honey Harissa Marinade,2-3 tbsp lemon juice,3-Feb,tbsp,lemon juice,,FALSE,,4
+30003a80-9ca1-8062-a6a0-f93a8b92c481,Persian Marinade,2 tbsp lemon juice,2,tbsp,lemon juice,,FALSE,,4
+30003a80-9ca1-806a-8501-eac67f052fd5,Lemon Saffron,3 tbsp lemon juice (or one lemon),3,tbsp,lemon juice,or one lemon,FALSE,,6
+30203a80-9ca1-809c-b5df-d01d6309a67d,Lemon Herb Garlic,1 tbsp lemon juice,1,tbsp,lemon juice,,FALSE,,3
+31003a80-9ca1-80c2-80d6-cb25604af766,Shawarma Marinade,1 tbsp lemon juice,1,tbsp,lemon juice,,FALSE,,11
+31203a80-9ca1-8079-81d0-c34021e7b1e1,Grapefruit Hugo Spritz,1/2 oz lemon juice,2-Jan,oz,lemon juice,,FALSE,,1
+30003a80-9ca1-806a-8501-eac67f052fd5,Lemon Saffron,Optional: Lemon Zest,,,lemon zest,,TRUE,,7
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,3 lemons,3,,lemon,,FALSE,,5
+28e03a80-9ca1-80eb-a6e7-f221f9a50243,Smash Burger Tacos,"Optional Toppings: Lettuce, Onions, Tomatoes, etc.",,,lettuce,,TRUE,Toppings,5
+30003a80-9ca1-80e3-aea1-e417a2fa6ec5,Korean Marinade,4 tbsp light brown sugar,4,tbsp,light brown sugar,,FALSE,,2
+25a03a80-9ca1-80b0-bd07-c19ff0bd6ad2,Fried Rice,"Optional for Topping: Lime, Spring Onion, Jalapeno, Sesame Seeds",,,lime,,TRUE,for Topping,9
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,Lime,,,lime,,FALSE,,12
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,2 tbsp lime juice,2,tbsp,lime juice,,FALSE,,11
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,2 tbsp lime juice,2,tbsp,lime juice,,FALSE,,9
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,"To Taste: Salt, Lime Juice, Chili Flakes, Smoked Paprika",,,lime juice,,FALSE,To Taste,10.01
+31203a80-9ca1-80d1-8105-d4775889923d,Peach Coladas,1 oz lime juice,1,oz,lime juice,,FALSE,,4
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,"Toppings: Green onions, cilantro, sliced onions, thai basil, mint, thai chillies, jalapenos, sliced sweet onions, Sambal, hoisin sauce, lime slices",,,lime,,FALSE,Toppings,11.1
+25a03a80-9ca1-80cd-a397-ce9e92e82652,Pan Pizza,140g low moisture low fat mozzerella,140,g,low-moisture mozzarella,,FALSE,,2
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,1 can low-fat coconut milk,1,can,coconut milk,,FALSE,,2
+30003a80-9ca1-8040-a4cb-f3b5ccefdfda,Teriyaki Marinade,1/4 cup low-sodium soy sauce,4-Jan,cup,soy sauce,,FALSE,,1
+30003a80-9ca1-80e3-aea1-e417a2fa6ec5,Korean Marinade,3 tbsp low-sodium soy sauce,3,tbsp,soy sauce,,FALSE,,3
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,4oz Maesri Khao Soi Curry Paste,4,oz,maesri khao soi curry paste,,FALSE,,0
+25a03a80-9ca1-801a-a3f2-de214fd1bee9,Stuffed Shells,6 Oz Marinara,6,oz,marinara,,FALSE,,5
+29303a80-9ca1-80a3-bf38-ce532d3566cb,Burnt Basque Cheesecake V1,8Â ozÂ mascarpone room temperature,8,oz,mascarpone,,FALSE,,2
+2c403a80-9ca1-80da-bf5e-c16003893a08, Matcha Latte w/ Cold Foam,3 tsp matcha powder,3,tsp,matcha powder,,FALSE,,1
+30003a80-9ca1-8022-b27f-d02ec828eab5,Cilantro Jalapeno Marinade,1/2 cup mayonnaise,2-Jan,cup,mayonnaise,,FALSE,,8
+30003a80-9ca1-80c4-b75a-e8c6c9a1217f,Nandos Peri Peri Chicken,1 tbsp mayonnaise,1,tbsp,mayonnaise,,FALSE,,8
+31003a80-9ca1-80ba-a691-e7477898fa34,Lamb Mandi,"1 medium onion, sliced",1,,yellow onion,sliced,FALSE,,4
+25a03a80-9ca1-8080-984a-e17a81c31a9d,Dan Dan Noodles,"1 medium shallot, minced",1,,shallots,minced,FALSE,,5
+2a803a80-9ca1-8066-9d4c-c3f0a4ce706f,Boursin Brown Butter Mashed Potatoes,1 cup of milk (add as you go!),1,cup,milk,add as you go!,FALSE,,2
+2a803a80-9ca1-8074-b1e9-ece32c977a5f,Honey + Sage Butter Milk Buns,1/2 cup milk,2-Jan,cup,milk,,FALSE,,5
+2c403a80-9ca1-80da-bf5e-c16003893a08, Matcha Latte w/ Cold Foam,7 oz milk,7,oz,milk,,FALSE,,0
+30c03a80-9ca1-80f7-bc00-d64f383de2c1,Hyderabadi Marag,4 tbsp milk,4,tbsp,milk,,FALSE,,2
+31103a80-9ca1-8059-aa3a-e6050361d925,Rose Noodles/Tteokboki,Â½ cup milk,Â½,cup,milk,,FALSE,,8
+28e03a80-9ca1-802b-9f84-f6a9fca8144f,Nutella,2/3 cup milk chocolate - melted then cool (must be cooled to not clump),3-Feb,cup,milk chocolate,must be cooled to not clump,FALSE,,1
+2bd03a80-9ca1-803c-a020-fe803c5d63b3,Masala Chai,"1 cup milk, 1 cup water",1,cup,milk,,FALSE,,5
+30003a80-9ca1-8040-a4cb-f3b5ccefdfda,Teriyaki Marinade,1 tbsp minced garlic,1,tbsp,garlic clove,,FALSE,,4
+30003a80-9ca1-806a-8501-eac67f052fd5,Lemon Saffron,1 tbsp minced garlic,1,tbsp,garlic clove,,FALSE,,5
+30003a80-9ca1-80c4-b75a-e8c6c9a1217f,Nandos Peri Peri Chicken,1 tbsp minced garlic,1,tbsp,garlic clove,,FALSE,,7
+30203a80-9ca1-80a0-b2b4-d5ce9541b216,Spicy Shawarma,2 tsp minced garlic,2,tsp,garlic clove,,FALSE,,4
+30003a80-9ca1-8040-a4cb-f3b5ccefdfda,Teriyaki Marinade,2 tsp minced ginger,2,tsp,ginger,,FALSE,,5
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,5 mini Persian cucumbers - scrape out the inside and dice,5,,mini persian cucumbers,,FALSE,,3
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,"Choose an Herb: Sage, Dill, Cilantro, Mint or Green Onions",,,mint,,FALSE,Choose an Herb,5.03
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,"Toppings: Green onions, cilantro, sliced onions, thai basil, mint, thai chillies, jalapenos, sliced sweet onions, Sambal, hoisin sauce, lime slices",,,mint,,FALSE,Toppings,11.04
+25a03a80-9ca1-801a-a3f2-de214fd1bee9,Stuffed Shells,3/4 cup mozzarella (separate into 1/2 cup and 1/4 on top),0.75,cup,shredded mozzarella,separate into 1/2 cup and 1/4 on top,FALSE,,7
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,50g mozzarella,50,g,shredded mozzarella,,FALSE,,11
+31003a80-9ca1-8078-bfd7-f05d37afbe1c,Korean Marinated Eggs,1 tsp msg,1,tsp,msg,,FALSE,,12
+25a03a80-9ca1-8080-984a-e17a81c31a9d,Dan Dan Noodles,"1 cup mushrooms, mixed",1,cup,mushrooms,mixed,FALSE,,4
+25a03a80-9ca1-80b7-9a23-e556fe353446,Mushroom Orzo Risotto ,12 oz Mushrooms (any variety or combination) - wiped down with damp cloth,12,oz,mushrooms,any variety or combination,FALSE,,0
+25a03a80-9ca1-80fc-a7c8-e8a1b59885a8,Mushroom Curry,300g mushrooms (quartered and sliced),300,g,mushrooms,quartered and sliced,FALSE,,0
+29903a80-9ca1-8035-921b-fbb15cee0d96,Picked Red Onions,"Optional: Peppercorns, Smashed Clove of Garlic, Bay Leaf, Fresh Herbs, Red Pepper Flakes, Jalapeno Slices, Fennel Seeds, Mustard Seeds, etc.",,,mustard seeds,,TRUE,,5.07
+31003a80-9ca1-8093-8f7b-e714429da635,Perugu Charu,"Spices: 1/2 tsp mustard seeds, 1/2 tsp cumin seeds, 1 tsp chana dal and urad dal, hing, 2 - 3 dried chilies (ripped), 2 cloves of garlic (sliced), 1 tsp turmeric",2-Jan,tsp,mustard seeds,ripped,FALSE,Spices,3
+30003a80-9ca1-80c4-b75a-e8c6c9a1217f,Nandos Peri Peri Chicken,2 tbsp nandos garlic peri peri sauce (or any peri peri sauce),2,tbsp,nandos garlic peri peri sauce,or any peri peri sauce,FALSE,,9
+30203a80-9ca1-8059-9445-e73e553faf9b,Pollo Asado,2 tbsp neutral oil,2,tbsp,neutral oil,,FALSE,,1
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,1 tbsp neutral oil,1,tbsp,neutral oil,,FALSE,,1
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,Neutral oil for frying,,,neutral oil,,FALSE,,11
+25a03a80-9ca1-801a-a3f2-de214fd1bee9,Stuffed Shells,1 cup nonfat ricotta,1,cup,nonfat ricotta,,FALSE,,6
+25a03a80-9ca1-809b-9796-fc8dd66fdb27,Banana Bread,1 tsp nutmeg,1,tsp,nutmeg,,FALSE,,8
+31003a80-9ca1-8046-9d61-d37f67a630a3,Bolognese,"Salt, pepper, nutmeg to taste",to taste,,nutmeg,to taste,FALSE,,9.02
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,10oz Oaxaca,10,oz,oaxaca,,FALSE,,11
+25a03a80-9ca1-8011-bdbd-cd44eaabd55d,Coconut Pulao,2 tbsp oil OR ghee,2,tbsp,neutral oil,,FALSE,,2
+25a03a80-9ca1-802b-8b4c-de161b241148,Pad Thai,5 ml oil,5,ml,neutral oil,,FALSE,,7
+25a03a80-9ca1-8068-b95b-d53c8c2c2c6c,Poached Cod,1 tbsp oil,1,tbsp,neutral oil,,FALSE,,1
+27603a80-9ca1-803f-bd98-f6ed1b4100dc,Shrimp Fry,3 tbsp oil,3,tbsp,neutral oil,,FALSE,,4
+28e03a80-9ca1-802b-9f84-f6a9fca8144f,Nutella,1 tbsp oil,1,tbsp,neutral oil,,FALSE,,5
+28e03a80-9ca1-80eb-a6e7-f221f9a50243,Smash Burger Tacos,2 tsp oil,2,tsp,neutral oil,,FALSE,,4
+29703a80-9ca1-80bb-a93e-d7bae46d7d44,Rosemary Roast Potatoes,4 tbsp oil,4,tbsp,neutral oil,,FALSE,,3
+30003a80-9ca1-80c5-9522-fa1d71ca7e4e,Malai Tikka,3 tbsp oil,3,tbsp,neutral oil,,FALSE,,8
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,1 tbsp oil,1,tbsp,neutral oil,,FALSE,,15
+30c03a80-9ca1-808d-8223-c1755a962b45,Creamy Brie Pasta,1 tsp oil,1,tsp,neutral oil,,FALSE,,6
+31003a80-9ca1-8093-8f7b-e714429da635,Perugu Charu,2 tbsp oil,2,tbsp,neutral oil,,FALSE,,2
+31203a80-9ca1-803e-bf2e-f00db3c7c023,Karaage,1 tbsp oil via cooking spray,1,tbsp,olive oil,,FALSE,,3
+25a03a80-9ca1-801a-a3f2-de214fd1bee9,Stuffed Shells,1/2 tbsp olive oil,0.5,tbsp,olive oil,,FALSE,,1
+25a03a80-9ca1-80b0-bd07-c19ff0bd6ad2,Fried Rice,4 tbsp olive oil,4,tbsp,olive oil,,FALSE,,3
+25a03a80-9ca1-80b7-9a23-e556fe353446,Mushroom Orzo Risotto ,Olive Oil,,,olive oil,,FALSE,,2
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,3 tbsp of olive oil,3,tbsp,olive oil,,FALSE,,13
+28d03a80-9ca1-80c6-8b65-e8d115af5fdc,Arayes,"1 tsp olive oil, spray",1,tsp,olive oil,spray,FALSE,,1
+2b203a80-9ca1-804c-a06e-fa148812ffb6,Smash Potatoes,Olive Oil,,,olive oil,,FALSE,,4
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,1/2 tbsp olive oil,2-Jan,tbsp,olive oil,,FALSE,,4
+30003a80-9ca1-8051-b470-d2b8098c023d,Honey Harissa Marinade,3 tbsp olive oil,3,tbsp,olive oil,,FALSE,,1
+30003a80-9ca1-8062-a6a0-f93a8b92c481,Persian Marinade,2 tbsp olive oil,2,tbsp,olive oil,,FALSE,,3
+30003a80-9ca1-80b3-9f1d-f9e6936947f2,Moroccan Marinade,2 tbsp olive oil,2,tbsp,olive oil,,FALSE,,1
+30003a80-9ca1-80c4-b75a-e8c6c9a1217f,Nandos Peri Peri Chicken,1 tbsp olive oil,1,tbsp,olive oil,,FALSE,,11
+30203a80-9ca1-809c-b5df-d01d6309a67d,Lemon Herb Garlic,2 tbsp olive oil,2,tbsp,olive oil,,FALSE,,2
+30203a80-9ca1-80a0-b2b4-d5ce9541b216,Spicy Shawarma,2 tbsp olive oil,2,tbsp,olive oil,,FALSE,,1
+31003a80-9ca1-80a9-b834-d78072c0ed59,Porcini Ragu,Â¼ cup olive oil,Â¼,cup,olive oil,,FALSE,,1
+31003a80-9ca1-80c2-80d6-cb25604af766,Shawarma Marinade,1/2 cup olive oil,2-Jan,cup,olive oil,,FALSE,,1
+31003a80-9ca1-80d5-b3d9-e57163f7c163,Southwest Marinade,1/2 cup olive oil,2-Jan,cup,olive oil,,FALSE,,1
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,1 tbsp olive oil,1,tbsp,olive oil,,FALSE,,1
+25a03a80-9ca1-801a-a3f2-de214fd1bee9,Stuffed Shells,75g onion,75,g,yellow onion,,FALSE,,2
+25a03a80-9ca1-8068-b95b-d53c8c2c2c6c,Poached Cod,Half an Onion (thinly sliced),2-Jan,,yellow onion,thinly sliced,FALSE,,3
+25a03a80-9ca1-80b0-bd07-c19ff0bd6ad2,Fried Rice,"1/2 onion, sliced thin or into chunks.",2-Jan,,yellow onion,sliced thin or into chunks.,FALSE,,7
+25a03a80-9ca1-80fc-a7c8-e8a1b59885a8,Mushroom Curry,1 cup onion (120g) - finely chopped,1,cup,yellow onion,120g,FALSE,,1
+2fe03a80-9ca1-80f7-a2e3-f048f3422e78,Chicken Paprikash,"1/2 Onion, diced",2-Jan,,yellow onion,diced,FALSE,,2
+31003a80-9ca1-8046-9d61-d37f67a630a3,Bolognese,"1/4 onion, diced",4-Jan,,yellow onion,diced,FALSE,,2
+31003a80-9ca1-8093-8f7b-e714429da635,Perugu Charu,"1/4 onion, sliced",4-Jan,,yellow onion,sliced,FALSE,,5
+31103a80-9ca1-80a4-9e5b-f2546361a0df,Halal Cart Rice Bowl,1/2 onion,2-Jan,,yellow onion,,FALSE,,2
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,"1 onion - diced, set a little aside for topping",1,,yellow onion,set a little aside for topping,FALSE,,1
+30003a80-9ca1-806a-8501-eac67f052fd5,Lemon Saffron,1 tsp onion powder,1,tsp,onion powder,,FALSE,,4
+30003a80-9ca1-80b3-9f1d-f9e6936947f2,Moroccan Marinade,1/2 tsp onion powder,2-Jan,tsp,onion powder,,FALSE,,6
+30003a80-9ca1-80c4-b75a-e8c6c9a1217f,Nandos Peri Peri Chicken,1 tsp onion powder,1,tsp,onion powder,,FALSE,,3
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,1 tsp onion powder,1,tsp,onion powder,,FALSE,,8
+31003a80-9ca1-80c2-80d6-cb25604af766,Shawarma Marinade,1 tbsp onion powder,1,tbsp,onion powder,,FALSE,,4
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,"Optional Veggies: 1 Onion, 2 celery, 2-3 garlic cloves",1,,yellow onion,,TRUE,Veggies,3
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,"Choose Veggies: Zucchini, Lemon, Onions, Shallots, Jalapenos, Cherry Tomatoes, sundried tomatoes",,,yellow onion,,FALSE,Choose Veggies,6.02
+28e03a80-9ca1-80eb-a6e7-f221f9a50243,Smash Burger Tacos,"Optional Toppings: Lettuce, Onions, Tomatoes, etc.",,,yellow onion,,TRUE,Toppings,5.01
+2b203a80-9ca1-804c-a06e-fa148812ffb6,Smash Potatoes,"Herb: Thyme, Sage, Oregano, Basil, etc.",,,oregano,,FALSE,Herb,5.02
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,"Spices: Garlic powder, Oregano, Black Pepper, Cayenne, Italian Seasoning, Bay Leaf",,,oregano,,FALSE,Spices,9.01
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,"Seasoning (w/ your heart): Paprika, Chili Powder/Cayenne, Ground Cumin, Oregano, Garlic Powder, Cinnamon, Salt, Pepper",,,oregano,,FALSE,,5.03
+30203a80-9ca1-8059-9445-e73e553faf9b,Pollo Asado,1 tsp oregano,1,tsp,oregano,,FALSE,,7
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,2 cups orzo,2,cups,orzo,,FALSE,,2
+31103a80-9ca1-80cc-8452-d7c52d3e6b67,Soupy Ramen,1 pack of Ramen,1,,ramen noodles,,FALSE,,0
+31203a80-9ca1-804a-95e1-c106e51f888a,Espresso Martini Jell-o Shots,3 packets gelatin,3,,gelatin packets,,FALSE,,1
+2e603a80-9ca1-8031-915a-d3f92610fa67,Dirty Thai Tea Jello Shots,5-6 packets of unflavored gelatin,6-May,,gelatin packets,,FALSE,,5
+2a803a80-9ca1-80ad-99f4-f436f71e6ff3,Panang Curry,1 tbsp palm sugar,1,tbsp,palm sugar,,FALSE,,7
+2a803a80-9ca1-80ad-99f4-f436f71e6ff3,Panang Curry,4 oz panang curry paste,4,oz,panang curry paste,,FALSE,,1
+2fe03a80-9ca1-80f7-a2e3-f048f3422e78,Chicken Paprikash,1/4 cup paprika,4-Jan,cup,paprika,,FALSE,,5
+30003a80-9ca1-8051-b470-d2b8098c023d,Honey Harissa Marinade,2 tsp paprika,2,tsp,paprika,,FALSE,,7
+30003a80-9ca1-80b3-9f1d-f9e6936947f2,Moroccan Marinade,2 tsp paprika,2,tsp,paprika,,FALSE,,3
+30203a80-9ca1-80a0-b2b4-d5ce9541b216,Spicy Shawarma,1 tsp paprika,1,tsp,paprika,,FALSE,,7
+31003a80-9ca1-80c2-80d6-cb25604af766,Shawarma Marinade,1 tbsp paprika,1,tbsp,paprika,,FALSE,,2
+31003a80-9ca1-80d5-b3d9-e57163f7c163,Southwest Marinade,1 tsp paprika,1,tsp,paprika,,FALSE,,2
+31103a80-9ca1-80a4-9e5b-f2546361a0df,Halal Cart Rice Bowl,"Spices: paprika, cumin, coriander, curry powder, cinnamon, salt and pepper",,,paprika,,FALSE,Spices,1
+30003a80-9ca1-80c4-b75a-e8c6c9a1217f,Nandos Peri Peri Chicken,1.5 tsp paprika powder,1.5,tsp,paprika,,FALSE,,4
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,1 tbsp paprika/deghi mirch,1,tbsp,paprika,,FALSE,,4
+25a03a80-9ca1-80b7-9a23-e556fe353446,Mushroom Orzo Risotto ,Parmesan (3/4 cup),,,parmesan,3/4 cup,FALSE,,7
+31003a80-9ca1-80a9-b834-d78072c0ed59,Porcini Ragu,"1.5 oz Parmesan, very finely grated",1.5,oz,parmesan,very finely grated,FALSE,,7
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,20g Parmesan,20,g,parmesan,,FALSE,,12
+2a803a80-9ca1-8066-9d4c-c3f0a4ce706f,Boursin Brown Butter Mashed Potatoes,Parmesan Block,,,parmesan,,FALSE,,7
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,Parmesan cheese,,,parmesan,,FALSE,,13
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,Parmesan rind,,,parmesan rind,,FALSE,,12
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,1/4 cup of parsley,4-Jan,cup,parsley,roughly chopped,TRUE,,
+25a03a80-9ca1-80b7-9a23-e556fe353446,Mushroom Orzo Risotto ,"Optional: Spinach, Parsley",,,parsley,,TRUE,,9.01
+30003a80-9ca1-8051-b470-d2b8098c023d,Honey Harissa Marinade,"1 tbsp parsley, finely chopped",1,tbsp,parsley,finely chopped,FALSE,,5
+30003a80-9ca1-80b3-9f1d-f9e6936947f2,Moroccan Marinade,"2 tsp parsley, finely chopped",2,tsp,parsley,finely chopped,FALSE,,11
+30c03a80-9ca1-808d-8223-c1755a962b45,Creamy Brie Pasta,"2 tbsp parsley, chopped",2,tbsp,parsley,chopped,FALSE,,5
+31003a80-9ca1-8046-9d61-d37f67a630a3,Bolognese,190g pasta,190,g,pasta,,FALSE,,10
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,200g pasta,200,g,pasta,,FALSE,,7
+31203a80-9ca1-80d1-8105-d4775889923d,Peach Coladas,1 oz peach nectar,1,oz,peach nectar,,FALSE,,2
+25a03a80-9ca1-802b-8b4c-de161b241148,Pad Thai,"30g peanuts, roughly chopped (optionally: sift to remove any powder peanut bits)",30,g,peanuts,optionally: sift to remove any powder peanut bits,FALSE,,1
+25a03a80-9ca1-8011-bdbd-cd44eaabd55d,Coconut Pulao,1 cup peas,1,cup,peas,,FALSE,,6
+2f503a80-9ca1-803e-bc4d-c205afe07058,Avgolemono,"Optional: Peas, Carrot cut into chunks",,,peas,,TRUE,,8
+31003a80-9ca1-8022-bd14-ca6a427e868b,Keema Sausage Rolls,Â½ cup peas (fresh or frozen),Â½,cup,peas,fresh or frozen,FALSE,,4
+2e703a80-9ca1-8018-811d-d2eec1d1a7ec,Red Wine Poached Pear,Peel of 1 lemon,,,lemon peel,,FALSE,,3
+25a03a80-9ca1-801a-a3f2-de214fd1bee9,Stuffed Shells,"Salt, Pepper, Red Pepper Flakes",,,black pepper,,FALSE,,9.01
+25a03a80-9ca1-8068-b95b-d53c8c2c2c6c,Poached Cod,"Spices: Turmeric, Chili Flakes, Salt, Pepper",,,black pepper,,FALSE,Spices,9.03
+2b203a80-9ca1-804c-a06e-fa148812ffb6,Smash Potatoes,"Salt, Pepper, Cayenne",,,black pepper,,FALSE,,1.01
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,"Seasoning (w/ your heart): Paprika, Chili Powder/Cayenne, Ground Cumin, Oregano, Garlic Powder, Cinnamon, Salt, Pepper",,,black pepper,,FALSE,,5.07
+2fe03a80-9ca1-80f7-a2e3-f048f3422e78,Chicken Paprikash,"Salt, Pepper, Cayenne",,,black pepper,,FALSE,,10.01
+31003a80-9ca1-8046-9d61-d37f67a630a3,Bolognese,"Salt, pepper, nutmeg to taste",,,black pepper,,FALSE,,9.01
+29903a80-9ca1-8035-921b-fbb15cee0d96,Picked Red Onions,"Optional: Peppercorns, Smashed Clove of Garlic, Bay Leaf, Fresh Herbs, Red Pepper Flakes, Jalapeno Slices, Fennel Seeds, Mustard Seeds, etc.",,,peppercorns,,TRUE,,5
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,"1 tbsp Peppercorns, 3 cloves, 1 Bayleaf, 1 Cinnamon Stick",1,tbsp,peppercorns,,FALSE,,7
+2f803a80-9ca1-80d8-a317-edbdb09396ff,Fish Tacos,"Optional Toppings: Pickled Red Onions, Coleslaw, Cilantro",,,pickled red onions,,TRUE,Toppings,4
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,"Toppings: Cilantro, Jalapenos, Pickled Red Onions",,,pickled red onions,,FALSE,Toppings,6.02
+30003a80-9ca1-8062-a6a0-f93a8b92c481,Persian Marinade,Pinch of coriander,,,coriander powder,,FALSE,,11
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,pinch of orange food color (optional),,,orange food coloring,optional,FALSE,,12
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,Pinch of red pepper flakes,,,chili flakes,,FALSE,,13
+30c03a80-9ca1-80f7-bc00-d64f383de2c1,Hyderabadi Marag,Pinch of saffron,,,saffron,,FALSE,,11
+31003a80-9ca1-80ba-a691-e7477898fa34,Lamb Mandi,"Pinch of saffron, bloomed in ice",,,saffron,,FALSE,,9
+25a03a80-9ca1-80fc-a7c8-e8a1b59885a8,Mushroom Curry,Pinch of turmeric,,,turmeric,,FALSE,,6
+30003a80-9ca1-8062-a6a0-f93a8b92c481,Persian Marinade,Pinch of turmeric,,,turmeric,,FALSE,,10
+31003a80-9ca1-80c2-80d6-cb25604af766,Shawarma Marinade,1 tbsp plain greek yogurt,1,tbsp,greek yogurt,,FALSE,,10
+30003a80-9ca1-8022-b27f-d02ec828eab5,Cilantro Jalapeno Marinade,1/3 cup plain whole milk yogurt,3-Jan,cup,greek yogurt,,FALSE,,9
+30003a80-9ca1-80b3-9f1d-f9e6936947f2,Moroccan Marinade,1/2 cup plain whole milk yogurt,2-Jan,cup,greek yogurt,,FALSE,,2
+30203a80-9ca1-809c-b5df-d01d6309a67d,Lemon Herb Garlic,1/4 cup plain whole milk yogurt,4-Jan,cup,greek yogurt,,FALSE,,1
+30003a80-9ca1-8033-b998-e507ab3a212a,Greek Marinade,1/3 cup plain yogurt,3-Jan,cup,greek yogurt,,FALSE,,1
+30003a80-9ca1-8062-a6a0-f93a8b92c481,Persian Marinade,1/4 cup plain yogurt,4-Jan,cup,greek yogurt,,FALSE,,1
+30003a80-9ca1-806a-8501-eac67f052fd5,Lemon Saffron,1 cup plain yogurt,1,cup,greek yogurt,,FALSE,,9
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,1/3 cup plain yogurt,3-Jan,cup,greek yogurt,,FALSE,,14
+30c03a80-9ca1-80f7-bc00-d64f383de2c1,Hyderabadi Marag,1/2 cup plain yogurt,2-Jan,cup,greek yogurt,,FALSE,,9
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,1/4 cup of Pomegranate Dressing,4-Jan,cup,pomegranate dressing,,FALSE,,10
+31203a80-9ca1-803e-bf2e-f00db3c7c023,Karaage,1Â cupÂ potato starch,1,cup,potato starch,,FALSE,,1
+29703a80-9ca1-80bb-a93e-d7bae46d7d44,Rosemary Roast Potatoes,1 kg potatoes,1,kg,potatoes,,FALSE,,0
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,1 poundÂ spicy Italian ground sausage,1,,spicy italian ground sausage,,FALSE,,0
+28e03a80-9ca1-802b-9f84-f6a9fca8144f,Nutella,1/2 cup powdered sugar,2-Jan,cup,powdered sugar,,FALSE,,2
+31103a80-9ca1-801d-9fff-db36e1d4edea,Apple Brie Crostini,Prosciutto,,,prosciutto,,FALSE,,3
+31203a80-9ca1-8079-81d0-c34021e7b1e1,Grapefruit Hugo Spritz,3 oz prosecco,3,oz,prosecco,,FALSE,,4
+2ad03a80-9ca1-803c-8a2e-da2fac4dc12d,Brie Puffs,2 sheets of puff pastry (12â x 10â),2,sheets,puff pastry,12â x 10â,FALSE,,0
+31003a80-9ca1-8022-bd14-ca6a427e868b,Keema Sausage Rolls,320 g puff pastry,320,g,puff pastry,,FALSE,,6
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,"Bushel ofradishes (~10) - thinly slices, cut into matchsticks",10,,radishes,thin slices or cut into matchsticks,FALSE,,2
+25a03a80-9ca1-802b-8b4c-de161b241148,Pad Thai,1 block ramen,1,block,ramen noodles,,FALSE,,8
+2fe03a80-9ca1-80f7-a2e3-f048f3422e78,Chicken Paprikash,"Optional: Red Bell Pepper, diced",,,bell pepper,,TRUE,,3
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,"1 red bell pepper, diced",1,,bell pepper,diced,FALSE,,3
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,1 red bell pepper - diced,1,,bell pepper,,FALSE,,4
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,Red Chili Flakes,,,chili flakes,,FALSE,,14
+2a803a80-9ca1-80ad-99f4-f436f71e6ff3,Panang Curry,Red chilies,,,red chilies,,FALSE,,10
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,Red Onions,1-Jan,cup,red onion,,TRUE,,11
+31003a80-9ca1-8022-bd14-ca6a427e868b,Keema Sausage Rolls,"1 red onion, finely chopped",1,,red onion,finely chopped,FALSE,,1
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,"1/4 red onion, diced",4-Jan,,red onion,diced,FALSE,,4
+25a03a80-9ca1-801a-a3f2-de214fd1bee9,Stuffed Shells,"Salt, Pepper, Red Pepper Flakes",,,chili flakes,,FALSE,,9.02
+29903a80-9ca1-8035-921b-fbb15cee0d96,Picked Red Onions,"Optional: Peppercorns, Smashed Clove of Garlic, Bay Leaf, Fresh Herbs, Red Pepper Flakes, Jalapeno Slices, Fennel Seeds, Mustard Seeds, etc.",,,chili flakes,,TRUE,,5.04
+25a03a80-9ca1-8068-b95b-d53c8c2c2c6c,Poached Cod,1 Can of Reduced Fat Coconut Milk,1,can,coconut milk,,FALSE,,6
+25a03a80-9ca1-80a3-a176-e5157cf4600e,Homura Don,"Rice, to serve",,,rice,,FALSE,,6
+2a803a80-9ca1-808a-9202-d41307cf81ec,Lamb Biriyani,"2 Cups Rice, washed",2,cups,rice,washed,FALSE,,1
+31003a80-9ca1-80ad-9531-f6239d5349f7,Chili Oil Poached Chicken,Rice,,,rice,,FALSE,,2
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,Rice Stick Noodles,,,rice stick noodles,,FALSE,,10
+30003a80-9ca1-8040-a4cb-f3b5ccefdfda,Teriyaki Marinade,2 tbsp rice vinegar,2,tbsp,rice vinegar,,FALSE,,3
+30003a80-9ca1-80e3-aea1-e417a2fa6ec5,Korean Marinade,1 tbsp rice vinegar,1,tbsp,rice vinegar,,FALSE,,5
+30203a80-9ca1-800b-b99d-c172f994486c,Miso Honey,2 tbsp rice vinegar,2,tbsp,rice vinegar,,FALSE,,2
+31003a80-9ca1-8078-bfd7-f05d37afbe1c,Korean Marinated Eggs,1 tbsp rice vinegar,1,tbsp,rice vinegar,,FALSE,,10
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,11g of rock sugar (can be subbed with brown sugar),11,g,rock sugar,can be subbed with brown sugar,FALSE,,6
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,1 head romaine lettuce - cut into half inch strips,1,head,romaine lettuce,cut into half inch strips,FALSE,,1
+29703a80-9ca1-80bb-a93e-d7bae46d7d44,Rosemary Roast Potatoes,1 tbsp rosemary,1,tbsp,rosemary,,FALSE,,6
+2e603a80-9ca1-8031-915a-d3f92610fa67,Dirty Thai Tea Jello Shots,1 cup rum,1,cup,rum,,FALSE,,6
+30003a80-9ca1-806a-8501-eac67f052fd5,Lemon Saffron,"2 tbsp saffron water, steep by grinding and and adding an ice cub to melt",2,tbsp,saffron,steep by grinding and and adding an ice cub to melt,FALSE,,8
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,"Choose an Herb: Sage, Dill, Cilantro, Mint or Green Onions",,,sage,,FALSE,Choose an Herb,5
+2a803a80-9ca1-8066-9d4c-c3f0a4ce706f,Boursin Brown Butter Mashed Potatoes,Bay Leaf + Sage,,,sage,,FALSE,,5.01
+2b203a80-9ca1-804c-a06e-fa148812ffb6,Smash Potatoes,"Herb: Thyme, Sage, Oregano, Basil, etc.",,,sage,,FALSE,Herb,5.01
+25a03a80-9ca1-80b3-9e41-f83c73a27647,Lime and Brown Sugar Glazed Salmon,6 oz salmon filets (x2),6,oz,salmon,x2,FALSE,,7
+25a03a80-9ca1-801a-a3f2-de214fd1bee9,Stuffed Shells,"Salt, Pepper, Red Pepper Flakes",,,kosher salt,,FALSE,,9
+25a03a80-9ca1-8068-b95b-d53c8c2c2c6c,Poached Cod,"Spices: Turmeric, Chili Flakes, Salt, Pepper",,,kosher salt,,FALSE,Spices,9.02
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,2 tsp salt,2,tsp,kosher salt,,FALSE,,9
+25a03a80-9ca1-809b-9796-fc8dd66fdb27,Banana Bread,1Â tsp salt,1,tsp,kosher salt,,FALSE,,6
+25a03a80-9ca1-80ff-8284-f7ef19104186,Chicken Wings,15g of salt,15,g,kosher salt,,FALSE,,1
+27603a80-9ca1-803f-bd98-f6ed1b4100dc,Shrimp Fry,"1 tsp Salt, pepper, Chili Powder, Coriander powder, cumin powder, garam masala",1,tsp,kosher salt,"pepper, Chili Powder, Coriander powder, cumin powder, garam masala",FALSE,,5
+28e03a80-9ca1-802b-9f84-f6a9fca8144f,Nutella,1/8 tsp salt,8-Jan,tsp,kosher salt,,FALSE,,4
+28e03a80-9ca1-8074-87aa-c1f0e9318fe8,Crepes,1/8 tsp salt,8-Jan,tsp,kosher salt,,FALSE,,6
+29703a80-9ca1-80bb-a93e-d7bae46d7d44,Rosemary Roast Potatoes,2 tbsp Salt,2,tbsp,kosher salt,,FALSE,,2
+2a803a80-9ca1-8074-b1e9-ece32c977a5f,Honey + Sage Butter Milk Buns,1/2 tsp salt,2-Jan,tsp,kosher salt,,FALSE,,1
+2b203a80-9ca1-804c-a06e-fa148812ffb6,Smash Potatoes,"Salt, Pepper, Cayenne",,,kosher salt,,FALSE,,1
+2fc03a80-9ca1-800b-a457-d77a918495ad,Breakfast Tostada,"Seasoning (w/ your heart): Paprika, Chili Powder/Cayenne, Ground Cumin, Oregano, Garlic Powder, Cinnamon, Salt, Pepper",,,kosher salt,,FALSE,,5.06
+2fe03a80-9ca1-80f7-a2e3-f048f3422e78,Chicken Paprikash,"Salt, Pepper, Cayenne",,,kosher salt,,FALSE,,10
+30003a80-9ca1-8051-b470-d2b8098c023d,Honey Harissa Marinade,2 tsp salt,2,tsp,kosher salt,,FALSE,,10
+30003a80-9ca1-806a-8501-eac67f052fd5,Lemon Saffron,1 tsp salt,1,tsp,kosher salt,,FALSE,,1
+30003a80-9ca1-80b3-9f1d-f9e6936947f2,Moroccan Marinade,2 tsp salt,2,tsp,kosher salt,,FALSE,,5
+30003a80-9ca1-80c4-b75a-e8c6c9a1217f,Nandos Peri Peri Chicken,1 tsp salt,1,tsp,kosher salt,,FALSE,,1
+30003a80-9ca1-80de-9496-d5d9b7f30b01,Tandoori,"1 tsp salt, or to taste",1,tsp,kosher salt,or to taste,FALSE,,2
+30003a80-9ca1-80e3-aea1-e417a2fa6ec5,Korean Marinade,"3/4 tsp salt, or to taste",4-Mar,tsp,kosher salt,or to taste,FALSE,,9
+30203a80-9ca1-800b-b99d-c172f994486c,Miso Honey,"1/2 tsp salt, or to taste",2-Jan,tsp,kosher salt,or to taste,FALSE,,8
+30203a80-9ca1-8059-9445-e73e553faf9b,Pollo Asado,"1 tsp salt, or to taste",1,tsp,kosher salt,or to taste,FALSE,,8
+30203a80-9ca1-809c-b5df-d01d6309a67d,Lemon Herb Garlic,1 tsp salt,1,tsp,kosher salt,,FALSE,,8
+30203a80-9ca1-80a0-b2b4-d5ce9541b216,Spicy Shawarma,"1 tsp salt, or to taste",1,tsp,kosher salt,or to taste,FALSE,,9
+30c03a80-9ca1-808d-8223-c1755a962b45,Creamy Brie Pasta,1 tsp salt,1,tsp,kosher salt,,FALSE,,4
+31003a80-9ca1-8022-bd14-ca6a427e868b,Keema Sausage Rolls,"Salt, to taste",,,kosher salt,,FALSE,,5
+31003a80-9ca1-8046-9d61-d37f67a630a3,Bolognese,"Salt, pepper, nutmeg to taste",,,kosher salt,,FALSE,,9
+31003a80-9ca1-8093-8f7b-e714429da635,Perugu Charu,Salt to taste,to taste,,kosher salt,to taste,FALSE,,6
+31003a80-9ca1-80c2-80d6-cb25604af766,Shawarma Marinade,1 tsp salt,1,tsp,kosher salt,,FALSE,,8
+31003a80-9ca1-80d5-b3d9-e57163f7c163,Southwest Marinade,1 tsp salt,1,tsp,kosher salt,,FALSE,,5
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,"To Taste: Salt, Lime Juice, Chili Flakes, Smoked Paprika",,,kosher salt,,FALSE,To Taste,10
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,Salt to Taste,to taste,,kosher salt,to taste,FALSE,,13
+31003a80-9ca1-80a9-b834-d78072c0ed59,Porcini Ragu,Salt and black pepper,,,black pepper,,FALSE,,9
+2a803a80-9ca1-8066-9d4c-c3f0a4ce706f,Boursin Brown Butter Mashed Potatoes,Salt and Pepper to Taste,to taste,,kosher salt,to taste,FALSE,,8
+31103a80-9ca1-80a4-9e5b-f2546361a0df,Halal Cart Rice Bowl,"Spices: paprika, cumin, coriander, curry powder, cinnamon, salt and pepper",,,kosher salt,,FALSE,Spices,1.05
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,"Toppings: Green onions, cilantro, sliced onions, thai basil, mint, thai chillies, jalapenos, sliced sweet onions, Sambal, hoisin sauce, lime slices",,,sambal,,FALSE,Toppings,11.08
+25a03a80-9ca1-802b-8b4c-de161b241148,Pad Thai,20g scallions,20,g,green onions,,FALSE,,2
+25a03a80-9ca1-80a3-a176-e5157cf4600e,Homura Don,"Garnish: Scallions, soft-boiled eggs, sesame seeds",,,green onions,,FALSE,Garnish,5
+2fa03a80-9ca1-8059-a931-d526cc309735,Bowl Soup Dumplings ,"Optional toppings:Â chili oil, soy sauce, scallions, sesame seeds.",,,green onions,,TRUE,toppings,3.02
+31203a80-9ca1-803e-bf2e-f00db3c7c023,Karaage,1/2Â tspÂ sea salt,2-Jan,tsp,sea salt,,FALSE,,2
+31103a80-9ca1-8059-aa3a-e6050361d925,Rose Noodles/Tteokboki,2 serving of noodles or tteokbokki,2,,ramen noodles,,FALSE,,10
+30003a80-9ca1-80e3-aea1-e417a2fa6ec5,Korean Marinade,1 tbsp sesame oil,1,tbsp,sesame oil,,FALSE,,4
+30203a80-9ca1-800b-b99d-c172f994486c,Miso Honey,1/2 tbsp sesame oil,2-Jan,tbsp,sesame oil,,FALSE,,3
+31003a80-9ca1-8078-bfd7-f05d37afbe1c,Korean Marinated Eggs,1 tsp sesame oil,1,tsp,sesame oil,,FALSE,,11
+25a03a80-9ca1-80a3-a176-e5157cf4600e,Homura Don,"Garnish: Scallions, soft-boiled eggs, sesame seeds",,,sesame seeds,,FALSE,Garnish,5.02
+25a03a80-9ca1-80b0-bd07-c19ff0bd6ad2,Fried Rice,"Optional for Topping: Lime, Spring Onion, Jalapeno, Sesame Seeds",,,sesame seeds,,TRUE,for Topping,9.03
+2fa03a80-9ca1-8059-a931-d526cc309735,Bowl Soup Dumplings ,"Optional toppings:Â chili oil, soy sauce, scallions, sesame seeds.",,,sesame seeds,,TRUE,toppings,3.03
+31003a80-9ca1-8078-bfd7-f05d37afbe1c,Korean Marinated Eggs,2 tbsp sesame seeds,2,tbsp,sesame seeds,,FALSE,,13
+25a03a80-9ca1-80b7-9a23-e556fe353446,Mushroom Orzo Risotto ,Shallot,,,shallots,,FALSE,,3
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,1 Shallot,1,,shallots,,FALSE,,2
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,"Choose Veggies: Zucchini, Lemon, Onions, Shallots, Jalapenos, Cherry Tomatoes, sundried tomatoes",,,shallots,,FALSE,Choose Veggies,6.03
+31103a80-9ca1-8059-aa3a-e6050361d925,Rose Noodles/Tteokboki,40g shredded mozzerella,40,g,shredded mozzarella,,FALSE,,9
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,200g of shrimp,200,g,shrimp,,FALSE,,0
+27603a80-9ca1-803f-bd98-f6ed1b4100dc,Shrimp Fry,500g of shrimp - marinate w/ salt and turmeric,500,g,shrimp,,FALSE,,0
+31203a80-9ca1-804a-95e1-c106e51f888a,Espresso Martini Jell-o Shots,1/4 cup simple syrup,4-Jan,cup,simple syrup,,FALSE,,3
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,"Toppings: Green onions, cilantro, sliced onions, thai basil, mint, thai chillies, jalapenos, sliced sweet onions, Sambal, hoisin sauce, lime slices",,,yellow onion,,FALSE,Toppings,11.02
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,"Toppings: Green onions, cilantro, sliced onions, thai basil, mint, thai chillies, jalapenos, sliced sweet onions, Sambal, hoisin sauce, lime slices",,,yellow onion,,FALSE,Toppings,11.07
+25a03a80-9ca1-80a3-a176-e5157cf4600e,Homura Don,Optional: small amount doubanjiang or chili flakes,,,doubanjiang,,TRUE,,4
+31003a80-9ca1-80ba-a691-e7477898fa34,Lamb Mandi,"Small bunch of Cilantro, chopped, stems separated",,,cilantro,,FALSE,,10
+30c03a80-9ca1-80f7-bc00-d64f383de2c1,Hyderabadi Marag,"Whole spices: 2 small cinnamon sticks, 5 cardamom pods, 3 cloves, 1 tsp whole black peppercorns, 1 tsp black cumin seeds",2,,cinnamon stick,,FALSE,Whole spices,7
+2a803a80-9ca1-80ad-99f4-f436f71e6ff3,Panang Curry,"1 small crown of broccoli, cut into florets",1,,broccoli,cut into florets,FALSE,,5
+31103a80-9ca1-8059-aa3a-e6050361d925,Rose Noodles/Tteokboki,"1 small onion, diced",1,,yellow onion,diced,FALSE,,0
+31003a80-9ca1-8078-bfd7-f05d37afbe1c,Korean Marinated Eggs,1/2 small yellow onion,2-Jan,,yellow onion,,FALSE,,1
+29903a80-9ca1-8035-921b-fbb15cee0d96,Picked Red Onions,"Optional: Peppercorns, Smashed Clove of Garlic, Bay Leaf, Fresh Herbs, Red Pepper Flakes, Jalapeno Slices, Fennel Seeds, Mustard Seeds, etc.",,,garlic clove,,TRUE,,5.01
+30003a80-9ca1-8022-b27f-d02ec828eab5,Cilantro Jalapeno Marinade,1 tsp smoked paprika,1,tsp,smoked paprika,,FALSE,,4
+30003a80-9ca1-8062-a6a0-f93a8b92c481,Persian Marinade,1 tsp smoked paprika,1,tsp,smoked paprika,,FALSE,,8
+30003a80-9ca1-80e3-aea1-e417a2fa6ec5,Korean Marinade,1 tsp smoked paprika,1,tsp,smoked paprika,,FALSE,,8
+30203a80-9ca1-8059-9445-e73e553faf9b,Pollo Asado,1 tsp smoked paprika,1,tsp,smoked paprika,,FALSE,,5
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,"To Taste: Salt, Lime Juice, Chili Flakes, Smoked Paprika",,,smoked paprika,,FALSE,To Taste,10.03
+25a03a80-9ca1-80a3-a176-e5157cf4600e,Homura Don,"Garnish: Scallions, soft-boiled eggs, sesame seeds",,,egg,,FALSE,Garnish,5.01
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,2 tbsp softened butter,2,tbsp,unsalted butter,,FALSE,,1
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,3 lbs Soup Bones (Chicken Back Bones),3,lbs,soup bones,Chicken Back Bones,FALSE,,0
+2fe03a80-9ca1-80f7-a2e3-f048f3422e78,Chicken Paprikash,1/2 cup sour cream (sub Greek yogurt),2-Jan,cup,sour cream,sub Greek yogurt,FALSE,,9
+29303a80-9ca1-80a3-bf38-ce532d3566cb,Burnt Basque Cheesecake V1,1/2Â cupÂ sour creamÂ room temperature,2-Jan,cup,sour cream,,FALSE,,1
+30c03a80-9ca1-80ca-98d5-e8467f32c21b,Spicy Tuna Melt,1 slice of Sourdough bread,1,slice,sourdough bread,,FALSE,,0
+31003a80-9ca1-80ad-9531-f6239d5349f7,Chili Oil Poached Chicken,Soy Chili Ginger Scallion Oil,,,szechuan chili oil,,FALSE,,1
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,1 tbsp soy sauce,1,tbsp,soy sauce,,FALSE,,4
+2fa03a80-9ca1-8059-a931-d526cc309735,Bowl Soup Dumplings ,"Optional toppings:Â chili oil, soy sauce, scallions, sesame seeds.",,,soy sauce,,TRUE,toppings,3.01
+30203a80-9ca1-800b-b99d-c172f994486c,Miso Honey,3 tbsp soy sauce,3,tbsp,soy sauce,,FALSE,,6
+30203a80-9ca1-8059-9445-e73e553faf9b,Pollo Asado,2 tbsp soy sauce,2,tbsp,soy sauce,,FALSE,,4
+31003a80-9ca1-8078-bfd7-f05d37afbe1c,Korean Marinated Eggs,6 tbsp soy sauce,6,tbsp,soy sauce,,FALSE,,6
+31003a80-9ca1-80fc-8227-f236322ba4c1,Khao Soi,1 tbsp soy sauce,1,tbsp,soy sauce,,FALSE,,5
+31103a80-9ca1-8059-aa3a-e6050361d925,Rose Noodles/Tteokboki,1 tbsp soy sauce,1,tbsp,soy sauce,,FALSE,,5
+25a03a80-9ca1-801a-a3f2-de214fd1bee9,Stuffed Shells,"1 cup spinach, chopped very small.",1,cup,spinach,chopped very small.,FALSE,,4
+25a03a80-9ca1-80b7-9a23-e556fe353446,Mushroom Orzo Risotto ,"Optional: Spinach, Parsley",,,spinach,,TRUE,,9
+25a03a80-9ca1-80b0-bd07-c19ff0bd6ad2,Fried Rice,"Optional for Topping: Lime, Spring Onion, Jalapeno, Sesame Seeds",,,green onions,,TRUE,for Topping,9.01
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,Stacy's Multigrain Pita Chips - Sharing Size,1,bag,Stacy's Multi Grain Pit Chips,,FALSE,,6
+30003a80-9ca1-8062-a6a0-f93a8b92c481,Persian Marinade,2 tbsp steeped saffron,2,tbsp,saffron,,FALSE,,5
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,100g soft light brown sugar / 100g granulated sugar (or try more brown sugar than light 60/40),100,g,sugar,or try more brown sugar than light 60/40,FALSE,,1
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,1 tbsp sugar,1,tbsp,sugar,,FALSE,,8
+31103a80-9ca1-8059-aa3a-e6050361d925,Rose Noodles/Tteokboki,1 tsp sugar,1,tsp,sugar,,FALSE,,6
+2a803a80-9ca1-8074-b1e9-ece32c977a5f,Honey + Sage Butter Milk Buns,3 tbsp + 2 tsp sugar - 44g,2,tsp,sugar,,FALSE,,2.01
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,"Choose Veggies: Zucchini, Lemon, Onions, Shallots, Jalapenos, Cherry Tomatoes, sundried tomatoes",,,sundried tomatoes,,FALSE,Choose Veggies,6.06
+30c03a80-9ca1-8044-8c65-c70c94017218,Spicy Salmon Crispy Rice,Sushi Rice,,,sushi rice,,FALSE,,0
+2e603a80-9ca1-8031-915a-d3f92610fa67,Dirty Thai Tea Jello Shots,1 cup sweetened condensed milk,1,cup,condensed milk,,FALSE,,3
+25a03a80-9ca1-8068-b95b-d53c8c2c2c6c,Poached Cod,Optional: 1 tsp Szechuan Chili Oil,1,tsp,szechuan chili oil,,TRUE,,10
+2dc03a80-9ca1-801c-af62-f6632b10be72,Burnt Basque Cheesecake V2,1 tablespoon lemon juice,1,,lemon juice,,FALSE,,6
+30003a80-9ca1-8033-b998-e507ab3a212a,Greek Marinade,1 tablespoon lemon juice,1,,lemon juice,,FALSE,,3
+2dc03a80-9ca1-801c-af62-f6632b10be72,Burnt Basque Cheesecake V2,1 tablespoon vanilla extract,1,,vanilla extract,,FALSE,,7
+30003a80-9ca1-8033-b998-e507ab3a212a,Greek Marinade,1/2 tablespoon yellow mustard,2-Jan,,yellow mustard,,FALSE,,4
+30003a80-9ca1-8033-b998-e507ab3a212a,Greek Marinade,3 tablespoons olive oil,3,,olive oil,,FALSE,,2
+31003a80-9ca1-80a9-b834-d78072c0ed59,Porcini Ragu,1Â½ tablespoons tomato paste,1Â½,,tomato paste,,FALSE,,5
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,4Â tablespoonsÂ butter,4,,unsalted butter,,FALSE,,1
+30003a80-9ca1-8051-b470-d2b8098c023d,Honey Harissa Marinade,2 tbps honey,2,,honey,,FALSE,,11
+25a03a80-9ca1-80fc-a7c8-e8a1b59885a8,Mushroom Curry,2.5 tbsps tomato paste (add a 1/4 cup water),2.5,,tomato paste,add a 1/4 cup water,FALSE,,3
+2bd03a80-9ca1-803c-a020-fe803c5d63b3,Masala Chai,4 tbsp tea,4,tbsp,thai tea base,,FALSE,,6
+30003a80-9ca1-8033-b998-e507ab3a212a,Greek Marinade,1/2 teaspoon black pepper,2-Jan,,black pepper,,FALSE,,8
+30203a80-9ca1-8059-9445-e73e553faf9b,Pollo Asado,1/2 teaspoon black pepper,2-Jan,,black pepper,,FALSE,,12
+30203a80-9ca1-8059-9445-e73e553faf9b,Pollo Asado,1/4 teaspoon cayenne (or more to taste),4-Jan,,cayenne,or more to taste,FALSE,,11
+30003a80-9ca1-8033-b998-e507ab3a212a,Greek Marinade,1 teaspoon dried oregano,1,,dried oregano,,FALSE,,6
+30003a80-9ca1-8033-b998-e507ab3a212a,Greek Marinade,1 teaspoon dried thyme,1,,dried thyme,,FALSE,,7
+30203a80-9ca1-8059-9445-e73e553faf9b,Pollo Asado,1/2 teaspoon garlic powder,2-Jan,,garlic powder,,FALSE,,9
+30203a80-9ca1-8059-9445-e73e553faf9b,Pollo Asado,1/2 teaspoon onion powder,2-Jan,,onion powder,,FALSE,,10
+2dc03a80-9ca1-801c-af62-f6632b10be72,Burnt Basque Cheesecake V2,1/2 teaspoon salt,2-Jan,,kosher salt,,FALSE,,3
+30003a80-9ca1-80c5-9522-fa1d71ca7e4e,Malai Tikka,1.5 teaspoon salt - or to taste,1.5,,kosher salt,to taste,FALSE,,2
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,1Â teaspoonÂ black pepper,1,,black pepper,,FALSE,,9
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,1 teaspoon salt,1,,kosher salt,,FALSE,,8
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,"3Â teaspoonsÂ salt,Â or to taste",3,,kosher salt,or to taste,FALSE,,8
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,"Toppings: Green onions, cilantro, sliced onions, thai basil, mint, thai chillies, jalapenos, sliced sweet onions, Sambal, hoisin sauce, lime slices",,,thai basil,,FALSE,Toppings,11.03
+2c503a80-9ca1-800a-bad0-d44e18e9c195,Pho Ga,"Toppings: Green onions, cilantro, sliced onions, thai basil, mint, thai chillies, jalapenos, sliced sweet onions, Sambal, hoisin sauce, lime slices",,,thai chillies,,FALSE,Toppings,11.05
+2d403a80-9ca1-80f9-ad0b-fe7492549a0f,Thai Tea,Thai Tea Base,,,thai tea base,,FALSE,,0
+2e603a80-9ca1-8031-915a-d3f92610fa67,Dirty Thai Tea Jello Shots,1/4 cup Thai tea leaves,4-Jan,cup,thai tea leaves,,FALSE,,0
+25a03a80-9ca1-80b3-9e41-f83c73a27647,Lime and Brown Sugar Glazed Salmon,0.5 tbsp thinly sliced lime leaves,0.5,tbsp,kaffir lime leaves,,FALSE,,3
+2b203a80-9ca1-804c-a06e-fa148812ffb6,Smash Potatoes,"Herb: Thyme, Sage, Oregano, Basil, etc.",,,thyme,,FALSE,Herb,5
+27703a80-9ca1-8005-b341-de8201b44400,Chicken Enchiladas Verdes,Tomatillo Sauce (how many grams does this make?),,,tomatillos,how many grams does this make?,FALSE,,1
+2fe03a80-9ca1-80f7-a2e3-f048f3422e78,Chicken Paprikash,1 tbsp tomato paste,1,tbsp,tomato paste,,FALSE,,6
+30203a80-9ca1-80a0-b2b4-d5ce9541b216,Spicy Shawarma,1 tbsp tomato paste,1,tbsp,tomato paste,,FALSE,,3
+31003a80-9ca1-80ba-a691-e7477898fa34,Lamb Mandi,1 tbsp tomato paste,1,tbsp,tomato paste,,FALSE,,5
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,130g tomato paste,130,g,tomato paste,,FALSE,,5
+26e03a80-9ca1-809f-818e-d3d3bdcb3c40,Birria Tacos,2 Tomatoes,2,,tomatoes,,FALSE,,2
+28e03a80-9ca1-80eb-a6e7-f221f9a50243,Smash Burger Tacos,"Optional Toppings: Lettuce, Onions, Tomatoes, etc.",,,tomatoes,,TRUE,Toppings,5.02
+31203a80-9ca1-8079-81d0-c34021e7b1e1,Grapefruit Hugo Spritz,Tonic Water and Club Soda,,,tonic water,,FALSE,,5
+30203a80-9ca1-809c-b5df-d01d6309a67d,Lemon Herb Garlic,4 tbsp toum (or 2 tbsp minced garlic),4,tbsp,toum,or 2 tbsp minced garlic,FALSE,,7
+25a03a80-9ca1-8068-b95b-d53c8c2c2c6c,Poached Cod,"Spices: Turmeric, Chili Flakes, Salt, Pepper",,,turmeric,,FALSE,Spices,9
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,1 tsp turmeric,1,tsp,turmeric,,FALSE,,6
+30003a80-9ca1-80b3-9f1d-f9e6936947f2,Moroccan Marinade,1/2 tsp turmeric,2-Jan,tsp,turmeric,,FALSE,,9
+30203a80-9ca1-80a0-b2b4-d5ce9541b216,Spicy Shawarma,1/4 tsp turmeric,4-Jan,tsp,turmeric,,FALSE,,12
+30003a80-9ca1-806a-8501-eac67f052fd5,Lemon Saffron,1 tsp turmeric powder,1,tsp,turmeric,,FALSE,,3
+30c03a80-9ca1-80f7-bc00-d64f383de2c1,Hyderabadi Marag,"Powdered Spices:  1/4 tsp turmeric powder, 1 tsp white pepper powder, 1.5 tsp black pepper, 1 tsp garam masala",4-Jan,tsp,turmeric,,FALSE,Powdered Spices,8
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,150g unsalted butter,150,g,unsalted butter,,FALSE,,0
+25a03a80-9ca1-80b3-9e41-f83c73a27647,Lime and Brown Sugar Glazed Salmon,1 tbsp unsalted butter,1,tbsp,unsalted butter,,FALSE,,2
+2a803a80-9ca1-8074-b1e9-ece32c977a5f,Honey + Sage Butter Milk Buns,"3 tbsp unsalted butter, cut into small pieces, softened to room temp",3,tbsp,unsalted butter,"cut into small pieces, softened to room temp",FALSE,,7
+2b203a80-9ca1-804c-a06e-fa148812ffb6,Smash Potatoes,Unsalted Butter,,,unsalted butter,,FALSE,,3
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,1/2 cup unsweetened coconut cream,2-Jan,cup,unsweetened coconut cream,,FALSE,,0
+27a03a80-9ca1-8059-8a77-c98cd47b502a,Hazelnut Macarons,1/2 tsp vanilla bean paste,2-Jan,tsp,vanilla bean paste,,FALSE,,6
+25a03a80-9ca1-802f-8ed5-c90901169f3d,Chocolate Chip Cookies,2 teaspoons vanilla extract,2,tsp,vanilla extract,,FALSE,,2
+25a03a80-9ca1-809b-9796-fc8dd66fdb27,Banana Bread,1 tsp vanilla extract,1,tsp,vanilla extract,,FALSE,,9
+28e03a80-9ca1-802b-9f84-f6a9fca8144f,Nutella,1/2 tsp vanilla extract,2-Jan,tsp,vanilla extract,,FALSE,,6
+28e03a80-9ca1-8074-87aa-c1f0e9318fe8,Crepes,1/2 tsp vanilla extract,2-Jan,tsp,vanilla extract,,FALSE,,5
+29303a80-9ca1-80a3-bf38-ce532d3566cb,Burnt Basque Cheesecake V1,1Â tbspÂ vanilla extract,1,tbsp,vanilla extract,,FALSE,,8
+2bd03a80-9ca1-80e6-a21b-e1f1c4dc5b81,Horchata,2 tsp Vanilla Extract,2,tsp,vanilla extract,,FALSE,,1
+31103a80-9ca1-80c9-a32c-ffffdd367e59,Twice Baked Apple Pie,Optional: Vanilla Ice Cream to serve,,,vanilla ice cream,,TRUE,,3
+25a03a80-9ca1-808b-bac2-f0bbb6084f99,Chicken Satay,1 tbsp vegetable oil,1,tbsp,neutral oil,,FALSE,,1
+25a03a80-9ca1-80b3-9e41-f83c73a27647,Lime and Brown Sugar Glazed Salmon,1 tbsp vegetable oil,1,tbsp,neutral oil,,FALSE,,5
+31003a80-9ca1-8046-9d61-d37f67a630a3,Bolognese,1 tsp vegetable oil,1,tsp,neutral oil,,FALSE,,0
+31003a80-9ca1-80ba-a691-e7477898fa34,Lamb Mandi,1 tbsp vinegar (white or apple cider),1,tbsp,white vinegar,white or apple cider,FALSE,,6
+2e603a80-9ca1-8091-829d-d299b5c2a161,Nutella Shots,2 Oz of Vodka,2,oz,vodka,,FALSE,,1
+31203a80-9ca1-800e-9f5b-dfaaf8a7a3f4,Spicy Rigatoni,2 tbsp of Vodka,2,tbsp,vodka,,FALSE,,8
+31203a80-9ca1-804a-95e1-c106e51f888a,Espresso Martini Jell-o Shots,3/4 cup vodka,4-Mar,cup,vodka,,FALSE,,2
+25a03a80-9ca1-801a-a3f2-de214fd1bee9,Stuffed Shells,8 oz Wegmans Milk Pork Italian Sausage,8,oz,spicy italian ground sausage,,FALSE,,3
+31103a80-9ca1-802c-bbad-ed19937e37a0,Charred Corn Bean Salad,1 can white beans,1,can,white beans,,FALSE,,2
+30203a80-9ca1-800b-b99d-c172f994486c,Miso Honey,4 tbsp white miso paste,4,tbsp,white miso paste,,FALSE,,1
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,"Â½Â white onion,Â diced",Â½,,yellow onion,diced,FALSE,,2
+25a03a80-9ca1-809b-9796-fc8dd66fdb27,Banana Bread,1Â cupÂ white sugar,1,cup,sugar,,FALSE,,0
+25a03a80-9ca1-8089-ae27-d622ccac063e,Chocolate Covered Strawberries,White vinegar,,,white vinegar,,FALSE,,1
+30003a80-9ca1-8022-b27f-d02ec828eab5,Cilantro Jalapeno Marinade,1 whole bunch cilantro,1,,cilantro,,FALSE,,1
+25a03a80-9ca1-80ff-8284-f7ef19104186,Chicken Wings,12 whole chicken wings,12,,chicken wings,,FALSE,,0
+2e703a80-9ca1-8018-811d-d2eec1d1a7ec,Red Wine Poached Pear,2 whole cloves? cardamom?,2,,cloves,,FALSE,,5
+31003a80-9ca1-80ba-a691-e7477898fa34,Lamb Mandi,"Whole Spices: 1 tsp whole cumin seeds, 2 tsp coriander powder, 1 tsp cinnamon powder, 1 tsp turmeric, 1 tsp black pepper, 1/4 tsp cardamom powder, 2 whole cardamom pods, 2 whole cloves, 1 dried loomi (pierced a few times with a knife)",1,tsp,cumin seeds,pierced a few times with a knife,FALSE,Whole Spices,2
+25a03a80-9ca1-8011-bdbd-cd44eaabd55d,Coconut Pulao,Whole Garam Masala,,,garam masala,,FALSE,,1
+28e03a80-9ca1-8074-87aa-c1f0e9318fe8,Crepes,180 mL whole milk,180,ml,whole milk,,FALSE,,2
+31003a80-9ca1-8046-9d61-d37f67a630a3,Bolognese,80 ml whole milk,80,ml,whole milk,,FALSE,,6
+27603a80-9ca1-803f-bd98-f6ed1b4100dc,Shrimp Fry,1 whole onion,1,,yellow onion,,FALSE,,2
+2fa03a80-9ca1-8059-a931-d526cc309735,Bowl Soup Dumplings ,2 sheets wonton wrapper,2,sheets,wonton wrapper,,FALSE,,2
+30203a80-9ca1-809c-b5df-d01d6309a67d,Lemon Herb Garlic,1/2 tbsp yellow mustard,2-Jan,tbsp,yellow mustard,,FALSE,,6
+30003a80-9ca1-8062-a6a0-f93a8b92c481,Persian Marinade,"1/2 yellow onion, blended",2-Jan,,yellow onion,blended,FALSE,,2
+25a03a80-9ca1-80af-923f-f65f49072a03,Zuppa Toscana,"4 yellow potatoes,Â cut into 1-inch pieces",4,,yukon gold potatoes,cut into 1-inch pieces,FALSE,,6
+2dc03a80-9ca1-801c-af62-f6632b10be72,Burnt Basque Cheesecake V2,100g yoghurt,100,g,greek yogurt,,FALSE,,5
+30003a80-9ca1-80c5-9522-fa1d71ca7e4e,Malai Tikka,1 cup yogurt,1,cup,greek yogurt,,FALSE,,7
+2a803a80-9ca1-8066-9d4c-c3f0a4ce706f,Boursin Brown Butter Mashed Potatoes,4 lb yukon gold potatoes (peeled and cut into evenly sized large chunks),4,lb,yukon gold potatoes,peeled and cut into evenly sized large chunks,FALSE,,1
+30203a80-9ca1-80a0-b2b4-d5ce9541b216,Spicy Shawarma,1 tsp zaâatar,1,tsp,za'atar,,FALSE,,10
+25a03a80-9ca1-8038-bc3f-ca69e7898c80,Fattoush,1 tbsp za'atar blend,1,tbsp,za'atar,,FALSE,,0
+28903a80-9ca1-805d-98a5-f5fdf6dd5d2b,Fish En Papillote,"Choose Veggies: Zucchini, Lemon, Onions, Shallots, Jalapenos, Cherry Tomatoes, sundried tomatoes",,,zucchini,,FALSE,Choose Veggies,6

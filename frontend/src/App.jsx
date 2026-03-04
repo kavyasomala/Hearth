@@ -617,8 +617,8 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
 // Remove the old FRIDGE_KEYWORDS / PANTRY_KEYWORDS / classifyIngredient — no longer needed
 
 // ─── Fridge Tab ─────────────────────────────────────────────────────────────
-const FRIDGE_TYPES  = ['produce', 'meat', 'dairy'];
-const PANTRY_TYPES  = ['pantry', 'spice', 'sauce', 'alcohol'];
+const FRIDGE_TYPES  = ['produce', 'meat', 'dairy', 'sauce'];
+const PANTRY_TYPES  = ['spice', 'alcohol', 'staple'];
 
 const FridgeTab = ({ allIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples }) => {
   const [section, setSection] = useState('fridge');
@@ -930,7 +930,7 @@ export default function App() {
       if (!ingRes.ok || !recipeRes.ok) throw new Error('Failed to load data');
       const { ingredients } = await ingRes.json();
       const { recipes: recipeData } = await recipeRes.json();
-      setAllIngredients(ingredients.sort());
+      setAllIngredients(ingredients.sort((a, b) => a.name.localeCompare(b.name)));
       setRecipes(recipeData);
       setLastSynced(Date.now());
     } catch (e) {
