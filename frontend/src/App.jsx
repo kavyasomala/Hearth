@@ -67,26 +67,19 @@ const PROGRESS_FILTERS = [
 
 // Cuisine filter chips — concise list for the filter panel
 const CUISINE_FILTERS = [
-  { key: 'Asian',          label: '🍜 Asian'         },
-  { key: 'Chinese',        label: '🥡 Chinese'       },
-  { key: 'Japanese',       label: '🍣 Japanese'      },
-  { key: 'Korean',         label: '🥢 Korean'        },
-  { key: 'Thai',           label: '🌶 Thai'          },
-  { key: 'Indian',         label: '🫕 Indian'        },
-  { key: 'Mediterranean',  label: '🫒 Mediterranean' },
-  { key: 'Italian',        label: '🍕 Italian'       },
-  { key: 'Mexican',        label: '🌮 Mexican'       },
   { key: 'American',       label: '🍔 American'      },
-  { key: 'French',         label: '🥐 French'        },
+  { key: 'Asian',          label: '🍜 Asian'         },
+  { key: 'Indian',         label: '🫕 Indian'        },
+  { key: 'Italian',        label: '🍕 Italian'       },
+  { key: 'Mediterranean',  label: '🫒 Mediterranean' },
+  { key: 'Mexican',        label: '🌮 Mexican'       },
   { key: 'Middle Eastern', label: '🧆 Middle Eastern'},
 ];
 
 // All cuisines available in the recipe editor dropdown
 const ALL_CUISINES = [
-  'American', 'Asian', 'British', 'Caribbean', 'Chinese', 'French', 'Greek',
-  'Indian', 'Italian', 'Japanese', 'Korean', 'Lebanese', 'Mediterranean',
-  'Mexican', 'Middle Eastern', 'Moroccan', 'Persian', 'Spanish',
-  'Thai', 'Turkish', 'Vietnamese',
+  'American', 'Asian', 'Indian', 'Italian', 'Mediterranean',
+  'Mexican', 'Middle Eastern'
 ].sort();
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -1676,11 +1669,6 @@ function AppInner() {
       {view === 'recipes' && (() => {
         return (
           <main className="view">
-            <div className="library-header">
-              <h2>All Recipes</h2>
-              <p className="library-subtitle">{libraryRecipes.length} of {recipes.length} recipe{recipes.length !== 1 ? 's' : ''}</p>
-            </div>
-
             {/* ── Search + Filter Toggle ── */}
             <div className="recipes-search-row">
               <div className="filter-bar__search-wrap filter-bar__search-wrap--standalone">
@@ -1757,7 +1745,7 @@ function AppInner() {
 
             {/* Active filter summary pills */}
             {hasActiveFilters && (
-              <div className="active-filter-pills">
+              <div className="active-filter-pills mb-4">
                 {activeTag && <span className="active-filter-pill">{TAG_FILTERS.find(f => f.key === activeTag)?.label} <button onClick={() => setActiveTag(null)}>✕</button></span>}
                 {activeProgress && <span className="active-filter-pill">{PROGRESS_FILTERS.find(f => f.key === activeProgress)?.label} <button onClick={() => setActiveProgress(null)}>✕</button></span>}
                 {activeCuisine && <span className="active-filter-pill">{CUISINE_FILTERS.find(f => f.key === activeCuisine)?.label || activeCuisine} <button onClick={() => setActiveCuisine('')}>✕</button></span>}
