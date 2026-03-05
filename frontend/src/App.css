@@ -863,3 +863,403 @@ body {
   .app-header__title { font-size: 17px; }
   .home-section__title { font-size: 17px; }
 }
+
+/* ─── Recipe Card — cuisine right-aligned in title row ──────────────────── */
+.recipe-card__cuisine {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--terracotta);
+  background: rgba(196,98,58,0.08);
+  padding: 2px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ─── Recipe Page — full-width body layout ───────────────────────────────── */
+.rp2__body-full {
+  padding: 0 24px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ─── Section wrapper with hover pencil ─────────────────────────────────── */
+.rp-section-wrap {
+  padding: 24px 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+.rp-section-wrap:last-child { border-bottom: none; }
+
+.rp-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.rp-section-pencil {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--warm-gray);
+  flex-shrink: 0;
+}
+.rp-section-wrap:hover .rp-section-pencil,
+.rp2__header-view:hover .rp-section-pencil { opacity: 1; }
+.rp-section-pencil:hover { background: var(--terracotta); border-color: var(--terracotta); color: white; }
+
+/* ─── Photo edit button on hero ─────────────────────────────────────────── */
+.rp2__photo-edit-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(0,0,0,0.45);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  backdrop-filter: blur(4px);
+}
+.rp2__hero-wrap:hover .rp2__photo-edit-btn { opacity: 1; }
+
+/* ─── Photo editor overlay (below hero) ─────────────────────────────────── */
+.photo-editor-overlay {
+  background: var(--parchment);
+  border: 1.5px solid var(--border);
+  border-top: none;
+  padding: 14px 16px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.photo-editor-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--warm-white);
+  font-family: var(--font-body);
+}
+.photo-editor-input:focus { outline: none; border-color: var(--terracotta); }
+.photo-editor-err { color: var(--terracotta); font-size: 12px; width: 100%; }
+.photo-editor-btns { display: flex; gap: 8px; }
+.photo-editor-btn {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: var(--warm-white);
+}
+.photo-editor-btn--save { background: var(--terracotta); color: white; border-color: var(--terracotta); }
+.photo-editor-btn--save:hover { background: var(--terracotta-dark); }
+.photo-editor-btn--cancel:hover { background: var(--parchment); }
+
+/* ─── Header view (title + pencil) ─────────────────────────────────────── */
+.rp2__header-view { padding: 20px 24px 16px; border-bottom: 1.5px solid var(--border); }
+.rp2__header-title-row { display: flex; align-items: center; gap: 10px; }
+.rp2__status-badge {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(122,158,126,0.15);
+  color: var(--sage);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.rp2__add-notes-btn {
+  margin: 20px 0 0;
+  background: none;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  color: var(--warm-gray);
+  font-size: 13px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.rp2__add-notes-btn:hover { border-color: var(--terracotta); color: var(--terracotta); }
+
+/* ─── Inline editor base ─────────────────────────────────────────────────── */
+.inline-editor {
+  position: relative;
+  padding-top: 8px;
+}
+.inline-editor__actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.inline-editor__cancel,
+.inline-editor__save {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--warm-white);
+  transition: all 0.15s ease;
+}
+.inline-editor__save { background: var(--terracotta); color: white; border-color: var(--terracotta); }
+.inline-editor__save:hover { background: var(--terracotta-dark); }
+.inline-editor__cancel:hover { background: var(--parchment); }
+.inline-editor__err { color: var(--terracotta); font-size: 12px; margin-bottom: 10px; }
+
+/* ─── Meta editor grid ───────────────────────────────────────────────────── */
+.meta-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+}
+.meta-edit-field { display: flex; flex-direction: column; gap: 4px; }
+.meta-edit-field--wide { grid-column: 1 / -1; }
+.meta-edit-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--warm-gray); }
+.meta-edit-input {
+  padding: 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: var(--font-body);
+  background: var(--warm-white);
+  color: var(--charcoal);
+}
+.meta-edit-input:focus { outline: none; border-color: var(--terracotta); }
+.meta-edit-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.meta-edit-tag {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--warm-white);
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--charcoal);
+  transition: all 0.15s;
+}
+.meta-edit-tag--on { background: var(--terracotta); color: white; border-color: var(--terracotta); }
+
+/* ─── Ingredients inline editor ─────────────────────────────────────────── */
+.ie-groups-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 10px 0 14px;
+  border-bottom: 1px dashed var(--border);
+  margin-bottom: 12px;
+}
+.ie-group-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px 3px 12px;
+  background: rgba(122,158,126,0.12);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sage);
+}
+.ie-group-chip button { background: none; border: none; cursor: pointer; font-size: 10px; color: var(--warm-gray); line-height: 1; }
+.ie-add-group { display: flex; align-items: center; gap: 4px; }
+.ie-input--group {
+  padding: 4px 8px;
+  border: 1.5px dashed var(--border);
+  border-radius: 20px;
+  font-size: 12px;
+  font-family: var(--font-body);
+  background: transparent;
+  width: 120px;
+}
+.ie-input--group:focus { outline: none; border-color: var(--sage); }
+.ie-add-group-btn {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--sage);
+  background: none;
+  color: var(--sage);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.ie-group-section { margin-top: 12px; }
+.ie-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  background: rgba(122,158,126,0.07);
+  border-radius: var(--radius-sm);
+}
+.ie-group-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--sage); }
+.ie-add-in-group { background: none; border: none; font-size: 12px; color: var(--sage); cursor: pointer; }
+.ie-add-in-group:hover { text-decoration: underline; }
+
+.ie-row {
+  background: var(--warm-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  overflow: hidden;
+}
+.ie-row__top {
+  display: grid;
+  grid-template-columns: 52px 90px 1fr 24px 24px;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 10px;
+}
+.ie-row__qty-unit { display: contents; }
+.ie-row__name { display: contents; }
+.ie-input {
+  padding: 6px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: var(--font-body);
+  background: var(--cream);
+  color: var(--charcoal);
+  width: 100%;
+}
+.ie-input:focus { outline: none; border-color: var(--terracotta); background: var(--warm-white); }
+.ie-input--qty { width: 52px; text-align: center; }
+.ie-row__expand, .ie-row__remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--warm-gray);
+  width: 24px;
+  height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.ie-row__remove:hover { color: var(--terracotta); }
+.ie-row__expand:hover { background: var(--parchment); }
+
+.ie-row__details {
+  padding: 6px 10px 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--parchment);
+  border-top: 1px solid var(--border);
+}
+.ie-input--prep { flex: 1; }
+.ie-optional {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--warm-gray);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ie-add-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px;
+  background: none;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--warm-gray);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+.ie-add-btn:hover { border-color: var(--terracotta); color: var(--terracotta); }
+.ie-add-btn--group { margin-top: 4px; border-style: dashed; border-color: var(--sage-light); color: var(--sage); }
+.ie-add-btn--group:hover { border-color: var(--sage); }
+.ie-group-add-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+
+/* ─── Instructions inline editor ────────────────────────────────────────── */
+.ie-step-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 28px;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.ie-step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--terracotta);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+.ie-step-input {
+  padding: 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: var(--font-body);
+  resize: vertical;
+  background: var(--warm-white);
+  width: 100%;
+  color: var(--charcoal);
+}
+.ie-step-input:focus { outline: none; border-color: var(--terracotta); }
+
+/* ─── Notes inline editor ────────────────────────────────────────────────── */
+.ie-note-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.ie-input--note {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: var(--font-body);
+  background: var(--warm-white);
+}
+.ie-input--note:focus { outline: none; border-color: var(--terracotta); }
+
+/* ─── Remove old hover color shift from editable sections ───────────────── */
+.editable-section { cursor: default; }
+.editable-section:hover { background: none; }
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .meta-edit-grid { grid-template-columns: 1fr; }
+  .ie-row__top { grid-template-columns: 46px 80px 1fr 22px 22px; gap: 4px; }
+}

@@ -214,6 +214,7 @@ app.put('/api/recipes/:id', async (req, res) => {
   try {
     await client.query('BEGIN');
 
+    // Always update core recipe details
     await client.query(`
       UPDATE recipes SET
         name             = $1,
@@ -222,65 +223,75 @@ app.put('/api/recipes/:id', async (req, res) => {
         servings         = $4,
         calories         = $5,
         protein          = $6,
-        cover_image_url  = $7
-      WHERE id = $8
+        cover_image_url  = $7,
+        status           = $8
+      WHERE id = $9
     `, [
       details.name,
       details.cuisine || null,
       details.time || null,
       details.servings || null,
-      details.calories !== '' ? Number(details.calories) : null,
-      details.protein  !== '' ? Number(details.protein)  : null,
+      details.calories !== '' && details.calories != null ? Number(details.calories) : null,
+      details.protein  !== '' && details.protein  != null ? Number(details.protein)  : null,
       details.cover_image_url || null,
+      details.status || null,
       id,
     ]);
 
-    await client.query('DELETE FROM recipe_body_ingredients WHERE recipe_id = $1', [id]);
-
-    for (const ing of (ingredients || [])) {
-      const ingName = ing.name?.trim().toLowerCase();
-      if (!ingName) continue;
-
-      const { rows: ingRows } = await client.query(`
-        INSERT INTO ingredients (name)
-        VALUES ($1)
-        ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
-        RETURNING id
-      `, [ingName]);
-      const ingId = ingRows[0].id;
-
-      await client.query(`
-        INSERT INTO recipe_body_ingredients
-          (recipe_id, ingredient_id, amount, unit, prep_note, optional, group_label, order_index)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      `, [
-        id, ingId,
-        ing.amount    || null,
-        ing.unit      || null,
-        ing.prep_note || null,
-        Boolean(ing.optional),
-        ing.group_label || null,
-        ing.order_index ?? 0,
-      ]);
+    // Update tags if provided
+    if (Array.isArray(req.body.tags)) {
+      await client.query('DELETE FROM recipe_tags WHERE recipe_id = $1', [id]);
+      for (const tagName of req.body.tags) {
+        const { rows: tagRows } = await client.query(
+          `INSERT INTO tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
+          [tagName]
+        );
+        await client.query(
+          `INSERT INTO recipe_tags (recipe_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [id, tagRows[0].id]
+        );
+      }
     }
 
-    await client.query('DELETE FROM instructions WHERE recipe_id = $1', [id]);
-    for (const step of (instructions || [])) {
-      if (!step.body_text?.trim()) continue;
-      await client.query(`
-        INSERT INTO instructions (recipe_id, step_number, body_text)
-        VALUES ($1, $2, $3)
-      `, [id, step.step_number, step.body_text.trim()]);
+    // Only update ingredients/instructions/notes if the section was explicitly provided (not null)
+    if (ingredients !== null && ingredients !== undefined) {
+      await client.query('DELETE FROM recipe_body_ingredients WHERE recipe_id = $1', [id]);
+      for (const ing of ingredients) {
+        const ingName = ing.name?.trim().toLowerCase();
+        if (!ingName) continue;
+        const { rows: ingRows } = await client.query(
+          `INSERT INTO ingredients (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
+          [ingName]
+        );
+        await client.query(
+          `INSERT INTO recipe_body_ingredients (recipe_id, ingredient_id, amount, unit, prep_note, optional, group_label, order_index)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [id, ingRows[0].id, ing.amount || null, ing.unit || null, ing.prep_note || null, Boolean(ing.optional), ing.group_label || null, ing.order_index ?? 0]
+        );
+      }
     }
 
-    await client.query('DELETE FROM notes WHERE recipe_id = $1', [id]);
-    for (const note of (notes || [])) {
-      const text = note.text?.trim() || note.body_text?.trim();
-      if (!text) continue;
-      await client.query(`
-        INSERT INTO notes (recipe_id, order_index, body_text)
-        VALUES ($1, $2, $3)
-      `, [id, note.order_index ?? 0, text]);
+    if (instructions !== null && instructions !== undefined) {
+      await client.query('DELETE FROM instructions WHERE recipe_id = $1', [id]);
+      for (const step of instructions) {
+        if (!step.body_text?.trim()) continue;
+        await client.query(
+          `INSERT INTO instructions (recipe_id, step_number, body_text) VALUES ($1, $2, $3)`,
+          [id, step.step_number, step.body_text.trim()]
+        );
+      }
+    }
+
+    if (notes !== null && notes !== undefined) {
+      await client.query('DELETE FROM notes WHERE recipe_id = $1', [id]);
+      for (const note of notes) {
+        const text = note.text?.trim() || note.body_text?.trim();
+        if (!text) continue;
+        await client.query(
+          `INSERT INTO notes (recipe_id, order_index, body_text) VALUES ($1, $2, $3)`,
+          [id, note.order_index ?? 0, text]
+        );
+      }
     }
 
     await client.query('COMMIT');

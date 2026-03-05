@@ -54,6 +54,7 @@ const TAG_FILTERS = [
   { key: 'Soup',     label: '🍲 Soup'     },
   { key: 'Marinade', label: '🫙 Marinade' },
   { key: 'Party',    label: '🎉 Party'    },
+  { key: 'Snacks',   label: '🥨 Snacks'   },
 ];
 
 // ── Progress filters — based on DB columns (recipe_incomplete, status)
@@ -100,8 +101,6 @@ const toNum = (v) => { const n = Number(v); return (!isNaN(n) && v !== '' && v !
 
 const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart }) => {
   const { name, coverImage, cuisine, time } = recipe;
-  const calories = toNum(recipe.calories);
-  const protein  = toNum(recipe.protein);
   const matchScore = match?.matchScore ?? null;
   const canMakeNow = Boolean(match?.canMake);
 
@@ -127,40 +126,379 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart }) => {
       <div className="recipe-card__body">
         <div className="recipe-card__title-row">
           <h3 className="recipe-card__title">{name}</h3>
-          {canMakeNow && <span className="recipe-card__can-make">✓ Ready</span>}
+          {cuisine && <span className="recipe-card__cuisine">{cuisine}</span>}
         </div>
         <div className="recipe-card__meta">
-          {cuisine && <Badge variant="cuisine">{cuisine}</Badge>}
-          {(recipe.tags || []).slice(0, 2).map(t => <Badge key={t} variant="tag">{t}</Badge>)}
+          {(recipe.tags || []).slice(0, 3).map(t => <span key={t} className="badge badge--tag">{t}</span>)}
+          {canMakeNow && <span className="recipe-card__can-make">✓ Ready</span>}
         </div>
         <div className="recipe-card__stats">
           {time && <span className="recipe-card__stat"><span className="recipe-card__stat-icon">⏱</span>{time}</span>}
-          {calories !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon">🔥</span>{calories} kcal</span>}
-          {protein !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon">💪</span>{protein}g</span>}
         </div>
       </div>
     </article>
   );
 };
 
-// ─── Recipe Page (v2) ───────────────────────────────────────────────────────
-const EditableSection = ({ onEdit, children, className = '' }) => (
-  <div className={`editable-section ${className}`}>
+// ─── Recipe Page — inline section editing ──────────────────────────────────
+
+// Helper: save a section via PUT /api/recipes/:id
+async function saveRecipeSection(recipeId, payload) {
+  const res = await fetch(`${API}/api/recipes/${recipeId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Save failed');
+  return data;
+}
+
+// ── Inline-editable Meta section (name, cuisine, tags, time, progress)
+const MetaEditor = ({ recipe, onSaved, onCancel }) => {
+  const [name, setName] = useState(recipe.name || '');
+  const [cuisine, setCuisine] = useState(recipe.cuisine || '');
+  const [time, setTime] = useState(recipe.time || '');
+  const [status, setStatus] = useState(recipe.status || '');
+  const [tags, setTags] = useState(recipe.tags || []);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const EDIT_TAG_OPTIONS = ['Meals','Dessert','Drinks','Pasta','Soup','Marinade','Party','Snacks'];
+  const STATUS_OPTIONS = ['', 'Incomplete', 'Needs Tweaking', 'Favorite', 'Complete'];
+
+  const toggleTag = (t) => setTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
+
+  const save = async () => {
+    setSaving(true); setErr(null);
+    try {
+      const data = await saveRecipeSection(recipe.id, {
+        details: { name, cuisine, time, servings: recipe.servings, calories: recipe.calories, protein: recipe.protein, cover_image_url: recipe.coverImage, status },
+        tags,
+        ingredients: null, instructions: null, notes: null,
+      });
+      onSaved(data.recipe, tags);
+    } catch (e) { setErr(e.message); } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="inline-editor inline-editor--meta">
+      <div className="inline-editor__actions">
+        <button className="inline-editor__cancel" onClick={onCancel} title="Cancel">✕</button>
+        <button className="inline-editor__save" onClick={save} disabled={saving} title="Save">{saving ? '…' : '✓'}</button>
+      </div>
+      {err && <p className="inline-editor__err">{err}</p>}
+      <div className="meta-edit-grid">
+        <label className="meta-edit-field meta-edit-field--wide">
+          <span className="meta-edit-label">Name</span>
+          <input className="meta-edit-input" value={name} onChange={e => setName(e.target.value)} />
+        </label>
+        <label className="meta-edit-field">
+          <span className="meta-edit-label">Cuisine</span>
+          <select className="meta-edit-input" value={cuisine} onChange={e => setCuisine(e.target.value)}>
+            <option value="">— none —</option>
+            {ALL_CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
+        <label className="meta-edit-field">
+          <span className="meta-edit-label">Time</span>
+          <input className="meta-edit-input" value={time} onChange={e => setTime(e.target.value)} placeholder="45 mins" />
+        </label>
+        <label className="meta-edit-field">
+          <span className="meta-edit-label">Progress</span>
+          <select className="meta-edit-input" value={status} onChange={e => setStatus(e.target.value)}>
+            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s || '— none —'}</option>)}
+          </select>
+        </label>
+        <div className="meta-edit-field meta-edit-field--wide">
+          <span className="meta-edit-label">Tags</span>
+          <div className="meta-edit-tags">
+            {EDIT_TAG_OPTIONS.map(t => (
+              <button key={t} className={`meta-edit-tag ${tags.includes(t) ? 'meta-edit-tag--on' : ''}`} onClick={() => toggleTag(t)}>{t}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Inline-editable Photo section
+const PhotoEditor = ({ recipe, onSaved, onCancel }) => {
+  const [url, setUrl] = useState(recipe.coverImage || '');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const save = async () => {
+    setSaving(true); setErr(null);
+    try {
+      const data = await saveRecipeSection(recipe.id, {
+        details: { name: recipe.name, cuisine: recipe.cuisine, time: recipe.time, servings: recipe.servings, calories: recipe.calories, protein: recipe.protein, cover_image_url: url, status: recipe.status },
+        ingredients: null, instructions: null, notes: null,
+      });
+      onSaved(data.recipe);
+    } catch (e) { setErr(e.message); } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="photo-editor-overlay">
+      <input
+        className="photo-editor-input"
+        value={url}
+        onChange={e => setUrl(e.target.value)}
+        placeholder="Paste image URL…"
+        autoFocus
+      />
+      {err && <p className="photo-editor-err">{err}</p>}
+      <div className="photo-editor-btns">
+        <button className="photo-editor-btn photo-editor-btn--cancel" onClick={onCancel}>Cancel</button>
+        <button className="photo-editor-btn photo-editor-btn--save" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save photo'}</button>
+      </div>
+    </div>
+  );
+};
+
+// ── Inline-editable Ingredients section
+const IngredientsEditor = ({ recipe, bodyIngredients, allIngredients, onSaved, onCancel }) => {
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const [ings, setIngs] = useState(() => (bodyIngredients || []).map((i, idx) => ({ ...i, _id: `ing-${idx}`, _expanded: false })));
+  const [groups, setGroups] = useState(() => [...new Set((bodyIngredients || []).map(i => i.group_label).filter(Boolean))]);
+  const [newGroup, setNewGroup] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const addIng = (group_label = '') => setIngs(prev => [...prev, { _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label, _expanded: true }]);
+  const updateIng = (id, k, v) => setIngs(prev => prev.map(i => i._id === id ? { ...i, [k]: v } : i));
+  const removeIng = (id) => setIngs(prev => prev.filter(i => i._id !== id));
+  const toggleExpand = (id) => setIngs(prev => prev.map(i => i._id === id ? { ...i, _expanded: !i._expanded } : i));
+  const onDragEnd = ({ active, over }) => {
+    if (over && active.id !== over.id) {
+      setIngs(prev => { const oi = prev.findIndex(i => i._id === active.id); const ni = prev.findIndex(i => i._id === over.id); return arrayMove(prev, oi, ni); });
+    }
+  };
+  const addGroup = () => { const g = newGroup.trim(); if (g && !groups.includes(g)) { setGroups(prev => [...prev, g]); setNewGroup(''); } };
+  const removeGroup = (g) => { setGroups(prev => prev.filter(x => x !== g)); setIngs(prev => prev.map(i => i.group_label === g ? { ...i, group_label: '' } : i)); };
+
+  const save = async () => {
+    setSaving(true); setErr(null);
+    try {
+      const data = await saveRecipeSection(recipe.id, {
+        details: { name: recipe.name, cuisine: recipe.cuisine, time: recipe.time, servings: recipe.servings, calories: recipe.calories, protein: recipe.protein, cover_image_url: recipe.coverImage, status: recipe.status },
+        ingredients: ings.map((i, idx) => ({ ...i, order_index: idx })),
+        instructions: null, notes: null,
+      });
+      onSaved(data.recipe);
+    } catch (e) { setErr(e.message); } finally { setSaving(false); }
+  };
+
+  // Render ingredients optionally grouped
+  const ungrouped = ings.filter(i => !i.group_label);
+  const grouped = groups.map(g => ({ label: g, items: ings.filter(i => i.group_label === g) }));
+
+  const IngRow = ({ ing }) => (
+    <div className="ie-row">
+      <div className="ie-row__top">
+        <div className="ie-row__qty-unit">
+          <input className="ie-input ie-input--qty" value={ing.amount || ''} onChange={e => updateIng(ing._id, 'amount', e.target.value)} placeholder="qty" />
+          <UnitAutocomplete value={ing.unit || ''} onChange={v => updateIng(ing._id, 'unit', v)} />
+        </div>
+        <div className="ie-row__name">
+          <IngredientAutocomplete value={ing.name || ''} onChange={v => updateIng(ing._id, 'name', v)} allIngredients={allIngredients} />
+        </div>
+        <button className="ie-row__expand" onClick={() => toggleExpand(ing._id)} title="Prep note / optional">{ing._expanded ? '▴' : '▾'}</button>
+        <button className="ie-row__remove" onClick={() => removeIng(ing._id)}>✕</button>
+      </div>
+      {ing._expanded && (
+        <div className="ie-row__details">
+          <input className="ie-input ie-input--prep" value={ing.prep_note || ''} onChange={e => updateIng(ing._id, 'prep_note', e.target.value)} placeholder="Prep note (e.g. finely chopped)" />
+          <label className="ie-optional">
+            <input type="checkbox" checked={!!ing.optional} onChange={e => updateIng(ing._id, 'optional', e.target.checked)} />
+            Optional
+          </label>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="inline-editor inline-editor--ingredients">
+      <div className="inline-editor__actions">
+        <button className="inline-editor__cancel" onClick={onCancel} title="Cancel">✕</button>
+        <button className="inline-editor__save" onClick={save} disabled={saving} title="Save">{saving ? '…' : '✓'}</button>
+      </div>
+      {err && <p className="inline-editor__err">{err}</p>}
+
+      {/* Groups manager */}
+      <div className="ie-groups-bar">
+        {groups.map(g => (
+          <span key={g} className="ie-group-chip">
+            {g}
+            <button onClick={() => removeGroup(g)}>✕</button>
+          </span>
+        ))}
+        <div className="ie-add-group">
+          <input className="ie-input ie-input--group" value={newGroup} onChange={e => setNewGroup(e.target.value)} onKeyDown={e => e.key === 'Enter' && addGroup()} placeholder="Add group…" />
+          <button className="ie-add-group-btn" onClick={addGroup}>+</button>
+        </div>
+      </div>
+
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={ings.map(i => i._id)} strategy={verticalListSortingStrategy}>
+          {/* Ungrouped */}
+          {ungrouped.map(ing => (
+            <SortableItem key={ing._id} id={ing._id}><IngRow ing={ing} /></SortableItem>
+          ))}
+          {/* Grouped */}
+          {grouped.map(({ label, items }) => (
+            <div key={label} className="ie-group-section">
+              <div className="ie-group-header">
+                <span className="ie-group-label">{label}</span>
+                <button className="ie-add-in-group" onClick={() => addIng(label)}>+ Add to {label}</button>
+              </div>
+              {items.map(ing => (
+                <SortableItem key={ing._id} id={ing._id}><IngRow ing={ing} /></SortableItem>
+              ))}
+            </div>
+          ))}
+        </SortableContext>
+      </DndContext>
+
+      <button className="ie-add-btn" onClick={() => addIng()}>+ Add ingredient</button>
+      {groups.length > 0 && (
+        <div className="ie-group-add-btns">
+          {groups.map(g => <button key={g} className="ie-add-btn ie-add-btn--group" onClick={() => addIng(g)}>+ Add to {g}</button>)}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Inline-editable Instructions section
+const InstructionsEditor = ({ recipe, instructions, onSaved, onCancel }) => {
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const [steps, setSteps] = useState(() => (instructions || []).map((s, i) => ({ ...s, _id: `step-${i}` })));
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const addStep = () => setSteps(prev => [...prev, { _id: `step-new-${Date.now()}`, step_number: prev.length + 1, body_text: '' }]);
+  const updateStep = (id, v) => setSteps(prev => prev.map(s => s._id === id ? { ...s, body_text: v } : s));
+  const removeStep = (id) => setSteps(prev => prev.filter(s => s._id !== id));
+  const onDragEnd = ({ active, over }) => {
+    if (over && active.id !== over.id) {
+      setSteps(prev => { const oi = prev.findIndex(s => s._id === active.id); const ni = prev.findIndex(s => s._id === over.id); return arrayMove(prev, oi, ni); });
+    }
+  };
+
+  const save = async () => {
+    setSaving(true); setErr(null);
+    try {
+      const data = await saveRecipeSection(recipe.id, {
+        details: { name: recipe.name, cuisine: recipe.cuisine, time: recipe.time, servings: recipe.servings, calories: recipe.calories, protein: recipe.protein, cover_image_url: recipe.coverImage, status: recipe.status },
+        ingredients: null,
+        instructions: steps.map((s, idx) => ({ ...s, step_number: idx + 1 })),
+        notes: null,
+      });
+      onSaved(data.recipe);
+    } catch (e) { setErr(e.message); } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="inline-editor">
+      <div className="inline-editor__actions">
+        <button className="inline-editor__cancel" onClick={onCancel}>✕</button>
+        <button className="inline-editor__save" onClick={save} disabled={saving}>{saving ? '…' : '✓'}</button>
+      </div>
+      {err && <p className="inline-editor__err">{err}</p>}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
+          {steps.map((step, idx) => (
+            <SortableItem key={step._id} id={step._id}>
+              <div className="ie-step-row">
+                <span className="ie-step-num">{idx + 1}</span>
+                <textarea className="ie-step-input" value={step.body_text} onChange={e => updateStep(step._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                <button className="ie-row__remove" onClick={() => removeStep(step._id)}>✕</button>
+              </div>
+            </SortableItem>
+          ))}
+        </SortableContext>
+      </DndContext>
+      <button className="ie-add-btn" onClick={addStep}>+ Add step</button>
+    </div>
+  );
+};
+
+// ── Inline-editable Notes section
+const NotesEditor = ({ recipe, notes, onSaved, onCancel }) => {
+  const [notesList, setNotesList] = useState(() => (notes || []).map((n, i) => ({ ...n, _id: `note-${i}` })));
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const addNote = () => setNotesList(prev => [...prev, { _id: `note-new-${Date.now()}`, text: '' }]);
+  const updateNote = (id, v) => setNotesList(prev => prev.map(n => n._id === id ? { ...n, text: v } : n));
+  const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id));
+
+  const save = async () => {
+    setSaving(true); setErr(null);
+    try {
+      const data = await saveRecipeSection(recipe.id, {
+        details: { name: recipe.name, cuisine: recipe.cuisine, time: recipe.time, servings: recipe.servings, calories: recipe.calories, protein: recipe.protein, cover_image_url: recipe.coverImage, status: recipe.status },
+        ingredients: null, instructions: null,
+        notes: notesList.map((n, idx) => ({ ...n, order_index: idx })),
+      });
+      onSaved(data.recipe);
+    } catch (e) { setErr(e.message); } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="inline-editor">
+      <div className="inline-editor__actions">
+        <button className="inline-editor__cancel" onClick={onCancel}>✕</button>
+        <button className="inline-editor__save" onClick={save} disabled={saving}>{saving ? '…' : '✓'}</button>
+      </div>
+      {err && <p className="inline-editor__err">{err}</p>}
+      {notesList.map(note => (
+        <div key={note._id} className="ie-note-row">
+          <input className="ie-input ie-input--note" value={note.text || ''} onChange={e => updateNote(note._id, e.target.value)} placeholder="e.g. Works great with tofu instead of chicken" />
+          <button className="ie-row__remove" onClick={() => removeNote(note._id)}>✕</button>
+        </div>
+      ))}
+      <button className="ie-add-btn" onClick={addNote}>+ Add note</button>
+    </div>
+  );
+};
+
+// ── Section wrapper with hover pencil
+const Section = ({ title, onEdit, editing, children, className = '' }) => (
+  <div className={`rp-section-wrap ${className}`}>
+    <div className="rp-section-header">
+      <h2 className="rp2__section-title">{title}</h2>
+      {!editing && onEdit && (
+        <button className="rp-section-pencil" onClick={onEdit} title="Edit">✏</button>
+      )}
+    </div>
     {children}
-    {onEdit && (
-      <button className="editable-section__pencil" onClick={onEdit} title="Edit">✏️</button>
-    )}
   </div>
 );
 
-const RecipePage = ({ recipe, bodyIngredients, instructions, notes, loading, onBack, onEdit, isHearted, onToggleHeart }) => {
+const RecipePage = ({ recipe: initialRecipe, bodyIngredients: initialIngs, instructions: initialInstructions, notes: initialNotes, loading, onBack, isHearted, onToggleHeart, onReload, allIngredients = [] }) => {
+  const [recipe, setRecipe] = useState(initialRecipe);
+  const [bodyIngredients, setBodyIngredients] = useState(initialIngs || []);
+  const [instructions, setInstructions] = useState(initialInstructions || []);
+  const [notes, setNotes] = useState(initialNotes || []);
   const [checkedIngs, setCheckedIngs] = useState(new Set());
   const [checkedSteps, setCheckedSteps] = useState(new Set());
+  // Which section is in edit mode: null | 'photo' | 'meta' | 'ingredients' | 'instructions' | 'notes'
+  const [editing, setEditing] = useState(null);
 
-  // ALL hooks must be before any early return
+  // Sync when parent passes new data (e.g. after reload)
+  useEffect(() => { if (initialRecipe) setRecipe(initialRecipe); }, [initialRecipe]);
+  useEffect(() => { setBodyIngredients(initialIngs || []); }, [initialIngs]);
+  useEffect(() => { setInstructions(initialInstructions || []); }, [initialInstructions]);
+  useEffect(() => { setNotes(initialNotes || []); }, [initialNotes]);
+
   const ingGroups = useMemo(() => {
     const groups = {};
-    for (const ing of (bodyIngredients || [])) {
+    for (const ing of bodyIngredients) {
       const key = ing.group_label || '';
       if (!groups[key]) groups[key] = [];
       groups[key].push(ing);
@@ -171,6 +509,15 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, loading, onB
   const toggleIng = (id) => setCheckedIngs(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
   const toggleStep = (id) => setCheckedSteps(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
   const formatAmount = (ing) => [ing.amount, ing.unit].filter(Boolean).join(' ');
+
+  const handleSaved = (updatedRecipe, updatedTags) => {
+    setRecipe(r => ({ ...r, ...updatedRecipe, tags: updatedTags ?? updatedRecipe.tags ?? r.tags }));
+    setEditing(null);
+    if (onReload) onReload();
+  };
+  const handleIngsSaved = (updatedRecipe) => { setEditing(null); if (onReload) onReload(); };
+  const handleInstrSaved = (updatedRecipe) => { setEditing(null); if (onReload) onReload(); };
+  const handleNotesSaved = (updatedRecipe) => { setEditing(null); if (onReload) onReload(); };
 
   if (loading || !recipe) return (
     <main className="view rp2">
@@ -185,18 +532,15 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, loading, onB
     <main className="view rp2">
       <div className="rp2__topbar">
         <button className="rp2__back" onClick={onBack}>← Back</button>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            className={`rp2__hero-btn rp2__hero-heart ${isHearted ? 'rp2__hero-heart--on' : ''}`}
-            onClick={onToggleHeart}
-            title={isHearted ? 'Remove from Make Soon' : 'Add to Make Soon'}
-          >♥</button>
-          {onEdit && <button className="rp2__hero-btn rp2__hero-btn--primary" onClick={onEdit}>Edit Recipe</button>}
-        </div>
+        <button
+          className={`rp2__hero-btn rp2__hero-heart ${isHearted ? 'rp2__hero-heart--on' : ''}`}
+          onClick={onToggleHeart}
+          title={isHearted ? 'Remove from Make Soon' : 'Add to Make Soon'}
+        >♥</button>
       </div>
 
-      {/* Hero */}
-      <EditableSection onEdit={onEdit} className="rp2__hero-wrap">
+      {/* Hero photo */}
+      <div className="rp2__hero-wrap">
         <div className="rp2__hero">
           {recipe.coverImage
             ? <img className="rp2__hero-img" src={recipe.coverImage} alt={recipe.name} />
@@ -209,58 +553,76 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, loading, onB
                 {(recipe.tags || []).map(t => <span key={t} className="rp2__tag rp2__tag--light">{t}</span>)}
               </div>
               <div className="rp2__hero-pills">
-                {recipe.time && <span className="rp2__pill"><span className="rp2__pill-icon">⏱</span>{recipe.time}</span>}
-                {recipe.servings && <span className="rp2__pill"><span className="rp2__pill-icon">🍽</span>{recipe.servings} servings</span>}
-                {toNum(recipe.calories) !== null && <span className="rp2__pill"><span className="rp2__pill-icon">🔥</span>{recipe.calories} kcal</span>}
-                {toNum(recipe.protein) !== null && <span className="rp2__pill"><span className="rp2__pill-icon">💪</span>{recipe.protein}g protein</span>}
+                {recipe.time && <span className="rp2__pill">⏱ {recipe.time}</span>}
+                {recipe.servings && <span className="rp2__pill">🍽 {recipe.servings} serv.</span>}
               </div>
             </div>
           </div>
+          {editing !== 'photo' && (
+            <button className="rp2__photo-edit-btn" onClick={() => setEditing('photo')} title="Change photo">✎</button>
+          )}
         </div>
-      </EditableSection>
-
-      {/* Title */}
-      <div className="rp2__header">
-        <h1 className="rp2__title">{recipe.name}</h1>
-        {recipe.link && <a href={recipe.link} target="_blank" rel="noopener noreferrer" className="rp2__link">View original →</a>}
+        {editing === 'photo' && (
+          <PhotoEditor recipe={recipe} onSaved={r => { setRecipe(prev => ({ ...prev, coverImage: r.coverImage || r.cover_image_url })); setEditing(null); }} onCancel={() => setEditing(null)} />
+        )}
       </div>
 
-      {/* Two-column body */}
-      <div className="rp2__body">
-        {/* Ingredients sidebar */}
-        {bodyIngredients?.length > 0 && (
-          <EditableSection onEdit={onEdit} className="rp2__ingredients">
-            <h2 className="rp2__section-title">Ingredients</h2>
-            {Object.entries(ingGroups).map(([group, ings]) => (
-              <div key={group} className="rp2__ing-group">
-                {group && <p className="rp2__ing-group-label">{group}</p>}
-                <ul className="rp-ing-list">
-                  {ings.map(ing => {
-                    const checked = checkedIngs.has(ing.id);
-                    return (
-                      <li key={ing.id} className={`rp-ing-item ${checked ? 'rp-ing-item--checked' : ''}`} onClick={() => toggleIng(ing.id)}>
-                        <div className={`rp-ing-item__checkbox ${checked ? 'rp-ing-item__checkbox--checked' : ''}`}>{checked && '✓'}</div>
-                        <div className="rp-ing-item__body">
-                          <span className="rp-ing-item__text">{formatAmount(ing)} {ing.name}</span>
-                          {ing.optional && <span className="rp-ing-item__optional">optional</span>}
-                          {ing.prep_note && <span className="rp-ing-item__prep">{ing.prep_note}</span>}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-          </EditableSection>
+      {/* Title / Meta */}
+      <div className="rp2__header">
+        {editing === 'meta' ? (
+          <MetaEditor recipe={recipe} onSaved={(r, tags) => handleSaved(r, tags)} onCancel={() => setEditing(null)} />
+        ) : (
+          <div className="rp2__header-view">
+            <div className="rp2__header-title-row">
+              <h1 className="rp2__title">{recipe.name}</h1>
+              <button className="rp-section-pencil" onClick={() => setEditing('meta')} title="Edit">✏</button>
+            </div>
+            {recipe.link && <a href={recipe.link} target="_blank" rel="noopener noreferrer" className="rp2__link">View original →</a>}
+            {recipe.status && <span className="rp2__status-badge">{recipe.status}</span>}
+          </div>
         )}
+      </div>
 
-        {/* Instructions main column */}
-        <div className="rp2__instructions-col">
-          {instructions?.length > 0 && (
-            <EditableSection onEdit={onEdit}>
-              <h2 className="rp2__section-title">Instructions</h2>
+      {/* Full-width body */}
+      <div className="rp2__body-full">
+        {/* Ingredients */}
+        <Section title="Ingredients" onEdit={() => setEditing('ingredients')} editing={editing === 'ingredients'}>
+          {editing === 'ingredients' ? (
+            <IngredientsEditor recipe={recipe} bodyIngredients={bodyIngredients} allIngredients={allIngredients} onSaved={handleIngsSaved} onCancel={() => setEditing(null)} />
+          ) : (
+            bodyIngredients.length > 0 ? (
+              Object.entries(ingGroups).map(([group, ings]) => (
+                <div key={group} className="rp2__ing-group">
+                  {group && <p className="rp2__ing-group-label">{group}</p>}
+                  <ul className="rp-ing-list">
+                    {ings.map(ing => {
+                      const checked = checkedIngs.has(ing.id);
+                      return (
+                        <li key={ing.id} className={`rp-ing-item ${checked ? 'rp-ing-item--checked' : ''}`} onClick={() => toggleIng(ing.id)}>
+                          <div className={`rp-ing-item__checkbox ${checked ? 'rp-ing-item__checkbox--checked' : ''}`}>{checked && '✓'}</div>
+                          <div className="rp-ing-item__body">
+                            <span className="rp-ing-item__text">{formatAmount(ing)} {ing.name}</span>
+                            {ing.optional && <span className="rp-ing-item__optional">optional</span>}
+                            {ing.prep_note && <span className="rp-ing-item__prep">{ing.prep_note}</span>}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))
+            ) : <p style={{ color: 'var(--warm-gray)', fontSize: 14 }}>No ingredients yet.</p>
+          )}
+        </Section>
+
+        {/* Instructions */}
+        <Section title="Instructions" onEdit={() => setEditing('instructions')} editing={editing === 'instructions'}>
+          {editing === 'instructions' ? (
+            <InstructionsEditor recipe={recipe} instructions={instructions} onSaved={handleInstrSaved} onCancel={() => setEditing(null)} />
+          ) : (
+            instructions.length > 0 ? (
               <ol className="rp-steps">
-                {instructions.map((step) => {
+                {instructions.map(step => {
                   const done = checkedSteps.has(step.id);
                   return (
                     <li key={step.id} className={`rp-step ${done ? 'rp-step--done' : ''}`} onClick={() => toggleStep(step.id)}>
@@ -270,22 +632,26 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, loading, onB
                   );
                 })}
               </ol>
-            </EditableSection>
+            ) : <p style={{ color: 'var(--warm-gray)', fontSize: 14 }}>No instructions yet.</p>
           )}
-        </div>
-      </div>
+        </Section>
 
-      {/* Notes */}
-      {notes?.length > 0 && (
-        <EditableSection onEdit={onEdit} className="rp2__notes">
-          <h2 className="rp2__section-title">Notes &amp; Tips</h2>
-          <ul className="rp2__notes-list">
-            {notes.map((n, i) => (
-              <li key={i} className="rp2__notes-item">{n.text ?? n.body_text ?? n}</li>
-            ))}
-          </ul>
-        </EditableSection>
-      )}
+        {/* Notes */}
+        {(notes.length > 0 || editing === 'notes') && (
+          <Section title="Notes &amp; Tips" onEdit={() => setEditing('notes')} editing={editing === 'notes'}>
+            {editing === 'notes' ? (
+              <NotesEditor recipe={recipe} notes={notes} onSaved={handleNotesSaved} onCancel={() => setEditing(null)} />
+            ) : (
+              <ul className="rp2__notes-list">
+                {notes.map((n, i) => <li key={i} className="rp2__notes-item">{n.text ?? n.body_text ?? n}</li>)}
+              </ul>
+            )}
+          </Section>
+        )}
+        {notes.length === 0 && editing !== 'notes' && (
+          <button className="rp2__add-notes-btn" onClick={() => setEditing('notes')}>+ Add notes</button>
+        )}
+      </div>
     </main>
   );
 };
@@ -450,260 +816,6 @@ const SortableItem = ({ id, children }) => {
   );
 };
 
-// ─── Recipe Editor ──────────────────────────────────────────────────────────
-const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredients, onBack, onSaved }) => {
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  const [details, setDetails] = useState({
-    name: recipe?.name || '',
-    cuisine: recipe?.cuisine || '',
-    time: recipe?.time || '',
-    servings: recipe?.servings || '',
-    calories: recipe?.calories ?? '',
-    protein: recipe?.protein ?? '',
-    cover_image_url: recipe?.coverImage || '',
-  });
-
-  const [ings, setIngs] = useState(() =>
-    (bodyIngredients || []).map((i, idx) => ({ ...i, _id: `ing-${idx}` }))
-  );
-  const [steps, setSteps] = useState(() =>
-    (instructions || []).map((s, idx) => ({ ...s, _id: `step-${idx}` }))
-  );
-  const [notesList, setNotesList] = useState(() =>
-    (notes || []).map((n, idx) => ({ ...n, _id: `note-${idx}` }))
-  );
-
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [showImageInput, setShowImageInput] = useState(false);
-
-  const setDetail = (k, v) => setDetails(prev => ({ ...prev, [k]: v }));
-
-  const addIng = () => setIngs(prev => [...prev, {
-    _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '',
-  }]);
-  const updateIng = (id, k, v) => setIngs(prev => prev.map(i => i._id === id ? { ...i, [k]: v } : i));
-  const removeIng = (id) => setIngs(prev => prev.filter(i => i._id !== id));
-  const onIngDragEnd = ({ active, over }) => {
-    if (over && active.id !== over.id) {
-      setIngs(prev => {
-        const oldIdx = prev.findIndex(i => i._id === active.id);
-        const newIdx = prev.findIndex(i => i._id === over.id);
-        return arrayMove(prev, oldIdx, newIdx);
-      });
-    }
-  };
-
-  const addStep = () => setSteps(prev => [...prev, {
-    _id: `step-new-${Date.now()}`, step_number: prev.length + 1, body_text: '',
-  }]);
-  const updateStep = (id, v) => setSteps(prev => prev.map(s => s._id === id ? { ...s, body_text: v } : s));
-  const removeStep = (id) => setSteps(prev => prev.filter(s => s._id !== id));
-  const onStepDragEnd = ({ active, over }) => {
-    if (over && active.id !== over.id) {
-      setSteps(prev => {
-        const oldIdx = prev.findIndex(s => s._id === active.id);
-        const newIdx = prev.findIndex(s => s._id === over.id);
-        return arrayMove(prev, oldIdx, newIdx);
-      });
-    }
-  };
-
-  const addNote = () => setNotesList(prev => [...prev, { _id: `note-new-${Date.now()}`, text: '' }]);
-  const updateNote = (id, v) => setNotesList(prev => prev.map(n => n._id === id ? { ...n, text: v } : n));
-  const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id));
-
-  const save = async () => {
-    setSaving(true);
-    setSaveError(null);
-    setSaveSuccess(false);
-    try {
-      const payload = {
-        details,
-        ingredients: ings.map((i, idx) => ({ ...i, order_index: idx })),
-        instructions: steps.map((s, idx) => ({ ...s, step_number: idx + 1 })),
-        notes: notesList.map((n, idx) => ({ ...n, order_index: idx })),
-      };
-      const res = await fetch(`${API}/api/recipes/${recipe.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Save failed');
-      setSaveSuccess(true);
-      if (onSaved) onSaved(data.recipe);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (e) {
-      setSaveError(e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const groupLabels = [...new Set(ings.map(i => i.group_label).filter(Boolean))];
-
-  return (
-    <main className="view editor-page rp2">
-      <div className="rp2__hero ed-hero">
-        {details.cover_image_url
-          ? <img className="rp2__hero-img" src={details.cover_image_url} alt={details.name} />
-          : <div className="rp2__hero-placeholder">🍳</div>}
-        <div className="rp2__hero-overlay">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <button className="rp2__back" style={{ background: 'rgba(0,0,0,0.4)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }} onClick={onBack}>← Back</button>
-            <button className="ed-hero__img-btn" onClick={() => setShowImageInput(v => !v)}>📷 Change Photo</button>
-          </div>
-          {showImageInput && (
-            <div className="ed-hero__img-popover">
-              <input
-                className="editor-input"
-                value={details.cover_image_url}
-                onChange={e => setDetail('cover_image_url', e.target.value)}
-                placeholder="https://..."
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div style={{ padding: '20px 24px 0' }}>
-        {saveError && <p className="editor-error">⚠️ {saveError}</p>}
-        {saveSuccess && <p className="editor-success">✓ Saved successfully</p>}
-      </div>
-
-      {/* Details */}
-      <section className="editor-section" style={{ padding: '0 24px' }}>
-        <h3 className="editor-section__title">Details</h3>
-        <div className="ed-meta-row">
-          <label className="ed-meta-field">
-            <span className="ed-meta-label">📝 Name</span>
-            <input className="editor-input ed-meta-input" value={details.name} onChange={e => setDetail('name', e.target.value)} placeholder="Recipe name" />
-          </label>
-          <label className="ed-meta-field">
-            <span className="ed-meta-label">🌍 Cuisine</span>
-            <select className="editor-input editor-select ed-meta-input" value={details.cuisine} onChange={e => setDetail('cuisine', e.target.value)}>
-              <option value="">— none —</option>
-              {ALL_CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </label>
-          <label className="ed-meta-field">
-            <span className="ed-meta-label">⏱ Time</span>
-            <input className="editor-input ed-meta-input" value={details.time} onChange={e => setDetail('time', e.target.value)} placeholder="45 mins" />
-          </label>
-          <label className="ed-meta-field">
-            <span className="ed-meta-label">🍽 Servings</span>
-            <input className="editor-input ed-meta-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" />
-          </label>
-          <label className="ed-meta-field">
-            <span className="ed-meta-label">🔥 Calories</span>
-            <input className="editor-input ed-meta-input" type="number" value={details.calories} onChange={e => setDetail('calories', e.target.value)} placeholder="kcal" />
-          </label>
-          <label className="ed-meta-field">
-            <span className="ed-meta-label">💪 Protein</span>
-            <input className="editor-input ed-meta-input" type="number" value={details.protein} onChange={e => setDetail('protein', e.target.value)} placeholder="g" />
-          </label>
-        </div>
-      </section>
-
-      {/* Ingredients */}
-      <section className="editor-section" style={{ padding: '0 24px' }}>
-        <h3 className="editor-section__title">Ingredients</h3>
-        <div className="editor-ing-header">
-          <span>Qty</span><span>Unit</span><span>Name</span><span>Group</span><span>Prep note</span><span>Opt.</span><span></span>
-        </div>
-        <datalist id="group-labels">{groupLabels.map(g => <option key={g} value={g} />)}</datalist>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onIngDragEnd}>
-          <SortableContext items={ings.map(i => i._id)} strategy={verticalListSortingStrategy}>
-            {ings.map(ing => (
-              <SortableItem key={ing._id} id={ing._id}>
-                <div className="editor-ing-row">
-                  <input className="editor-input editor-input--sm" value={ing.amount || ''} onChange={e => updateIng(ing._id, 'amount', e.target.value)} placeholder="2" />
-                  <UnitAutocomplete value={ing.unit || ''} onChange={v => updateIng(ing._id, 'unit', v)} />
-                  <IngredientAutocomplete value={ing.name || ''} onChange={v => updateIng(ing._id, 'name', v)} allIngredients={allIngredients} />
-                  <div className="editor-group-wrap">
-                    <input className="editor-input" value={ing.group_label || ''} onChange={e => updateIng(ing._id, 'group_label', e.target.value)} placeholder="e.g. Sauce" list="group-labels" />
-                    {groupLabels.length > 0 && (
-                      <div className="editor-group-chips">
-                        {groupLabels.map(g => (
-                          <button key={g} className={`editor-group-chip ${ing.group_label === g ? 'editor-group-chip--active' : ''}`}
-                            onClick={() => updateIng(ing._id, 'group_label', ing.group_label === g ? '' : g)}>{g}</button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <input className="editor-input" value={ing.prep_note || ''} onChange={e => updateIng(ing._id, 'prep_note', e.target.value)} placeholder="finely chopped" />
-                  <button
-                    className={`editor-optional-btn ${ing.optional ? 'editor-optional-btn--on' : ''}`}
-                    onClick={() => updateIng(ing._id, 'optional', !ing.optional)}
-                    title="Mark as optional"
-                  >{ing.optional ? '✓' : '○'}</button>
-                  <button className="editor-remove-btn" onClick={() => removeIng(ing._id)}>✕</button>
-                </div>
-              </SortableItem>
-            ))}
-          </SortableContext>
-        </DndContext>
-        <button className="btn btn--ghost editor-add-btn" onClick={addIng}>+ Add Ingredient</button>
-      </section>
-
-      {/* Instructions */}
-      <section className="editor-section" style={{ padding: '0 24px' }}>
-        <h3 className="editor-section__title">Instructions</h3>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
-          <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
-            {steps.map((step, idx) => (
-              <SortableItem key={step._id} id={step._id}>
-                <div className="editor-step-row">
-                  <span className="editor-step-num">{idx + 1}</span>
-                  <textarea
-                    className="editor-textarea"
-                    value={step.body_text}
-                    onChange={e => updateStep(step._id, e.target.value)}
-                    placeholder="Describe this step…"
-                    rows={2}
-                  />
-                  <button className="editor-remove-btn" onClick={() => removeStep(step._id)}>✕</button>
-                </div>
-              </SortableItem>
-            ))}
-          </SortableContext>
-        </DndContext>
-        <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
-      </section>
-
-      {/* Notes */}
-      <section className="editor-section" style={{ padding: '0 24px' }}>
-        <h3 className="editor-section__title">Notes &amp; Modifications</h3>
-        {notesList.map(note => (
-          <div key={note._id} className="editor-note-row">
-            <input
-              className="editor-input"
-              value={note.text || ''}
-              onChange={e => updateNote(note._id, e.target.value)}
-              placeholder='e.g. Works great with tofu instead of chicken'
-            />
-            <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>✕</button>
-          </div>
-        ))}
-        <button className="btn btn--ghost editor-add-btn" onClick={addNote}>+ Add Note</button>
-      </section>
-
-      <div className="editor-save-bar">
-        {saveError && <p className="editor-error">⚠️ {saveError}</p>}
-        {saveSuccess && <p className="editor-success">✓ Saved successfully</p>}
-        <button className="btn btn--primary btn--large" onClick={save} disabled={saving}>
-          {saving ? 'Saving…' : 'Save Changes'}
-        </button>
-      </div>
-    </main>
-  );
-};
 
 // ─── Cuisine Dropdown ───────────────────────────────────────────────────────
 const CuisineDropdown = ({ cuisines, value, onChange, onCreateNew }) => {
@@ -1105,7 +1217,6 @@ function AppInner() {
   const [recipeBodyIngredients, setRecipeBodyIngredients] = useState([]);
   const [recipeInstructions, setRecipeInstructions] = useState([]);
   const [recipeNotes, setRecipeNotes] = useState([]);
-  const [editingRecipe, setEditingRecipe] = useState(false);
   const [recipeLoading, setRecipeLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -1304,7 +1415,7 @@ function AppInner() {
         </div>
       </header>
 
-      {view === 'recipe' && !editingRecipe && (
+      {view === 'recipe' && (
         <RecipePage
           recipe={selectedRecipe}
           bodyIngredients={recipeBodyIngredients}
@@ -1312,25 +1423,13 @@ function AppInner() {
           notes={recipeNotes}
           loading={recipeLoading}
           onBack={() => setView(lastView)}
-          onEdit={() => setEditingRecipe(true)}
           isHearted={selectedRecipe ? heartedIds.includes(selectedRecipe.id) : false}
           onToggleHeart={() => selectedRecipe && toggleHeart(selectedRecipe.id)}
-        />
-      )}
-
-      {view === 'recipe' && editingRecipe && (
-        <RecipeEditor
-          recipe={selectedRecipe}
-          bodyIngredients={recipeBodyIngredients}
-          instructions={recipeInstructions}
-          notes={recipeNotes}
           allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
-          onBack={() => setEditingRecipe(false)}
-          onSaved={async (updated) => {
-            setSelectedRecipe(updated);
-            setEditingRecipe(false);
+          onReload={async () => {
+            if (!selectedRecipe) return;
             try {
-              const res = await fetch(`${API}/api/recipes/${updated.id}`);
+              const res = await fetch(`${API}/api/recipes/${selectedRecipe.id}`);
               const data = await res.json();
               setSelectedRecipe(data.recipe);
               setRecipeBodyIngredients(data.bodyIngredients || []);
