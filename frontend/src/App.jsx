@@ -68,26 +68,14 @@ const PROGRESS_FILTERS = [
 // Cuisine filter chips — concise list for the filter panel
 const CUISINE_FILTERS = [
   { key: 'Asian',          label: '🍜 Asian'         },
-  { key: 'Chinese',        label: '🥡 Chinese'       },
-  { key: 'Japanese',       label: '🍣 Japanese'      },
-  { key: 'Korean',         label: '🥢 Korean'        },
-  { key: 'Thai',           label: '🌶 Thai'          },
   { key: 'Indian',         label: '🫕 Indian'        },
   { key: 'Mediterranean',  label: '🫒 Mediterranean' },
-  { key: 'Italian',        label: '🍕 Italian'       },
   { key: 'Mexican',        label: '🌮 Mexican'       },
-  { key: 'American',       label: '🍔 American'      },
-  { key: 'French',         label: '🥐 French'        },
   { key: 'Middle Eastern', label: '🧆 Middle Eastern'},
 ];
 
 // All cuisines available in the recipe editor dropdown
-const ALL_CUISINES = [
-  'American', 'Asian', 'British', 'Caribbean', 'Chinese', 'French', 'Greek',
-  'Indian', 'Italian', 'Japanese', 'Korean', 'Lebanese', 'Mediterranean',
-  'Mexican', 'Middle Eastern', 'Moroccan', 'Persian', 'Spanish',
-  'Thai', 'Turkish', 'Vietnamese',
-].sort();
+const ALL_CUISINES = ['Asian', 'Indian', 'Mediterranean', 'Mexican', 'Middle Eastern',].sort();
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const pct = (score) => Math.round(score * 100);
