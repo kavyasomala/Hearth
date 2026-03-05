@@ -64,20 +64,28 @@ const PROGRESS_FILTERS = [
   { key: '__complete',      label: '✅ Complete'         },
 ];
 
-// Tag keys for cuisine-dropdown exclusion (keep these separate)
-const QUICK_CHIP_KEYS = new Set(TAG_FILTERS.map(f => f.key));
+// Cuisine filter chips — concise list for the filter panel
+const CUISINE_FILTERS = [
+  { key: 'Asian',          label: '🍜 Asian'         },
+  { key: 'Chinese',        label: '🥡 Chinese'       },
+  { key: 'Japanese',       label: '🍣 Japanese'      },
+  { key: 'Korean',         label: '🥢 Korean'        },
+  { key: 'Thai',           label: '🌶 Thai'          },
+  { key: 'Indian',         label: '🫕 Indian'        },
+  { key: 'Mediterranean',  label: '🫒 Mediterranean' },
+  { key: 'Italian',        label: '🍕 Italian'       },
+  { key: 'Mexican',        label: '🌮 Mexican'       },
+  { key: 'American',       label: '🍔 American'      },
+  { key: 'French',         label: '🥐 French'        },
+  { key: 'Middle Eastern', label: '🧆 Middle Eastern'},
+];
 
-// Geographic cuisines for editor + dropdown
-const GEO_CUISINES = [
-  'American', 'British', 'Caribbean', 'Chinese', 'French', 'Greek',
+// All cuisines available in the recipe editor dropdown
+const ALL_CUISINES = [
+  'American', 'Asian', 'British', 'Caribbean', 'Chinese', 'French', 'Greek',
   'Indian', 'Italian', 'Japanese', 'Korean', 'Lebanese', 'Mediterranean',
   'Mexican', 'Middle Eastern', 'Moroccan', 'Persian', 'Spanish',
   'Thai', 'Turkish', 'Vietnamese',
-].sort();
-
-const ALL_CUISINES = [
-  ...GEO_CUISINES,
-  'Basic', 'Dessert', 'Drinks', 'Marinade', 'Party', 'Pasta', 'Soup',
 ].sort();
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -149,19 +157,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, loading, onB
   const [checkedIngs, setCheckedIngs] = useState(new Set());
   const [checkedSteps, setCheckedSteps] = useState(new Set());
 
-  if (loading || !recipe) return (
-    <main className="view rp2">
-      <div className="rp2__topbar">
-        <button className="rp2__back" onClick={onBack}>← Back</button>
-      </div>
-      <div style={{ padding: '40px 24px', color: 'var(--warm-gray)' }}>Loading recipe…</div>
-    </main>
-  );
-
-  const toggleIng = (id) => setCheckedIngs(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
-  const toggleStep = (id) => setCheckedSteps(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
-
-  // Group ingredients by group_label
+  // ALL hooks must be before any early return
   const ingGroups = useMemo(() => {
     const groups = {};
     for (const ing of (bodyIngredients || [])) {
@@ -172,10 +168,18 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, loading, onB
     return groups;
   }, [bodyIngredients]);
 
-  const formatAmount = (ing) => {
-    const parts = [ing.amount, ing.unit].filter(Boolean);
-    return parts.join(' ');
-  };
+  const toggleIng = (id) => setCheckedIngs(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  const toggleStep = (id) => setCheckedSteps(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  const formatAmount = (ing) => [ing.amount, ing.unit].filter(Boolean).join(' ');
+
+  if (loading || !recipe) return (
+    <main className="view rp2">
+      <div className="rp2__topbar">
+        <button className="rp2__back" onClick={onBack}>← Back</button>
+      </div>
+      <div style={{ padding: '40px 24px', color: 'var(--warm-gray)' }}>Loading recipe…</div>
+    </main>
+  );
 
   return (
     <main className="view rp2">
@@ -1109,13 +1113,11 @@ function AppInner() {
   const [activeTag, setActiveTag] = useState(null);
   const [activeProgress, setActiveProgress] = useState(null);
   const [activeCuisine, setActiveCuisine] = useState('');
-  const [customCuisines, setCustomCuisines] = useState(() => LS.get('customCuisines', []));
   const [heartedIds, setHeartedIds] = useState(() => LS.get('heartedIds', []));
   const [libraryPage, setLibraryPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [lastSynced, setLastSynced] = useState(null);
 
-  useEffect(() => { LS.set('customCuisines', customCuisines); }, [customCuisines]);
   useEffect(() => { LS.set('heartedIds', heartedIds); }, [heartedIds]);
   const toggleHeart = (id) => setHeartedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
@@ -1192,7 +1194,15 @@ function AppInner() {
     if (q) list = list.filter(r => r.name.toLowerCase().includes(q));
 
     // Cuisine filter
-    if (activeCuisine) list = list.filter(r => (r.cuisine || '') === activeCuisine);
+    if (activeCuisine) {
+      // Match cuisine chip key against the recipe's cuisine field (case-insensitive, partial for 'Asian')
+      if (activeCuisine === 'Asian') {
+        const ASIAN = ['chinese','japanese','korean','thai','vietnamese','asian','malaysian','indonesian','filipino'];
+        list = list.filter(r => ASIAN.some(a => (r.cuisine || '').toLowerCase().includes(a)));
+      } else {
+        list = list.filter(r => (r.cuisine || '').toLowerCase() === activeCuisine.toLowerCase());
+      }
+    }
 
     // Tag filter — tags array only, not cuisine column
     if (activeTag) {
@@ -1201,7 +1211,7 @@ function AppInner() {
       );
     }
 
-    // Progress filter — uses recipe_incomplete boolean and status string
+    // Progress filter — all based on status string now
     if (activeProgress === '__incomplete') {
       list = list.filter(r => (r.status || '').toLowerCase() === 'incomplete');
     } else if (activeProgress === '__needstweaking') {
@@ -1209,11 +1219,12 @@ function AppInner() {
     } else if (activeProgress === '__favorite') {
       list = list.filter(r => (r.status || '').toLowerCase() === 'favorite');
     } else if (activeProgress === '__complete') {
-      // Complete = not incomplete AND not needs tweaking AND not favorite
+      // Complete = status is not incomplete, needs tweaking, or favorite
+      const s = (r) => (r.status || '').toLowerCase();
       list = list.filter(r =>
-        !r.recipe_incomplete &&
-        !(r.status || '').toLowerCase().includes('tweak') &&
-        (r.status || '').toLowerCase() !== 'favorite'
+        s(r) !== 'incomplete' &&
+        !s(r).includes('tweak') &&
+        s(r) !== 'favorite'
       );
     }
 
@@ -1485,10 +1496,6 @@ function AppInner() {
       )}
 
       {view === 'recipes' && (() => {
-        const allCuisinesFromData = [...new Set(recipes.map(r => r.cuisine).filter(Boolean))].sort();
-        const allCuisinesPool = [...new Set([...GEO_CUISINES, ...allCuisinesFromData, ...customCuisines])].sort();
-        const dropdownCuisines = allCuisinesPool.filter(c => !QUICK_CHIP_KEYS.has(c));
-
         return (
           <main className="view">
             <div className="library-header">
@@ -1557,12 +1564,15 @@ function AppInner() {
                 {/* Cuisine */}
                 <div className="filter-panel__group">
                   <span className="filter-panel__label">Cuisine</span>
-                  <CuisineDropdown
-                    cuisines={dropdownCuisines}
-                    value={activeCuisine}
-                    onChange={c => setActiveCuisine(c)}
-                    onCreateNew={c => setCustomCuisines(prev => prev.includes(c) ? prev : [...prev, c])}
-                  />
+                  <div className="filter-panel__chips">
+                    {CUISINE_FILTERS.map(({ key, label }) => (
+                      <button
+                        key={key}
+                        className={`filter-bar__chip ${activeCuisine === key ? 'filter-bar__chip--active' : ''}`}
+                        onClick={() => setActiveCuisine(prev => prev === key ? '' : key)}
+                      >{label}</button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -1572,7 +1582,7 @@ function AppInner() {
               <div className="active-filter-pills">
                 {activeTag && <span className="active-filter-pill">{TAG_FILTERS.find(f => f.key === activeTag)?.label} <button onClick={() => setActiveTag(null)}>✕</button></span>}
                 {activeProgress && <span className="active-filter-pill">{PROGRESS_FILTERS.find(f => f.key === activeProgress)?.label} <button onClick={() => setActiveProgress(null)}>✕</button></span>}
-                {activeCuisine && <span className="active-filter-pill">🌍 {activeCuisine} <button onClick={() => setActiveCuisine('')}>✕</button></span>}
+                {activeCuisine && <span className="active-filter-pill">{CUISINE_FILTERS.find(f => f.key === activeCuisine)?.label || activeCuisine} <button onClick={() => setActiveCuisine('')}>✕</button></span>}
               </div>
             )}
 
