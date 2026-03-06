@@ -1200,6 +1200,34 @@ function AppInner() {
           {/* ── Right sidebar: Quick Actions FIRST, then Insights ── */}
           <aside className="home-sidebar">
 
+          <div className="insights-card">
+              <h3 className="insights-title">Recipe Insights</h3>
+              <div className="insights-grid">
+                <div className="insight-item insight-item--green">
+                  <span className="insight-item__number">{matches.filter(m => m.canMake).length}</span>
+                  <span className="insight-item__label">Ready to cook</span>
+                  <span className="insight-item__icon">✅</span>
+                </div>
+                <div className="insight-item insight-item--amber">
+                  <span className="insight-item__number">{matches.filter(m => m.matchScore >= 0.7 && !m.canMake).length}</span>
+                  <span className="insight-item__label">Almost ready</span>
+                  <span className="insight-item__icon">🔥</span>
+                </div>
+                <div className="insight-item insight-item--purple">
+                  <span className="insight-item__number">
+                    {recipes.filter(r => { const t = (r.time || '').toLowerCase(); const m = t.match(/(\d+)/); return m && parseInt(m[1]) <= 30; }).length}
+                  </span>
+                  <span className="insight-item__label">Under 30 min</span>
+                  <span className="insight-item__icon">⏱</span>
+                </div>
+                <div className="insight-item insight-item--blue">
+                  <span className="insight-item__number">{recipes.length}</span>
+                  <span className="insight-item__label">Total recipes</span>
+                  <span className="insight-item__icon">📚</span>
+                </div>
+              </div>
+            </div>
+
             <div className="quick-actions-card">
               <h3 className="insights-title">Quick Actions</h3>
               <div className="quick-actions-list">
@@ -1237,34 +1265,6 @@ function AppInner() {
                     <span className="quick-action__arrow">→</span>
                   </button>
                 )}
-              </div>
-            </div>
-
-            <div className="insights-card">
-              <h3 className="insights-title">Recipe Insights</h3>
-              <div className="insights-grid">
-                <div className="insight-item insight-item--blue">
-                  <span className="insight-item__number">{recipes.length}</span>
-                  <span className="insight-item__label">Total recipes</span>
-                  <span className="insight-item__icon">📚</span>
-                </div>
-                <div className="insight-item insight-item--green">
-                  <span className="insight-item__number">{matches.filter(m => m.canMake).length}</span>
-                  <span className="insight-item__label">Ready to cook</span>
-                  <span className="insight-item__icon">✅</span>
-                </div>
-                <div className="insight-item insight-item--amber">
-                  <span className="insight-item__number">{matches.filter(m => m.matchScore >= 0.7 && !m.canMake).length}</span>
-                  <span className="insight-item__label">Almost ready</span>
-                  <span className="insight-item__icon">🔥</span>
-                </div>
-                <div className="insight-item insight-item--purple">
-                  <span className="insight-item__number">
-                    {recipes.filter(r => { const t = (r.time || '').toLowerCase(); const m = t.match(/(\d+)/); return m && parseInt(m[1]) <= 30; }).length}
-                  </span>
-                  <span className="insight-item__label">Under 30 min</span>
-                  <span className="insight-item__icon">⏱</span>
-                </div>
               </div>
             </div>
 
