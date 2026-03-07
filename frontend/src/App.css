@@ -1035,7 +1035,7 @@ body {
 .rp2__step-body { font-size: 15px; line-height: 1.65; color: var(--charcoal); flex: 1; }
 
 /* Notes */
-.rp2__notes { padding: 20px 24px; max-width: 760px; }
+.rp2__notes { padding: 20px 24px; }
 .rp2__notes-list { list-style: none; display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; }
 .rp2__notes-item {
   display: flex; gap: 10px; font-size: 14px; line-height: 1.55; color: var(--charcoal);
@@ -1086,20 +1086,65 @@ body {
 .rp2__hero-heart { font-size: 18px; padding: 7px 10px; }
 .rp2__hero-heart--on { color: #ff6b8a; }
 
-/* ─── Editable sections ──────────────────────────────────────────────────── */
-.editable-section { position: relative; border-radius: var(--radius-sm); }
+/* ─── Section Pencil (inline per-section edit) ───────────────────────────── */
+.rp2__section-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.rp2__section-title-row .rp2__section-title { margin-bottom: 0; }
+.rp2__title-row { display: flex; align-items: baseline; gap: 10px; }
 
-.editable-section__pencil {
-  position: absolute; top: 8px; right: 8px; width: 30px; height: 30px;
-  border-radius: 50%; border: 1.5px solid var(--border); background: var(--warm-white);
-  font-size: 13px; cursor: pointer; display: none; align-items: center; justify-content: center;
-  box-shadow: var(--shadow); transition: all 0.15s ease; z-index: 10;
+.section-pencil-wrap { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+.section-pencil {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 1.5px solid transparent; background: transparent;
+  font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--warm-gray); opacity: 0.15;
+  transition: all 0.15s ease; flex-shrink: 0; padding: 0; line-height: 1;
 }
-.editable-section:hover .editable-section__pencil { display: flex; }
-.editable-section__pencil:hover { background: var(--terracotta); border-color: var(--terracotta); color: white; transform: scale(1.1); }
-.rp2__hero-wrap { overflow: visible; border-radius: 0; }
+.rp2__section-title-row:hover .section-pencil,
+.rp2__title-row:hover .section-pencil { opacity: 1; }
+.section-pencil:hover { background: var(--parchment); border-color: var(--border); opacity: 1; }
+.section-pencil--confirm { color: var(--sage); opacity: 1 !important; border-color: var(--sage-light); background: #f2faf4; font-weight: 700; }
+.section-pencil--confirm:hover { background: var(--sage); color: white; }
+.section-pencil--cancel { color: var(--warm-gray); opacity: 1 !important; }
+.section-pencil--cancel:hover { background: var(--parchment); color: var(--charcoal); }
 
-.rp2__hero-wrap .editable-section__pencil { display: none !important; }
+/* ─── Inline ingredient editor cards ────────────────────────────────────── */
+.rp2__ing-editor { display: flex; flex-direction: column; gap: 8px; }
+.rp2__ing-edit-card {
+  background: var(--cream); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.rp2__ing-edit-row1 { display: flex; gap: 6px; align-items: center; }
+.rp2__ing-edit-row1 .ing-ac-wrap { flex: 2; }
+.rp2__ing-edit-row2 { display: flex; gap: 6px; align-items: center; }
+.rp2__ing-edit-row2 .editor-input { font-size: 12px; padding: 5px 8px; }
+
+/* ─── Inline step / note editor rows ────────────────────────────────────── */
+.rp2__inline-editor { display: flex; flex-direction: column; gap: 8px; }
+.rp2__ed-step-row { display: flex; gap: 8px; align-items: flex-start; }
+.rp2__ed-note-row { display: flex; gap: 6px; align-items: center; }
+
+/* ─── Title input ────────────────────────────────────────────────────────── */
+.rp2__title-input {
+  font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--charcoal);
+  border: none; border-bottom: 2px dashed var(--terracotta-light); background: transparent;
+  outline: none; width: 100%; padding: 2px 0;
+}
+
+/* ─── Image edit overlay ─────────────────────────────────────────────────── */
+.rp2__hero-img-edit { position: relative; width: 100%; }
+.rp2__hero-img-popover {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  width: min(360px, 90%); background: var(--warm-white); border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow-lg); z-index: 30;
+}
+.rp2__hero-img-label { font-size: 12px; font-weight: 700; color: var(--warm-gray); margin-bottom: 6px; }
+.rp2__hero-img-actions { display: flex; gap: 8px; margin-top: 8px; }
+.rp2__hero-img-actions .section-pencil { width: auto; border-radius: 6px; padding: 4px 12px; font-size: 13px; opacity: 1; }
+
+/* ─── Empty hint ─────────────────────────────────────────────────────────── */
+.rp2__empty-hint { font-size: 13px; color: var(--warm-gray); padding: 8px 0; font-style: italic; }
 
 /* ─── Editor hero ────────────────────────────────────────────────────────── */
 .ed-hero { position: relative; cursor: default; }
