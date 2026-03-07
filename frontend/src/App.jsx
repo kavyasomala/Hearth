@@ -45,7 +45,7 @@ const COMMON_UNITS = [
   'rasher', 'fillet', 'fillets', 'sheet', 'sheets',
 ];
 
-c// ── Tag filters — match against recipe's tags array only (not cuisine column)
+// ── Tag filters — match against recipe's tags array only (not cuisine column)
 const TAG_FILTERS = [
   { key: 'Meals',    label: '🍽 Meals'    },
   { key: 'Dessert',  label: '🍰 Desserts' },
