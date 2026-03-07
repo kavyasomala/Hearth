@@ -639,16 +639,21 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               )}
             </div>
 
-            {/* Cookbook Reference — only shown if cookbook data exists */}
-            {(recipe.cookbook || recipe.page_number) && (
-              <div className="rp2__cookbook">
-                <h2 className="rp2__section-title rp2__cookbook-title">📖 Cookbook</h2>
+            {/* Cookbook Reference — always shown */}
+            <div className="rp2__cookbook">
+              <h2 className="rp2__section-title rp2__cookbook-title">📖 Cookbook</h2>
+              {(recipe.cookbook || recipe.page_number) ? (
                 <div className="rp2__cookbook-card">
                   {recipe.cookbook && <p className="rp2__cookbook-name">{recipe.cookbook}</p>}
                   {recipe.page_number && <p className="rp2__cookbook-page">p. {recipe.page_number}</p>}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="rp2__cookbook-empty">
+                  <p className="rp2__cookbook-prompt">No reference yet</p>
+                  <p className="rp2__cookbook-hint">Add a cookbook &amp; page number, or a link to a YouTube video or online recipe via the database.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1331,6 +1336,7 @@ const SiteFooter = ({ onNav }) => {
 function AppInner() {
   const [view, setView] = useState('home');
   const [lastView, setLastView] = useState('home');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => { document.title = 'Hearth'; }, []);
   const [allIngredients, setAllIngredients] = useState([]);
@@ -1475,6 +1481,7 @@ function AppInner() {
             <span className="app-header__logo">🔥</span>
             <span className="app-header__title">Hearth</span>
           </button>
+          {/* Desktop nav */}
           <nav className="nav-tabs">
             {[
               { key: 'home',     label: 'Home'         },
@@ -1491,7 +1498,35 @@ function AppInner() {
               </button>
             ))}
           </nav>
+          {/* Mobile hamburger */}
+          <button className="mobile-menu-btn" onClick={() => setMobileNavOpen(o => !o)} aria-label="Menu">
+            <span className="mobile-menu-btn__bar" />
+            <span className="mobile-menu-btn__bar" />
+            <span className="mobile-menu-btn__bar" />
+          </button>
         </div>
+        {/* Mobile nav drawer */}
+        {mobileNavOpen && (
+          <nav className="mobile-nav-drawer">
+            {[
+              { key: 'home',     label: '🏠 Home'       },
+              { key: 'recipes',  label: '📖 Recipes'    },
+              { key: 'kitchen',  label: '🧑‍🍳 Kitchen'   },
+              { key: 'grocery',  label: '🛒 Grocery'    },
+              { key: 'log',      label: '📓 Cook Log'   },
+              { key: 'profile',  label: '👤 Profile'    },
+              { key: 'add',      label: '➕ Add'        },
+              { key: 'settings', label: '⚙️ Settings'   },
+            ].map(({ key, label }) => (
+              <button key={key}
+                className={`mobile-nav-item ${view === key ? 'mobile-nav-item--active' : ''}`}
+                onClick={() => { setView(key); setMobileNavOpen(false); }}
+                disabled={key === 'recipes' && recipes.length === 0}>
+                {label}
+              </button>
+            ))}
+          </nav>
+        )}
       </header>
 
       {view === 'recipe' && !editingRecipe && (
@@ -1728,8 +1763,7 @@ function AppInner() {
       )}
 
       {view === 'recipes' && (() => {
-        const allCuisinesFromData = [...new Set(recipes.map(r => r.cuisine).filter(Boolean))].sort();
-        const allCuisinesPool = [...new Set([...GEO_CUISINES, ...allCuisinesFromData, ...customCuisines])].filter(c => c !== 'Basic').sort();
+        const allCuisinesPool = GEO_CUISINES; // strictly geo only — DB cuisine values are not shown as filters
         const PAGE_SIZE = 25;
         const totalPages = Math.max(1, Math.ceil(libraryRecipes.length / PAGE_SIZE));
         const safePage = Math.min(libraryPage, totalPages);
@@ -1820,32 +1854,52 @@ function AppInner() {
                           onClick={() => setCalDir(d)}>{d}</button>
                       ))}
                     </div>
-                    {maxCalories !== null && <span className="filter-panel__slider-val">{maxCalories} kcal</span>}
-                    {maxCalories !== null && <button className="filter-panel__clear-slider" onClick={() => setMaxCalories(null)}>✕</button>}
+                    {maxCalories !== null && <button className="filter-panel__clear-slider" onClick={() => setMaxCalories(null)}>✕ clear</button>}
                   </div>
-                  <input type="range" className="filter-panel__slider" min={100} max={1500} step={50}
-                    value={maxCalories ?? 800}
-                    onChange={e => setMaxCalories(Number(e.target.value))}
-                    onMouseDown={() => { if (maxCalories === null) setMaxCalories(800); }}
-                    onTouchStart={() => { if (maxCalories === null) setMaxCalories(800); }}
-                  />
-                  <div className="filter-panel__slider-range"><span>100</span><span>1500 kcal</span></div>
+                  <div className="filter-panel__slider-wrap">
+                    <span className="filter-panel__slider-edge">100</span>
+                    <div className="filter-panel__slider-track">
+                      {maxCalories !== null && (
+                        <div className="filter-panel__slider-bubble"
+                          style={{ left: `${((maxCalories - 100) / 1400) * 100}%` }}>
+                          {calDir} {maxCalories} kcal
+                        </div>
+                      )}
+                      <input type="range" className="filter-panel__slider" min={100} max={1500} step={50}
+                        value={maxCalories ?? 800}
+                        onChange={e => setMaxCalories(Number(e.target.value))}
+                        onMouseDown={() => { if (maxCalories === null) setMaxCalories(800); }}
+                        onTouchStart={() => { if (maxCalories === null) setMaxCalories(800); }}
+                      />
+                    </div>
+                    <span className="filter-panel__slider-edge">1500</span>
+                  </div>
                 </div>
 
                 {/* Time slider */}
                 <div className="filter-panel__group">
                   <div className="filter-panel__slider-header">
                     <span className="filter-panel__label">Time</span>
-                    {maxMinutes !== null && <span className="filter-panel__slider-val">under {maxMinutes} min</span>}
-                    {maxMinutes !== null && <button className="filter-panel__clear-slider" onClick={() => setMaxMinutes(null)}>✕</button>}
+                    {maxMinutes !== null && <button className="filter-panel__clear-slider" onClick={() => setMaxMinutes(null)}>✕ clear</button>}
                   </div>
-                  <input type="range" className="filter-panel__slider" min={10} max={180} step={5}
-                    value={maxMinutes ?? 60}
-                    onChange={e => setMaxMinutes(Number(e.target.value))}
-                    onMouseDown={() => { if (maxMinutes === null) setMaxMinutes(60); }}
-                    onTouchStart={() => { if (maxMinutes === null) setMaxMinutes(60); }}
-                  />
-                  <div className="filter-panel__slider-range"><span>10 min</span><span>180 min</span></div>
+                  <div className="filter-panel__slider-wrap">
+                    <span className="filter-panel__slider-edge">10m</span>
+                    <div className="filter-panel__slider-track">
+                      {maxMinutes !== null && (
+                        <div className="filter-panel__slider-bubble"
+                          style={{ left: `${((maxMinutes - 10) / 170) * 100}%` }}>
+                          under {maxMinutes} min
+                        </div>
+                      )}
+                      <input type="range" className="filter-panel__slider" min={10} max={180} step={5}
+                        value={maxMinutes ?? 60}
+                        onChange={e => setMaxMinutes(Number(e.target.value))}
+                        onMouseDown={() => { if (maxMinutes === null) setMaxMinutes(60); }}
+                        onTouchStart={() => { if (maxMinutes === null) setMaxMinutes(60); }}
+                      />
+                    </div>
+                    <span className="filter-panel__slider-edge">180m</span>
+                  </div>
                 </div>
               </div>
             )}
