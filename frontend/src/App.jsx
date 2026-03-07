@@ -223,11 +223,87 @@ const SectionPencil = ({ isEditing, onEdit, onSave, onCancel, saving }) => (
   </span>
 );
 
+// ─── Draggable Hero Image ───────────────────────────────────────────────────
+const DraggableHeroImage = ({ src, alt, recipeId, onSaved, recipe, bodyIngredients, instructions, notes }) => {
+  const [offset, setOffset] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`hero-offset-${recipeId}`)) || { x: 50, y: 50 }; } catch { return { x: 50, y: 50 }; }
+  });
+  const [dragging, setDragging] = useState(false);
+  const [isPanMode, setIsPanMode] = useState(false);
+  const startRef = useRef(null);
+  const imgRef = useRef(null);
+
+  const saveOffset = useCallback((o) => {
+    try { localStorage.setItem(`hero-offset-${recipeId}`, JSON.stringify(o)); } catch {}
+  }, [recipeId]);
+
+  const onPointerDown = useCallback((e) => {
+    if (!isPanMode) return;
+    e.preventDefault();
+    setDragging(true);
+    startRef.current = { mx: e.clientX, my: e.clientY, ox: offset.x, oy: offset.y };
+    imgRef.current?.setPointerCapture(e.pointerId);
+  }, [isPanMode, offset]);
+
+  const onPointerMove = useCallback((e) => {
+    if (!dragging || !startRef.current) return;
+    const el = imgRef.current?.parentElement;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    const dx = ((e.clientX - startRef.current.mx) / width) * -100;
+    const dy = ((e.clientY - startRef.current.my) / height) * -100;
+    const next = {
+      x: Math.max(0, Math.min(100, startRef.current.ox + dx)),
+      y: Math.max(0, Math.min(100, startRef.current.oy + dy)),
+    };
+    setOffset(next);
+  }, [dragging]);
+
+  const onPointerUp = useCallback((e) => {
+    if (!dragging) return;
+    setDragging(false);
+    saveOffset(offset);
+  }, [dragging, offset, saveOffset]);
+
+  return (
+    <div
+      className={`rp2__hero-img-wrap ${isPanMode ? 'rp2__hero-img-wrap--pan' : ''} ${dragging ? 'rp2__hero-img-wrap--dragging' : ''}`}
+    >
+      <img
+        ref={imgRef}
+        className="rp2__hero-img"
+        src={src}
+        alt={alt}
+        style={{ objectPosition: `${offset.x}% ${offset.y}%` }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        draggable={false}
+      />
+      {isPanMode && (
+        <div className="rp2__pan-hint">
+          {dragging ? 'Drag to reposition' : 'Click & drag to reposition'}
+        </div>
+      )}
+      <button
+        className={`rp2__pan-toggle ${isPanMode ? 'rp2__pan-toggle--active' : ''}`}
+        onClick={() => setIsPanMode(v => !v)}
+        title={isPanMode ? 'Done repositioning' : 'Reposition image'}
+      >
+        {isPanMode ? '✓ Done' : '⤢ Reposition'}
+      </button>
+    </div>
+  );
+};
+
 // ─── Recipe Page ────────────────────────────────────────────────────────────
-const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon }) => {
+const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon }) => {
   const [checkedIngredients, setCheckedIngredients] = useState(new Set());
   const [doneSteps, setDoneSteps] = useState(new Set());
   const [showIngredientsModal, setShowIngredientsModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   // ── Per-section edit state ──
   const [editingSection, setEditingSection] = useState(null);
@@ -349,10 +425,39 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
     <main className="view rp2">
       {saveError && <p className="editor-error" style={{ margin: '8px 20px 0' }}>⚠️ {saveError}</p>}
 
+      {/* ── Delete Confirmation Modal ── */}
+      {showDeleteConfirm && (
+        <div className="create-modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="delete-confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="delete-confirm-modal__icon">🗑️</div>
+            <h2 className="delete-confirm-modal__title">Delete "{recipe?.name}"?</h2>
+            <p className="delete-confirm-modal__body">
+              This will permanently delete the recipe along with all its ingredients, instructions, and notes.
+              <strong> This cannot be undone.</strong>
+            </p>
+            {deleteError && <p className="editor-error" style={{ marginTop: 8 }}>⚠️ {deleteError}</p>}
+            <div className="delete-confirm-modal__actions">
+              <button className="btn btn--ghost" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>Cancel</button>
+              <button className="btn btn--danger" onClick={async () => {
+                setDeleting(true); setDeleteError(null);
+                try {
+                  const res = await fetch(`${API}/api/recipes/${recipe.id}`, { method: 'DELETE' });
+                  if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Delete failed'); }
+                  setShowDeleteConfirm(false);
+                  if (onDelete) onDelete(recipe.id);
+                } catch (e) { setDeleteError(e.message); setDeleting(false); }
+              }} disabled={deleting}>
+                {deleting ? 'Deleting…' : '🗑️ Delete forever'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Hero ── */}
       <div className="rp2__hero">
         {recipe.coverImage
-          ? <img className="rp2__hero-img" src={recipe.coverImage} alt={recipe.name} />
+          ? <DraggableHeroImage src={recipe.coverImage} alt={recipe.name} recipeId={recipe.id} onSaved={onSaved} recipe={recipe} bodyIngredients={bodyIngredients} instructions={instructions} notes={notes} />
           : <div className="rp2__hero-placeholder"><span>🍽</span></div>}
 
         <div className="rp2__hero-overlay">
@@ -372,10 +477,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 onClick={e => { e.stopPropagation(); onToggleMakeSoon && onToggleMakeSoon(); }}
                 title={isMakeSoon ? 'Remove from Make Soon' : 'Add to Make Soon'}
               >⏱</button>
-              {/* Change photo — popover opens DOWNWARD from topbar */}
+              {/* Change photo — pencil icon, popover opens DOWNWARD from topbar */}
               <div className="rp2__photo-btn-wrap">
-                <button className="rp2__hero-btn" onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }}>
-                  {isEdit('image') ? '✕ Cancel' : 'Change photo'}
+                <button className="rp2__hero-btn rp2__hero-btn--icon" onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Edit photo">
+                  ✎
                 </button>
                 {isEdit('image') && (
                   <div className="rp2__img-popover-down">
@@ -395,6 +500,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   </div>
                 )}
               </div>
+              {/* Delete recipe */}
+              <button className="rp2__hero-btn rp2__hero-btn--delete" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe">🗑</button>
             </div>
           </div>
 
@@ -1105,11 +1212,96 @@ const TYPE_META = {
   staple:   { label: 'Staples',     emoji: '🌾', group: 'pantry'  },
 };
 
-const FridgeTab = ({ allIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples }) => {
+const IngredientEditModal = ({ ing, onSave, onClose }) => {
+  const isNew = !ing;
+  const [form, setForm] = useState({
+    name:     ing?.name     || '',
+    type:     ing?.type     || 'staple',
+    calories: ing?.calories ?? '',
+    protein:  ing?.protein  ?? '',
+    fiber:    ing?.fiber    ?? '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const save = async () => {
+    if (!form.name.trim()) { setError('Name is required'); return; }
+    setSaving(true); setError(null);
+    try {
+      const payload = {
+        name: form.name.trim(),
+        type: form.type,
+        calories: form.calories === '' ? null : Number(form.calories),
+        protein:  form.protein  === '' ? null : Number(form.protein),
+        fiber:    form.fiber    === '' ? null : Number(form.fiber),
+      };
+      const url = isNew ? `${API}/api/ingredients` : `${API}/api/ingredients/${encodeURIComponent(ing.name)}`;
+      const method = isNew ? 'POST' : 'PUT';
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+      onSave(data.ingredient || payload);
+    } catch (e) { setError(e.message); setSaving(false); }
+  };
+
+  return (
+    <div className="create-modal-overlay" onClick={onClose}>
+      <div className="create-modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+        <div className="create-modal__header">
+          <h2 className="create-modal__title">{isNew ? 'Add Ingredient' : `Edit "${ing.name}"`}</h2>
+          <button className="ing-modal__close" onClick={onClose}>✕</button>
+        </div>
+        <div className="create-modal__body" style={{ gap: 16 }}>
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Name <span className="create-modal__required">*</span></label>
+            <input className="editor-input" value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Olive Oil" autoFocus={isNew} />
+          </div>
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Category</label>
+            <div className="picker__chips" style={{ marginTop: 4 }}>
+              {ALL_TYPES.map(t => (
+                <button key={t}
+                  className={`chip ${form.type === t ? 'chip--selected' : ''}`}
+                  onClick={() => set('type', t)}>
+                  {form.type === t && <span className="chip__check">✓</span>}{TYPE_META[t].emoji} {TYPE_META[t].label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">🔥 Cal <span style={{opacity:0.6,fontWeight:400}}>/ 100g</span></label>
+              <input className="editor-input" type="number" value={form.calories} onChange={e => set('calories', e.target.value)} placeholder="kcal" />
+            </div>
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">💪 Protein <span style={{opacity:0.6,fontWeight:400}}>/ 100g</span></label>
+              <input className="editor-input" type="number" value={form.protein} onChange={e => set('protein', e.target.value)} placeholder="g" />
+            </div>
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">🌿 Fiber <span style={{opacity:0.6,fontWeight:400}}>/ 100g</span></label>
+              <input className="editor-input" type="number" value={form.fiber} onChange={e => set('fiber', e.target.value)} placeholder="g" />
+            </div>
+          </div>
+          <p className="create-modal__field-hint" style={{ marginTop: -4 }}>Nutrition values per 100g — used for automatic recipe nutrition calculation</p>
+          {error && <p className="editor-error">⚠️ {error}</p>}
+        </div>
+        <div className="create-modal__footer">
+          <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : isNew ? '+ Add Ingredient' : '✓ Save Changes'}</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples }) => {
   const [search, setSearch] = useState('');
   const [activeType, setActiveType] = useState(null);
   const [typeOverrides, setTypeOverrides] = useState(() => LS.get('ingredientTypeOverrides', {}));
-  const [renamingIng, setRenamingIng] = useState(null);
+  const [editingIng, setEditingIng] = useState(null); // null = closed, false = new, object = editing
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => { LS.set('ingredientTypeOverrides', typeOverrides); }, [typeOverrides]);
 
@@ -1136,23 +1328,63 @@ const FridgeTab = ({ allIngredients, fridgeIngredients, setFridgeIngredients, pa
     else { setPantryStaples(prev => prev.includes(lower) ? prev.filter(i => i !== lower) : [...prev, lower]); }
   };
 
-  const overrideType = (name, newType) => {
-    setTypeOverrides(prev => ({ ...prev, [name]: newType }));
-    const lower = name.toLowerCase();
-    const isFridgeType = ['produce', 'meat', 'dairy', 'sauce'].includes(newType);
-    if (isFridgeType) { setPantryStaples(prev => prev.filter(i => i !== lower)); setFridgeIngredients(prev => prev.includes(lower) ? prev : [...prev, lower]); }
-    else { setFridgeIngredients(prev => prev.filter(i => i !== lower)); setPantryStaples(prev => prev.includes(lower) ? prev : [...prev, lower]); }
-    setRenamingIng(null);
+  const handleSaveIng = (saved) => {
+    if (editingIng === false) {
+      // new ingredient
+      setAllIngredients(prev => [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)));
+    } else {
+      // edited existing
+      setAllIngredients(prev => prev.map(i => i.name === editingIng.name ? { ...i, ...saved } : i));
+      if (saved.type !== editingIng.type) {
+        setTypeOverrides(prev => ({ ...prev, [saved.name]: saved.type }));
+      }
+    }
+    setEditingIng(null);
+  };
+
+  const handleDeleteIng = async (ing) => {
+    try {
+      const res = await fetch(`${API}/api/ingredients/${encodeURIComponent(ing.name)}`, { method: 'DELETE' });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Delete failed'); }
+      setAllIngredients(prev => prev.filter(i => i.name !== ing.name));
+      setFridgeIngredients(prev => prev.filter(x => x !== ing.name.toLowerCase()));
+      setPantryStaples(prev => prev.filter(x => x !== ing.name.toLowerCase()));
+    } catch (e) { alert('Could not delete: ' + e.message); }
+    setDeleteTarget(null);
   };
 
   return (
     <main className="view">
+      {(editingIng !== null) && (
+        <IngredientEditModal
+          ing={editingIng === false ? null : editingIng}
+          onSave={handleSaveIng}
+          onClose={() => setEditingIng(null)}
+        />
+      )}
+      {deleteTarget && (
+        <div className="create-modal-overlay" onClick={() => setDeleteTarget(null)}>
+          <div className="delete-confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="delete-confirm-modal__icon">🗑️</div>
+            <h2 className="delete-confirm-modal__title">Remove "{deleteTarget.name}"?</h2>
+            <p className="delete-confirm-modal__body">This will remove the ingredient from the database. <strong>This cannot be undone.</strong></p>
+            <div className="delete-confirm-modal__actions">
+              <button className="btn btn--ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
+              <button className="btn btn--danger" onClick={() => handleDeleteIng(deleteTarget)}>🗑️ Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="fridge-header">
         <div>
           <h2 className="fridge-title">My Ingredients</h2>
           <p className="fridge-subtitle">{fridgeIngredients.length} fridge · {pantryStaples.length} pantry items tracked</p>
         </div>
-        <button className="btn btn--ghost btn--sm" onClick={() => { setFridgeIngredients([]); setPantryStaples([]); }}>Clear all</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn--primary btn--sm" onClick={() => setEditingIng(false)}>+ Add ingredient</button>
+          <button className="btn btn--ghost btn--sm" onClick={() => { setFridgeIngredients([]); setPantryStaples([]); }}>Clear selection</button>
+        </div>
       </div>
 
       <div className="fridge-filter-bar">
@@ -1181,32 +1413,32 @@ const FridgeTab = ({ allIngredients, fridgeIngredients, setFridgeIngredients, pa
             <div className="fridge-chips">
               {ings.map(ing => {
                 const isOn = allSelected.has(ing.name.toLowerCase());
+                const hasNutrition = ing.calories != null || ing.protein != null || ing.fiber != null;
                 return (
                   <div key={ing.name} className="fridge-chip-wrap">
                     <button className={`chip ${isOn ? 'chip--selected' : ''}`} onClick={() => toggle(ing.name, typeOverrides[ing.name] ?? ing.type)}>
-                      {isOn && <span className="chip__check">✓</span>}{ing.name}
+                      {isOn && <span className="chip__check">✓</span>}
+                      {ing.name}
+                      {hasNutrition && <span className="fridge-chip__nutrition-dot" title="Has nutrition data">·</span>}
                     </button>
-                    <button className="fridge-retype-btn" title="Change category" onClick={() => setRenamingIng(prev => prev === ing.name ? null : ing.name)}>
-                      {TYPE_META[typeOverrides[ing.name] ?? ing.type]?.emoji ?? '?'}
+                    <button className="fridge-retype-btn" title="Edit ingredient" onClick={() => setEditingIng({ ...ing, type: typeOverrides[ing.name] ?? ing.type })}>
+                      ✎
                     </button>
-                    {renamingIng === ing.name && (
-                      <div className="fridge-type-picker">
-                        <p className="fridge-type-picker__label">Move <strong>{ing.name}</strong> to:</p>
-                        <div className="fridge-type-picker__options">
-                          {ALL_TYPES.map(nt => (
-                            <button key={nt} className={`fridge-type-picker__opt ${(typeOverrides[ing.name] ?? ing.type) === nt ? 'fridge-type-picker__opt--active' : ''}`} onClick={() => overrideType(ing.name, nt)}>
-                              {TYPE_META[nt].emoji} {TYPE_META[nt].label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    <button className="fridge-retype-btn fridge-retype-btn--del" title="Delete ingredient" onClick={() => setDeleteTarget(ing)}>
+                      ✕
+                    </button>
                   </div>
                 );
               })}
             </div>
           </div>
         ))}
+        {Object.keys(grouped).length === 0 && (
+          <div className="fridge-empty">
+            <p>No ingredients found{search ? ` for "${search}"` : ''}.</p>
+            <button className="btn btn--ghost btn--sm" style={{ marginTop: 8 }} onClick={() => setEditingIng(false)}>+ Add one</button>
+          </div>
+        )}
       </div>
     </main>
   );
@@ -1880,6 +2112,12 @@ function AppInner() {
           onToggleHeart={() => selectedRecipe && toggleHeart(selectedRecipe.id)}
           isMakeSoon={selectedRecipe ? makeSoonIds.includes(selectedRecipe.id) : false}
           onToggleMakeSoon={() => selectedRecipe && toggleMakeSoon(selectedRecipe.id)}
+          onDelete={(deletedId) => {
+            setHeartedIds(prev => prev.filter(x => x !== deletedId));
+            setMakeSoonIds(prev => prev.filter(x => x !== deletedId));
+            loadData();
+            setView(lastView);
+          }}
           onSaved={async (updated) => {
             setSelectedRecipe(updated);
             try {
@@ -1913,7 +2151,7 @@ function AppInner() {
       )}
 
       {view === 'kitchen' && (
-        <FridgeTab allIngredients={allIngredients} fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} />
+        <FridgeTab allIngredients={allIngredients} setAllIngredients={setAllIngredients} fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} />
       )}
 
       {/* ══════════════════════════════════════════════════════

@@ -1975,3 +1975,132 @@ body {
 .editor-section--tags {
   padding: 20px 24px;
 }
+
+/* ─── Delete Confirmation Modal ─────────────────────────────────────────── */
+.delete-confirm-modal {
+  background: var(--warm-white);
+  border-radius: 20px;
+  max-width: 440px;
+  width: 100%;
+  padding: 36px 32px 28px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  animation: scaleIn 0.2s cubic-bezier(0.22,1,0.36,1);
+}
+.delete-confirm-modal__icon { font-size: 2.6rem; margin-bottom: 12px; }
+.delete-confirm-modal__title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--charcoal);
+  margin-bottom: 12px;
+}
+.delete-confirm-modal__body {
+  font-size: 0.92rem;
+  color: var(--warm-gray);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+.delete-confirm-modal__body strong { color: #c00; }
+.delete-confirm-modal__actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.btn--danger {
+  padding: 10px 22px;
+  border-radius: 24px;
+  border: none;
+  background: #c0392b;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.btn--danger:hover { background: #a93226; }
+.btn--danger:disabled { opacity: 0.6; cursor: default; }
+
+/* Delete button in hero */
+.rp2__hero-btn--delete {
+  opacity: 0.7;
+  transition: opacity var(--transition), color var(--transition);
+}
+.rp2__hero-btn--delete:hover { opacity: 1; color: #ff6b6b; }
+.rp2__hero-btn--icon {
+  font-size: 1.1rem;
+  letter-spacing: 0;
+}
+
+/* ─── Draggable Hero Image ──────────────────────────────────────────────── */
+.rp2__hero-img-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.rp2__hero-img-wrap .rp2__hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  transition: object-position 0s;
+}
+.rp2__hero-img-wrap--pan .rp2__hero-img {
+  cursor: grab;
+}
+.rp2__hero-img-wrap--dragging .rp2__hero-img {
+  cursor: grabbing;
+}
+.rp2__pan-hint {
+  position: absolute;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 0.78rem;
+  padding: 4px 12px;
+  border-radius: 20px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.rp2__pan-toggle {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background var(--transition);
+  z-index: 3;
+}
+.rp2__pan-toggle:hover { background: rgba(0,0,0,0.7); }
+.rp2__pan-toggle--active { background: var(--terracotta); border-color: var(--terracotta); }
+.rp2__pan-toggle--active:hover { background: var(--terracotta-dark); }
+
+/* ─── Fridge Tab — edit/delete buttons ─────────────────────────────────── */
+.fridge-retype-btn--del {
+  color: var(--warm-gray);
+  opacity: 0.6;
+  font-size: 0.7rem;
+}
+.fridge-retype-btn--del:hover { color: #c0392b; opacity: 1; }
+.fridge-chip__nutrition-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sage);
+  margin-left: 5px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+.fridge-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--warm-gray);
+}

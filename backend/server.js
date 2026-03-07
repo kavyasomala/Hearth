@@ -99,7 +99,9 @@ app.get('/api/recipes', async (req, res) => {
       SELECT
         r.id, r.name, r.cuisine, r.calories, r.protein, r.fiber,
         r.time, r.servings, r.cover_image_url AS "coverImage", r.status,
+        r.recipe_incomplete,
         r.mealpreppable, r.make_soon, r.link,
+        r.cookbook, r.page_number,
         COALESCE(
           (SELECT array_agg(i.name ORDER BY i.name)
            FROM recipe_body_ingredients rbi
@@ -126,11 +128,87 @@ app.get('/api/recipes', async (req, res) => {
 // ─── GET /api/ingredients ───────────────────────────────────────────────────
 app.get('/api/ingredients', async (req, res) => {
   try {
-    const { rows } = await query('SELECT name, type FROM ingredients ORDER BY name ASC;');
+    const { rows } = await query(
+      'SELECT name, type, calories, protein, fiber FROM ingredients ORDER BY name ASC;'
+    );
     res.json({ ingredients: rows });
   } catch (err) {
     console.error('GET /api/ingredients error:', err);
     res.status(500).json({ error: 'Failed to load ingredients' });
+  }
+});
+
+// ─── POST /api/ingredients ──────────────────────────────────────────────────
+app.post('/api/ingredients', async (req, res) => {
+  const { name, type, calories, protein, fiber } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
+  try {
+    const { rows } = await query(
+      `INSERT INTO ingredients (name, type, calories, protein, fiber)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (name) DO UPDATE SET
+         type     = EXCLUDED.type,
+         calories = EXCLUDED.calories,
+         protein  = EXCLUDED.protein,
+         fiber    = EXCLUDED.fiber
+       RETURNING name, type, calories, protein, fiber`,
+      [name.trim().toLowerCase(), type || 'staple', calories ?? null, protein ?? null, fiber ?? null]
+    );
+    res.json({ ingredient: rows[0] });
+  } catch (err) {
+    console.error('POST /api/ingredients error:', err);
+    res.status(500).json({ error: err.message || 'Failed to create ingredient' });
+  }
+});
+
+// ─── PUT /api/ingredients/:name ─────────────────────────────────────────────
+app.put('/api/ingredients/:name', async (req, res) => {
+  const oldName = decodeURIComponent(req.params.name).toLowerCase().trim();
+  const { name, type, calories, protein, fiber } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
+  const newName = name.trim().toLowerCase();
+  try {
+    const { rows } = await query(
+      `UPDATE ingredients SET
+         name     = $1,
+         type     = $2,
+         calories = $3,
+         protein  = $4,
+         fiber    = $5
+       WHERE name = $6
+       RETURNING name, type, calories, protein, fiber`,
+      [newName, type || 'staple', calories ?? null, protein ?? null, fiber ?? null, oldName]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Ingredient not found' });
+    res.json({ ingredient: rows[0] });
+  } catch (err) {
+    console.error('PUT /api/ingredients/:name error:', err);
+    res.status(500).json({ error: err.message || 'Failed to update ingredient' });
+  }
+});
+
+// ─── DELETE /api/ingredients/:name ──────────────────────────────────────────
+app.delete('/api/ingredients/:name', async (req, res) => {
+  const name = decodeURIComponent(req.params.name).toLowerCase().trim();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Remove from all recipe body ingredients first (FK constraint)
+    await client.query(
+      `DELETE FROM recipe_body_ingredients
+       WHERE ingredient_id = (SELECT id FROM ingredients WHERE name = $1)`,
+      [name]
+    );
+    const { rowCount } = await client.query('DELETE FROM ingredients WHERE name = $1', [name]);
+    await client.query('COMMIT');
+    if (!rowCount) return res.status(404).json({ error: 'Ingredient not found' });
+    res.json({ deleted: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('DELETE /api/ingredients/:name error:', err);
+    res.status(500).json({ error: err.message || 'Failed to delete ingredient' });
+  } finally {
+    client.release();
   }
 });
 
@@ -142,7 +220,8 @@ app.get('/api/recipes/:id', async (req, res) => {
       SELECT
         r.id, r.notion_id, r.name, r.cuisine, r.calories, r.protein, r.fiber,
         r.time, r.servings, r.cover_image_url AS "coverImage",
-        r.status, r.mealpreppable, r.make_soon, r.link,
+        r.status, r.recipe_incomplete, r.mealpreppable, r.make_soon, r.link,
+        r.cookbook, r.page_number,
         COALESCE(
           (SELECT array_agg(i.name ORDER BY i.name)
            FROM recipe_body_ingredients rbi
@@ -205,6 +284,107 @@ app.get('/api/recipes/:id', async (req, res) => {
   }
 });
 
+// ─── POST /api/recipes ──────────────────────────────────────────────────────
+app.post('/api/recipes', async (req, res) => {
+  const { details, ingredients, instructions, notes } = req.body;
+  if (!details?.name?.trim()) return res.status(400).json({ error: 'Recipe name is required' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: recipeRows } = await client.query(`
+      INSERT INTO recipes
+        (name, cuisine, time, servings, calories, protein, cover_image_url,
+         status, recipe_incomplete, cookbook, page_number)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      RETURNING id
+    `, [
+      details.name.trim(),
+      details.cuisine || null,
+      details.time || null,
+      details.servings || null,
+      details.calories !== '' && details.calories != null ? Number(details.calories) : null,
+      details.protein  !== '' && details.protein  != null ? Number(details.protein)  : null,
+      details.cover_image_url || null,
+      details.status || null,
+      Boolean(details.recipe_incomplete),
+      details.cookbook || null,
+      details.page_number || null,
+    ]);
+    const newId = recipeRows[0].id;
+
+    // Tags
+    if (Array.isArray(details.tags)) {
+      for (const tagName of details.tags) {
+        const { rows: tagRows } = await client.query(
+          `INSERT INTO tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
+          [tagName]
+        );
+        await client.query(
+          `INSERT INTO recipe_tags (recipe_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [newId, tagRows[0].id]
+        );
+      }
+    }
+
+    // Ingredients
+    if (Array.isArray(ingredients)) {
+      for (const ing of ingredients) {
+        const ingName = ing.name?.trim().toLowerCase();
+        if (!ingName) continue;
+        const { rows: ingRows } = await client.query(
+          `INSERT INTO ingredients (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
+          [ingName]
+        );
+        await client.query(
+          `INSERT INTO recipe_body_ingredients
+             (recipe_id, ingredient_id, amount, unit, prep_note, optional, group_label, order_index)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [newId, ingRows[0].id, ing.amount || null, ing.unit || null,
+           ing.prep_note || null, Boolean(ing.optional), ing.group_label || null, ing.order_index ?? 0]
+        );
+      }
+    }
+
+    // Instructions
+    if (Array.isArray(instructions)) {
+      for (const step of instructions) {
+        if (!step.body_text?.trim()) continue;
+        await client.query(
+          `INSERT INTO instructions (recipe_id, step_number, body_text) VALUES ($1,$2,$3)`,
+          [newId, step.step_number, step.body_text.trim()]
+        );
+      }
+    }
+
+    // Notes
+    if (Array.isArray(notes)) {
+      for (const note of notes) {
+        const text = note.text?.trim() || note.body_text?.trim();
+        if (!text) continue;
+        await client.query(
+          `INSERT INTO notes (recipe_id, order_index, body_text) VALUES ($1,$2,$3)`,
+          [newId, note.order_index ?? 0, text]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+
+    const { rows } = await client.query(
+      `SELECT *, cover_image_url AS "coverImage" FROM recipes WHERE id = $1`, [newId]
+    );
+    res.status(201).json({ recipe: rows[0] });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('POST /api/recipes error:', err);
+    res.status(500).json({ error: err.message || 'Failed to create recipe' });
+  } finally {
+    client.release();
+  }
+});
+
 // ─── PUT /api/recipes/:id ───────────────────────────────────────────────────
 app.put('/api/recipes/:id', async (req, res) => {
   const { id } = req.params;
@@ -214,18 +394,20 @@ app.put('/api/recipes/:id', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // Always update core recipe details
     await client.query(`
       UPDATE recipes SET
-        name             = $1,
-        cuisine          = $2,
-        time             = $3,
-        servings         = $4,
-        calories         = $5,
-        protein          = $6,
-        cover_image_url  = $7,
-        status           = $8
-      WHERE id = $9
+        name              = $1,
+        cuisine           = $2,
+        time              = $3,
+        servings          = $4,
+        calories          = $5,
+        protein           = $6,
+        cover_image_url   = $7,
+        status            = $8,
+        recipe_incomplete = $9,
+        cookbook          = $10,
+        page_number       = $11
+      WHERE id = $12
     `, [
       details.name,
       details.cuisine || null,
@@ -235,13 +417,17 @@ app.put('/api/recipes/:id', async (req, res) => {
       details.protein  !== '' && details.protein  != null ? Number(details.protein)  : null,
       details.cover_image_url || null,
       details.status || null,
+      Boolean(details.recipe_incomplete),
+      details.cookbook || null,
+      details.page_number || null,
       id,
     ]);
 
     // Update tags if provided
-    if (Array.isArray(req.body.tags)) {
+    const tagList = details.tags ?? req.body.tags;
+    if (Array.isArray(tagList)) {
       await client.query('DELETE FROM recipe_tags WHERE recipe_id = $1', [id]);
-      for (const tagName of req.body.tags) {
+      for (const tagName of tagList) {
         const { rows: tagRows } = await client.query(
           `INSERT INTO tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
           [tagName]
@@ -253,7 +439,7 @@ app.put('/api/recipes/:id', async (req, res) => {
       }
     }
 
-    // Only update ingredients/instructions/notes if the section was explicitly provided (not null)
+    // Only update sections if explicitly provided
     if (ingredients !== null && ingredients !== undefined) {
       await client.query('DELETE FROM recipe_body_ingredients WHERE recipe_id = $1', [id]);
       for (const ing of ingredients) {
@@ -264,9 +450,11 @@ app.put('/api/recipes/:id', async (req, res) => {
           [ingName]
         );
         await client.query(
-          `INSERT INTO recipe_body_ingredients (recipe_id, ingredient_id, amount, unit, prep_note, optional, group_label, order_index)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [id, ingRows[0].id, ing.amount || null, ing.unit || null, ing.prep_note || null, Boolean(ing.optional), ing.group_label || null, ing.order_index ?? 0]
+          `INSERT INTO recipe_body_ingredients
+             (recipe_id, ingredient_id, amount, unit, prep_note, optional, group_label, order_index)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [id, ingRows[0].id, ing.amount || null, ing.unit || null,
+           ing.prep_note || null, Boolean(ing.optional), ing.group_label || null, ing.order_index ?? 0]
         );
       }
     }
@@ -276,7 +464,7 @@ app.put('/api/recipes/:id', async (req, res) => {
       for (const step of instructions) {
         if (!step.body_text?.trim()) continue;
         await client.query(
-          `INSERT INTO instructions (recipe_id, step_number, body_text) VALUES ($1, $2, $3)`,
+          `INSERT INTO instructions (recipe_id, step_number, body_text) VALUES ($1,$2,$3)`,
           [id, step.step_number, step.body_text.trim()]
         );
       }
@@ -288,7 +476,7 @@ app.put('/api/recipes/:id', async (req, res) => {
         const text = note.text?.trim() || note.body_text?.trim();
         if (!text) continue;
         await client.query(
-          `INSERT INTO notes (recipe_id, order_index, body_text) VALUES ($1, $2, $3)`,
+          `INSERT INTO notes (recipe_id, order_index, body_text) VALUES ($1,$2,$3)`,
           [id, note.order_index ?? 0, text]
         );
       }
@@ -297,8 +485,7 @@ app.put('/api/recipes/:id', async (req, res) => {
     await client.query('COMMIT');
 
     const { rows } = await client.query(`
-      SELECT r.*,
-        r.cover_image_url AS "coverImage",
+      SELECT r.*, r.cover_image_url AS "coverImage",
         COALESCE(
           (SELECT array_agg(i.name ORDER BY i.name)
            FROM recipe_body_ingredients rbi
@@ -313,6 +500,30 @@ app.put('/api/recipes/:id', async (req, res) => {
     await client.query('ROLLBACK');
     console.error('PUT /api/recipes/:id error:', err);
     res.status(500).json({ error: err.message || 'Failed to save recipe' });
+  } finally {
+    client.release();
+  }
+});
+
+// ─── DELETE /api/recipes/:id ────────────────────────────────────────────────
+app.delete('/api/recipes/:id', async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Delete child rows first to respect FK constraints
+    await client.query('DELETE FROM notes                   WHERE recipe_id = $1', [id]);
+    await client.query('DELETE FROM instructions            WHERE recipe_id = $1', [id]);
+    await client.query('DELETE FROM recipe_body_ingredients WHERE recipe_id = $1', [id]);
+    await client.query('DELETE FROM recipe_tags             WHERE recipe_id = $1', [id]);
+    const { rowCount } = await client.query('DELETE FROM recipes WHERE id = $1', [id]);
+    await client.query('COMMIT');
+    if (!rowCount) return res.status(404).json({ error: 'Recipe not found' });
+    res.json({ deleted: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('DELETE /api/recipes/:id error:', err);
+    res.status(500).json({ error: err.message || 'Failed to delete recipe' });
   } finally {
     client.release();
   }
