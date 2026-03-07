@@ -1035,7 +1035,6 @@ body {
 .rp2__step-body { font-size: 15px; line-height: 1.65; color: var(--charcoal); flex: 1; }
 
 /* Notes */
-.rp2__notes { padding: 20px 24px; }
 .rp2__notes-list { list-style: none; display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; }
 .rp2__notes-item {
   display: flex; gap: 10px; font-size: 14px; line-height: 1.55; color: var(--charcoal);
@@ -1088,7 +1087,7 @@ body {
 
 /* ─── Section Pencil (inline per-section edit) ───────────────────────────── */
 .rp2__section-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-.rp2__section-title-row .rp2__section-title { margin-bottom: 0; }
+.rp2__section-title-row .rp2__section-title { margin-bottom: 0; flex: 1; }
 .rp2__title-row { display: flex; align-items: baseline; gap: 10px; }
 
 .section-pencil-wrap { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
@@ -1107,6 +1106,71 @@ body {
 .section-pencil--confirm:hover { background: var(--sage); color: white; }
 .section-pencil--cancel { color: var(--warm-gray); opacity: 1 !important; }
 .section-pencil--cancel:hover { background: var(--parchment); color: var(--charcoal); }
+
+/* ─── Step count — right-aligned ─────────────────────────────────────────── */
+.rp2__progress-label--right { margin-left: auto; }
+
+/* ─── Hero soon button ───────────────────────────────────────────────────── */
+.rp2__hero-soon { font-size: 15px; padding: 7px 9px; }
+.rp2__hero-soon--on { color: #2563eb; }
+
+/* ─── Hero bottom as button (meta edit trigger) ──────────────────────────── */
+.rp2__hero-bottom-btn {
+  display: flex; flex-direction: column; gap: 6px;
+  background: none; border: none; cursor: pointer; text-align: left;
+  width: 100%; padding: 0;
+  transition: opacity 0.15s ease;
+}
+.rp2__hero-bottom-btn:hover { opacity: 0.85; }
+.rp2__tag-edit-hint {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; opacity: 0.55; background: rgba(255,255,255,0.15);
+  border-radius: 999px; padding: 3px 7px; border: 1px solid rgba(255,255,255,0.2);
+  margin-left: 2px;
+}
+.rp2__tag--warning { background: rgba(234,179,8,0.85); color: white; }
+.rp2__tag--success { background: rgba(34,197,94,0.85); color: white; }
+
+/* ─── Photo button wrap (anchors popover) ────────────────────────────────── */
+.rp2__photo-btn-wrap { position: relative; }
+
+/* ─── Meta / image popover ───────────────────────────────────────────────── */
+.rp2__meta-popover {
+  position: absolute; bottom: calc(100% + 10px); right: 0;
+  width: min(380px, 94vw);
+  background: var(--warm-white); border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow-lg); z-index: 40;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.rp2__meta-popover--right { right: 0; left: auto; }
+.rp2__meta-popover-label { font-size: 12px; font-weight: 700; color: var(--warm-gray); margin-bottom: 4px; }
+.rp2__meta-popover-actions { display: flex; gap: 8px; margin-top: 4px; }
+.rp2__meta-save-btn {
+  flex: 1; padding: 7px 14px; border-radius: 8px; border: none;
+  background: var(--sage); color: white; font-family: var(--font-body);
+  font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.15s ease;
+}
+.rp2__meta-save-btn:hover:not(:disabled) { background: #5e8462; }
+.rp2__meta-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.rp2__meta-cancel-btn {
+  padding: 7px 14px; border-radius: 8px; border: 1.5px solid var(--border);
+  background: transparent; color: var(--warm-gray); font-family: var(--font-body);
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;
+}
+.rp2__meta-cancel-btn:hover { border-color: var(--charcoal); color: var(--charcoal); }
+.rp2__meta-pop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rp2__meta-pop-field { display: flex; flex-direction: column; gap: 4px; }
+.rp2__meta-pop-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--warm-gray); }
+.rp2__meta-pop-input { font-size: 13px !important; padding: 6px 10px !important; }
+.rp2__meta-pop-section { display: flex; flex-direction: column; gap: 6px; }
+.rp2__meta-pop-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.rp2__meta-chip {
+  border: 1.5px solid var(--border); background: var(--cream); border-radius: 999px;
+  padding: 4px 11px; font-family: var(--font-body); font-size: 12px; font-weight: 500;
+  color: var(--charcoal); cursor: pointer; transition: all var(--transition); white-space: nowrap;
+}
+.rp2__meta-chip:hover { border-color: var(--terracotta-light); }
+.rp2__meta-chip--on { background: var(--terracotta); border-color: var(--terracotta); color: white; }
 
 /* ─── Inline ingredient editor cards ────────────────────────────────────── */
 .rp2__ing-editor { display: flex; flex-direction: column; gap: 8px; }
@@ -1132,19 +1196,14 @@ body {
   outline: none; width: 100%; padding: 2px 0;
 }
 
-/* ─── Image edit overlay ─────────────────────────────────────────────────── */
-.rp2__hero-img-edit { position: relative; width: 100%; }
-.rp2__hero-img-popover {
-  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
-  width: min(360px, 90%); background: var(--warm-white); border: 1.5px solid var(--border);
-  border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow-lg); z-index: 30;
-}
-.rp2__hero-img-label { font-size: 12px; font-weight: 700; color: var(--warm-gray); margin-bottom: 6px; }
-.rp2__hero-img-actions { display: flex; gap: 8px; margin-top: 8px; }
-.rp2__hero-img-actions .section-pencil { width: auto; border-radius: 6px; padding: 4px 12px; font-size: 13px; opacity: 1; }
+/* ─── Notes under instructions ───────────────────────────────────────────── */
+.rp2__notes { padding: 24px 0 0; margin-top: 24px; border-top: 1.5px solid var(--border); }
 
 /* ─── Empty hint ─────────────────────────────────────────────────────────── */
 .rp2__empty-hint { font-size: 13px; color: var(--warm-gray); padding: 8px 0; font-style: italic; }
+
+/* ─── Recipe card progress emoji ────────────────────────────────────────── */
+.recipe-card__progress { font-size: 13px; line-height: 1; }
 
 /* ─── Editor hero ────────────────────────────────────────────────────────── */
 .ed-hero { position: relative; cursor: default; }
