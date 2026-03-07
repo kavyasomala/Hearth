@@ -45,7 +45,7 @@ const COMMON_UNITS = [
   'rasher', 'fillet', 'fillets', 'sheet', 'sheets',
 ];
 
-// ── Tag filters — match against recipe's tags array only (not cuisine column)
+c// ── Tag filters — match against recipe's tags array only (not cuisine column)
 const TAG_FILTERS = [
   { key: 'Meals',    label: '🍽 Meals'    },
   { key: 'Dessert',  label: '🍰 Desserts' },
@@ -982,6 +982,8 @@ function AppInner() {
   const [librarySearch, setLibrarySearch] = useState('');
   const [activeTag, setActiveTag] = useState(null);
   const [activeCuisine, setActiveCuisine] = useState('');
+  const [activeProgress, setActiveProgress] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [customCuisines, setCustomCuisines] = useState(() => LS.get('customCuisines', []));
   const [heartedIds, setHeartedIds] = useState(() => LS.get('heartedIds', []));
   const [makeSoonIds, setMakeSoonIds] = useState(() => LS.get('makeSoonIds', []));
@@ -1046,8 +1048,17 @@ function AppInner() {
     else if (activeTag === '__mealprep') list = list.filter(r => r.mealpreppable);
     else if (activeTag === '__makesoon') list = list.filter(r => r.make_soon);
     else if (activeTag) list = list.filter(r => (r.tags || []).some(t => t.toLowerCase() === activeTag.toLowerCase()) || (r.cuisine || '').toLowerCase() === activeTag.toLowerCase());
+    if (activeProgress === '__incomplete') list = list.filter(r => r.recipe_incomplete);
+    else if (activeProgress === '__needstweaking') list = list.filter(r => r.status === 'needs tweaking');
+    else if (activeProgress === '__favorite') list = list.filter(r => r.status === 'favorite');
+    else if (activeProgress === '__complete') list = list.filter(r => !r.recipe_incomplete && r.status === 'complete');
     return list;
-  }, [recipes, librarySearch, activeTag, activeCuisine, matchById]);
+  }, [recipes, librarySearch, activeTag, activeCuisine, activeProgress, matchById]);
+
+  const hasActiveFilters = !!(librarySearch || activeTag || activeCuisine || activeProgress);
+  const clearAllFilters = () => { setLibrarySearch(''); setActiveTag(null); setActiveCuisine(''); setActiveProgress(null); };
+
+  useEffect(() => { setLibraryPage(1); }, [librarySearch, activeTag, activeCuisine, activeProgress]);
 
   const openRecipe = async (recipe) => {
     setLastView(view); setView('recipe'); setRecipeLoading(true);
