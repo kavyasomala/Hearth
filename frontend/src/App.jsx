@@ -1,18 +1,51 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
 // ─── Horizontal Scroll Row ─────────────────────────────────────────────────
-const HScrollRow = ({ children }) => {
+const HScrollRow = ({ children, count }) => {
   const rowRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    checkScroll();
+    el.addEventListener('scroll', checkScroll, { passive: true });
+    const ro = new ResizeObserver(checkScroll);
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', checkScroll); ro.disconnect(); };
+  }, [checkScroll, children]);
+
   const scroll = (dir) => {
     if (rowRef.current) rowRef.current.scrollBy({ left: dir * 260, behavior: 'smooth' });
   };
+
+  const showArrows = (count ?? React.Children.count(children)) >= 4;
+
   return (
     <div className="hscroll-wrap">
-      <button className="hscroll-arrow hscroll-arrow--left" onClick={() => scroll(-1)} aria-label="Scroll left">‹</button>
+      {showArrows && (
+        <button
+          className={`hscroll-arrow hscroll-arrow--left ${!canScrollLeft ? 'hscroll-arrow--disabled' : ''}`}
+          onClick={() => scroll(-1)} disabled={!canScrollLeft} aria-label="Scroll left"
+        >‹</button>
+      )}
       <div className="hscroll-row" ref={rowRef}>
         {children}
       </div>
-      <button className="hscroll-arrow hscroll-arrow--right" onClick={() => scroll(1)} aria-label="Scroll right">›</button>
+      {showArrows && (
+        <button
+          className={`hscroll-arrow hscroll-arrow--right ${!canScrollRight ? 'hscroll-arrow--disabled' : ''}`}
+          onClick={() => scroll(1)} disabled={!canScrollRight} aria-label="Scroll right"
+        >›</button>
+      )}
     </div>
   );
 };
@@ -522,69 +555,47 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
       {/* ── Two-column body ── */}
       <div className="rp2__body">
 
-        {/* ── Ingredients Modal ── */}
+        {/* ── Ingredients Edit Modal (opens only when pencil clicked) ── */}
         {showIngredientsModal && (
-          <div className="ing-modal-overlay" onClick={() => setShowIngredientsModal(false)}>
+          <div className="ing-modal-overlay" onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}>
             <div className="ing-modal" onClick={e => e.stopPropagation()}>
               <div className="ing-modal__header">
-                <h2 className="ing-modal__title">Ingredients</h2>
+                <h2 className="ing-modal__title">Edit Ingredients</h2>
                 <div className="ing-modal__header-actions">
-                  <SectionPencil isEditing={isEdit('ingredients')} onEdit={() => startEdit('ingredients')} onSave={() => saveSection('ingredients')} onCancel={cancelEdit} saving={saving} />
-                  <button className="ing-modal__close" onClick={() => setShowIngredientsModal(false)}>✕</button>
+                  {isEdit('ingredients') ? (
+                    <>
+                      <button className="ing-modal__save-btn" onClick={() => saveSection('ingredients')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                      <button className="ing-modal__close" onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}>✕</button>
+                    </>
+                  ) : (
+                    <button className="ing-modal__close" onClick={() => setShowIngredientsModal(false)}>✕</button>
+                  )}
                 </div>
               </div>
               <div className="ing-modal__body">
-                {isEdit('ingredients') ? (
-                  <div className="rp2__ing-editor">
-                    {draftIngs.map((ing) => (
-                      <div key={ing._id} className="rp2__ing-edit-card">
-                        <div className="rp2__ing-edit-name-row">
-                          <IngredientAutocomplete value={ing.name} onChange={v => updateDraftIng(ing._id, 'name', v)} allIngredients={[]} />
-                          <button className="editor-remove-btn" onClick={() => removeDraftIng(ing._id)} title="Remove">✕</button>
-                        </div>
-                        <div className="rp2__ing-edit-qty-row">
-                          <input className="editor-input editor-input--sm rp2__ing-qty" value={ing.amount} onChange={e => updateDraftIng(ing._id, 'amount', e.target.value)} placeholder="Qty" />
-                          <UnitAutocomplete value={ing.unit} onChange={v => updateDraftIng(ing._id, 'unit', v)} />
-                          <label className="rp2__ing-optional-toggle" title="Mark as optional">
-                            <input type="checkbox" checked={!!ing.optional} onChange={e => updateDraftIng(ing._id, 'optional', e.target.checked)} />
-                            <span>optional</span>
-                          </label>
-                        </div>
-                        <div className="rp2__ing-edit-meta-row">
-                          <input className="editor-input rp2__ing-prep" value={ing.prep_note || ''} onChange={e => updateDraftIng(ing._id, 'prep_note', e.target.value)} placeholder="Prep note (e.g. finely chopped)" />
-                          <input className="editor-input rp2__ing-group" value={ing.group_label || ''} onChange={e => updateDraftIng(ing._id, 'group_label', e.target.value)} placeholder="Group" />
-                        </div>
+                <div className="rp2__ing-editor">
+                  {draftIngs.map((ing) => (
+                    <div key={ing._id} className="rp2__ing-edit-card">
+                      <div className="rp2__ing-edit-name-row">
+                        <IngredientAutocomplete value={ing.name} onChange={v => updateDraftIng(ing._id, 'name', v)} allIngredients={[]} />
+                        <button className="editor-remove-btn" onClick={() => removeDraftIng(ing._id)} title="Remove">✕</button>
                       </div>
-                    ))}
-                    <button className="btn btn--ghost editor-add-btn" onClick={addDraftIng}>+ Add Ingredient</button>
-                  </div>
-                ) : (
-                  ingredientGroups.length > 0
-                    ? ingredientGroups.map(({ label, items }) => (
-                        <div key={label || '__default'} className="rp2__ing-group">
-                          {label && <p className="rp2__ing-group-label">{label}</p>}
-                          <ul className="rp2__ing-list">
-                            {items.map((ing, idx) => {
-                              const key = `${label}-${idx}`;
-                              const isChecked = checkedIngredients.has(key);
-                              const amountStr = [ing.amount, ing.unit].filter(Boolean).join(' ');
-                              return (
-                                <li key={key} className={`rp2__ing-item ${isChecked ? 'rp2__ing-item--checked' : ''}`} onClick={() => toggleIngredient(key)}>
-                                  <div className={`rp2__ing-check ${isChecked ? 'rp2__ing-check--done' : ''}`}>{isChecked && '✓'}</div>
-                                  <div className="rp2__ing-text">
-                                    {amountStr && <span className="rp2__ing-amount">{amountStr}</span>}
-                                    <span className="rp2__ing-name">{pluralizeIng(ing.name, ing.amount)}</span>
-                                    {ing.prep_note && <span className="rp2__ing-prep">{ing.prep_note}</span>}
-                                    {ing.optional && <span className="rp2__ing-optional">optional</span>}
-                                  </div>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                      ))
-                    : <p className="rp2__empty-hint">No ingredients yet.</p>
-                )}
+                      <div className="rp2__ing-edit-qty-row">
+                        <input className="editor-input editor-input--sm rp2__ing-qty" value={ing.amount} onChange={e => updateDraftIng(ing._id, 'amount', e.target.value)} placeholder="Qty" />
+                        <UnitAutocomplete value={ing.unit} onChange={v => updateDraftIng(ing._id, 'unit', v)} />
+                        <label className="rp2__ing-optional-toggle" title="Mark as optional">
+                          <input type="checkbox" checked={!!ing.optional} onChange={e => updateDraftIng(ing._id, 'optional', e.target.checked)} />
+                          <span>optional</span>
+                        </label>
+                      </div>
+                      <div className="rp2__ing-edit-meta-row">
+                        <input className="editor-input rp2__ing-prep" value={ing.prep_note || ''} onChange={e => updateDraftIng(ing._id, 'prep_note', e.target.value)} placeholder="Prep note (e.g. finely chopped)" />
+                        <input className="editor-input rp2__ing-group" value={ing.group_label || ''} onChange={e => updateDraftIng(ing._id, 'group_label', e.target.value)} placeholder="Group" />
+                      </div>
+                    </div>
+                  ))}
+                  <button className="btn btn--ghost editor-add-btn" onClick={addDraftIng}>+ Add Ingredient</button>
+                </div>
               </div>
             </div>
           </div>
@@ -594,14 +605,35 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         <div className="rp2__ingredients">
           <div className="rp2__section-title-row">
             <h2 className="rp2__section-title">Ingredients</h2>
-            <SectionPencil isEditing={isEdit('ingredients')} onEdit={() => startEdit('ingredients')} onSave={() => saveSection('ingredients')} onCancel={cancelEdit} saving={saving} />
+            <button className="section-pencil" onClick={() => { startEdit('ingredients'); setShowIngredientsModal(true); }} title="Edit ingredients">✎</button>
           </div>
-          <button className="ing-modal-trigger" onClick={() => setShowIngredientsModal(true)}>
-            <span className="ing-modal-trigger__count">
-              {bodyIngredients?.length ?? 0} ingredient{(bodyIngredients?.length ?? 0) !== 1 ? 's' : ''}
-            </span>
-            <span className="ing-modal-trigger__cta">View & check off →</span>
-          </button>
+
+          {ingredientGroups.length > 0
+            ? ingredientGroups.map(({ label, items }) => (
+                <div key={label || '__default'} className="rp2__ing-group">
+                  {label && <p className="rp2__ing-group-label">{label}</p>}
+                  <ul className="rp2__ing-list">
+                    {items.map((ing, idx) => {
+                      const key = `${label}-${idx}`;
+                      const isChecked = checkedIngredients.has(key);
+                      const amountStr = [ing.amount, ing.unit].filter(Boolean).join(' ');
+                      return (
+                        <li key={key} className={`rp2__ing-item ${isChecked ? 'rp2__ing-item--checked' : ''}`} onClick={() => toggleIngredient(key)}>
+                          <div className={`rp2__ing-check ${isChecked ? 'rp2__ing-check--done' : ''}`}>{isChecked && '✓'}</div>
+                          <div className="rp2__ing-text">
+                            {amountStr && <span className="rp2__ing-amount">{amountStr}</span>}
+                            <span className="rp2__ing-name">{pluralizeIng(ing.name, ing.amount)}</span>
+                            {ing.prep_note && <span className="rp2__ing-prep">{ing.prep_note}</span>}
+                            {ing.optional && <span className="rp2__ing-optional">optional</span>}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))
+            : <p className="rp2__empty-hint">No ingredients yet.</p>
+          }
         </div>
 
         {/* ── Instructions ── */}
@@ -1372,24 +1404,27 @@ const SiteFooter = ({ onNav }) => {
 // ─── Add Recipe Tab ─────────────────────────────────────────────────────────
 const AddRecipeTab = ({ allIngredients, onSaved }) => {
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const [showModal, setShowModal] = useState(false);
 
-  const [details, setDetails] = useState({
+  const emptyForm = () => ({
     name: '', cuisine: '', time: '', servings: '', calories: '', protein: '',
-    cover_image_url: '', status: '', recipe_incomplete: false, tags: [],
+    cover_image_url: '', cookbook: '', page_number: '', status: '', recipe_incomplete: false, tags: [],
   });
+
+  const [details, setDetails] = useState(emptyForm);
   const [ings, setIngs] = useState([]);
   const [steps, setSteps] = useState([]);
   const [notesList, setNotesList] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
-  const [showImageInput, setShowImageInput] = useState(false);
+  const [imgPreviewError, setImgPreviewError] = useState(false);
 
   const setDetail = (k, v) => setDetails(prev => ({ ...prev, [k]: v }));
   const toggleTag = (tag) => setDetails(prev => ({
     ...prev, tags: prev.tags.includes(tag) ? prev.tags.filter(t => t !== tag) : [...prev.tags, tag],
   }));
 
-  const addIng = () => setIngs(prev => [...prev, { _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]);
+  const addIng  = () => setIngs(prev => [...prev, { _id: `ing-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]);
   const updateIng = (id, k, v) => setIngs(prev => prev.map(i => i._id === id ? { ...i, [k]: v } : i));
   const removeIng = (id) => setIngs(prev => prev.filter(i => i._id !== id));
   const onIngDragEnd = ({ active, over }) => {
@@ -1398,7 +1433,7 @@ const AddRecipeTab = ({ allIngredients, onSaved }) => {
     }
   };
 
-  const addStep = () => setSteps(prev => [...prev, { _id: `step-new-${Date.now()}`, step_number: prev.length + 1, body_text: '' }]);
+  const addStep    = () => setSteps(prev => [...prev, { _id: `step-${Date.now()}`, step_number: prev.length + 1, body_text: '' }]);
   const updateStep = (id, v) => setSteps(prev => prev.map(s => s._id === id ? { ...s, body_text: v } : s));
   const removeStep = (id) => setSteps(prev => prev.filter(s => s._id !== id));
   const onStepDragEnd = ({ active, over }) => {
@@ -1407,9 +1442,20 @@ const AddRecipeTab = ({ allIngredients, onSaved }) => {
     }
   };
 
-  const addNote = () => setNotesList(prev => [...prev, { _id: `note-new-${Date.now()}`, text: '' }]);
+  const addNote    = () => setNotesList(prev => [...prev, { _id: `note-${Date.now()}`, text: '' }]);
   const updateNote = (id, v) => setNotesList(prev => prev.map(n => n._id === id ? { ...n, text: v } : n));
   const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id));
+
+  const openModal = () => {
+    setDetails(emptyForm());
+    setIngs([]);
+    setSteps([]);
+    setNotesList([]);
+    setSaveError(null);
+    setImgPreviewError(false);
+    setShowModal(true);
+  };
+  const closeModal = () => setShowModal(false);
 
   const save = async () => {
     if (!details.name.trim()) { setSaveError('Recipe name is required.'); return; }
@@ -1419,8 +1465,9 @@ const AddRecipeTab = ({ allIngredients, onSaved }) => {
         details: {
           name: details.name, cuisine: details.cuisine, time: details.time,
           servings: details.servings, calories: details.calories, protein: details.protein,
-          cover_image_url: details.cover_image_url, status: details.status,
-          recipe_incomplete: details.recipe_incomplete, tags: details.tags,
+          cover_image_url: details.cover_image_url,
+          cookbook: details.cookbook, page_number: details.page_number,
+          status: details.status, recipe_incomplete: details.recipe_incomplete, tags: details.tags,
         },
         ingredients: ings.map((i, idx) => ({ ...i, order_index: idx })),
         instructions: steps.map((s, idx) => ({ ...s, step_number: idx + 1 })),
@@ -1429,6 +1476,7 @@ const AddRecipeTab = ({ allIngredients, onSaved }) => {
       const res = await fetch(`${API}/api/recipes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Save failed');
+      closeModal();
       if (onSaved) onSaved(data.recipe);
     } catch (e) { setSaveError(e.message); } finally { setSaving(false); }
   };
@@ -1436,150 +1484,190 @@ const AddRecipeTab = ({ allIngredients, onSaved }) => {
   const groupLabels = [...new Set(ings.map(i => i.group_label).filter(Boolean))];
 
   return (
-    <main className="view editor-page rp2">
-      {/* Hero */}
-      <div className="rp2__hero ed-hero">
-        {details.cover_image_url
-          ? <img className="rp2__hero-img" src={details.cover_image_url} alt={details.name} />
-          : <div className="rp2__hero-placeholder"><span>🍽</span></div>}
-        <button className="ed-hero__img-btn" onClick={() => setShowImageInput(v => !v)} title="Change cover image">
-          {details.cover_image_url ? '🖼 Change' : '➕ Add Photo'}
+    <main className="view add-tab">
+      <div className="add-tab__header">
+        <h2 className="add-tab__title">Add a Recipe</h2>
+        <p className="add-tab__sub">Grow your collection — add a recipe by hand or from a link</p>
+      </div>
+
+      <div className="add-tab__cards">
+        {/* Manual card */}
+        <button className="add-tab__card" onClick={openModal}>
+          <span className="add-tab__card-icon">✍️</span>
+          <h3 className="add-tab__card-title">Add Manually</h3>
+          <p className="add-tab__card-desc">Type in the name, ingredients, steps, and notes yourself</p>
+          <span className="add-tab__card-cta">Get started →</span>
         </button>
-        {showImageInput && (
-          <div className="ed-hero__img-popover">
-            <p className="ed-hero__img-popover-label">Cover image URL</p>
-            <input className="editor-input" autoFocus value={details.cover_image_url}
-              onChange={e => setDetail('cover_image_url', e.target.value)}
-              placeholder="https://…"
-              onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setShowImageInput(false); }} />
-            <button className="btn btn--primary btn--sm" style={{ marginTop: 6 }} onClick={() => setShowImageInput(false)}>Done</button>
-          </div>
-        )}
-        <div className="rp2__hero-overlay">
-          <div className="rp2__hero-topbar">
-            <span className="rp2__hero-btn" style={{ opacity: 0.6 }}>➕ New Recipe</span>
-            <button className="rp2__hero-btn rp2__hero-btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : '✓ Save Recipe'}</button>
-          </div>
+
+        {/* From link card — coming soon */}
+        <div className="add-tab__card add-tab__card--soon">
+          <span className="add-tab__card-icon">🔗</span>
+          <h3 className="add-tab__card-title">Add from Link</h3>
+          <p className="add-tab__card-desc">Paste an Instagram, TikTok, or web link and we'll draft a recipe for you</p>
+          <span className="add-tab__card-badge">Coming soon</span>
         </div>
       </div>
 
-      {saveError && <p className="editor-error" style={{ margin: '8px 24px 0' }}>⚠️ {saveError}</p>}
+      {/* ── Create Recipe Modal ── */}
+      {showModal && (
+        <div className="create-modal-overlay" onClick={closeModal}>
+          <div className="create-modal" onClick={e => e.stopPropagation()}>
 
-      <div className="rp2__header ed-name-row">
-        <input className="ed-title-input" value={details.name} onChange={e => setDetail('name', e.target.value)} placeholder="Recipe name…" />
-      </div>
+            {/* Modal header */}
+            <div className="create-modal__header">
+              <h2 className="create-modal__title">New Recipe</h2>
+              <button className="ing-modal__close" onClick={closeModal}>✕</button>
+            </div>
 
-      <div className="ed-meta-row">
-        <label className="ed-meta-field">
-          <span className="ed-meta-label">🌍 Cuisine</span>
-          <select className="editor-input editor-select ed-meta-input" value={details.cuisine} onChange={e => setDetail('cuisine', e.target.value)}>
-            <option value="">— none —</option>
-            {ALL_CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </label>
-        <label className="ed-meta-field">
-          <span className="ed-meta-label">⏱ Time</span>
-          <input className="editor-input ed-meta-input" value={details.time} onChange={e => setDetail('time', e.target.value)} placeholder="45 mins" />
-        </label>
-        <label className="ed-meta-field">
-          <span className="ed-meta-label">🍽 Servings</span>
-          <input className="editor-input ed-meta-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" />
-        </label>
-        <label className="ed-meta-field">
-          <span className="ed-meta-label">🔥 Calories</span>
-          <input className="editor-input ed-meta-input" type="number" value={details.calories} onChange={e => setDetail('calories', e.target.value)} placeholder="kcal" />
-        </label>
-        <label className="ed-meta-field">
-          <span className="ed-meta-label">💪 Protein</span>
-          <input className="editor-input ed-meta-input" type="number" value={details.protein} onChange={e => setDetail('protein', e.target.value)} placeholder="g" />
-        </label>
-      </div>
+            <div className="create-modal__body">
 
-      {/* Tags */}
-      <div className="editor-section editor-section--tags">
-        <h3 className="editor-section__title">Tags</h3>
-        <div className="picker__chips" style={{ marginTop: 8 }}>
-          {TAG_FILTERS.map(({ key, label }) => (
-            <button key={key}
-              className={`chip ${details.tags.includes(key) ? 'chip--selected' : ''}`}
-              onClick={() => toggleTag(key)}>
-              {details.tags.includes(key) && <span className="chip__check">✓</span>}{label}
-            </button>
-          ))}
-        </div>
-        <div className="ed-meta-row" style={{ marginTop: 12 }}>
-          <label className="ed-meta-field">
-            <span className="ed-meta-label">📋 Status</span>
-            <select className="editor-input editor-select ed-meta-input" value={details.status} onChange={e => setDetail('status', e.target.value)}>
-              <option value="">— none —</option>
-              <option value="complete">✅ Complete</option>
-              <option value="needs tweaking">🔧 Needs Tweaking</option>
-            </select>
-          </label>
-          <label className="ed-meta-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <input type="checkbox" checked={details.recipe_incomplete} onChange={e => setDetail('recipe_incomplete', e.target.checked)} />
-            <span className="ed-meta-label">🚧 Mark as incomplete</span>
-          </label>
-        </div>
-      </div>
-
-      <section className="editor-section">
-        <h3 className="editor-section__title">Ingredients</h3>
-        <datalist id="add-group-labels">{groupLabels.map(l => <option key={l} value={l} />)}</datalist>
-        {ings.length > 0 && <div className="editor-ing-header"><span>Amount</span><span>Unit</span><span>Name</span><span>Group</span><span>Prep note</span><span>Opt?</span><span></span></div>}
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onIngDragEnd}>
-          <SortableContext items={ings.map(i => i._id)} strategy={verticalListSortingStrategy}>
-            {ings.map(ing => (
-              <SortableItem key={ing._id} id={ing._id}>
-                <div className="editor-ing-row">
-                  <input className="editor-input editor-input--sm" value={ing.amount} onChange={e => updateIng(ing._id, 'amount', e.target.value)} placeholder="2" />
-                  <UnitAutocomplete value={ing.unit} onChange={v => updateIng(ing._id, 'unit', v)} />
-                  <IngredientAutocomplete value={ing.name} onChange={v => updateIng(ing._id, 'name', v)} allIngredients={allIngredients.filter(Boolean)} />
-                  <input className="editor-input editor-input--sm" value={ing.group_label || ''} onChange={e => updateIng(ing._id, 'group_label', e.target.value)} placeholder="e.g. Sauce" list="add-group-labels" />
-                  <input className="editor-input" value={ing.prep_note || ''} onChange={e => updateIng(ing._id, 'prep_note', e.target.value)} placeholder="finely chopped" />
-                  <button className={`editor-optional-btn ${ing.optional ? 'editor-optional-btn--on' : ''}`} onClick={() => updateIng(ing._id, 'optional', !ing.optional)} title="Mark as optional">{ing.optional ? '✓' : '○'}</button>
-                  <button className="editor-remove-btn" onClick={() => removeIng(ing._id)}>✕</button>
+              {/* Image row */}
+              <div className="create-modal__img-row">
+                <div className="create-modal__img-preview">
+                  {details.cover_image_url && !imgPreviewError
+                    ? <img src={details.cover_image_url} alt="preview" onError={() => setImgPreviewError(true)} />
+                    : <span className="create-modal__img-placeholder">🍽</span>}
                 </div>
-              </SortableItem>
-            ))}
-          </SortableContext>
-        </DndContext>
-        <button className="btn btn--ghost editor-add-btn" onClick={addIng}>+ Add Ingredient</button>
-      </section>
-
-      <section className="editor-section">
-        <h3 className="editor-section__title">Instructions</h3>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
-          <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
-            {steps.map((step, idx) => (
-              <SortableItem key={step._id} id={step._id}>
-                <div className="editor-step-row">
-                  <span className="editor-step-num">{idx + 1}</span>
-                  <textarea className="editor-textarea" value={step.body_text} onChange={e => updateStep(step._id, e.target.value)} placeholder="Describe this step…" rows={2} />
-                  <button className="editor-remove-btn" onClick={() => removeStep(step._id)}>✕</button>
+                <div className="create-modal__img-input-wrap">
+                  <label className="create-modal__field-label">Cover image URL</label>
+                  <input className="editor-input" value={details.cover_image_url}
+                    onChange={e => { setDetail('cover_image_url', e.target.value); setImgPreviewError(false); }}
+                    placeholder="https://example.com/photo.jpg" />
+                  <p className="create-modal__field-hint">Paste any image URL — see it previewed instantly</p>
                 </div>
-              </SortableItem>
-            ))}
-          </SortableContext>
-        </DndContext>
-        <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
-      </section>
+              </div>
 
-      <section className="editor-section">
-        <h3 className="editor-section__title">Notes &amp; Modifications</h3>
-        {notesList.map(note => (
-          <div key={note._id} className="editor-note-row">
-            <input className="editor-input" value={note.text || ''} onChange={e => updateNote(note._id, e.target.value)} placeholder="e.g. Works great with tofu instead of chicken" />
-            <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>✕</button>
+              {/* Name */}
+              <div className="create-modal__field">
+                <label className="create-modal__field-label">Recipe name <span className="create-modal__required">*</span></label>
+                <input className="editor-input create-modal__name-input" value={details.name}
+                  onChange={e => setDetail('name', e.target.value)} placeholder="e.g. Grandma's Lasagne" autoFocus />
+              </div>
+
+              {/* Meta row */}
+              <div className="create-modal__meta-grid">
+                <div className="create-modal__field">
+                  <label className="create-modal__field-label">🌍 Cuisine</label>
+                  <select className="editor-input editor-select" value={details.cuisine} onChange={e => setDetail('cuisine', e.target.value)}>
+                    <option value="">— none —</option>
+                    {ALL_CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="create-modal__field">
+                  <label className="create-modal__field-label">⏱ Time</label>
+                  <input className="editor-input" value={details.time} onChange={e => setDetail('time', e.target.value)} placeholder="45 mins" />
+                </div>
+                <div className="create-modal__field">
+                  <label className="create-modal__field-label">🍽 Servings</label>
+                  <input className="editor-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" />
+                </div>
+                <div className="create-modal__field">
+                  <label className="create-modal__field-label">🔥 Calories</label>
+                  <input className="editor-input" type="number" value={details.calories} onChange={e => setDetail('calories', e.target.value)} placeholder="kcal" />
+                </div>
+                <div className="create-modal__field">
+                  <label className="create-modal__field-label">💪 Protein (g)</label>
+                  <input className="editor-input" type="number" value={details.protein} onChange={e => setDetail('protein', e.target.value)} placeholder="g" />
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div className="create-modal__field">
+                <label className="create-modal__field-label">Tags</label>
+                <div className="picker__chips" style={{ marginTop: 6 }}>
+                  {TAG_FILTERS.map(({ key, label }) => (
+                    <button key={key} className={`chip ${details.tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggleTag(key)}>
+                      {details.tags.includes(key) && <span className="chip__check">✓</span>}{label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Ingredients */}
+              <div className="create-modal__field">
+                <label className="create-modal__field-label">Ingredients</label>
+                <datalist id="cm-group-labels">{groupLabels.map(l => <option key={l} value={l} />)}</datalist>
+                {ings.length > 0 && (
+                  <div className="editor-ing-header" style={{ marginBottom: 4 }}>
+                    <span>Amount</span><span>Unit</span><span>Name</span><span>Group</span><span>Prep note</span><span>Opt?</span><span></span>
+                  </div>
+                )}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onIngDragEnd}>
+                  <SortableContext items={ings.map(i => i._id)} strategy={verticalListSortingStrategy}>
+                    {ings.map(ing => (
+                      <SortableItem key={ing._id} id={ing._id}>
+                        <div className="editor-ing-row">
+                          <input className="editor-input editor-input--sm" value={ing.amount} onChange={e => updateIng(ing._id, 'amount', e.target.value)} placeholder="2" />
+                          <UnitAutocomplete value={ing.unit} onChange={v => updateIng(ing._id, 'unit', v)} />
+                          <IngredientAutocomplete value={ing.name} onChange={v => updateIng(ing._id, 'name', v)} allIngredients={allIngredients.filter(Boolean)} />
+                          <input className="editor-input editor-input--sm" value={ing.group_label || ''} onChange={e => updateIng(ing._id, 'group_label', e.target.value)} placeholder="e.g. Sauce" list="cm-group-labels" />
+                          <input className="editor-input" value={ing.prep_note || ''} onChange={e => updateIng(ing._id, 'prep_note', e.target.value)} placeholder="finely chopped" />
+                          <button className={`editor-optional-btn ${ing.optional ? 'editor-optional-btn--on' : ''}`} onClick={() => updateIng(ing._id, 'optional', !ing.optional)} title="Optional">{ing.optional ? '✓' : '○'}</button>
+                          <button className="editor-remove-btn" onClick={() => removeIng(ing._id)}>✕</button>
+                        </div>
+                      </SortableItem>
+                    ))}
+                  </SortableContext>
+                </DndContext>
+                <button className="btn btn--ghost editor-add-btn" onClick={addIng}>+ Add Ingredient</button>
+              </div>
+
+              {/* Instructions */}
+              <div className="create-modal__field">
+                <label className="create-modal__field-label">Instructions</label>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
+                  <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
+                    {steps.map((step, idx) => (
+                      <SortableItem key={step._id} id={step._id}>
+                        <div className="editor-step-row">
+                          <span className="editor-step-num">{idx + 1}</span>
+                          <textarea className="editor-textarea" value={step.body_text} onChange={e => updateStep(step._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                          <button className="editor-remove-btn" onClick={() => removeStep(step._id)}>✕</button>
+                        </div>
+                      </SortableItem>
+                    ))}
+                  </SortableContext>
+                </DndContext>
+                <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
+              </div>
+
+              {/* Notes */}
+              <div className="create-modal__field">
+                <label className="create-modal__field-label">Notes &amp; Modifications</label>
+                {notesList.map(note => (
+                  <div key={note._id} className="editor-note-row">
+                    <input className="editor-input" value={note.text || ''} onChange={e => updateNote(note._id, e.target.value)} placeholder="e.g. Great with oat milk instead of dairy" />
+                    <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>✕</button>
+                  </div>
+                ))}
+                <button className="btn btn--ghost editor-add-btn" onClick={addNote}>+ Add Note</button>
+              </div>
+
+              {/* Cookbook reference */}
+              <div className="create-modal__meta-grid">
+                <div className="create-modal__field">
+                  <label className="create-modal__field-label">📖 Cookbook</label>
+                  <input className="editor-input" value={details.cookbook} onChange={e => setDetail('cookbook', e.target.value)} placeholder="e.g. Ottolenghi Simple" />
+                </div>
+                <div className="create-modal__field">
+                  <label className="create-modal__field-label">Page number</label>
+                  <input className="editor-input" value={details.page_number} onChange={e => setDetail('page_number', e.target.value)} placeholder="e.g. 142" />
+                </div>
+              </div>
+
+              {saveError && <p className="editor-error" style={{ marginTop: 8 }}>⚠️ {saveError}</p>}
+            </div>
+
+            {/* Modal footer */}
+            <div className="create-modal__footer">
+              <button className="btn btn--ghost" onClick={closeModal}>Cancel</button>
+              <button className="btn btn--primary" onClick={save} disabled={saving}>
+                {saving ? 'Creating…' : '✓ Create Recipe'}
+              </button>
+            </div>
           </div>
-        ))}
-        <button className="btn btn--ghost editor-add-btn" onClick={addNote}>+ Add Note</button>
-      </section>
-
-      <div className="editor-save-bar">
-        {saveError && <p className="editor-error">⚠️ {saveError}</p>}
-        <button className="btn btn--primary btn--large" onClick={save} disabled={saving}>{saving ? 'Saving…' : '✓ Save Recipe'}</button>
-      </div>
+        </div>
+      )}
     </main>
   );
 };
@@ -1859,7 +1947,7 @@ function AppInner() {
                       <span className="home-empty-cta__arrow">→</span>
                     </div>
                   ) : (
-                    <HScrollRow>
+                    <HScrollRow count={makeSoonRecipes.length}>
                         {makeSoonRecipes.map(r => (
                           <RecipeCard key={r.id} recipe={r} match={matchById.get(r.id)} onClick={openRecipe}
                             isHearted={heartedIds.includes(r.id)} onToggleHeart={() => toggleHeart(r.id)}
@@ -1895,7 +1983,7 @@ function AppInner() {
                       <span className="home-empty-cta__arrow">→</span>
                     </div>
                   ) : goodMatches.length > 0 ? (
-                    <HScrollRow>
+                    <HScrollRow count={goodMatches.length}>
                       {goodMatches.map(m => {
                           const r = recipes.find(x => x.id === m.id);
                           if (!r) return null;
@@ -1931,7 +2019,7 @@ function AppInner() {
                       <span className="home-empty-cta__arrow">→</span>
                     </div>
                   ) : (
-                    <HScrollRow>
+                    <HScrollRow count={favRecipes.length}>
                         {favRecipes.map(r => (
                           <RecipeCard key={r.id} recipe={r} match={matchById.get(r.id)} onClick={openRecipe}
                             isHearted={true} onToggleHeart={() => toggleHeart(r.id)}
@@ -2232,6 +2320,7 @@ function AppInner() {
         <AddRecipeTab
           allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
           onSaved={(newRecipe) => {
+            if (newRecipe?.id) setMakeSoonIds(prev => [...prev, newRecipe.id]);
             loadData();
             openRecipe(newRecipe);
           }}
