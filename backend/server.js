@@ -99,9 +99,8 @@ app.get('/api/recipes', async (req, res) => {
       SELECT
         r.id, r.name, r.cuisine, r.calories, r.protein, r.fiber,
         r.time, r.servings, r.cover_image_url AS "coverImage", r.status,
-        r.recipe_incomplete,
         r.mealpreppable, r.make_soon, r.link,
-        r.cookbook, r.page_number,
+        r.cookbook, r.reference,
         COALESCE(
           (SELECT array_agg(i.name ORDER BY i.name)
            FROM recipe_body_ingredients rbi
@@ -220,8 +219,8 @@ app.get('/api/recipes/:id', async (req, res) => {
       SELECT
         r.id, r.notion_id, r.name, r.cuisine, r.calories, r.protein, r.fiber,
         r.time, r.servings, r.cover_image_url AS "coverImage",
-        r.status, r.recipe_incomplete, r.mealpreppable, r.make_soon, r.link,
-        r.cookbook, r.page_number,
+        r.status, r.mealpreppable, r.make_soon, r.link,
+        r.cookbook, r.reference,
         COALESCE(
           (SELECT array_agg(i.name ORDER BY i.name)
            FROM recipe_body_ingredients rbi
@@ -296,8 +295,8 @@ app.post('/api/recipes', async (req, res) => {
     const { rows: recipeRows } = await client.query(`
       INSERT INTO recipes
         (name, cuisine, time, servings, calories, protein, cover_image_url,
-         status, recipe_incomplete, cookbook, page_number)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+         status, cookbook, reference)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
       RETURNING id
     `, [
       details.name.trim(),
@@ -308,9 +307,8 @@ app.post('/api/recipes', async (req, res) => {
       details.protein  !== '' && details.protein  != null ? Number(details.protein)  : null,
       details.cover_image_url || null,
       details.status || null,
-      Boolean(details.recipe_incomplete),
       details.cookbook || null,
-      details.page_number || null,
+      details.reference || details.page_number || null,
     ]);
     const newId = recipeRows[0].id;
 
@@ -404,10 +402,9 @@ app.put('/api/recipes/:id', async (req, res) => {
         protein           = $6,
         cover_image_url   = $7,
         status            = $8,
-        recipe_incomplete = $9,
-        cookbook          = $10,
-        page_number       = $11
-      WHERE id = $12
+        cookbook          = $9,
+        reference         = $10
+      WHERE id = $11
     `, [
       details.name,
       details.cuisine || null,
@@ -417,9 +414,8 @@ app.put('/api/recipes/:id', async (req, res) => {
       details.protein  !== '' && details.protein  != null ? Number(details.protein)  : null,
       details.cover_image_url || null,
       details.status || null,
-      Boolean(details.recipe_incomplete),
       details.cookbook || null,
-      details.page_number || null,
+      details.reference || details.page_number || null,
       id,
     ]);
 
