@@ -237,23 +237,30 @@ const IngFlatRow = ({ ing, onUpdate, onRemove }) => {
   return (
     <div className="ing-flat-row" ref={setNodeRef} style={style}>
       <span className="ing-flat-row__drag" {...attributes} {...listeners}>⠿</span>
-      <input className="editor-input ing-flat-row__qty" value={ing.amount} onChange={e => onUpdate('amount', e.target.value)} placeholder="Qty" />
-      <div className="ing-flat-row__unit-wrap">
-        <UnitAutocomplete value={ing.unit} onChange={v => onUpdate('unit', v)} />
+      {/* Desktop: grid row. Mobile: card layout */}
+      <div className="ing-flat-row__fields">
+        <div className="ing-flat-row__row1">
+          <input className="editor-input ing-flat-row__qty" value={ing.amount} onChange={e => onUpdate('amount', e.target.value)} placeholder="Qty" />
+          <div className="ing-flat-row__unit-wrap">
+            <UnitAutocomplete value={ing.unit} onChange={v => onUpdate('unit', v)} />
+          </div>
+          <div className="ing-flat-row__name-wrap">
+            <IngredientAutocomplete value={ing.name} onChange={v => onUpdate('name', v)} allIngredients={[]} />
+          </div>
+        </div>
+        <div className="ing-flat-row__row2">
+          <input className="editor-input ing-flat-row__prep" value={ing.prep_note || ''} onChange={e => onUpdate('prep_note', e.target.value)} placeholder="Prep note (e.g. finely chopped)" />
+          <button
+            className={`ing-opt-toggle ${ing.optional ? 'ing-opt-toggle--on' : ''}`}
+            onClick={() => onUpdate('optional', !ing.optional)}
+            title={ing.optional ? 'Mark as required' : 'Mark as optional'}
+            type="button"
+          >
+            {ing.optional ? 'optional' : 'required'}
+          </button>
+          <button className="editor-remove-btn" onClick={onRemove} title="Remove">✕</button>
+        </div>
       </div>
-      <div className="ing-flat-row__name-wrap">
-        <IngredientAutocomplete value={ing.name} onChange={v => onUpdate('name', v)} allIngredients={[]} />
-      </div>
-      <input className="editor-input ing-flat-row__prep" value={ing.prep_note || ''} onChange={e => onUpdate('prep_note', e.target.value)} placeholder="e.g. finely chopped" />
-      <button
-        className={`ing-opt-toggle ${ing.optional ? 'ing-opt-toggle--on' : ''}`}
-        onClick={() => onUpdate('optional', !ing.optional)}
-        title={ing.optional ? 'Mark as required' : 'Mark as optional'}
-        type="button"
-      >
-        {ing.optional ? 'optional' : 'required'}
-      </button>
-      <button className="editor-remove-btn" onClick={onRemove} title="Remove">✕</button>
     </div>
   );
 };
@@ -606,7 +613,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 </button>
                 {isEdit('image') && (
                   <div className="rp2__img-popover-down">
-                    <p className="rp2__meta-pop-label">Cover image URL</p>
+                    <p className="rp2__dark-pop-label">Cover image URL</p>
                     <input
                       className="editor-input"
                       autoFocus
@@ -615,9 +622,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       placeholder="https://…"
                       onKeyDown={e => { if (e.key === 'Enter') saveSection('image'); if (e.key === 'Escape') cancelEdit(); }}
                     />
-                    <div className="rp2__meta-popover-actions">
-                      <button className="rp2__meta-save-btn" onClick={() => saveSection('image')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
-                      <button className="rp2__meta-cancel-btn" onClick={cancelEdit}>✕ Cancel</button>
+                    <div className="rp2__dark-pop-actions">
+                      <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                      <button className="rp2__dark-cancel" onClick={cancelEdit}>✕ Cancel</button>
                     </div>
                   </div>
                 )}
@@ -626,8 +633,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             </div>
           </div>
 
-          {/* ── Bottom: tags (left, each clickable) + pills (right, time/servings clickable) ── */}
-          <div className="rp2__hero-bottom">
+          {/* ── Bottom: tags (left) + pills (right) — hidden on mobile ── */}
+          <div className="rp2__hero-bottom rp2__hero-bottom--desktop-only">
 
             {/* Tags area — each item is individually clickable */}
             <div className="rp2__hero-tags">
@@ -812,14 +819,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 >
                   <SortableContext items={draftIngs.map(i => i._id)} strategy={verticalListSortingStrategy}>
                     <div className="ing-flat-list">
-                      {/* Column headers */}
-                      <div className="ing-flat-header">
+                      {/* Column headers — desktop only */}
+                      <div className="ing-flat-header ing-flat-header--desktop">
                         <span className="ing-flat-header__drag" />
-                        <span className="ing-flat-header__qty">Qty</span>
-                        <span className="ing-flat-header__unit">Unit</span>
-                        <span className="ing-flat-header__name">Ingredient</span>
-                        <span className="ing-flat-header__prep">Prep note</span>
-                        <span className="ing-flat-header__opt">Status</span>
+                        <span style={{gridColumn:'2/5'}}>Qty · Unit · Ingredient</span>
+                        <span className="ing-flat-header__prep">Prep note · Status</span>
                         <span className="ing-flat-header__rm" />
                       </div>
                       {draftIngs.map((ing) => {
@@ -861,7 +865,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         {/* ── Ingredients ── */}
         <div className="rp2__ingredients">
           <div className="rp2__section-title-row">
-            <h2 className="rp2__section-title">Ingredients</h2>
+            <h2 className="rp2__section-title rp2__section-title--sm">Ingredients</h2>
             <button className="section-pencil" onClick={() => { startEdit('ingredients'); setShowIngredientsModal(true); }} title="Edit ingredients">✎</button>
           </div>
 
@@ -896,7 +900,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         {/* ── Instructions ── */}
         <div className="rp2__instructions">
           <div className="rp2__section-title-row">
-            <h2 className="rp2__section-title">Instructions</h2>
+            <h2 className="rp2__section-title rp2__section-title--sm">Instructions</h2>
             {!isEdit('instructions') && totalSteps > 0 && (
               <span className="rp2__progress-label rp2__progress-label--right">{doneCount}/{totalSteps} steps</span>
             )}
@@ -925,8 +929,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               ? <ol className="rp2__steps">
                   {[...instructions].sort((a, b) => a.step_number - b.step_number).map(step => {
                     const done = doneSteps.has(step.step_number);
+                    const sortedUndone = [...instructions].sort((a, b) => a.step_number - b.step_number).filter(s => !doneSteps.has(s.step_number));
+                    const isCurrent = !done && sortedUndone[0]?.step_number === step.step_number && doneCount > 0;
                     return (
-                      <li key={step.step_number} className={`rp2__step ${done ? 'rp2__step--done' : ''}`} onClick={() => toggleStep(step.step_number)}>
+                      <li key={step.step_number} className={`rp2__step ${done ? 'rp2__step--done' : ''} ${isCurrent ? 'rp2__step--current' : ''}`} onClick={() => toggleStep(step.step_number)}>
                         <div className="rp2__step-num">{done ? '✓' : step.step_number}</div>
                         <p className="rp2__step-body">{step.body_text}</p>
                       </li>
@@ -936,11 +942,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               : <p className="rp2__empty-hint">No instructions yet.</p>
           )}
 
-          {/* ── Notes + Cookbook — side by side under instructions ── */}
+          {/* ── Notes + Cookbook — side by side (desktop), stacked (mobile) ── */}
           <div className="rp2__notes-row">
             <div className="rp2__notes">
               <div className="rp2__section-title-row">
-                <h2 className="rp2__section-title">Notes &amp; Tips</h2>
+                <h2 className="rp2__section-title rp2__section-title--sm">Notes &amp; Tips</h2>
                 <SectionPencil isEditing={isEdit('notes')} onEdit={() => startEdit('notes')} onSave={() => saveSection('notes')} onCancel={cancelEdit} saving={saving} />
               </div>
 
@@ -1539,7 +1545,7 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
           <h2 className="fridge-title">My Ingredients</h2>
           <p className="fridge-subtitle">{fridgeIngredients.length} fridge · {pantryStaples.length} pantry items tracked</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="fridge-header__actions">
           <button className="btn btn--primary btn--sm" onClick={() => setEditingIng(false)}>+ Add ingredient</button>
           <button className="btn btn--ghost btn--sm" onClick={() => { setFridgeIngredients([]); setPantryStaples([]); }}>Clear selection</button>
         </div>
