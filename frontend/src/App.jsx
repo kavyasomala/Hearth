@@ -97,13 +97,19 @@ const COMMON_UNITS = [
 
 // ── Tag filters — match against recipe's tags array only (not cuisine column)
 const TAG_FILTERS = [
-  { key: 'Meals',    label: '🍽 Meals'    },
-  { key: 'Dessert',  label: '🍰 Desserts' },
-  { key: 'Drinks',   label: '🍹 Drinks'   },
-  { key: 'Pasta',    label: '🍝 Pasta'    },
-  { key: 'Soup',     label: '🍲 Soup'     },
-  { key: 'Marinade', label: '🫙 Marinade' },
-  { key: 'Party',    label: '🎉 Party'    },
+  { key: 'Meals',      label: '🍽 Meals'      },
+  { key: 'Desserts',   label: '🍰 Desserts'   },
+  { key: 'Drinks',     label: '🍹 Drinks'     },
+  { key: 'Pasta',      label: '🍝 Pasta'      },
+  { key: 'Soup',       label: '🍲 Soup'       },
+  { key: 'Marinade',   label: '🫙 Marinade'   },
+  { key: 'Party',      label: '🎉 Party'      },
+  { key: 'Breakfast',  label: '🍳 Breakfast'  },
+  { key: 'Snack',      label: '🥨 Snack'      },
+  { key: 'Salad',      label: '🥗 Salad'      },
+  { key: 'Bread',      label: '🍞 Bread'      },
+  { key: 'Sauce',      label: '🥫 Sauce'      },
+  { key: 'Sides',      label: '🥦 Sides'      },
 ];
 
 // ── Progress filters — based on DB columns (recipe_incomplete, status)
@@ -290,115 +296,37 @@ const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
 };
 
 // ─── Mark As Cooked Modal ──────────────────────────────────────────────────
-// Props: recipe, onSave, onClose
-// Optional kitchen-update props: recipeBodyIngredients, allIngredients,
-//   fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples
-const MarkCookedModal = ({
-  recipe, onSave, onClose,
-  recipeBodyIngredients, allIngredients,
-  fridgeIngredients, setFridgeIngredients,
-  pantryStaples, setPantryStaples,
-}) => {
-  const [step,        setStep]        = useState('rate'); // 'rate' | 'kitchen'
-  const [rating,      setRating]      = useState(0);
+const MarkCookedModal = ({ recipe, onSave, onClose }) => {
+  const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
-  const [notes,       setNotes]       = useState('');
-  const [saving,      setSaving]      = useState(false);
-  const [error,       setError]       = useState(null);
-  const [removeSet,   setRemoveSet]   = useState(new Set());
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Find perishable ingredients used by this recipe that are currently in stock
-  const PERISHABLE = new Set(['produce', 'meat', 'dairy']);
-  const perishableInKitchen = useMemo(() => {
-    if (!recipeBodyIngredients?.length || !allIngredients?.length) return [];
-    const metaByName = Object.fromEntries(allIngredients.map(i => [i.name.toLowerCase(), i]));
-    const inStock    = new Set([...(fridgeIngredients || []), ...(pantryStaples || [])]);
-    const seen = new Set();
-    return recipeBodyIngredients.flatMap(bi => {
-      const key = (bi.name || '').toLowerCase().trim();
-      if (!key || seen.has(key)) return [];
-      seen.add(key);
-      const meta = metaByName[key];
-      if (!meta || !PERISHABLE.has(meta.type) || !inStock.has(key)) return [];
-      return [{ name: bi.name, type: meta.type }];
-    });
-  }, [recipeBodyIngredients, allIngredients, fridgeIngredients, pantryStaples]);
-
-  const toggleRemove = name => setRemoveSet(prev => {
-    const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n;
-  });
-
-  // Save cook-log (skip FK for cookbook ref entries whose id starts with "ref-")
-  const persistLog = async () => {
-    const isReal = recipe.id && !String(recipe.id).startsWith('ref-');
-    if (!isReal) return;
-    const res = await fetch(`${API}/api/cook-log`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipe_id: recipe.id, rating: rating || null, notes: notes.trim() || null, cooked_at: new Date().toISOString() }),
-    });
-    if (!res.ok) { let m = 'Failed to save'; try { const d = await res.json(); m = d.error || m; } catch {} throw new Error(m); }
-  };
-
-  const handleNext = async () => {
+  const save = async () => {
     setSaving(true); setError(null);
     try {
-      await persistLog();
-      if (perishableInKitchen.length > 0) {
-        setRemoveSet(new Set(perishableInKitchen.map(i => i.name))); // pre-tick all
-        setSaving(false);
-        setStep('kitchen');
-      } else { onSave(); }
+      // Only write to DB if this is a real persisted recipe (not a cookbook-only ref entry)
+      const isRealRecipe = recipe.id && !String(recipe.id).startsWith('ref-');
+      if (isRealRecipe) {
+        const res = await fetch(`${API}/api/cook-log`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipe_id: recipe.id, rating: rating || null, notes: notes.trim() || null, cooked_at: new Date().toISOString() }),
+        });
+        if (!res.ok) {
+          let msg = 'Failed to save cook log';
+          try { const d = await res.json(); msg = d.error || msg; } catch {}
+          throw new Error(msg);
+        }
+      }
+      onSave();
     } catch (e) { setError(e.message); setSaving(false); }
-  };
-
-  const applyKitchen = () => {
-    if (removeSet.size > 0) {
-      const toRemove = new Set(Array.from(removeSet).map(n => n.toLowerCase()));
-      setFridgeIngredients?.(prev => prev.filter(x => !toRemove.has(x)));
-      setPantryStaples?.(prev => prev.filter(x => !toRemove.has(x)));
-    }
-    onSave();
   };
 
   const displayRating = hoverRating || rating;
   const RATING_LABELS = ['', "Didn't love it", 'It was okay', 'Pretty good!', 'Really good!', 'Perfect! ⭐'];
 
-  /* ── Step 2: kitchen update ── */
-  if (step === 'kitchen') return (
-    <div className="create-modal-overlay" onClick={onClose}>
-      <div className="create-modal cooked-modal" onClick={e => e.stopPropagation()}>
-        <div className="create-modal__header">
-          <h2 className="create-modal__title">🧊 Update Kitchen</h2>
-        </div>
-        <div className="create-modal__body cooked-modal__body">
-          <p className="cooked-modal__recipe-name">{recipe?.name}</p>
-          <p style={{ fontSize:13, color:'var(--warm-gray)', marginBottom:14, lineHeight:1.5 }}>
-            These perishable ingredients were used. Toggle any you want to <strong>keep</strong> in your kitchen.
-          </p>
-          <div className="cooked-kitchen-grid">
-            {perishableInKitchen.map(ing => {
-              const removing = removeSet.has(ing.name);
-              return (
-                <button key={ing.name}
-                  className={`cooked-kitchen-chip ${removing ? 'cooked-kitchen-chip--remove' : 'cooked-kitchen-chip--keep'}`}
-                  onClick={() => toggleRemove(ing.name)}>
-                  <span className="cooked-kitchen-chip__emoji">{TYPE_META[ing.type]?.emoji}</span>
-                  <span className="cooked-kitchen-chip__name">{ing.name}</span>
-                  <span className="cooked-kitchen-chip__badge">{removing ? '✕ Remove' : '✓ Keep'}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div className="create-modal__footer">
-          <button className="btn btn--ghost" onClick={onSave}>Skip</button>
-          <button className="btn btn--primary cooked-modal__save-btn" onClick={applyKitchen}>✓ Update Kitchen</button>
-        </div>
-      </div>
-    </div>
-  );
-
-  /* ── Step 1: rate + notes ── */
   return (
     <div className="create-modal-overlay" onClick={onClose}>
       <div className="create-modal cooked-modal" onClick={e => e.stopPropagation()}>
@@ -413,10 +341,14 @@ const MarkCookedModal = ({
             <p className="cooked-modal__label">How did it turn out? <span className="cooked-modal__optional">(optional)</span></p>
             <div className="cooked-modal__stars">
               {[1,2,3,4,5].map(n => (
-                <button key={n}
+                <button
+                  key={n}
                   className={`cooked-modal__star ${n <= displayRating ? 'cooked-modal__star--on' : ''}`}
-                  onMouseEnter={() => setHoverRating(n)} onMouseLeave={() => setHoverRating(0)}
-                  onClick={() => setRating(r => r === n ? 0 : n)} type="button">★</button>
+                  onMouseEnter={() => setHoverRating(n)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  onClick={() => setRating(r => r === n ? 0 : n)}
+                  type="button"
+                >★</button>
               ))}
               {displayRating > 0 && <span className="cooked-modal__rating-label">{RATING_LABELS[displayRating]}</span>}
             </div>
@@ -424,17 +356,21 @@ const MarkCookedModal = ({
 
           <div className="cooked-modal__notes-section">
             <p className="cooked-modal__label">Notes <span className="cooked-modal__optional">(optional)</span></p>
-            <textarea className="editor-textarea cooked-modal__notes-input" value={notes}
+            <textarea
+              className="editor-textarea cooked-modal__notes-input"
+              value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="e.g. Added more garlic, served with salad, would do again…" rows={3} />
+              placeholder="e.g. Added more garlic, served with salad, would do again…"
+              rows={3}
+            />
           </div>
 
           {error && <p className="editor-error">⚠️ {error}</p>}
         </div>
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn--primary cooked-modal__save-btn" onClick={handleNext} disabled={saving}>
-            {saving ? 'Saving…' : perishableInKitchen.length > 0 ? '✓ Save & Update Kitchen →' : '✓ Save'}
+          <button className="btn btn--primary cooked-modal__save-btn" onClick={save} disabled={saving}>
+            {saving ? 'Saving…' : '✓ Save'}
           </button>
         </div>
       </div>
@@ -1699,134 +1635,71 @@ const IngredientEditModal = ({ ing, onSave, onClose }) => {
   );
 };
 
-const KitchenTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, recentlyUsed, setRecentlyUsed }) => {
-  const [typeFilter,    setTypeFilter]    = useState(null); // null = all
+const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples }) => {
+  const [search, setSearch] = useState('');
+  const [activeType, setActiveType] = useState(null);
   const [typeOverrides, setTypeOverrides] = useState(() => LS.get('ingredientTypeOverrides', {}));
-  const [editingIng,    setEditingIng]    = useState(null);
-  const [deleteTarget,  setDeleteTarget]  = useState(null);
-  const [quickVal,      setQuickVal]      = useState('');
-  const [ddOpen,        setDdOpen]        = useState(false);
-  const ddRef = useRef(null);
-
-  // Which "have" sections are open — Produce & Meat default open, rest closed
-  const [openHave, setOpenHave] = useState(() =>
-    Object.fromEntries(ALL_TYPES.map(t => [t, t === 'produce' || t === 'meat']))
-  );
-  // Missing panel collapsed by default
-  const [missingOpen, setMissingOpen] = useState(false);
-  // Per-type open state inside missing panel (all collapsed)
-  const [openMiss, setOpenMiss] = useState(() =>
-    Object.fromEntries(ALL_TYPES.map(t => [t, false]))
-  );
+  const [editingIng, setEditingIng] = useState(null); // null = closed, false = new, object = editing
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => { LS.set('ingredientTypeOverrides', typeOverrides); }, [typeOverrides]);
 
-  const enriched   = useMemo(() => allIngredients.map(i => ({ ...i, type: typeOverrides[i.name] ?? i.type })), [allIngredients, typeOverrides]);
   const allSelected = useMemo(() => new Set([...fridgeIngredients, ...pantryStaples]), [fridgeIngredients, pantryStaples]);
+  const enriched = useMemo(() => allIngredients.map(i => ({ ...i, type: typeOverrides[i.name] ?? i.type })), [allIngredients, typeOverrides]);
 
-  // Split into have / missing, grouped by type, filtered by typeFilter
-  const { haveGroups, missGroups } = useMemo(() => {
-    const have = {}, miss = {};
-    ALL_TYPES.forEach(t => { have[t] = []; miss[t] = []; });
-    for (const ing of enriched) {
-      const t = ing.type || 'staple';
-      if (!have[t]) { have[t] = []; miss[t] = []; }
-      (allSelected.has(ing.name.toLowerCase()) ? have : miss)[t].push(ing);
-    }
-    return { haveGroups: have, missGroups: miss };
-  }, [enriched, allSelected]);
+  const filtered = useMemo(() => {
+    let list = enriched;
+    if (search.trim()) list = list.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
+    if (activeType) list = list.filter(i => i.type === activeType);
+    return list;
+  }, [enriched, search, activeType]);
 
-  const typesToShow = typeFilter ? [typeFilter] : ALL_TYPES;
-
-  // Quick-add dropdown — shows missing ingredients matching query
-  const ddList = useMemo(() => {
-    const q = quickVal.trim().toLowerCase();
-    const missing = enriched.filter(i => !allSelected.has(i.name.toLowerCase()));
-    if (!q) return missing.slice(0, 8);
-    return missing.filter(i => i.name.toLowerCase().includes(q)).slice(0, 12);
-  }, [quickVal, enriched, allSelected]);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const h = e => { if (ddRef.current && !ddRef.current.contains(e.target)) setDdOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
+  const grouped = useMemo(() => {
+    const map = {};
+    for (const ing of filtered) { const t = ing.type || 'other'; if (!map[t]) map[t] = []; map[t].push(ing); }
+    return map;
+  }, [filtered]);
 
   const toggle = (name, type) => {
     const lower = name.toLowerCase();
-    const isFridge = ['produce','meat','dairy','sauce'].includes(type);
-    if (isFridge) setFridgeIngredients(prev => prev.includes(lower) ? prev.filter(x => x !== lower) : [...prev, lower]);
-    else          setPantryStaples(prev => prev.includes(lower) ? prev.filter(x => x !== lower) : [...prev, lower]);
-  };
-
-  const quickAdd = (ing) => {
-    toggle(ing.name, ing.type);
-    setRecentlyUsed(prev => {
-      const key = ing.name.toLowerCase();
-      return [key, ...prev.filter(x => x !== key)].slice(0, 12);
-    });
-    setQuickVal(''); setDdOpen(false);
-  };
-
-  const clearSection = (type) => {
-    const keys = new Set((haveGroups[type] || []).map(i => i.name.toLowerCase()));
-    const isFridge = ['produce','meat','dairy','sauce'].includes(type);
-    if (isFridge) setFridgeIngredients(prev => prev.filter(x => !keys.has(x)));
-    else          setPantryStaples(prev => prev.filter(x => !keys.has(x)));
+    const isFridgeType = ['produce', 'meat', 'dairy', 'sauce'].includes(type);
+    if (isFridgeType) { setFridgeIngredients(prev => prev.includes(lower) ? prev.filter(i => i !== lower) : [...prev, lower]); }
+    else { setPantryStaples(prev => prev.includes(lower) ? prev.filter(i => i !== lower) : [...prev, lower]); }
   };
 
   const handleSaveIng = (saved) => {
-    if (editingIng === false) setAllIngredients(prev => [...prev, saved].sort((a,b) => a.name.localeCompare(b.name)));
-    else {
-      setAllIngredients(prev => prev.map(i => i.name === editingIng.name ? {...i,...saved} : i));
-      if (saved.type !== editingIng.type) setTypeOverrides(prev => ({...prev, [saved.name]: saved.type}));
+    if (editingIng === false) {
+      // new ingredient
+      setAllIngredients(prev => [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)));
+    } else {
+      // edited existing
+      setAllIngredients(prev => prev.map(i => i.name === editingIng.name ? { ...i, ...saved } : i));
+      if (saved.type !== editingIng.type) {
+        setTypeOverrides(prev => ({ ...prev, [saved.name]: saved.type }));
+      }
     }
     setEditingIng(null);
   };
 
   const handleDeleteIng = async (ing) => {
     try {
-      const res = await fetch(`${API}/api/ingredients/${encodeURIComponent(ing.name)}`, { method:'DELETE' });
+      const res = await fetch(`${API}/api/ingredients/${encodeURIComponent(ing.name)}`, { method: 'DELETE' });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Delete failed'); }
       setAllIngredients(prev => prev.filter(i => i.name !== ing.name));
       setFridgeIngredients(prev => prev.filter(x => x !== ing.name.toLowerCase()));
       setPantryStaples(prev => prev.filter(x => x !== ing.name.toLowerCase()));
-    } catch(e) { alert('Could not delete: ' + e.message); }
+    } catch (e) { alert('Could not delete: ' + e.message); }
     setDeleteTarget(null);
-  };
-
-  const recentList = useMemo(() => {
-    if (!recentlyUsed?.length) return [];
-    return recentlyUsed.map(key => enriched.find(i => i.name.toLowerCase() === key)).filter(Boolean).slice(0, 10);
-  }, [recentlyUsed, enriched]);
-
-  const totalHave    = fridgeIngredients.length + pantryStaples.length;
-  const totalMissing = enriched.length - totalHave;
-
-  const IngChip = ({ ing }) => {
-    const isOn = allSelected.has(ing.name.toLowerCase());
-    return (
-      <div className="fridge-ing-wrap">
-        <div className="fridge-chip-group">
-          <button className={`chip ${isOn ? 'chip--selected' : ''}`} onClick={() => toggle(ing.name, typeOverrides[ing.name] ?? ing.type)}>
-            {isOn && <span className="chip__check">✓</span>}{ing.name}
-          </button>
-          <div className="fridge-chip-actions">
-            <button className="fridge-chip-action fridge-chip-action--edit" title="Edit"
-              onClick={() => setEditingIng({...ing, type: typeOverrides[ing.name] ?? ing.type})}>✎</button>
-            <button className="fridge-chip-action fridge-chip-action--del" title="Delete"
-              onClick={() => setDeleteTarget(ing)}>✕</button>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   return (
     <main className="view">
-      {editingIng !== null && (
-        <IngredientEditModal ing={editingIng === false ? null : editingIng} onSave={handleSaveIng} onClose={() => setEditingIng(null)} />
+      {(editingIng !== null) && (
+        <IngredientEditModal
+          ing={editingIng === false ? null : editingIng}
+          onSave={handleSaveIng}
+          onClose={() => setEditingIng(null)}
+        />
       )}
       {deleteTarget && (
         <div className="create-modal-overlay" onClick={() => setDeleteTarget(null)}>
@@ -1842,135 +1715,70 @@ const KitchenTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setF
         </div>
       )}
 
-      {/* Header */}
       <div className="fridge-header">
         <div>
-          <h2 className="fridge-title">My Kitchen</h2>
-          <p className="fridge-subtitle">{totalHave} in stock · {totalMissing} missing</p>
+          <h2 className="fridge-title">My Ingredients</h2>
+          <p className="fridge-subtitle">{fridgeIngredients.length} fridge · {pantryStaples.length} pantry items tracked</p>
         </div>
         <div className="fridge-header__actions">
           <button className="btn btn--primary btn--sm" onClick={() => setEditingIng(false)}>+ Add ingredient</button>
-          <button className="btn btn--ghost btn--sm" onClick={() => { setFridgeIngredients([]); setPantryStaples([]); }}>Clear all</button>
+          <button className="btn btn--ghost btn--sm" onClick={() => { setFridgeIngredients([]); setPantryStaples([]); }}>Clear selection</button>
         </div>
       </div>
 
-      {/* Quick-add bar */}
-      <div className="kitchen-quickadd" ref={ddRef}>
-        <div className="kitchen-quickadd__bar">
-          <span className="kitchen-quickadd__icon">➕</span>
-          <input className="kitchen-quickadd__input"
-            placeholder="Quick-add an ingredient…"
-            value={quickVal}
-            onChange={e => { setQuickVal(e.target.value); setDdOpen(true); }}
-            onFocus={() => setDdOpen(true)} />
-          {quickVal && <button className="kitchen-quickadd__clear" onClick={() => { setQuickVal(''); setDdOpen(false); }}>✕</button>}
+      <div className="fridge-filter-bar">
+        <div className="fridge-filter-bar__search-wrap">
+          <span className="fridge-filter-bar__icon">🔍</span>
+          <input className="fridge-filter-bar__search" placeholder="Search ingredients…" value={search} onChange={e => setSearch(e.target.value)} />
+          {search && <button className="fridge-filter-bar__clear" onClick={() => setSearch('')}>✕</button>}
         </div>
-        {ddOpen && ddList.length > 0 && (
-          <div className="kitchen-quickadd__dropdown">
-            {ddList.map(ing => (
-              <button key={ing.name} className="kitchen-quickadd__option" onMouseDown={() => quickAdd(ing)}>
-                <span className="kitchen-quickadd__opt-emoji">{TYPE_META[ing.type]?.emoji || '🛒'}</span>
-                <span className="kitchen-quickadd__opt-name">{ing.name}</span>
-                <span className="kitchen-quickadd__opt-type">{TYPE_META[ing.type]?.label || ing.type}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Category filter chips */}
-      <div className="fridge-type-chips" style={{ marginBottom:16 }}>
-        <button className={`fridge-type-chip ${!typeFilter ? 'fridge-type-chip--active' : ''}`} onClick={() => setTypeFilter(null)}>All</button>
-        {ALL_TYPES.map(t => (
-          <button key={t} className={`fridge-type-chip ${typeFilter === t ? 'fridge-type-chip--active' : ''}`}
-            onClick={() => setTypeFilter(p => p === t ? null : t)}>
-            {TYPE_META[t].emoji} {TYPE_META[t].label}
-          </button>
-        ))}
-      </div>
-
-      {/* Recently used */}
-      {recentList.length > 0 && (
-        <div className="kitchen-recent">
-          <h3 className="kitchen-recent__title">🕐 Recently Used</h3>
-          <div className="fridge-chips">
-            {recentList.map(ing => <IngChip key={ing.name} ing={ing} />)}
-          </div>
-        </div>
-      )}
-
-      {/* ── IN STOCK ── */}
-      <div className="kitchen-section">
-        <div className="kitchen-section__hdr kitchen-section__hdr--have">
-          <span className="kitchen-section__hdr-label">✓ In Stock</span>
-          <span className="kitchen-section__hdr-count">{totalHave}</span>
-        </div>
-        <div className="fridge-groups">
-          {typesToShow.map(type => {
-            const ings = haveGroups[type] || [];
-            if (!ings.length) return null;
-            const alwaysOpen = type === 'produce' || type === 'meat';
-            const isOpen = alwaysOpen || openHave[type];
-            return (
-              <div key={type} className="fridge-group">
-                <div className="fridge-group__header" onClick={() => !alwaysOpen && setOpenHave(p => ({...p,[type]:!p[type]}))}>
-                  <span className="fridge-group__emoji">{TYPE_META[type].emoji}</span>
-                  <span className="fridge-group__label">{TYPE_META[type].label}</span>
-                  <span className="fridge-group__count">{ings.length}</span>
-                  {!alwaysOpen && <span className="fridge-group__chevron">{isOpen ? '▲' : '▼'}</span>}
-                  {ings.length > 0 && (
-                    <button className="fridge-group__clear-btn"
-                      onClick={e => { e.stopPropagation(); clearSection(type); }}
-                      title={`Clear ${TYPE_META[type].label}`}>
-                      Clear
-                    </button>
-                  )}
-                </div>
-                {isOpen && (
-                  <div className="fridge-chips">
-                    {ings.map(ing => <IngChip key={ing.name} ing={ing} />)}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="fridge-type-chips">
+          <button className={`fridge-type-chip ${!activeType ? 'fridge-type-chip--active' : ''}`} onClick={() => setActiveType(null)}>All</button>
+          {ALL_TYPES.map(t => (
+            <button key={t} className={`fridge-type-chip ${activeType === t ? 'fridge-type-chip--active' : ''}`} onClick={() => setActiveType(prev => prev === t ? null : t)}>
+              {TYPE_META[t].emoji} {TYPE_META[t].label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ── MISSING (collapsed) ── */}
-      {totalMissing > 0 && (
-        <div className="kitchen-section kitchen-section--missing">
-          <button className="kitchen-section__hdr kitchen-section__hdr--missing" onClick={() => setMissingOpen(p => !p)}>
-            <span className="kitchen-section__hdr-label">✗ Missing</span>
-            <span className="kitchen-section__hdr-count">{totalMissing}</span>
-            <span className="kitchen-section__toggle">{missingOpen ? '▲ Collapse' : '▼ Expand'}</span>
-          </button>
-          {missingOpen && (
-            <div className="fridge-groups" style={{ marginTop:8 }}>
-              {typesToShow.map(type => {
-                const ings = missGroups[type] || [];
-                if (!ings.length) return null;
-                const isOpen = openMiss[type];
+      <div className="fridge-groups">
+        {Object.entries(grouped).map(([type, ings]) => (
+          <div key={type} className="fridge-group">
+            <h3 className="fridge-group__title">
+              {TYPE_META[type]?.emoji ?? '?'} {TYPE_META[type]?.label ?? type}
+              <span className="fridge-group__count">{ings.filter(i => allSelected.has(i.name.toLowerCase())).length}/{ings.length}</span>
+            </h3>
+            <div className="fridge-chips">
+              {ings.map(ing => {
+                const isOn = allSelected.has(ing.name.toLowerCase());
+                const hasNutrition = ing.calories != null || ing.protein != null || ing.fiber != null;
                 return (
-                  <div key={type} className="fridge-group fridge-group--missing">
-                    <div className="fridge-group__header" onClick={() => setOpenMiss(p => ({...p,[type]:!p[type]}))}>
-                      <span className="fridge-group__emoji">{TYPE_META[type].emoji}</span>
-                      <span className="fridge-group__label">{TYPE_META[type].label}</span>
-                      <span className="fridge-group__count">{ings.length}</span>
-                      <span className="fridge-group__chevron">{isOpen ? '▲' : '▼'}</span>
-                    </div>
-                    {isOpen && (
-                      <div className="fridge-chips">
-                        {ings.map(ing => <IngChip key={ing.name} ing={ing} />)}
+                  <div key={ing.name} className="fridge-ing-wrap">
+                    <div className="fridge-chip-group">
+                      <button className={`chip ${isOn ? 'chip--selected' : ''}`} onClick={() => toggle(ing.name, typeOverrides[ing.name] ?? ing.type)}>
+                        {isOn && <span className="chip__check">✓</span>}
+                        {ing.name}
+                        {hasNutrition && <span className="fridge-chip__nutrition-dot" title="Has nutrition data" />}
+                      </button>
+                      <div className="fridge-chip-actions">
+                        <button className="fridge-chip-action fridge-chip-action--edit" title="Edit" onClick={() => setEditingIng({ ...ing, type: typeOverrides[ing.name] ?? ing.type })}>✎</button>
+                        <button className="fridge-chip-action fridge-chip-action--del" title="Delete" onClick={() => setDeleteTarget(ing)}>✕</button>
                       </div>
-                    )}
+                    </div>
                   </div>
                 );
               })}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        ))}
+        {Object.keys(grouped).length === 0 && (
+          <div className="fridge-empty">
+            <p>No ingredients found{search ? ` for "${search}"` : ''}.</p>
+            <button className="btn btn--ghost btn--sm" style={{ marginTop: 8 }} onClick={() => setEditingIng(false)}>+ Add one</button>
+          </div>
+        )}
+      </div>
     </main>
   );
 };
@@ -2195,44 +2003,40 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients }) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to build list');
         if (!cancelled) {
+          // Client-side: merge duplicate ingredient amounts across recipes
           const rawCats = data.categories || [];
-          // Build a global map by ingredient name so amounts are summed across ALL recipes/categories
-          const globalMap = {}; // normalizedName -> { ...item, _cat, _catEmoji, amounts[] }
-          for (const cat of rawCats) {
+          const mergedCats = rawCats.map(cat => {
+            const merged = {};
             for (const item of cat.items) {
               const key = item.name.toLowerCase().trim();
-              if (!globalMap[key]) {
-                globalMap[key] = { ...item, _cat: cat.name, _catEmoji: cat.emoji, _amounts: [] };
+              if (!merged[key]) {
+                merged[key] = { ...item, totalAmount: null, _amounts: [] };
               }
-              const entry = globalMap[key];
+              const existing = merged[key];
+              // Try to sum numeric amounts
               const n = parseFloat(item.amount);
-              const sameUnit = (entry.unit || '').toLowerCase() === (item.unit || '').toLowerCase();
-              if (!isNaN(n) && sameUnit) entry._amounts.push(n);
+              if (!isNaN(n) && (existing.unit || '').toLowerCase() === (item.unit || '').toLowerCase()) {
+                existing._amounts.push(n);
+              }
+              // Merge recipe lists
               if (item.recipes?.length) {
-                entry.recipes = [...new Set([...(entry.recipes || []), ...item.recipes])];
+                existing.recipes = [...new Set([...(existing.recipes || []), ...item.recipes])];
               }
             }
-          }
-          // Resolve totals and re-bucket into categories
-          const catOrder = rawCats.map(c => c.name);
-          const catMeta  = Object.fromEntries(rawCats.map(c => [c.name, c.emoji]));
-          const buckets  = {};
-          for (const entry of Object.values(globalMap)) {
-            if (entry._amounts.length > 0) {
-              const total = entry._amounts.reduce((a, b) => a + b, 0);
-              entry.totalAmount = Number.isInteger(total) ? String(total) : total.toFixed(1).replace(/\.0$/, '');
-            } else {
-              entry.totalAmount = entry.amount || '';
-            }
-            delete entry._amounts;
-            const cat = entry._cat;
-            if (!buckets[cat]) buckets[cat] = [];
-            buckets[cat].push(entry);
-          }
-          const merged = catOrder
-            .filter(name => buckets[name]?.length)
-            .map(name => ({ name, emoji: catMeta[name] || '🛒', items: buckets[name].sort((a,b) => a.name.localeCompare(b.name)) }));
-          setCategories(merged);
+            const items = Object.values(merged).map(item => {
+              if (item._amounts.length > 0) {
+                const total = item._amounts.reduce((a, b) => a + b, 0);
+                // Format nicely: avoid decimals if whole number
+                item.totalAmount = Number.isInteger(total) ? String(total) : total.toFixed(1).replace(/\.0$/, '');
+              } else {
+                item.totalAmount = item.amount;
+              }
+              delete item._amounts;
+              return item;
+            });
+            return { ...cat, items };
+          });
+          setCategories(mergedCats);
           setRecipeNames(data.recipeNames || []);
           setChecked(new Set());
         }
@@ -2516,34 +2320,233 @@ const QuickAddModal = ({ onSave, onClose }) => {
 };
 
 // ─── Convert to Full Recipe Modal ─────────────────────────────────────────────
-const ConvertRecipeModal = ({ entry, cookbookTitle, onConverted, onClose }) => {
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState(null);
-  const convert = async () => {
-    setSaving(true); setErr(null);
-    try {
-      const res = await fetch(`${API}/api/recipes`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ details:{ name:entry.name, cookbook:cookbookTitle, page_number:entry.page, cover_image_url:entry.image||'', status:'to try', tags:entry.tags||[] }, ingredients:[], instructions:[], notes:[] }),
-      });
-      let data = {}; try { data = await res.json(); } catch {}
-      if (!res.ok) throw new Error(data.error || `Failed (${res.status})`);
-      onConverted(data.recipe);
-    } catch(e) { setErr(e.message); setSaving(false); }
+// ─── Convert to Full Recipe Modal ─────────────────────────────────────────────
+// Identical form to AddRecipeTab's create modal, pre-filled with cookbook entry data
+const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConverted, onClose }) => {
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+
+  const [details, setDetails] = useState({
+    name: entry.name || '',
+    cuisine: '',
+    time: '',
+    servings: '',
+    calories: '',
+    protein: '',
+    cover_image_url: entry.image || '',
+    cookbook: cookbookTitle || '',
+    reference: entry.page || '',
+    status: 'to try',
+    recipe_incomplete: false,
+    tags: entry.tags || [],
+  });
+  const [ings, setIngs]           = useState([]);
+  const [steps, setSteps]         = useState([]);
+  const [notesList, setNotesList] = useState([]);
+  const [saving, setSaving]       = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [imgPreviewError, setImgPreviewError] = useState(false);
+
+  const setDetail = (k, v) => setDetails(prev => ({ ...prev, [k]: v }));
+  const toggleTag = (tag) => setDetails(prev => ({
+    ...prev, tags: prev.tags.includes(tag) ? prev.tags.filter(t => t !== tag) : [...prev.tags, tag],
+  }));
+
+  const addIng    = () => setIngs(prev => [...prev, { _id: `ing-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]);
+  const updateIng = (id, k, v) => setIngs(prev => prev.map(i => i._id === id ? { ...i, [k]: v } : i));
+  const removeIng = (id) => setIngs(prev => prev.filter(i => i._id !== id));
+  const onIngDragEnd = ({ active, over }) => {
+    if (over && active.id !== over.id) {
+      setIngs(prev => { const o = prev.findIndex(i => i._id === active.id); const n = prev.findIndex(i => i._id === over.id); return arrayMove(prev, o, n); });
+    }
   };
+  const addStep    = () => setSteps(prev => [...prev, { _id: `step-${Date.now()}`, step_number: prev.length + 1, body_text: '' }]);
+  const updateStep = (id, v) => setSteps(prev => prev.map(s => s._id === id ? { ...s, body_text: v } : s));
+  const removeStep = (id) => setSteps(prev => prev.filter(s => s._id !== id));
+  const onStepDragEnd = ({ active, over }) => {
+    if (over && active.id !== over.id) {
+      setSteps(prev => { const o = prev.findIndex(s => s._id === active.id); const n = prev.findIndex(s => s._id === over.id); return arrayMove(prev, o, n); });
+    }
+  };
+  const addNote    = () => setNotesList(prev => [...prev, { _id: `note-${Date.now()}`, text: '' }]);
+  const updateNote = (id, v) => setNotesList(prev => prev.map(n => n._id === id ? { ...n, text: v } : n));
+  const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id));
+
+  const groupLabels = [...new Set(ings.map(i => i.group_label).filter(Boolean))];
+
+  const save = async () => {
+    if (!details.name.trim()) { setSaveError('Recipe name is required.'); return; }
+    setSaving(true); setSaveError(null);
+    try {
+      const payload = {
+        details: {
+          name: details.name, cuisine: details.cuisine, time: details.time,
+          servings: details.servings, calories: details.calories, protein: details.protein,
+          cover_image_url: details.cover_image_url,
+          cookbook: details.cookbook, page_number: details.reference,
+          status: details.status, recipe_incomplete: details.recipe_incomplete, tags: details.tags,
+        },
+        ingredients: ings.map((i, idx) => ({ ...i, order_index: idx })),
+        instructions: steps.map((s, idx) => ({ ...s, step_number: idx + 1 })),
+        notes: notesList.map((n, idx) => ({ ...n, order_index: idx })),
+      };
+      const res = await fetch(`${API}/api/recipes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+      onConverted(data.recipe);
+    } catch (e) { setSaveError(e.message); } finally { setSaving(false); }
+  };
+
   return (
     <div className="create-modal-overlay" onClick={onClose}>
-      <div className="create-modal" style={{ maxWidth:420 }} onClick={e => e.stopPropagation()}>
+      <div className="create-modal" onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
-          <h2 className="create-modal__title">✨ Convert to Full Recipe</h2>
+          <h2 className="create-modal__title">✨ Convert to Recipe</h2>
+          <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
+
         <div className="create-modal__body">
-          <p style={{ fontSize:14, lineHeight:1.5 }}>This will add <strong>{entry.name}</strong> to Hearth as a full recipe, pre-filled with the cookbook and page number. You can add ingredients and instructions afterwards.</p>
-          {err && <p style={{ color:'var(--terracotta)', fontSize:13, marginTop:8 }}>⚠️ {err}</p>}
+          {/* Image row */}
+          <div className="create-modal__img-row">
+            <div className="create-modal__img-preview">
+              {details.cover_image_url && !imgPreviewError
+                ? <img src={details.cover_image_url} alt="preview" onError={() => setImgPreviewError(true)} />
+                : <span className="create-modal__img-placeholder">🍽</span>}
+            </div>
+            <div className="create-modal__img-input-wrap">
+              <label className="create-modal__field-label">Cover image URL</label>
+              <input className="editor-input" value={details.cover_image_url}
+                onChange={e => { setDetail('cover_image_url', e.target.value); setImgPreviewError(false); }}
+                placeholder="https://example.com/photo.jpg" />
+              <p className="create-modal__field-hint">Paste any image URL — see it previewed instantly</p>
+            </div>
+          </div>
+
+          {/* Name */}
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Recipe name <span className="create-modal__required">*</span></label>
+            <input className="editor-input create-modal__name-input" value={details.name}
+              onChange={e => setDetail('name', e.target.value)} placeholder="e.g. Grandma's Lasagne" autoFocus />
+          </div>
+
+          {/* Meta row */}
+          <div className="create-modal__meta-grid">
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">🌍 Cuisine</label>
+              <select className="editor-input editor-select" value={details.cuisine} onChange={e => setDetail('cuisine', e.target.value)}>
+                <option value="">— none —</option>
+                {ALL_CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">⏱ Time</label>
+              <input className="editor-input" value={details.time} onChange={e => setDetail('time', e.target.value)} placeholder="45 mins" />
+            </div>
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">🍽 Servings</label>
+              <input className="editor-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" />
+            </div>
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">🔥 Calories</label>
+              <input className="editor-input" type="number" value={details.calories} onChange={e => setDetail('calories', e.target.value)} placeholder="kcal" />
+            </div>
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">💪 Protein (g)</label>
+              <input className="editor-input" type="number" value={details.protein} onChange={e => setDetail('protein', e.target.value)} placeholder="g" />
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Tags</label>
+            <div className="picker__chips" style={{ marginTop: 6 }}>
+              {TAG_FILTERS.map(({ key, label }) => (
+                <button key={key} className={`chip ${details.tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggleTag(key)}>
+                  {details.tags.includes(key) && <span className="chip__check">✓</span>}{label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Ingredients */}
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Ingredients</label>
+            <datalist id="cv-group-labels">{groupLabels.map(l => <option key={l} value={l} />)}</datalist>
+            {ings.length > 0 && (
+              <div className="editor-ing-header" style={{ marginBottom: 4 }}>
+                <span>Amount</span><span>Unit</span><span>Name</span><span>Group</span><span>Prep note</span><span>Opt?</span><span></span>
+              </div>
+            )}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onIngDragEnd}>
+              <SortableContext items={ings.map(i => i._id)} strategy={verticalListSortingStrategy}>
+                {ings.map(ing => (
+                  <SortableItem key={ing._id} id={ing._id}>
+                    <div className="editor-ing-row">
+                      <input className="editor-input editor-input--sm" value={ing.amount} onChange={e => updateIng(ing._id, 'amount', e.target.value)} placeholder="2" />
+                      <UnitAutocomplete value={ing.unit} onChange={v => updateIng(ing._id, 'unit', v)} />
+                      <IngredientAutocomplete value={ing.name} onChange={v => updateIng(ing._id, 'name', v)} allIngredients={allIngredients.filter(Boolean)} />
+                      <input className="editor-input editor-input--sm" value={ing.group_label || ''} onChange={e => updateIng(ing._id, 'group_label', e.target.value)} placeholder="e.g. Sauce" list="cv-group-labels" />
+                      <input className="editor-input" value={ing.prep_note || ''} onChange={e => updateIng(ing._id, 'prep_note', e.target.value)} placeholder="finely chopped" />
+                      <button className={`editor-optional-btn ${ing.optional ? 'editor-optional-btn--on' : ''}`} onClick={() => updateIng(ing._id, 'optional', !ing.optional)} title="Optional">{ing.optional ? '✓' : '○'}</button>
+                      <button className="editor-remove-btn" onClick={() => removeIng(ing._id)}>✕</button>
+                    </div>
+                  </SortableItem>
+                ))}
+              </SortableContext>
+            </DndContext>
+            <button className="btn btn--ghost editor-add-btn" onClick={addIng}>+ Add Ingredient</button>
+          </div>
+
+          {/* Instructions */}
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Instructions</label>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
+              <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
+                {steps.map((step, idx) => (
+                  <SortableItem key={step._id} id={step._id}>
+                    <div className="editor-step-row">
+                      <span className="editor-step-num">{idx + 1}</span>
+                      <textarea className="editor-textarea" value={step.body_text} onChange={e => updateStep(step._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                      <button className="editor-remove-btn" onClick={() => removeStep(step._id)}>✕</button>
+                    </div>
+                  </SortableItem>
+                ))}
+              </SortableContext>
+            </DndContext>
+            <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
+          </div>
+
+          {/* Notes */}
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Notes &amp; Modifications</label>
+            {notesList.map(note => (
+              <div key={note._id} className="editor-note-row">
+                <input className="editor-input" value={note.text || ''} onChange={e => updateNote(note._id, e.target.value)} placeholder="e.g. Great with oat milk instead of dairy" />
+                <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>✕</button>
+              </div>
+            ))}
+            <button className="btn btn--ghost editor-add-btn" onClick={addNote}>+ Add Note</button>
+          </div>
+
+          {/* Cookbook reference — pre-filled, editable */}
+          <div className="create-modal__meta-grid">
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">📖 Cookbook</label>
+              <input className="editor-input" value={details.cookbook} onChange={e => setDetail('cookbook', e.target.value)} placeholder="Cookbook title" />
+            </div>
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">Page number</label>
+              <input className="editor-input" value={details.reference} onChange={e => setDetail('reference', e.target.value)} placeholder="e.g. 142" />
+            </div>
+          </div>
+
+          {saveError && <p className="editor-error" style={{ marginTop: 8 }}>⚠️ {saveError}</p>}
         </div>
+
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn--primary" onClick={convert} disabled={saving}>{saving ? 'Creating…' : '✨ Convert'}</button>
+          <button className="btn btn--primary" onClick={save} disabled={saving}>
+            {saving ? 'Creating…' : '✨ Create Recipe'}
+          </button>
         </div>
       </div>
     </div>
@@ -2605,7 +2608,7 @@ const CookbookEditModal = ({ cookbook, onSave, onClose }) => {
 };
 
 // ─── CookbookDetail ───────────────────────────────────────────────────────────
-const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, recipes, onUpdateRecipes, allTags, setCookingRecipe, cookLog, onRecipeConverted }) => {
+const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, recipes, onUpdateRecipes, allTags, allIngredients, setCookingRecipe, cookLog, onRecipeConverted }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddRef,   setShowAddRef]   = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -2651,9 +2654,9 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
       {showQuickAdd && <QuickAddModal onSave={addEntries} onClose={() => setShowQuickAdd(false)} />}
       {convertEntry && (
         <ConvertRecipeModal
-          entry={convertEntry} cookbookTitle={cookbook.title}
+          entry={convertEntry} cookbookTitle={cookbook.title} allIngredients={allIngredients}
           onConverted={(newRecipe) => {
-            onUpdateRecipes(cookbook.recipes.map(e => e === convertEntry ? {...e, recipeId:newRecipe.id} : e));
+            onUpdateRecipes(cookbook.recipes.map(e => e === convertEntry ? {...e, recipeId:newRecipe.id, page: newRecipe.reference || e.page} : e));
             onRecipeConverted && onRecipeConverted(newRecipe);
             setConvertEntry(null);
           }}
@@ -2749,28 +2752,32 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
                       ? <img className="cbentry__thumb" src={entry.image || linked?.coverImage} alt={entry.name} />
                       : <div className="cbentry__thumb cbentry__thumb--empty">📖</div>}
                   </div>
-                  {/* Content: name / tags / page+actions stacked */}
-                  <div className="cbentry__body">
-                    <span className="cbentry__name">{entry.name}</span>
+                  {/* Info */}
+                  <div className="cbentry__info">
+                    <div className="cbentry__name-row">
+                      {linked
+                        ? <button className="cbentry__name cbentry__name--link" onClick={() => onOpenRecipe(linked)}>{entry.name}</button>
+                        : <span className="cbentry__name">{entry.name}</span>}
+                      {linked && <span className="cookbook-recipe-entry__saved-badge">✓ Saved</span>}
+                    </div>
+                    {entry.page && <span className="cbentry__page">p. {entry.page}</span>}
                     {entryTags.length > 0 && (
                       <div className="cbentry__tags">
                         {entryTags.slice(0,5).map(t => <span key={t} className="cbentry__tag">{t}</span>)}
                       </div>
                     )}
-                    <div className="cbentry__footer-row">
-                      <span className="cbentry__page">{entry.page ? `p. ${entry.page}` : ''}</span>
-                      <div className="cbentry__actions">
-                        <button className="cbentry__action cbentry__action--cook" title="Mark as Cooked"
-                          onClick={() => setCookingRecipe({ id: entry.recipeId || `ref-${idx}`, name: entry.name, coverImage: entry.image || linked?.coverImage || null })}>
-                          🍳
-                        </button>
-                        {linked
-                          ? <button className="cbentry__action cbentry__action--view" onClick={() => onOpenRecipe(linked)} title="Open in Hearth">View →</button>
-                          : <button className="cbentry__action cbentry__action--convert" onClick={() => setConvertEntry(entry)} title="Convert to full recipe">✨ Convert</button>}
-                        {!linked && <button className="cbentry__action cbentry__action--edit" onClick={() => startEdit(entry)} title="Edit">✎</button>}
-                        {!linked && <button className="cbentry__action cbentry__action--remove" onClick={() => removeEntry(entry)} title="Remove">✕</button>}
-                      </div>
-                    </div>
+                  </div>
+                  {/* Actions */}
+                  <div className="cbentry__actions">
+                    <button className="cbentry__action cbentry__action--cook" title="Mark as Cooked"
+                      onClick={() => setCookingRecipe({ id: entry.recipeId || `ref-${idx}`, name: entry.name, coverImage: entry.image || linked?.coverImage || null })}>
+                      🍳
+                    </button>
+                    {linked
+                      ? <button className="cbentry__action cbentry__action--view" onClick={() => onOpenRecipe(linked)} title="Open in Hearth">View →</button>
+                      : <button className="cbentry__action cbentry__action--convert" onClick={() => setConvertEntry(entry)} title="Convert to full recipe">✨ Convert</button>}
+                    {!linked && <button className="cbentry__action cbentry__action--edit" onClick={() => startEdit(entry)} title="Edit">✎</button>}
+                    {!linked && <button className="cbentry__action cbentry__action--remove" onClick={() => removeEntry(entry)} title="Remove">✕</button>}
                   </div>
                 </div>
               );
@@ -2783,7 +2790,7 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
 };
 
 // ─── CookbooksTab ─────────────────────────────────────────────────────────────
-const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags, setCookingRecipe, cookLog, onRecipeConverted }) => {
+const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags, allIngredients, setCookingRecipe, cookLog, onRecipeConverted }) => {
   const [selectedCookbook, setSelectedCookbook] = useState(null);
   const [showAddModal,     setShowAddModal]     = useState(false);
   const [editingCookbook,  setEditingCookbook]  = useState(null);
@@ -2804,14 +2811,21 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags,
     const linked = recipes.filter(r => r.cookbook && r.cookbook.toLowerCase().trim() === cb.title.toLowerCase().trim());
     const entries = [...(cb.recipes||[])];
     for (const lr of linked) {
-      if (!entries.some(e => e.name.toLowerCase() === lr.name.toLowerCase()))
-        entries.push({ name:lr.name, page:lr.reference||'', image:lr.coverImage||'', tags:lr.tags||[], recipeId:lr.id, addedAt:Date.now() });
-      else {
-        const i = entries.findIndex(e => e.name.toLowerCase() === lr.name.toLowerCase());
-        if (i >= 0 && !entries[i].recipeId) entries[i] = {...entries[i], recipeId:lr.id};
+      const existingIdx = entries.findIndex(e => e.name.toLowerCase() === lr.name.toLowerCase());
+      if (existingIdx < 0) {
+        // New linked recipe not in list yet — add it
+        entries.push({ name: lr.name, page: lr.reference || '', image: lr.coverImage || '', tags: lr.tags || [], recipeId: lr.id, addedAt: Date.now() });
+      } else {
+        // Sync recipeId and page number from the live recipe record
+        entries[existingIdx] = {
+          ...entries[existingIdx],
+          recipeId: lr.id,
+          page: lr.reference || entries[existingIdx].page || '',
+          tags: lr.tags?.length ? lr.tags : entries[existingIdx].tags,
+        };
       }
     }
-    return {...cb, recipes:entries, savedCount:linked.length};
+    return {...cb, recipes: entries, savedCount: linked.length};
   }), [cookbooks, recipes]);
 
   const globalResults = useMemo(() => {
@@ -2834,6 +2848,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags,
       onDelete={() => handleDeleteCookbook(currentCb.id)}
       onOpenRecipe={onOpenRecipe}
       recipes={recipes}
+      allIngredients={allIngredients}
       onUpdateRecipes={(newRecipes) => setCookbooks(prev => prev.map(c => c.id===currentCb.id ? {...c, recipes:newRecipes} : c))}
       allTags={allTags}
       setCookingRecipe={setCookingRecipe}
@@ -3248,23 +3263,27 @@ function AppInner() {
   const [units, setUnitsRaw] = useState(() => LS.get('units', 'metric'));
   const [dietaryFilters, setDietaryFiltersRaw] = useState(() => LS.get('dietaryFilters', []));
   const [cookbooks, setCookbooks] = useState(() => LS.get('cookbooks', []));
-  const [recentlyUsed, setRecentlyUsed] = useState(() => LS.get('recentlyUsedKitchen', []));
+  const [cookLog, setCookLog] = useState([]);
   const setUnits = (v) => { setUnitsRaw(v); LS.set('units', v); };
   const setDietaryFilters = (fn) => setDietaryFiltersRaw(prev => { const next = typeof fn === 'function' ? fn(prev) : fn; LS.set('dietaryFilters', next); return next; });
 
   useEffect(() => { LS.set('fridgeIngredients', fridgeIngredients); }, [fridgeIngredients]);
   useEffect(() => { LS.set('pantryStaples', pantryStaples); }, [pantryStaples]);
   useEffect(() => { LS.set('cookbooks', cookbooks); }, [cookbooks]);
-  useEffect(() => { LS.set('recentlyUsedKitchen', recentlyUsed); }, [recentlyUsed]);
 
   const loadData = useCallback(async () => {
     try {
-      const [ingRes, recipeRes] = await Promise.all([fetch(`${API}/api/ingredients`), fetch(`${API}/api/recipes`)]);
+      const [ingRes, recipeRes, logRes] = await Promise.all([
+        fetch(`${API}/api/ingredients`),
+        fetch(`${API}/api/recipes`),
+        fetch(`${API}/api/cook-log`),
+      ]);
       if (!ingRes.ok || !recipeRes.ok) throw new Error('Failed to load data');
       const { ingredients } = await ingRes.json();
       const { recipes: recipeData } = await recipeRes.json();
       setAllIngredients(ingredients.sort((a, b) => a.name.localeCompare(b.name)));
       setRecipes(recipeData);
+      if (logRes.ok) { const d = await logRes.json(); setCookLog(d.entries || []); }
       setLastSynced(Date.now());
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }, []);
@@ -3424,6 +3443,11 @@ function AppInner() {
           onDelete={(deletedId) => {
             setHeartedIds(prev => prev.filter(x => x !== deletedId));
             setMakeSoonIds(prev => prev.filter(x => x !== deletedId));
+            // Remove any cookbook entry whose recipeId matches the deleted recipe
+            setCookbooks(prev => prev.map(cb => ({
+              ...cb,
+              recipes: (cb.recipes || []).filter(e => e.recipeId !== deletedId),
+            })));
             loadData();
             setView(lastView);
           }}
@@ -3460,7 +3484,7 @@ function AppInner() {
       )}
 
       {view === 'kitchen' && (
-        <KitchenTab allIngredients={allIngredients} setAllIngredients={setAllIngredients} fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} recentlyUsed={recentlyUsed} setRecentlyUsed={setRecentlyUsed} />
+        <FridgeTab allIngredients={allIngredients} setAllIngredients={setAllIngredients} fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} />
       )}
 
       {/* ══════════════════════════════════════════════════════
@@ -3546,40 +3570,6 @@ function AppInner() {
               );
             })()}
 
-            {/* ── ♥ Favorites ── */}
-            {(() => {
-              const favRecipes = recipes.filter(r => heartedIds.includes(r.id));
-              const visibleFav = showAllFav ? favRecipes : favRecipes.slice(0, 4);
-              return (
-                <div className="home-section">
-                  <div className="home-section__header">
-                    <h2 className="home-section__title">♥ Favorites</h2>
-                    {heartedIds.length > 0 && (
-                      <button className="btn btn--ghost btn--sm" onClick={() => { setActiveProgresses(['__favorite']); setView('recipes'); }}>View all →</button>
-                    )}
-                  </div>
-                  {heartedIds.length === 0 ? (
-                    <div className="home-empty-cta" onClick={() => setView('recipes')}>
-                      <span className="home-empty-cta__icon">♡</span>
-                      <div>
-                        <p className="home-empty-cta__title">No favorites yet</p>
-                        <p className="home-empty-cta__sub">Tap ♡ on any recipe to save it here</p>
-                      </div>
-                      <span className="home-empty-cta__arrow">→</span>
-                    </div>
-                  ) : (
-                    <HScrollRow count={favRecipes.length}>
-                        {favRecipes.map(r => (
-                          <RecipeCard key={r.id} recipe={r} match={matchById.get(r.id)} onClick={openRecipe}
-                            isHearted={true} onToggleHeart={() => toggleHeart(r.id)}
-                            isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)} />
-                        ))}
-                    </HScrollRow>
-                  )}
-                </div>
-              );
-            })()}
-
                     </div>{/* end home-main */}
 
           {/* ── Right sidebar: Quick Actions FIRST, then Insights ── */}
@@ -3607,6 +3597,22 @@ function AppInner() {
                   </span>
                   <span className="insight-item__label">Under 30 min</span>
                   <span className="insight-item__icon">⏱</span>
+                </button>
+                <button className="insight-item insight-item--orange insight-item--btn"
+                  onClick={() => { setActiveProgresses(['__favorite']); setView('recipes'); }}>
+                  <span className="insight-item__number">{heartedIds.filter(id => recipes.some(r => r.id === id)).length}</span>
+                  <span className="insight-item__label">Favorites</span>
+                  <span className="insight-item__icon">♥</span>
+                </button>
+                <button className="insight-item insight-item--sage insight-item--btn" style={{ cursor: 'default' }}>
+                  <span className="insight-item__number">
+                    {(() => {
+                      const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+                      return cookLog.filter(e => new Date(e.cooked_at) >= weekAgo).length;
+                    })()}
+                  </span>
+                  <span className="insight-item__label">Cooked this week</span>
+                  <span className="insight-item__icon">🍳</span>
                 </button>
                 <button className="insight-item insight-item--blue insight-item--btn"
                   onClick={() => { clearAllFilters(); setView('recipes'); }}>
@@ -3885,8 +3891,9 @@ function AppInner() {
           recipes={recipes}
           onOpenRecipe={openRecipe}
           allTags={allTags}
+          allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
           setCookingRecipe={setCookingRecipe}
-          cookLog={[]}
+          cookLog={cookLog}
           onRecipeConverted={(newRecipe) => { loadData(); openRecipe(newRecipe); }}
         />
       )}
@@ -3905,15 +3912,10 @@ function AppInner() {
       {cookingRecipe && (
         <MarkCookedModal
           recipe={cookingRecipe}
-          recipeBodyIngredients={recipeBodyIngredients}
-          allIngredients={allIngredients}
-          fridgeIngredients={fridgeIngredients}
-          setFridgeIngredients={setFridgeIngredients}
-          pantryStaples={pantryStaples}
-          setPantryStaples={setPantryStaples}
           onSave={() => {
             setMakeSoonIds(prev => prev.filter(id => id !== cookingRecipe.id));
             setCookingRecipe(null);
+            fetch(`${API}/api/cook-log`).then(r => r.json()).then(d => setCookLog(d.entries || [])).catch(() => {});
           }}
           onClose={() => setCookingRecipe(null)}
         />

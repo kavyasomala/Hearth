@@ -728,57 +728,16 @@ body {
 }
 
 /* ─── Fridge Redesign ────────────────────────────────────────────────────── */
-/* ─── Kitchen Quick-Add Bar ────────────────────────────────────────────────── */
-.kitchen-quickadd { position: relative; margin: 0 0 16px; }
-.kitchen-quickadd__bar {
+.fridge-filter-bar { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 16px; }
+.fridge-filter-bar__search-wrap {
   display: flex; align-items: center; gap: 8px;
-  background: var(--cream); border: 1.5px solid var(--border); border-radius: 999px; padding: 10px 16px;
-  transition: border-color .15s;
+  background: var(--cream); border: 1.5px solid var(--border); border-radius: 999px; padding: 8px 14px;
 }
-.kitchen-quickadd__bar:focus-within { border-color: var(--terracotta); }
-.kitchen-quickadd__icon { font-size: 14px; opacity: 0.6; }
-.kitchen-quickadd__input { flex: 1; border: none; background: transparent; font-family: var(--font-body); font-size: 14px; color: var(--charcoal); outline: none; }
-.kitchen-quickadd__input::placeholder { color: var(--warm-gray); }
-.kitchen-quickadd__clear { border: none; background: none; font-size: 12px; color: var(--warm-gray); cursor: pointer; padding: 2px 5px; border-radius: 4px; }
-.kitchen-quickadd__clear:hover { color: var(--terracotta); }
-.kitchen-quickadd__dropdown {
-  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
-  background: var(--warm-white); border: 1.5px solid var(--border);
-  border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); z-index: 400; overflow: hidden;
-}
-.kitchen-quickadd__option {
-  display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 10px 16px; border: none; background: none;
-  font-family: var(--font-body); font-size: 13px; cursor: pointer; text-align: left;
-  border-bottom: 1px solid var(--border); transition: background .1s;
-}
-.kitchen-quickadd__option:last-child { border-bottom: none; }
-.kitchen-quickadd__option:hover { background: var(--cream); }
-.kitchen-quickadd__opt-emoji { font-size: 15px; flex-shrink: 0; }
-.kitchen-quickadd__opt-name { flex: 1; font-weight: 500; color: var(--charcoal); }
-.kitchen-quickadd__opt-type { font-size: 11px; color: var(--warm-gray); }
-
-/* ─── Kitchen Have / Missing sections ────────────────────────────────────── */
-.kitchen-section { margin-bottom: 20px; }
-.kitchen-section__hdr {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 14px; border-radius: 10px; margin-bottom: 12px;
-}
-.kitchen-section__hdr--have { background: #edfaf2; border: 1.5px solid #a3ddb8; }
-.kitchen-section__hdr--missing {
-  background: var(--cream); border: 1.5px solid var(--border);
-  cursor: pointer; transition: border-color .15s; width: 100%; text-align: left;
-}
-.kitchen-section__hdr--missing:hover { border-color: var(--warm-gray); }
-.kitchen-section__hdr-label { font-family: var(--font-display); font-size: 14px; font-weight: 700; flex: 1; color: var(--charcoal); }
-.kitchen-section__hdr-count { font-size: 11px; font-weight: 700; background: rgba(0,0,0,0.08); color: var(--charcoal); padding: 2px 8px; border-radius: 999px; }
-.kitchen-section__toggle { font-size: 12px; color: var(--warm-gray); white-space: nowrap; }
-
-/* ─── Recently used ───────────────────────────────────────────────────────── */
-.kitchen-recent { margin-bottom: 20px; }
-.kitchen-recent__title { font-family: var(--font-display); font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--charcoal); }
-
-/* ─── Fridge groups (shared by kitchen) ──────────────────────────────────── */
+.fridge-filter-bar__icon { font-size: 13px; opacity: 0.5; }
+.fridge-filter-bar__search { flex: 1; border: none; background: transparent; font-family: var(--font-body); font-size: 14px; color: var(--charcoal); outline: none; }
+.fridge-filter-bar__search::placeholder { color: var(--warm-gray); }
+.fridge-filter-bar__clear { border: none; background: none; font-size: 11px; color: var(--warm-gray); cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+.fridge-filter-bar__clear:hover { color: var(--terracotta); }
 .fridge-type-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .fridge-type-chip {
   border: 1.5px solid var(--border); background: var(--cream); border-radius: 999px;
@@ -788,49 +747,24 @@ body {
 .fridge-type-chip:hover { border-color: var(--terracotta-light); color: var(--charcoal); }
 .fridge-type-chip--active { background: var(--charcoal); border-color: var(--charcoal); color: white; }
 
-.fridge-groups { display: flex; flex-direction: column; gap: 12px; }
+.fridge-ingredient-grid { display: flex; flex-direction: column; gap: 20px; }
+.fridge-groups { display: flex; flex-direction: column; gap: 20px; }
 .fridge-group {
   background: var(--warm-white); border: 1.5px solid var(--border);
-  border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow);
+  border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
 }
-.fridge-group--missing { background: var(--cream); border-color: var(--border); opacity: 0.85; }
-.fridge-group__header {
-  display: flex; align-items: center; gap: 8px; cursor: pointer;
-  margin-bottom: 0; padding-bottom: 0; border-bottom: none;
-  user-select: none;
+.fridge-group__header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.fridge-group__emoji { font-size: 18px; }
+.fridge-group__label { font-family: var(--font-display); font-size: 15px; font-weight: 700; flex: 1; }
+.fridge-group__title {
+  font-family: var(--font-display); font-size: 15px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--border);
 }
-.fridge-group__header:has(+ .fridge-chips) { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-.fridge-group__emoji { font-size: 17px; }
-.fridge-group__label { font-family: var(--font-display); font-size: 14px; font-weight: 700; flex: 1; color: var(--charcoal); }
 .fridge-group__count { font-size: 11px; font-weight: 700; background: var(--parchment); color: var(--warm-gray); padding: 2px 8px; border-radius: 999px; }
-.fridge-group__chevron { font-size: 10px; color: var(--warm-gray); }
-.fridge-group__clear-btn {
-  font-size: 11px; padding: 2px 8px; border-radius: 999px;
-  border: 1.5px solid var(--border); background: none; color: var(--warm-gray);
-  cursor: pointer; font-family: var(--font-body); font-weight: 500; white-space: nowrap;
-  transition: all .15s; margin-left: 4px;
-}
-.fridge-group__clear-btn:hover { border-color: var(--terracotta); color: var(--terracotta); background: #fde8e8; }
-
 .fridge-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fridge-chip-wrap { position: relative; display: inline-flex; align-items: center; gap: 2px; }
 .fridge-ing-wrap { position: relative; display: inline-flex; align-items: center; gap: 2px; }
-
-/* ─── Cooked → kitchen update chips ────────────────────────────────────────── */
-.cooked-kitchen-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-.cooked-kitchen-chip {
-  display: flex; align-items: center; gap: 7px;
-  padding: 8px 12px; border-radius: 10px; border: 1.5px solid var(--border);
-  background: var(--cream); cursor: pointer; font-family: var(--font-body); text-align: left;
-  transition: all .15s;
-}
-.cooked-kitchen-chip--remove { background: #fde8e8; border-color: var(--terracotta); }
-.cooked-kitchen-chip--keep   { background: #edfaf2; border-color: #a3ddb8; }
-.cooked-kitchen-chip__emoji  { font-size: 16px; }
-.cooked-kitchen-chip__name   { font-size: 13px; font-weight: 600; color: var(--charcoal); flex: 1; }
-.cooked-kitchen-chip__badge  { font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--warm-gray); }
-.cooked-kitchen-chip--remove .cooked-kitchen-chip__badge { color: var(--terracotta); }
-.cooked-kitchen-chip--keep   .cooked-kitchen-chip__badge { color: #3a9e6a; }
-
 
 .fridge-retype-btn {
   width: 20px; height: 20px; border-radius: 50%; border: none; background: transparent;
@@ -3157,35 +3091,47 @@ body {
   .cook-timeline__month-group { break-inside: avoid; }
 }
 
-/* ─── Cookbook entry row (cbentry) — thumb + stacked body ─────────────────── */
+/* ─── Cookbook overhaul — new entry row (cbentry) ─────────────────────────── */
 .cbentry {
-  display: flex; align-items: flex-start; gap: 12px;
-  padding: 12px 14px; background: var(--card-bg);
+  display: grid;
+  grid-template-columns: 52px minmax(0,1fr) 72px minmax(0,160px) minmax(0,auto);
+  align-items: center; gap: 10px;
+  padding: 9px 12px; background: var(--card-bg);
   border: 1.5px solid var(--border); border-left: 3px solid transparent;
-  border-radius: 10px; margin-bottom: 6px; transition: border-color .15s;
+  border-radius: 10px; margin-bottom: 6px;
+  transition: border-color .15s;
 }
-.cbentry:hover { border-color: var(--terracotta-light, #e8a08a); }
+.cbentry:hover { border-color: var(--terracotta-light, #e8a08a); border-left-color: var(--terracotta-light, #e8a08a); }
 .cbentry--linked { border-left-color: var(--sage); }
+.cbentry--linked:hover { border-left-color: var(--sage); }
+.cbentry--header {
+  border: none; border-bottom: 1.5px solid var(--border); border-radius: 0;
+  padding: 4px 12px 8px; margin-bottom: 4px; background: transparent;
+  border-left: 3px solid transparent; /* keeps alignment with data rows */
+}
+.cbentry--header:hover { border-color: transparent; border-bottom-color: var(--border); border-left-color: transparent; }
 
 .cbentry__thumb-wrap { flex-shrink: 0; }
-.cbentry__thumb { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; border: 1.5px solid var(--border); }
-.cbentry__thumb--empty { display:flex; align-items:center; justify-content:center; background: var(--bg-muted, #f5f0eb); font-size: 20px; width: 52px; height: 52px; border-radius: 8px; }
+.cbentry__thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1.5px solid var(--border); }
+.cbentry__thumb--empty { display:flex; align-items:center; justify-content:center; background: var(--bg-muted, #f5f0eb); font-size: 20px; width: 48px; height: 48px; border-radius: 8px; }
 
-/* Stacked body: name → tags → (page + actions) */
-.cbentry__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.cbentry__name { font-weight: 600; font-size: 14px; color: var(--charcoal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cbentry__name-col { min-width: 0; }
+.cbentry__name { font-weight: 600; font-size: 14px; color: var(--charcoal); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cbentry__page-col { }
+.cbentry__page { font-size: 13px; color: var(--warm-gray); white-space: nowrap; }
+.cbentry__tags-col { min-width: 0; }
 .cbentry__tags { display: flex; flex-wrap: wrap; gap: 4px; }
 .cbentry__tag { font-size: 11px; padding: 2px 7px; border-radius: 20px; background: var(--bg-muted, #f5f0eb); color: var(--warm-gray); border: 1px solid var(--border); white-space: nowrap; }
-.cbentry__footer-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
-.cbentry__page { font-size: 12px; color: var(--warm-gray); flex: 1; min-width: 0; }
-.cbentry__actions { display: flex; align-items: center; gap: 5px; flex-shrink: 0; flex-wrap: wrap; }
+.cbentry__col-label { font-size: 11px; font-weight: 600; color: var(--warm-gray); text-transform: uppercase; letter-spacing: .04em; }
+
+.cbentry__actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; justify-content: flex-end; }
 .cbentry__action {
-  padding: 4px 9px; border-radius: 6px; border: 1.5px solid var(--border);
+  padding: 5px 10px; border-radius: 6px; border: 1.5px solid var(--border);
   background: var(--card-bg); font-size: 12px; font-weight: 500; cursor: pointer;
   color: var(--charcoal); transition: background .15s, border-color .15s; white-space: nowrap;
 }
 .cbentry__action:hover { background: var(--bg-muted, #f5f0eb); border-color: var(--warm-gray); }
-.cbentry__action--cook { font-size: 15px; padding: 4px 7px; }
+.cbentry__action--cook { font-size: 16px; padding: 5px 8px; }
 .cbentry__action--cook:hover { background: #fff3cd; border-color: #e6ac00; }
 .cbentry__action--view { color: var(--terracotta); border-color: var(--terracotta); }
 .cbentry__action--view:hover { background: var(--terracotta); color: #fff; }
@@ -3201,7 +3147,6 @@ body {
 .cookbook-sort-tab { padding: 5px 12px; font-size: 12px; font-weight: 500; background: var(--card-bg); border: none; cursor: pointer; color: var(--warm-gray); transition: background .15s, color .15s; }
 .cookbook-sort-tab--active { background: var(--terracotta); color: #fff; }
 .cookbook-sort-tab:not(:last-child) { border-right: 1.5px solid var(--border); }
-
 
 /* Cookbook progress bars */
 .cbdetail-progress { margin-top: 12px; }
