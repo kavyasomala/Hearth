@@ -223,71 +223,126 @@ const SectionPencil = ({ isEditing, onEdit, onSave, onCancel, saving }) => (
   </span>
 );
 
-// ─── Hero Image (no reposition) ────────────────────────────────────────────
-const HeroImage = ({ src, alt }) => (
-  <div className="rp2__hero-img-wrap">
-    <img className="rp2__hero-img" src={src} alt={alt} draggable={false} />
-  </div>
-);
+// ─── Draggable Hero Image ───────────────────────────────────────────────────
+const DraggableHeroImage = ({ src, alt, recipeId, onSaved, recipe, bodyIngredients, instructions, notes }) => {
+  const [offset, setOffset] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`hero-offset-${recipeId}`)) || { x: 50, y: 50 }; } catch { return { x: 50, y: 50 }; }
+  });
+  const [dragging, setDragging] = useState(false);
+  const [isPanMode, setIsPanMode] = useState(false);
+  const startRef = useRef(null);
+  const imgRef = useRef(null);
 
-// ─── Ingredient Flat Row (sortable) ────────────────────────────────────────
-const IngFlatRow = ({ ing, onUpdate, onRemove }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ing._id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1, zIndex: isDragging ? 10 : undefined };
+  const saveOffset = useCallback((o) => {
+    try { localStorage.setItem(`hero-offset-${recipeId}`, JSON.stringify(o)); } catch {}
+  }, [recipeId]);
+
+  const onPointerDown = useCallback((e) => {
+    if (!isPanMode) return;
+    e.preventDefault();
+    setDragging(true);
+    startRef.current = { mx: e.clientX, my: e.clientY, ox: offset.x, oy: offset.y };
+    imgRef.current?.setPointerCapture(e.pointerId);
+  }, [isPanMode, offset]);
+
+  const onPointerMove = useCallback((e) => {
+    if (!dragging || !startRef.current) return;
+    const el = imgRef.current?.parentElement;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    const dx = ((e.clientX - startRef.current.mx) / width) * -100;
+    const dy = ((e.clientY - startRef.current.my) / height) * -100;
+    const next = {
+      x: Math.max(0, Math.min(100, startRef.current.ox + dx)),
+      y: Math.max(0, Math.min(100, startRef.current.oy + dy)),
+    };
+    setOffset(next);
+  }, [dragging]);
+
+  const onPointerUp = useCallback((e) => {
+    if (!dragging) return;
+    setDragging(false);
+    saveOffset(offset);
+  }, [dragging, offset, saveOffset]);
+
   return (
-    <div className="ing-flat-row" ref={setNodeRef} style={style}>
-      <span className="ing-flat-row__drag" {...attributes} {...listeners}>⠿</span>
-      {/* Desktop: grid row. Mobile: card layout */}
-      <div className="ing-flat-row__fields">
-        <div className="ing-flat-row__row1">
-          <input className="editor-input ing-flat-row__qty" value={ing.amount} onChange={e => onUpdate('amount', e.target.value)} placeholder="Qty" />
-          <div className="ing-flat-row__unit-wrap">
-            <UnitAutocomplete value={ing.unit} onChange={v => onUpdate('unit', v)} />
-          </div>
-          <div className="ing-flat-row__name-wrap">
-            <IngredientAutocomplete value={ing.name} onChange={v => onUpdate('name', v)} allIngredients={[]} />
-          </div>
+    <div
+      className={`rp2__hero-img-wrap ${isPanMode ? 'rp2__hero-img-wrap--pan' : ''} ${dragging ? 'rp2__hero-img-wrap--dragging' : ''}`}
+    >
+      <img
+        ref={imgRef}
+        className="rp2__hero-img"
+        src={src}
+        alt={alt}
+        style={{ objectPosition: `${offset.x}% ${offset.y}%` }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        draggable={false}
+      />
+      {isPanMode && (
+        <div className="rp2__pan-hint">
+          {dragging ? 'Drag to reposition' : 'Click & drag to reposition'}
         </div>
-        <div className="ing-flat-row__row2">
-          <input className="editor-input ing-flat-row__prep" value={ing.prep_note || ''} onChange={e => onUpdate('prep_note', e.target.value)} placeholder="Prep note (e.g. finely chopped)" />
-          <button
-            className={`ing-opt-toggle ${ing.optional ? 'ing-opt-toggle--on' : ''}`}
-            onClick={() => onUpdate('optional', !ing.optional)}
-            title={ing.optional ? 'Mark as required' : 'Mark as optional'}
-            type="button"
-          >
-            {ing.optional ? 'optional' : 'required'}
-          </button>
-          <button className="editor-remove-btn" onClick={onRemove} title="Remove">✕</button>
-        </div>
-      </div>
+      )}
+      <button
+        className={`rp2__pan-toggle ${isPanMode ? 'rp2__pan-toggle--active' : ''}`}
+        onClick={() => setIsPanMode(v => !v)}
+        title={isPanMode ? 'Done repositioning' : 'Reposition image'}
+      >
+        {isPanMode ? '✓ Done' : '⤢ Reposition'}
+      </button>
     </div>
   );
 };
 
-// ─── Ingredient Group Row (sortable separator) ──────────────────────────────
-const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ing._id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
+// ─── Cookbook Autocomplete ──────────────────────────────────────────────────
+const CookbookAutocomplete = ({ value, onChange, cookbooks = [] }) => {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const suggestions = useMemo(() => {
+    const q = (value || '').toLowerCase().trim();
+    if (!q) return cookbooks.slice(0, 8);
+    return cookbooks.filter(c => c.title.toLowerCase().includes(q)).slice(0, 8);
+  }, [value, cookbooks]);
+  useEffect(() => {
+    const h = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
   return (
-    <div className="ing-group-row" ref={setNodeRef} style={style}>
-      <span className="ing-flat-row__drag ing-group-row__drag" {...attributes} {...listeners}>⠿</span>
-      <input className="ing-group-row__label-input" value={ing.name} onChange={e => onLabelChange(e.target.value)} placeholder="Group name…" />
-      <button className="ing-group-row__add-btn" onClick={onAddIngredient} title="Add ingredient to this group">＋</button>
-      <button className="editor-remove-btn" onClick={onRemove} title="Remove group">✕</button>
+    <div className="ing-ac-wrap" ref={wrapRef} style={{position:'relative'}}>
+      <input
+        className="editor-input"
+        value={value}
+        onChange={e => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder="Cookbook title…"
+        autoComplete="off"
+      />
+      {open && suggestions.length > 0 && (
+        <ul className="ing-ac-dropdown">
+          {suggestions.map(c => (
+            <li key={c.id} className="ing-ac-option" onMouseDown={e => { e.preventDefault(); onChange(c.title); setOpen(false); }}>
+              {c.cover && <img src={c.cover} alt="" style={{width:22,height:22,objectFit:'cover',borderRadius:3,marginRight:8,flexShrink:0,verticalAlign:'middle'}} />}
+              <span>{c.title}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
 
 // ─── Recipe Page ────────────────────────────────────────────────────────────
-const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon }) => {
+const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [] }) => {
+  const allIngredientNames = useMemo(() => allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean), [allIngredients]);
   const [checkedIngredients, setCheckedIngredients] = useState(new Set());
   const [doneSteps, setDoneSteps] = useState(new Set());
   const [showIngredientsModal, setShowIngredientsModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
-  const ingDndSensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
   // ── Per-section edit state ──
   const [editingSection, setEditingSection] = useState(null);
@@ -309,25 +364,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
     setSaveError(null);
     if (section === 'title')        setDraftName(recipe.name || '');
     if (section === 'image')        setDraftImageInput(recipe.coverImage || '');
-    if (section === 'ingredients') {
-      // Build flat list: group separator rows interspersed with ingredient rows
-      const ings = bodyIngredients || [];
-      const flat = [];
-      const seenGroups = new Set();
-      for (let i = 0; i < ings.length; i++) {
-        const ing = ings[i];
-        const g = ing.group_label || '';
-        if (g && !seenGroups.has(g)) {
-          seenGroups.add(g);
-          flat.push({ _id: `grp-exist-${g}-${i}`, _isGroup: true, name: g });
-        }
-        flat.push({ ...ing, _id: `ing-${i}` });
-      }
-      setDraftIngs(flat);
-    }
+    if (section === 'ingredients')  setDraftIngs((bodyIngredients || []).map((i, idx) => ({ ...i, _id: `ing-${idx}` })));
     if (section === 'instructions') setDraftSteps((instructions || []).map((s, idx) => ({ ...s, _id: `step-${idx}` })));
     if (section === 'notes')        setDraftNotes((notes || []).map((n, idx) => ({ ...n, _id: `note-${idx}`, text: n.text ?? n.body_text ?? '' })));
-    if (section === 'cookbook')      setDraftCookbook({ cookbook: recipe.cookbook || '', page_number: recipe.page_number || '' });
+    if (section === 'cookbook')     setDraftCookbook({ cookbook: recipe.cookbook || '', page_number: recipe.page_number || '' });
     if (['meta','meta-cuisine','meta-tags','meta-progress','meta-time','meta-servings'].includes(section)) setDraftMeta({
       time: recipe.time || '',
       servings: recipe.servings || '',
@@ -344,73 +384,34 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const saveSection = async (section) => {
     setSaving(true); setSaveError(null);
     const isMeta = section === 'meta' || section.startsWith('meta-');
-
-    // When saving ingredients, compute fresh nutrition from the new ingredient list
-    let computedNutrition = { calories: recipe.calories ?? '', protein: recipe.protein ?? '', fiber: recipe.fiber ?? '' };
-    if (section === 'ingredients') {
-      const ingsToCalc = draftIngs
-        .map(i => { if (i._isGroup) return null; return i; })
-        .filter(Boolean);
-      const NUTRITION_DB = {
-        'chicken breast': { cal: 165, prot: 31, fiber: 0 },
-        'chicken': { cal: 165, prot: 31, fiber: 0 },
-        'beef': { cal: 250, prot: 26, fiber: 0 },
-        'salmon': { cal: 208, prot: 20, fiber: 0 },
-        'tuna': { cal: 132, prot: 29, fiber: 0 },
-        'egg': { cal: 78, prot: 6, fiber: 0, perUnit: true },
-        'eggs': { cal: 78, prot: 6, fiber: 0, perUnit: true },
-        'pasta': { cal: 157, prot: 6, fiber: 2 },
-        'rice': { cal: 130, prot: 3, fiber: 0.4 },
-        'broccoli': { cal: 34, prot: 3, fiber: 3 },
-        'spinach': { cal: 23, prot: 3, fiber: 2 },
-        'onion': { cal: 40, prot: 1, fiber: 2 },
-        'garlic': { cal: 4, prot: 0.2, fiber: 0.1, perUnit: true },
-        'tomato': { cal: 22, prot: 1, fiber: 1.5 },
-        'potato': { cal: 87, prot: 2, fiber: 2 },
-        'butter': { cal: 717, prot: 1, fiber: 0 },
-        'olive oil': { cal: 884, prot: 0, fiber: 0 },
-        'oil': { cal: 884, prot: 0, fiber: 0 },
-        'flour': { cal: 364, prot: 10, fiber: 3 },
-        'sugar': { cal: 387, prot: 0, fiber: 0 },
-        'milk': { cal: 61, prot: 3, fiber: 0 },
-        'cream': { cal: 340, prot: 3, fiber: 0 },
-        'cheese': { cal: 400, prot: 25, fiber: 0 },
-        'lentils': { cal: 116, prot: 9, fiber: 8 },
-        'chickpeas': { cal: 164, prot: 9, fiber: 7 },
-        'beans': { cal: 127, prot: 8, fiber: 7 },
-        'oats': { cal: 389, prot: 17, fiber: 11 },
-      };
-      const UNIT_GRAMS = { 'g': 1, 'kg': 1000, 'oz': 28, 'lb': 454, 'cup': 240, 'cups': 240, 'ml': 1, 'l': 1000, 'tbsp': 15, 'tsp': 5 };
-      let totalCal = 0, totalProt = 0, totalFiber = 0, matched = 0;
-      for (const ing of ingsToCalc) {
-        const name = (ing.name || '').toLowerCase().trim();
-        const entry = Object.entries(NUTRITION_DB).find(([k]) => name.includes(k));
-        if (!entry) continue;
-        const [, nutr] = entry;
-        const amount = parseFloat(ing.amount) || 1;
-        const unit = (ing.unit || '').toLowerCase().trim();
-        const unitG = nutr.perUnit ? 100 : (UNIT_GRAMS[unit] || 100);
-        const factor = (amount * unitG) / 100;
-        totalCal   += nutr.cal  * factor;
-        totalProt  += nutr.prot * factor;
-        totalFiber += nutr.fiber * factor;
-        matched++;
-      }
-      if (matched > 0) {
-        computedNutrition = { calories: Math.round(totalCal), protein: Math.round(totalProt), fiber: Math.round(totalFiber) };
-      }
-    }
-
     try {
+      // Auto-calculate nutrition when saving ingredients
+      let computedCal = recipe.calories ?? '', computedProt = recipe.protein ?? '', computedFiber = recipe.fiber ?? '';
+      if (section === 'ingredients') {
+        const NUTR_DB = { 'chicken': {cal:165,prot:31,fiber:0}, 'beef': {cal:250,prot:26,fiber:0}, 'salmon': {cal:208,prot:20,fiber:0}, 'tuna': {cal:132,prot:29,fiber:0}, 'egg': {cal:78,prot:6,fiber:0,unit:true}, 'eggs': {cal:78,prot:6,fiber:0,unit:true}, 'pasta': {cal:157,prot:6,fiber:2}, 'rice': {cal:130,prot:3,fiber:0.4}, 'broccoli': {cal:34,prot:3,fiber:3}, 'spinach': {cal:23,prot:3,fiber:2}, 'onion': {cal:40,prot:1,fiber:2}, 'garlic': {cal:4,prot:0.2,fiber:0.1,unit:true}, 'tomato': {cal:22,prot:1,fiber:1.5}, 'potato': {cal:87,prot:2,fiber:2}, 'butter': {cal:717,prot:1,fiber:0}, 'olive oil': {cal:884,prot:0,fiber:0}, 'oil': {cal:884,prot:0,fiber:0}, 'flour': {cal:364,prot:10,fiber:3}, 'sugar': {cal:387,prot:0,fiber:0}, 'milk': {cal:61,prot:3,fiber:0}, 'cream': {cal:340,prot:3,fiber:0}, 'cheese': {cal:400,prot:25,fiber:0}, 'lentils': {cal:116,prot:9,fiber:8}, 'chickpeas': {cal:164,prot:9,fiber:7}, 'beans': {cal:127,prot:8,fiber:7}, 'oats': {cal:389,prot:17,fiber:11} };
+        const UNIT_G = { 'g':1,'kg':1000,'oz':28,'lb':454,'cup':240,'cups':240,'ml':1,'l':1000,'tbsp':15,'tsp':5 };
+        let totCal=0, totProt=0, totFiber=0, matched=0;
+        for (const ing of draftIngs) {
+          const name = (ing.name||'').toLowerCase().trim();
+          const entry = Object.entries(NUTR_DB).find(([k]) => name.includes(k));
+          if (!entry) continue;
+          const [,nutr] = entry;
+          const amt = parseFloat(ing.amount)||1;
+          const unitG = nutr.unit ? 100 : (UNIT_G[(ing.unit||'').toLowerCase()]||100);
+          const f = (amt*unitG)/100;
+          totCal+=nutr.cal*f; totProt+=nutr.prot*f; totFiber+=nutr.fiber*f; matched++;
+        }
+        if (matched > 0) { computedCal=Math.round(totCal); computedProt=Math.round(totProt); computedFiber=Math.round(totFiber); }
+      }
       const payload = {
         details: {
           name:            section === 'title' ? draftName : recipe.name,
           cuisine:         isMeta ? draftMeta.cuisine : (recipe.cuisine || ''),
           time:            isMeta ? draftMeta.time    : (recipe.time || ''),
           servings:        isMeta ? draftMeta.servings : (recipe.servings || ''),
-          calories:        computedNutrition.calories,
-          protein:         computedNutrition.protein,
-          fiber:           computedNutrition.fiber,
+          calories:        computedCal,
+          protein:         computedProt,
+          fiber:           computedFiber,
           cover_image_url: section === 'image' ? draftImageInput : (recipe.coverImage || ''),
           status:          isMeta ? draftMeta.status : (recipe.status || ''),
           recipe_incomplete: isMeta ? draftMeta.recipe_incomplete : (recipe.recipe_incomplete || false),
@@ -418,13 +419,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           cookbook:        section === 'cookbook' ? draftCookbook.cookbook : (recipe.cookbook || ''),
           page_number:     section === 'cookbook' ? draftCookbook.page_number : (recipe.page_number || ''),
         },
-        ingredients:  section === 'ingredients'  ? (() => {
-          let grp = '';
-          return draftIngs
-            .map(i => { if (i._isGroup) { grp = i.name || ''; return null; } return { ...i, group_label: grp }; })
-            .filter(Boolean)
-            .map((i, idx) => ({ ...i, order_index: idx }));
-        })() : (bodyIngredients || []),
+        ingredients:  section === 'ingredients'  ? draftIngs.map((i, idx) => ({ ...i, order_index: idx }))  : (bodyIngredients || []),
         instructions: section === 'instructions' ? draftSteps.map((s, idx) => ({ ...s, step_number: idx + 1 })) : (instructions || []),
         notes:        section === 'notes'        ? draftNotes.map((n, idx) => ({ ...n, order_index: idx }))  : (notes || []),
       };
@@ -479,74 +474,12 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
     const next = new Set(prev); next.has(num) ? next.delete(num) : next.add(num); return next;
   });
 
-  // ── Auto-calculate nutrition — must be before any early returns (Rules of Hooks) ──
-  const autoNutrition = useMemo(() => {
-    if (!bodyIngredients?.length) return { calories: null, protein: null, fiber: null };
-    const NUTRITION_DB = {
-      'chicken breast': { cal: 165, prot: 31, fiber: 0 },
-      'chicken': { cal: 165, prot: 31, fiber: 0 },
-      'beef': { cal: 250, prot: 26, fiber: 0 },
-      'salmon': { cal: 208, prot: 20, fiber: 0 },
-      'tuna': { cal: 132, prot: 29, fiber: 0 },
-      'egg': { cal: 78, prot: 6, fiber: 0, perUnit: true },
-      'eggs': { cal: 78, prot: 6, fiber: 0, perUnit: true },
-      'pasta': { cal: 157, prot: 6, fiber: 2 },
-      'rice': { cal: 130, prot: 3, fiber: 0.4 },
-      'broccoli': { cal: 34, prot: 3, fiber: 3 },
-      'spinach': { cal: 23, prot: 3, fiber: 2 },
-      'onion': { cal: 40, prot: 1, fiber: 2 },
-      'garlic': { cal: 4, prot: 0.2, fiber: 0.1, perUnit: true },
-      'tomato': { cal: 22, prot: 1, fiber: 1.5 },
-      'potato': { cal: 87, prot: 2, fiber: 2 },
-      'butter': { cal: 717, prot: 1, fiber: 0 },
-      'olive oil': { cal: 884, prot: 0, fiber: 0 },
-      'oil': { cal: 884, prot: 0, fiber: 0 },
-      'flour': { cal: 364, prot: 10, fiber: 3 },
-      'sugar': { cal: 387, prot: 0, fiber: 0 },
-      'milk': { cal: 61, prot: 3, fiber: 0 },
-      'cream': { cal: 340, prot: 3, fiber: 0 },
-      'cheese': { cal: 400, prot: 25, fiber: 0 },
-      'lentils': { cal: 116, prot: 9, fiber: 8 },
-      'chickpeas': { cal: 164, prot: 9, fiber: 7 },
-      'beans': { cal: 127, prot: 8, fiber: 7 },
-      'oats': { cal: 389, prot: 17, fiber: 11 },
-    };
-    const UNIT_GRAMS = {
-      'g': 1, 'kg': 1000, 'oz': 28, 'lb': 454,
-      'cup': 240, 'cups': 240, 'ml': 1, 'l': 1000,
-      'tbsp': 15, 'tsp': 5,
-    };
-    let totalCal = 0, totalProt = 0, totalFiber = 0, matched = 0;
-    for (const ing of bodyIngredients) {
-      const name = (ing.name || '').toLowerCase().trim();
-      const entry = Object.entries(NUTRITION_DB).find(([k]) => name.includes(k));
-      if (!entry) continue;
-      const [, nutr] = entry;
-      const amount = parseFloat(ing.amount) || 1;
-      const unit = (ing.unit || '').toLowerCase().trim();
-      const unitG = nutr.perUnit ? 100 : (UNIT_GRAMS[unit] || 100);
-      const factor = (amount * unitG) / 100;
-      totalCal   += nutr.cal  * factor;
-      totalProt  += nutr.prot * factor;
-      totalFiber += nutr.fiber * factor;
-      matched++;
-    }
-    if (matched === 0) return { calories: null, protein: null, fiber: null };
-    return { calories: Math.round(totalCal), protein: Math.round(totalProt), fiber: Math.round(totalFiber) };
-  }, [bodyIngredients]);
-
   if (loading) return <main className="view"><div className="placeholder"><h2>Loading recipe…</h2></div></main>;
   if (!recipe) return <main className="view"><div className="placeholder"><h2>Recipe not found</h2><button className="btn btn--ghost" onClick={onBack}>← Back</button></div></main>;
 
-  const calories = toNum(recipe.calories);
-  const protein  = toNum(recipe.protein);
-  const fiber    = toNum(recipe.fiber);
-
-  const displayCalories = calories ?? autoNutrition.calories;
-  const displayProtein  = protein  ?? autoNutrition.protein;
-  const displayFiber    = fiber    ?? autoNutrition.fiber;
-  // Show ~ if we're showing a live estimate (not yet saved to DB)
-  const nutritionIsEstimate = calories === null && autoNutrition.calories !== null;
+  const calories   = toNum(recipe.calories);
+  const protein    = toNum(recipe.protein);
+  const fiber      = toNum(recipe.fiber);
   const doneCount  = doneSteps.size;
   const totalSteps = instructions?.length ?? 0;
 
@@ -586,7 +519,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
       {/* ── Hero ── */}
       <div className="rp2__hero">
         {recipe.coverImage
-          ? <HeroImage src={recipe.coverImage} alt={recipe.name} />
+          ? <DraggableHeroImage src={recipe.coverImage} alt={recipe.name} recipeId={recipe.id} onSaved={onSaved} recipe={recipe} bodyIngredients={bodyIngredients} instructions={instructions} notes={notes} />
           : <div className="rp2__hero-placeholder"><span>🍽</span></div>}
 
         <div className="rp2__hero-overlay">
@@ -606,14 +539,14 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 onClick={e => { e.stopPropagation(); onToggleMakeSoon && onToggleMakeSoon(); }}
                 title={isMakeSoon ? 'Remove from Make Soon' : 'Add to Make Soon'}
               >⏱</button>
-              {/* Change photo — pencil icon, same size as heart/stopwatch */}
+              {/* Change photo — pencil icon, popover opens DOWNWARD from topbar */}
               <div className="rp2__photo-btn-wrap">
-                <button className="rp2__hero-btn rp2__hero-soon rp2__hero-btn--photo" onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Change photo link">
+                <button className="rp2__hero-btn rp2__hero-btn--icon" onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Edit photo">
                   ✎
                 </button>
                 {isEdit('image') && (
                   <div className="rp2__img-popover-down">
-                    <p className="rp2__dark-pop-label">Cover image URL</p>
+                    <p className="rp2__meta-pop-label">Cover image URL</p>
                     <input
                       className="editor-input"
                       autoFocus
@@ -622,19 +555,20 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       placeholder="https://…"
                       onKeyDown={e => { if (e.key === 'Enter') saveSection('image'); if (e.key === 'Escape') cancelEdit(); }}
                     />
-                    <div className="rp2__dark-pop-actions">
-                      <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
-                      <button className="rp2__dark-cancel" onClick={cancelEdit}>✕ Cancel</button>
+                    <div className="rp2__meta-popover-actions">
+                      <button className="rp2__meta-save-btn" onClick={() => saveSection('image')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                      <button className="rp2__meta-cancel-btn" onClick={cancelEdit}>✕ Cancel</button>
                     </div>
                   </div>
                 )}
               </div>
-
+              {/* Delete recipe */}
+              <button className="rp2__hero-btn rp2__hero-btn--delete" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe">🗑</button>
             </div>
           </div>
 
-          {/* ── Bottom: tags (left) + pills (right) — hidden on mobile ── */}
-          <div className="rp2__hero-bottom rp2__hero-bottom--desktop-only">
+          {/* ── Bottom: tags (left, each clickable) + pills (right, time/servings clickable) ── */}
+          <div className="rp2__hero-bottom">
 
             {/* Tags area — each item is individually clickable */}
             <div className="rp2__hero-tags">
@@ -761,9 +695,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               </div>
 
               {/* Display-only nutrition pills */}
-              {displayCalories !== null && <span className="rp2__pill" title={nutritionIsEstimate ? 'Estimated — save ingredients to lock in' : 'Auto-calculated from ingredients'}><span className="rp2__pill-icon">🔥</span>{displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}</span>}
-              {displayProtein  !== null && <span className="rp2__pill"><span className="rp2__pill-icon">💪</span>{displayProtein}g prot{nutritionIsEstimate ? ' ~' : ''}</span>}
-              {displayFiber    !== null && <span className="rp2__pill"><span className="rp2__pill-icon">🌿</span>{displayFiber}g fiber{nutritionIsEstimate ? ' ~' : ''}</span>}
+              {calories !== null && <span className="rp2__pill"><span className="rp2__pill-icon">🔥</span>{Math.round(calories)} kcal</span>}
+              {protein  !== null && <span className="rp2__pill"><span className="rp2__pill-icon">💪</span>{Math.round(protein)}g prot</span>}
+              {fiber    !== null && <span className="rp2__pill"><span className="rp2__pill-icon">🌿</span>{Math.round(fiber)}g fiber</span>}
             </div>
           </div>
         </div>
@@ -784,7 +718,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             <h1 className="rp2__title">{recipe.name}</h1>
           )}
           <SectionPencil isEditing={isEdit('title')} onEdit={() => startEdit('title')} onSave={() => saveSection('title')} onCancel={cancelEdit} saving={saving} />
-          <button className="rp2__title-delete-btn" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe">🗑</button>
         </div>
       </div>
 
@@ -794,68 +727,38 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         {/* ── Ingredients Edit Modal (opens only when pencil clicked) ── */}
         {showIngredientsModal && (
           <div className="ing-modal-overlay" onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}>
-            <div className="ing-modal ing-modal--wide" onClick={e => e.stopPropagation()}>
+            <div className="ing-modal" onClick={e => e.stopPropagation()}>
               <div className="ing-modal__header">
                 <h2 className="ing-modal__title">Edit Ingredients</h2>
                 <div className="ing-modal__header-actions">
-                  {isEdit('ingredients') ? (
-                    <>
-                      <button className="ing-modal__save-btn" onClick={() => saveSection('ingredients')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
-                      <button className="ing-modal__close" onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}>✕</button>
-                    </>
-                  ) : (
-                    <button className="ing-modal__close" onClick={() => setShowIngredientsModal(false)}>✕</button>
-                  )}
+                  <button className="ing-modal__save-btn" onClick={async () => { await saveSection('ingredients'); setShowIngredientsModal(false); }} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                  <button className="ing-modal__close" onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}>✕</button>
                 </div>
               </div>
               <div className="ing-modal__body">
-                <DndContext
-                  sensors={ingDndSensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={({ active, over }) => {
-                    if (!over || active.id === over.id) return;
-                    setDraftIngs(prev => arrayMove(prev, prev.findIndex(i => i._id === active.id), prev.findIndex(i => i._id === over.id)));
-                  }}
-                >
-                  <SortableContext items={draftIngs.map(i => i._id)} strategy={verticalListSortingStrategy}>
-                    <div className="ing-flat-list">
-                      {/* Column headers — desktop only */}
-                      <div className="ing-flat-header ing-flat-header--desktop">
-                        <span className="ing-flat-header__drag" />
-                        <span style={{gridColumn:'2/5'}}>Qty · Unit · Ingredient</span>
-                        <span className="ing-flat-header__prep">Prep note · Status</span>
-                        <span className="ing-flat-header__rm" />
+                <div className="rp2__ing-editor">
+                  {draftIngs.map((ing) => (
+                    <div key={ing._id} className="rp2__ing-edit-card">
+                      <div className="rp2__ing-edit-name-row">
+                        <IngredientAutocomplete value={ing.name} onChange={v => updateDraftIng(ing._id, 'name', v)} allIngredients={allIngredientNames} />
+                        <button className="editor-remove-btn" onClick={() => removeDraftIng(ing._id)} title="Remove">✕</button>
                       </div>
-                      {draftIngs.map((ing) => {
-                        if (ing._isGroup) {
-                          // Group separator row
-                          return (
-                            <IngGroupRow key={ing._id} ing={ing}
-                              onLabelChange={v => setDraftIngs(prev => prev.map(i => i._id === ing._id ? {...i, name: v} : i))}
-                              onRemove={() => setDraftIngs(prev => prev.filter(i => i._id !== ing._id))}
-                              onAddIngredient={() => setDraftIngs(prev => {
-                                const idx = prev.findIndex(i => i._id === ing._id);
-                                const newIng = { _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: ing.name };
-                                const next = [...prev];
-                                next.splice(idx + 1, 0, newIng);
-                                return next;
-                              })}
-                            />
-                          );
-                        }
-                        return (
-                          <IngFlatRow key={ing._id} ing={ing}
-                            onUpdate={(k, v) => updateDraftIng(ing._id, k, v)}
-                            onRemove={() => removeDraftIng(ing._id)}
-                          />
-                        );
-                      })}
+                      <div className="rp2__ing-edit-qty-row">
+                        <input className="editor-input editor-input--sm rp2__ing-qty" value={ing.amount} onChange={e => updateDraftIng(ing._id, 'amount', e.target.value)} placeholder="Qty" />
+                        <UnitAutocomplete value={ing.unit} onChange={v => updateDraftIng(ing._id, 'unit', v)} />
+                        <button
+                          className={`ing-opt-toggle ${ing.optional ? 'ing-opt-toggle--on' : ''}`}
+                          onClick={() => updateDraftIng(ing._id, 'optional', !ing.optional)}
+                          type="button"
+                        >{ing.optional ? 'optional' : 'required'}</button>
+                      </div>
+                      <div className="rp2__ing-edit-meta-row">
+                        <input className="editor-input rp2__ing-prep" value={ing.prep_note || ''} onChange={e => updateDraftIng(ing._id, 'prep_note', e.target.value)} placeholder="Prep note (e.g. finely chopped)" />
+                        <input className="editor-input rp2__ing-group" value={ing.group_label || ''} onChange={e => updateDraftIng(ing._id, 'group_label', e.target.value)} placeholder="Group" />
+                      </div>
                     </div>
-                  </SortableContext>
-                </DndContext>
-                <div className="ing-flat-add-row">
-                  <button className="btn btn--ghost editor-add-btn" onClick={() => setDraftIngs(prev => [...prev, { _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }])}>+ Add Ingredient</button>
-                  <button className="btn btn--ghost editor-add-btn ing-add-group-btn" onClick={() => setDraftIngs(prev => [...prev, { _id: `grp-${Date.now()}`, _isGroup: true, name: 'New Group' }])}>+ Add Group</button>
+                  ))}
+                  <button className="btn btn--ghost editor-add-btn" onClick={addDraftIng}>+ Add Ingredient</button>
                 </div>
               </div>
             </div>
@@ -865,7 +768,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         {/* ── Ingredients ── */}
         <div className="rp2__ingredients">
           <div className="rp2__section-title-row">
-            <h2 className="rp2__section-title rp2__section-title--sm">Ingredients</h2>
+            <h2 className="rp2__section-title">Ingredients</h2>
             <button className="section-pencil" onClick={() => { startEdit('ingredients'); setShowIngredientsModal(true); }} title="Edit ingredients">✎</button>
           </div>
 
@@ -900,7 +803,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         {/* ── Instructions ── */}
         <div className="rp2__instructions">
           <div className="rp2__section-title-row">
-            <h2 className="rp2__section-title rp2__section-title--sm">Instructions</h2>
+            <h2 className="rp2__section-title">Instructions</h2>
             {!isEdit('instructions') && totalSteps > 0 && (
               <span className="rp2__progress-label rp2__progress-label--right">{doneCount}/{totalSteps} steps</span>
             )}
@@ -929,10 +832,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               ? <ol className="rp2__steps">
                   {[...instructions].sort((a, b) => a.step_number - b.step_number).map(step => {
                     const done = doneSteps.has(step.step_number);
-                    const sortedUndone = [...instructions].sort((a, b) => a.step_number - b.step_number).filter(s => !doneSteps.has(s.step_number));
-                    const isCurrent = !done && sortedUndone[0]?.step_number === step.step_number && doneCount > 0;
                     return (
-                      <li key={step.step_number} className={`rp2__step ${done ? 'rp2__step--done' : ''} ${isCurrent ? 'rp2__step--current' : ''}`} onClick={() => toggleStep(step.step_number)}>
+                      <li key={step.step_number} className={`rp2__step ${done ? 'rp2__step--done' : ''}`} onClick={() => toggleStep(step.step_number)}>
                         <div className="rp2__step-num">{done ? '✓' : step.step_number}</div>
                         <p className="rp2__step-body">{step.body_text}</p>
                       </li>
@@ -942,11 +843,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               : <p className="rp2__empty-hint">No instructions yet.</p>
           )}
 
-          {/* ── Notes + Cookbook — side by side (desktop), stacked (mobile) ── */}
+          {/* ── Notes + Cookbook — side by side under instructions ── */}
           <div className="rp2__notes-row">
             <div className="rp2__notes">
               <div className="rp2__section-title-row">
-                <h2 className="rp2__section-title rp2__section-title--sm">Notes &amp; Tips</h2>
+                <h2 className="rp2__section-title">Notes &amp; Tips</h2>
                 <SectionPencil isEditing={isEdit('notes')} onEdit={() => startEdit('notes')} onSave={() => saveSection('notes')} onCancel={cancelEdit} saving={saving} />
               </div>
 
@@ -979,8 +880,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               </div>
               {isEdit('cookbook') ? (
                 <div className="rp2__cookbook-editor">
-                  <input className="editor-input" value={draftCookbook.cookbook} onChange={e => setDraftCookbook(p => ({...p, cookbook: e.target.value}))} placeholder="Cookbook name or URL" />
-                  <input className="editor-input" value={draftCookbook.page_number} onChange={e => setDraftCookbook(p => ({...p, page_number: e.target.value}))} placeholder="Page number" style={{marginTop: 6}} />
+                  <CookbookAutocomplete value={draftCookbook.cookbook} onChange={v => setDraftCookbook(p => ({...p, cookbook: v}))} cookbooks={cookbooks} />
+                  <input className="editor-input" value={draftCookbook.page_number} onChange={e => setDraftCookbook(p => ({...p, page_number: e.target.value}))} placeholder="Page number" style={{marginTop: 6}} onKeyDown={e => { if (e.key === 'Enter') saveSection('cookbook'); if (e.key === 'Escape') cancelEdit(); }} />
                 </div>
               ) : (recipe.cookbook || recipe.page_number) ? (
                 <div className="rp2__cookbook-card">
@@ -990,7 +891,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               ) : (
                 <div className="rp2__cookbook-empty">
                   <p className="rp2__cookbook-prompt">No reference yet</p>
-                  <p className="rp2__cookbook-hint">Click ✎ to add a cookbook, page number, or URL.</p>
+                  <p className="rp2__cookbook-hint">Click ✎ to link this recipe to one of your cookbooks.</p>
                 </div>
               )}
             </div>
@@ -1545,7 +1446,7 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
           <h2 className="fridge-title">My Ingredients</h2>
           <p className="fridge-subtitle">{fridgeIngredients.length} fridge · {pantryStaples.length} pantry items tracked</p>
         </div>
-        <div className="fridge-header__actions">
+        <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn--primary btn--sm" onClick={() => setEditingIng(false)}>+ Add ingredient</button>
           <button className="btn btn--ghost btn--sm" onClick={() => { setFridgeIngredients([]); setPantryStaples([]); }}>Clear selection</button>
         </div>
@@ -1579,18 +1480,18 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
                 const isOn = allSelected.has(ing.name.toLowerCase());
                 const hasNutrition = ing.calories != null || ing.protein != null || ing.fiber != null;
                 return (
-                  <div key={ing.name} className="fridge-ing-wrap">
-                    <div className="fridge-chip-group">
-                      <button className={`chip ${isOn ? 'chip--selected' : ''}`} onClick={() => toggle(ing.name, typeOverrides[ing.name] ?? ing.type)}>
-                        {isOn && <span className="chip__check">✓</span>}
-                        {ing.name}
-                        {hasNutrition && <span className="fridge-chip__nutrition-dot" title="Has nutrition data" />}
-                      </button>
-                      <div className="fridge-chip-actions">
-                        <button className="fridge-chip-action fridge-chip-action--edit" title="Edit" onClick={() => setEditingIng({ ...ing, type: typeOverrides[ing.name] ?? ing.type })}>✎</button>
-                        <button className="fridge-chip-action fridge-chip-action--del" title="Delete" onClick={() => setDeleteTarget(ing)}>✕</button>
-                      </div>
-                    </div>
+                  <div key={ing.name} className="fridge-chip-wrap">
+                    <button className={`chip ${isOn ? 'chip--selected' : ''}`} onClick={() => toggle(ing.name, typeOverrides[ing.name] ?? ing.type)}>
+                      {isOn && <span className="chip__check">✓</span>}
+                      {ing.name}
+                      {hasNutrition && <span className="fridge-chip__nutrition-dot" title="Has nutrition data">·</span>}
+                    </button>
+                    <button className="fridge-retype-btn" title="Edit ingredient" onClick={() => setEditingIng({ ...ing, type: typeOverrides[ing.name] ?? ing.type })}>
+                      ✎
+                    </button>
+                    <button className="fridge-retype-btn fridge-retype-btn--del" title="Delete ingredient" onClick={() => setDeleteTarget(ing)}>
+                      ✕
+                    </button>
                   </div>
                 );
               })}
@@ -2068,6 +1969,288 @@ const AddRecipeTab = ({ allIngredients, onSaved }) => {
   );
 };
 
+// ─── Cookbooks Tab ───────────────────────────────────────────────────────────
+const EMPTY_COOKBOOK = { id: null, title: '', author: '', cover: '', description: '', recipes: [] };
+const EMPTY_CB_RECIPE = { title: '', page: '', ingredients: '' };
+
+const CookbooksTab = ({ recipes: appRecipes = [], cookbooks, setCookbooks }) => {
+  const [view, setCbView] = useState('shelf'); // 'shelf' | 'book'
+  const [activeCb, setActiveCb] = useState(null);
+  const [editingCb, setEditingCb] = useState(null); // null | cookbook obj
+  const [editingRecipeIdx, setEditingRecipeIdx] = useState(null);
+  const [cbRecipeDraft, setCbRecipeDraft] = useState(EMPTY_CB_RECIPE);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showAddRecipe, setShowAddRecipe] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const openBook = (cb) => { setActiveCb(cb); setCbView('book'); setSearch(''); };
+  const closeBook = () => { setCbView('shelf'); setActiveCb(null); };
+
+  const saveCookbook = (draft) => {
+    if (!draft.title.trim()) return;
+    if (draft.id) {
+      setCookbooks(prev => prev.map(c => c.id === draft.id ? { ...draft } : c));
+      if (activeCb?.id === draft.id) setActiveCb({ ...draft });
+    } else {
+      const newCb = { ...draft, id: `cb-${Date.now()}`, recipes: [] };
+      setCookbooks(prev => [...prev, newCb]);
+    }
+    setEditingCb(null);
+  };
+
+  const deleteCookbook = (id) => {
+    setCookbooks(prev => prev.filter(c => c.id !== id));
+    setConfirmDelete(null);
+    closeBook();
+  };
+
+  const saveRecipe = () => {
+    if (!cbRecipeDraft.title.trim()) return;
+    const updated = { ...activeCb };
+    if (editingRecipeIdx !== null) {
+      updated.recipes = updated.recipes.map((r, i) => i === editingRecipeIdx ? { ...cbRecipeDraft } : r);
+    } else {
+      updated.recipes = [...(updated.recipes || []), { ...cbRecipeDraft }];
+    }
+    setCookbooks(prev => prev.map(c => c.id === activeCb.id ? updated : c));
+    setActiveCb(updated);
+    setShowAddRecipe(false);
+    setEditingRecipeIdx(null);
+    setCbRecipeDraft(EMPTY_CB_RECIPE);
+  };
+
+  const deleteRecipe = (idx) => {
+    const updated = { ...activeCb, recipes: activeCb.recipes.filter((_, i) => i !== idx) };
+    setCookbooks(prev => prev.map(c => c.id === activeCb.id ? updated : c));
+    setActiveCb(updated);
+  };
+
+  const startEditRecipe = (idx) => {
+    setEditingRecipeIdx(idx);
+    setCbRecipeDraft({ ...activeCb.recipes[idx] });
+    setShowAddRecipe(true);
+  };
+
+  // Match a cookbook recipe title to an app recipe
+  const findAppRecipe = (title) => {
+    if (!title) return null;
+    const t = title.toLowerCase().trim();
+    return appRecipes.find(r => r.name.toLowerCase().trim() === t) || null;
+  };
+
+  const filteredRecipes = useMemo(() => {
+    if (!activeCb) return [];
+    const q = search.toLowerCase().trim();
+    if (!q) return activeCb.recipes || [];
+    return (activeCb.recipes || []).filter(r => r.title.toLowerCase().includes(q));
+  }, [activeCb, search]);
+
+  const linkedCount = (cb) => (cb.recipes || []).filter(r => findAppRecipe(r.title)).length;
+
+  // ── Cookbook edit modal ──
+  const CookbookEditModal = ({ draft, onSave, onClose }) => {
+    const [form, setForm] = useState({ ...draft });
+    const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+    return (
+      <div className="cb-modal-overlay" onClick={onClose}>
+        <div className="cb-modal" onClick={e => e.stopPropagation()}>
+          <div className="cb-modal__header">
+            <h2>{form.id ? 'Edit Cookbook' : 'Add Cookbook'}</h2>
+            <button className="cb-modal__close" onClick={onClose}>✕</button>
+          </div>
+          <div className="cb-modal__body">
+            <label className="cb-modal__label">Title *</label>
+            <input className="editor-input" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Salt Fat Acid Heat" autoFocus />
+            <label className="cb-modal__label" style={{marginTop:14}}>Author</label>
+            <input className="editor-input" value={form.author} onChange={e => set('author', e.target.value)} placeholder="e.g. Samin Nosrat" />
+            <label className="cb-modal__label" style={{marginTop:14}}>Cover image URL</label>
+            <input className="editor-input" value={form.cover} onChange={e => set('cover', e.target.value)} placeholder="https://…" />
+            {form.cover && <img src={form.cover} alt="preview" className="cb-modal__cover-preview" />}
+            <label className="cb-modal__label" style={{marginTop:14}}>Description</label>
+            <textarea className="editor-textarea" value={form.description} onChange={e => set('description', e.target.value)} placeholder="A few words about this book…" rows={2} />
+          </div>
+          <div className="cb-modal__footer">
+            <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
+            <button className="btn btn--primary" onClick={() => onSave(form)} disabled={!form.title.trim()}>
+              {form.id ? '✓ Save Changes' : '+ Add Cookbook'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Recipe add/edit modal ──
+  const RecipeEditModal = ({ draft, onSave, onClose }) => {
+    const [form, setForm] = useState({ ...draft });
+    const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+    const linked = findAppRecipe(form.title);
+    return (
+      <div className="cb-modal-overlay" onClick={onClose}>
+        <div className="cb-modal" onClick={e => e.stopPropagation()}>
+          <div className="cb-modal__header">
+            <h2>{editingRecipeIdx !== null ? 'Edit Recipe' : 'Add Recipe'}</h2>
+            <button className="cb-modal__close" onClick={onClose}>✕</button>
+          </div>
+          <div className="cb-modal__body">
+            <label className="cb-modal__label">Recipe name *</label>
+            <input className="editor-input" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Roast Chicken" autoFocus />
+            {linked && <p className="cb-modal__linked-hint">✓ Linked to your app recipe: <strong>{linked.name}</strong></p>}
+            <label className="cb-modal__label" style={{marginTop:14}}>Page number</label>
+            <input className="editor-input" value={form.page} onChange={e => set('page', e.target.value)} placeholder="e.g. 142" />
+            <label className="cb-modal__label" style={{marginTop:14}}>Key ingredients (optional)</label>
+            <textarea className="editor-textarea" value={form.ingredients} onChange={e => set('ingredients', e.target.value)} placeholder="e.g. whole chicken, lemon, thyme…" rows={2} />
+          </div>
+          <div className="cb-modal__footer">
+            <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
+            <button className="btn btn--primary" onClick={() => onSave(form)} disabled={!form.title.trim()}>
+              {editingRecipeIdx !== null ? '✓ Save' : '+ Add Recipe'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Shelf view ──
+  if (view === 'shelf') {
+    return (
+      <main className="view cb-view">
+        {editingCb && <CookbookEditModal draft={editingCb} onSave={saveCookbook} onClose={() => setEditingCb(null)} />}
+        {confirmDelete && (
+          <div className="cb-modal-overlay" onClick={() => setConfirmDelete(null)}>
+            <div className="cb-modal cb-modal--sm" onClick={e => e.stopPropagation()}>
+              <div className="cb-modal__header"><h2>Remove Cookbook?</h2><button className="cb-modal__close" onClick={() => setConfirmDelete(null)}>✕</button></div>
+              <div className="cb-modal__body"><p>Delete <strong>"{confirmDelete.title}"</strong> and all its tracked recipes?</p></div>
+              <div className="cb-modal__footer">
+                <button className="btn btn--ghost" onClick={() => setConfirmDelete(null)}>Cancel</button>
+                <button className="btn btn--danger" onClick={() => deleteCookbook(confirmDelete.id)}>🗑️ Delete</button>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="cb-shelf-header">
+          <div>
+            <h1 className="cb-shelf-title">My Cookbooks</h1>
+            <p className="cb-shelf-sub">{cookbooks.length} {cookbooks.length === 1 ? 'cookbook' : 'cookbooks'} · {cookbooks.reduce((s, c) => s + (c.recipes?.length||0), 0)} recipes tracked</p>
+          </div>
+          <button className="btn btn--primary" onClick={() => setEditingCb({ ...EMPTY_COOKBOOK })}>+ Add Cookbook</button>
+        </div>
+
+        {cookbooks.length === 0 ? (
+          <div className="cb-empty">
+            <div className="cb-empty__icon">📚</div>
+            <h2 className="cb-empty__title">Your bookshelf is empty</h2>
+            <p className="cb-empty__sub">Add your physical cookbooks and track which recipes you've tried or want to make.</p>
+            <button className="btn btn--primary" onClick={() => setEditingCb({ ...EMPTY_COOKBOOK })}>+ Add your first cookbook</button>
+          </div>
+        ) : (
+          <div className="cb-shelf">
+            {cookbooks.map(cb => {
+              const total = cb.recipes?.length || 0;
+              const linked = linkedCount(cb);
+              return (
+                <div key={cb.id} className="cb-book-card" onClick={() => openBook(cb)}>
+                  <div className="cb-book-card__cover">
+                    {cb.cover
+                      ? <img src={cb.cover} alt={cb.title} />
+                      : <div className="cb-book-card__cover-placeholder"><span>📖</span></div>
+                    }
+                    {linked > 0 && <div className="cb-book-card__badge">{linked} linked</div>}
+                  </div>
+                  <div className="cb-book-card__info">
+                    <p className="cb-book-card__title">{cb.title}</p>
+                    {cb.author && <p className="cb-book-card__author">{cb.author}</p>}
+                    <p className="cb-book-card__count">{total} {total === 1 ? 'recipe' : 'recipes'}</p>
+                  </div>
+                  <div className="cb-book-card__actions">
+                    <button className="cb-book-card__action" onClick={e => { e.stopPropagation(); setEditingCb({ ...cb }); }} title="Edit">✎</button>
+                    <button className="cb-book-card__action cb-book-card__action--del" onClick={e => { e.stopPropagation(); setConfirmDelete(cb); }} title="Delete">🗑</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+    );
+  }
+
+  // ── Book detail view ──
+  return (
+    <main className="view cb-view">
+      {editingCb && <CookbookEditModal draft={editingCb} onSave={saveCookbook} onClose={() => setEditingCb(null)} />}
+      {showAddRecipe && (
+        <RecipeEditModal
+          draft={cbRecipeDraft}
+          onSave={(form) => { setCbRecipeDraft(form); saveRecipe(); }}
+          onClose={() => { setShowAddRecipe(false); setEditingRecipeIdx(null); setCbRecipeDraft(EMPTY_CB_RECIPE); }}
+        />
+      )}
+      <div className="cb-book-header">
+        <button className="cb-back-btn" onClick={closeBook}>← All Cookbooks</button>
+        <div className="cb-book-header__meta">
+          {activeCb.cover && <img src={activeCb.cover} alt="" className="cb-book-header__cover" />}
+          <div>
+            <h1 className="cb-book-header__title">{activeCb.title}</h1>
+            {activeCb.author && <p className="cb-book-header__author">by {activeCb.author}</p>}
+            {activeCb.description && <p className="cb-book-header__desc">{activeCb.description}</p>}
+            <div className="cb-book-header__stats">
+              <span className="cb-stat">{activeCb.recipes?.length || 0} recipes tracked</span>
+              <span className="cb-stat cb-stat--linked">{linkedCount(activeCb)} linked in app</span>
+            </div>
+          </div>
+        </div>
+        <div className="cb-book-header__actions">
+          <button className="btn btn--ghost btn--sm" onClick={() => setEditingCb({ ...activeCb })}>✎ Edit</button>
+          <button className="btn btn--primary btn--sm" onClick={() => { setEditingRecipeIdx(null); setCbRecipeDraft(EMPTY_CB_RECIPE); setShowAddRecipe(true); }}>+ Add Recipe</button>
+        </div>
+      </div>
+
+      <div className="cb-search-bar">
+        <span className="cb-search-bar__icon">🔍</span>
+        <input className="cb-search-input" placeholder={`Search ${activeCb.recipes?.length || 0} recipes…`} value={search} onChange={e => setSearch(e.target.value)} />
+        {search && <button className="cb-search-clear" onClick={() => setSearch('')}>✕</button>}
+      </div>
+
+      {filteredRecipes.length === 0 ? (
+        <div className="cb-empty" style={{paddingTop:48}}>
+          {search ? <p className="cb-empty__sub">No recipes match "{search}".</p> : (
+            <>
+              <div className="cb-empty__icon">🍽</div>
+              <p className="cb-empty__title">No recipes yet</p>
+              <p className="cb-empty__sub">Add recipes from this cookbook — at minimum just a name and page number.</p>
+              <button className="btn btn--primary" style={{marginTop:16}} onClick={() => { setCbRecipeDraft(EMPTY_CB_RECIPE); setShowAddRecipe(true); }}>+ Add first recipe</button>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="cb-recipe-list">
+          {filteredRecipes.map((r, idx) => {
+            const appRecipe = findAppRecipe(r.title);
+            return (
+              <div key={idx} className={`cb-recipe-row ${appRecipe ? 'cb-recipe-row--linked' : ''}`}>
+                <div className="cb-recipe-row__left">
+                  <div className="cb-recipe-row__title">{r.title}</div>
+                  {r.page && <div className="cb-recipe-row__page">p. {r.page}</div>}
+                  {r.ingredients && <div className="cb-recipe-row__ings">{r.ingredients}</div>}
+                </div>
+                <div className="cb-recipe-row__right">
+                  {appRecipe && (
+                    <span className="cb-recipe-row__linked-badge">✓ In app</span>
+                  )}
+                  <button className="cb-recipe-row__action" onClick={() => startEditRecipe(idx)} title="Edit">✎</button>
+                  <button className="cb-recipe-row__action cb-recipe-row__action--del" onClick={() => deleteRecipe(idx)} title="Remove">✕</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </main>
+  );
+};
+
 // ─── Main App ────────────────────────────────────────────────────────────────
 function AppInner() {
   const [view, setView] = useState('home');
@@ -2103,6 +2286,8 @@ function AppInner() {
   const [makeSoonIds, setMakeSoonIds] = useState(() => LS.get('makeSoonIds', []));
   const [libraryPage, setLibraryPage] = useState(1);
   const [lastSynced, setLastSynced] = useState(null);
+  const [cookbooks, setCookbooks] = useState(() => LS.get('cookbooks', []));
+  useEffect(() => { LS.set('cookbooks', cookbooks); }, [cookbooks]);
 
   useEffect(() => { LS.set('customCuisines', customCuisines); }, [customCuisines]);
   useEffect(() => { LS.set('heartedIds', heartedIds); }, [heartedIds]);
@@ -2223,14 +2408,15 @@ function AppInner() {
           {/* Desktop nav */}
           <nav className="nav-tabs">
             {[
-              { key: 'home',     label: 'Home'         },
-              { key: 'recipes',  label: 'Recipes'      },
-              { key: 'kitchen',  label: 'Kitchen'      },
-              { key: 'grocery',  label: 'Grocery'      },
-              { key: 'log',      label: 'Cook Log'     },
-              { key: 'profile',  label: 'Profile'      },
-              { key: 'add',      label: 'Add'          },
-              { key: 'settings', label: 'Settings'     },
+              { key: 'home',      label: 'Home'         },
+              { key: 'recipes',   label: 'Recipes'      },
+              { key: 'kitchen',   label: 'Kitchen'      },
+              { key: 'grocery',   label: 'Grocery'      },
+              { key: 'log',       label: 'Cook Log'     },
+              { key: 'cookbooks', label: 'Cookbooks'    },
+              { key: 'profile',   label: 'Profile'      },
+              { key: 'add',       label: 'Add'          },
+              { key: 'settings',  label: 'Settings'     },
             ].map(({ key, label }) => (
               <button key={key} className={`nav-tab ${view === key ? 'nav-tab--active' : ''}`} onClick={() => setView(key)} disabled={key === 'recipes' && recipes.length === 0}>
                 {label}
@@ -2248,14 +2434,15 @@ function AppInner() {
         {mobileNavOpen && (
           <nav className="mobile-nav-drawer">
             {[
-              { key: 'home',     label: '🏠 Home'       },
-              { key: 'recipes',  label: '📖 Recipes'    },
-              { key: 'kitchen',  label: '🧑‍🍳 Kitchen'   },
-              { key: 'grocery',  label: '🛒 Grocery'    },
-              { key: 'log',      label: '📓 Cook Log'   },
-              { key: 'profile',  label: '👤 Profile'    },
-              { key: 'add',      label: '➕ Add'        },
-              { key: 'settings', label: '⚙️ Settings'   },
+              { key: 'home',      label: '🏠 Home'        },
+              { key: 'recipes',   label: '📖 Recipes'     },
+              { key: 'kitchen',   label: '🧑‍🍳 Kitchen'    },
+              { key: 'grocery',   label: '🛒 Grocery'     },
+              { key: 'log',       label: '📓 Cook Log'    },
+              { key: 'cookbooks', label: '📚 Cookbooks'   },
+              { key: 'profile',   label: '👤 Profile'     },
+              { key: 'add',       label: '➕ Add'         },
+              { key: 'settings',  label: '⚙️ Settings'    },
             ].map(({ key, label }) => (
               <button key={key}
                 className={`mobile-nav-item ${view === key ? 'mobile-nav-item--active' : ''}`}
@@ -2272,6 +2459,8 @@ function AppInner() {
         <RecipePage
           recipe={selectedRecipe} bodyIngredients={recipeBodyIngredients} instructions={recipeInstructions} notes={recipeNotes}
           loading={recipeLoading} onBack={() => setView(lastView)}
+          allIngredients={allIngredients}
+          cookbooks={cookbooks}
           isHearted={selectedRecipe ? heartedIds.includes(selectedRecipe.id) : false}
           onToggleHeart={() => selectedRecipe && toggleHeart(selectedRecipe.id)}
           isMakeSoon={selectedRecipe ? makeSoonIds.includes(selectedRecipe.id) : false}
@@ -2743,6 +2932,10 @@ function AppInner() {
             </div>
           </div>
         </main>
+      )}
+
+      {view === 'cookbooks' && (
+        <CookbooksTab recipes={recipes} cookbooks={cookbooks} setCookbooks={setCookbooks} />
       )}
 
       {view === 'profile' && (
