@@ -2934,7 +2934,7 @@ body {
 }
 
 /* ─── Profile Tab ────────────────────────────────────────────────────────── */
-.profile-view { padding-bottom: 64px; max-width: 760px; }
+.profile-view { padding-bottom: 64px; }
 
 .profile-header {
   display: flex; align-items: center; gap: 16px;
@@ -3075,4 +3075,14 @@ body {
 @media (max-width: 640px) {
   .profile-about-grid { grid-template-columns: 1fr; }
   .cook-timeline__card-top { flex-direction: row; }
+}
+
+/* ─── Profile full-width layout ─────────────────────────────────────────── */
+.profile-view .cook-timeline { max-width: 100%; }
+.profile-view .profile-section--settings { max-width: 100%; }
+.cook-timeline__month-group { max-width: 100%; }
+/* Two-column timeline on wide screens */
+@media (min-width: 860px) {
+  .cook-timeline { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; align-items: start; }
+  .cook-timeline__month-group { break-inside: avoid; }
 }

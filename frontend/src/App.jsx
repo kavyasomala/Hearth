@@ -160,7 +160,7 @@ const Badge = ({ children, variant = 'default' }) => (
 // ─── Recipe Summary Card ───────────────────────────────────────────────────
 const toNum = (v) => { const n = Number(v); return (!isNaN(n) && v !== '' && v !== null && v !== undefined) ? n : null; };
 
-const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked }) => {
+const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked, showScore }) => {
   const { name, coverImage, cuisine, time } = recipe;
   const calories = toNum(recipe.calories);
   const protein  = toNum(recipe.protein);
@@ -175,7 +175,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
         {coverImage
           ? <img src={coverImage} alt={name} loading="lazy" />
           : <div className="recipe-card__image-placeholder">No photo</div>}
-        {matchScore !== null && (
+        {showScore && matchScore !== null && (
           <div className={`recipe-card__score ${canMakeNow ? 'recipe-card__score--ready' : ''}`}>
             {pct(matchScore)}%
           </div>
@@ -391,7 +391,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [draftSteps, setDraftSteps] = useState([]);
   const [draftNotes, setDraftNotes] = useState([]);
   const [draftMeta, setDraftMeta] = useState({});
-  const [draftCookbook, setDraftCookbook] = useState({ cookbook: '', page_number: '' });
+  const [draftCookbook, setDraftCookbook] = useState({ cookbook: '', reference: '' });
 
   const isEdit = (s) => editingSection === s;
 
@@ -417,7 +417,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
     }
     if (section === 'instructions') setDraftSteps((instructions || []).map((s, idx) => ({ ...s, _id: `step-${idx}` })));
     if (section === 'notes')        setDraftNotes((notes || []).map((n, idx) => ({ ...n, _id: `note-${idx}`, text: n.text ?? n.body_text ?? '' })));
-    if (section === 'cookbook')      setDraftCookbook({ cookbook: recipe.cookbook || '', page_number: recipe.page_number || '' });
+    if (section === 'cookbook')      setDraftCookbook({ cookbook: recipe.cookbook || '', reference: recipe.reference || '' });
     if (['meta','meta-cuisine','meta-tags','meta-progress','meta-time','meta-servings'].includes(section)) setDraftMeta({
       time: recipe.time || '',
       servings: recipe.servings || '',
@@ -506,7 +506,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           recipe_incomplete: isMeta ? draftMeta.recipe_incomplete : (recipe.recipe_incomplete || false),
           tags:            isMeta ? draftMeta.tags   : (recipe.tags || []),
           cookbook:        section === 'cookbook' ? draftCookbook.cookbook : (recipe.cookbook || ''),
-          page_number:     section === 'cookbook' ? draftCookbook.page_number : (recipe.page_number || ''),
+          page_number:     section === 'cookbook' ? draftCookbook.reference : (recipe.reference || ''),
         },
         ingredients:  section === 'ingredients'  ? (() => {
           let grp = '';
@@ -1096,12 +1096,12 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               {isEdit('cookbook') ? (
                 <div className="rp2__cookbook-editor">
                   <CookbookAutocomplete value={draftCookbook.cookbook} onChange={v => setDraftCookbook(p => ({...p, cookbook: v}))} cookbooks={cookbooks} />
-                  <input className="editor-input" value={draftCookbook.page_number} onChange={e => setDraftCookbook(p => ({...p, page_number: e.target.value}))} placeholder="Page number" style={{marginTop: 6}} />
+                  <input className="editor-input" value={draftCookbook.reference} onChange={e => setDraftCookbook(p => ({...p, reference: e.target.value}))} placeholder="Page number" style={{marginTop: 6}} />
                 </div>
-              ) : (recipe.cookbook || recipe.page_number) ? (
+              ) : (recipe.cookbook || recipe.reference) ? (
                 <div className="rp2__cookbook-text">
                   {recipe.cookbook && <span className="rp2__cookbook-text__book">{recipe.cookbook}</span>}
-                  {recipe.page_number && <span className="rp2__cookbook-text__page">Page {recipe.page_number}</span>}
+                  {recipe.reference && <span className="rp2__cookbook-text__page">Page {recipe.reference}</span>}
                 </div>
               ) : (
                 <p className="rp2__empty-hint">No reference yet. Click ✎ to add.</p>
@@ -1916,14 +1916,6 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
             </div>
 
             <div className="settings-section">
-              <h4 className="settings-section__title">⚖️ Measurement Units</h4>
-              <div className="settings-toggle-row">
-                <button className={`settings-toggle ${units === 'metric' ? 'settings-toggle--active' : ''}`} onClick={() => setUnits('metric')}>Metric <span className="settings-toggle__sub">g, ml, °C</span></button>
-                <button className={`settings-toggle ${units === 'imperial' ? 'settings-toggle--active' : ''}`} onClick={() => setUnits('imperial')}>Imperial <span className="settings-toggle__sub">oz, cups, °F</span></button>
-              </div>
-            </div>
-
-            <div className="settings-section">
               <h4 className="settings-section__title">🎨 Theme</h4>
               <div className="profile-theme-picker">
                 {THEME_OPTIONS.map(t => (
@@ -2247,7 +2239,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe }) => {
       const allEntries = [...manualEntries];
       for (const lr of linkedRecipes) {
         if (!allEntries.some(e => e.name.toLowerCase() === lr.name.toLowerCase())) {
-          allEntries.push({ name: lr.name, page: lr.page_number || '', recipeId: lr.id });
+          allEntries.push({ name: lr.name, page: lr.reference || '', recipeId: lr.id });
         } else {
           // Update recipeId if not set
           const idx = allEntries.findIndex(e => e.name.toLowerCase() === lr.name.toLowerCase());
@@ -2569,7 +2561,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
 
   const emptyForm = () => ({
     name: '', cuisine: '', time: '', servings: '', calories: '', protein: '',
-    cover_image_url: '', cookbook: '', page_number: '', status: '', recipe_incomplete: false, tags: [],
+    cover_image_url: '', cookbook: '', reference: '', status: '', recipe_incomplete: false, tags: [],
   });
 
   const [details, setDetails] = useState(emptyForm);
@@ -2627,7 +2619,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
           name: details.name, cuisine: details.cuisine, time: details.time,
           servings: details.servings, calories: details.calories, protein: details.protein,
           cover_image_url: details.cover_image_url,
-          cookbook: details.cookbook, page_number: details.page_number,
+          cookbook: details.cookbook, page_number: details.reference,
           status: details.status, recipe_incomplete: details.recipe_incomplete, tags: details.tags,
         },
         ingredients: ings.map((i, idx) => ({ ...i, order_index: idx })),
@@ -2812,7 +2804,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
                 </div>
                 <div className="create-modal__field">
                   <label className="create-modal__field-label">Page number</label>
-                  <input className="editor-input" value={details.page_number} onChange={e => setDetail('page_number', e.target.value)} placeholder="e.g. 142" />
+                  <input className="editor-input" value={details.reference} onChange={e => setDetail('reference', e.target.value)} placeholder="e.g. 142" />
                 </div>
               </div>
 
@@ -3166,7 +3158,8 @@ function AppInner() {
                           if (!r) return null;
                           return <RecipeCard key={r.id} recipe={r} match={m} onClick={openRecipe}
                             isHearted={heartedIds.includes(r.id)} onToggleHeart={() => toggleHeart(r.id)}
-                            isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)} />;
+                            isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)}
+                            showScore={true} />;
                         })}
                     </HScrollRow>
                   ) : <p className="home-no-matches">No matches yet — try adding more ingredients in the Kitchen tab.</p>}
@@ -3469,7 +3462,8 @@ function AppInner() {
                     {pageRecipes.map(r => (
                       <RecipeCard key={r.id} recipe={r} match={matchById.get(r.id)} onClick={openRecipe}
                         isHearted={heartedIds.includes(r.id)} onToggleHeart={() => toggleHeart(r.id)}
-                        isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)} />
+                        isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)}
+                        showScore={activeProgresses.some(p => p === '__readytocook' || p === '__almostready')} />
                     ))}
                   </div>
                   {totalPages > 1 && (

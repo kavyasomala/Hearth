@@ -623,6 +623,46 @@ app.post('/api/grocery-list', async (req, res) => {
   }
 });
 
+// ─── POST /api/cook-log ─────────────────────────────────────────────────────
+app.post('/api/cook-log', async (req, res) => {
+  const { recipe_id, rating, notes, cooked_at } = req.body;
+  if (!recipe_id) return res.status(400).json({ error: 'recipe_id is required' });
+  try {
+    const { rows } = await query(`
+      INSERT INTO cook_log (recipe_id, rating, notes, cooked_at)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [
+      recipe_id,
+      rating ?? null,
+      notes?.trim() || null,
+      cooked_at ? new Date(cooked_at) : new Date(),
+    ]);
+    res.json({ entry: rows[0] });
+  } catch (err) {
+    console.error('POST /api/cook-log error:', err);
+    res.status(500).json({ error: err.message || 'Failed to save cook log' });
+  }
+});
+
+// ─── GET /api/cook-log ──────────────────────────────────────────────────────
+app.get('/api/cook-log', async (req, res) => {
+  try {
+    let sql = 'SELECT * FROM cook_log';
+    const params = [];
+    if (req.query.recipe_id) {
+      sql += ' WHERE recipe_id = $1';
+      params.push(req.query.recipe_id);
+    }
+    sql += ' ORDER BY cooked_at DESC';
+    const { rows } = await query(sql, params);
+    res.json({ entries: rows });
+  } catch (err) {
+    console.error('GET /api/cook-log error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch cook log' });
+  }
+});
+
 // ─── Stubs ──────────────────────────────────────────────────────────────────
 app.post('/api/parse-ingredients', (_req, res) =>
   res.status(501).json({ error: 'Not implemented.' }));
