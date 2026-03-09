@@ -97,13 +97,24 @@ const COMMON_UNITS = [
 
 // ── Tag filters — match against recipe's tags array only (not cuisine column)
 const TAG_FILTERS = [
-  { key: 'Meals',    label: '🍽 Meals'    },
-  { key: 'Dessert',  label: '🍰 Desserts' },
-  { key: 'Drinks',   label: '🍹 Drinks'   },
-  { key: 'Pasta',    label: '🍝 Pasta'    },
-  { key: 'Soup',     label: '🍲 Soup'     },
-  { key: 'Marinade', label: '🫙 Marinade' },
-  { key: 'Party',    label: '🎉 Party'    },
+  { key: 'Meals',      label: '🍽 Meals'      },
+  { key: 'Dessert',    label: '🍰 Desserts'   },
+  { key: 'Drinks',     label: '🍹 Drinks'     },
+  { key: 'Pasta',      label: '🍝 Pasta'      },
+  { key: 'Soup',       label: '🍲 Soup'       },
+  { key: 'Marinade',   label: '🫙 Marinade'   },
+  { key: 'Party',      label: '🎉 Party'      },
+  { key: 'Breakfast',  label: '🍳 Breakfast'  },
+  { key: 'Snack',      label: '🥨 Snack'      },
+  { key: 'Salad',      label: '🥗 Salad'      },
+  { key: 'Bread',      label: '🍞 Bread'      },
+  { key: 'Sauce',      label: '🥫 Sauce'      },
+  { key: 'Sides',      label: '🥦 Sides'      },
+  { key: 'Vegan',      label: '🌱 Vegan'      },
+  { key: 'Vegetarian', label: '🫑 Vegetarian' },
+  { key: 'Quick',      label: '⚡ Quick'      },
+  { key: 'Baking',     label: '🎂 Baking'     },
+  { key: 'BBQ',        label: '🔥 BBQ'        },
 ];
 
 // ── Progress filters — based on DB columns (recipe_incomplete, status)
@@ -300,15 +311,19 @@ const MarkCookedModal = ({ recipe, onSave, onClose }) => {
   const save = async () => {
     setSaving(true); setError(null);
     try {
-      const res = await fetch(`${API}/api/cook-log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipe_id: recipe.id, rating: rating || null, notes: notes.trim() || null, cooked_at: new Date().toISOString() }),
-      });
-      if (!res.ok) {
-        let msg = 'Failed to save cook log';
-        try { const d = await res.json(); msg = d.error || msg; } catch {}
-        throw new Error(msg);
+      // Only save to DB if this is a real recipe (not a cookbook-only reference)
+      const isRealRecipe = recipe.id && !String(recipe.id).startsWith('ref-');
+      if (isRealRecipe) {
+        const res = await fetch(`${API}/api/cook-log`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipe_id: recipe.id, rating: rating || null, notes: notes.trim() || null, cooked_at: new Date().toISOString() }),
+        });
+        if (!res.ok) {
+          let msg = 'Failed to save cook log';
+          try { const d = await res.json(); msg = d.error || msg; } catch {}
+          throw new Error(msg);
+        }
       }
       onSave();
     } catch (e) { setError(e.message); setSaving(false); }
@@ -2313,31 +2328,134 @@ const QuickAddModal = ({ onSave, onClose }) => {
 const ConvertRecipeModal = ({ entry, cookbookTitle, onConverted, onClose }) => {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
+  const [form, setForm] = useState({
+    name: entry.name || '',
+    cuisine: '',
+    time: '',
+    servings: '',
+    calories: '',
+    protein: '',
+    cover_image_url: entry.image || '',
+    status: 'to try',
+    tags: entry.tags || [],
+  });
+  const [imgErr, setImgErr] = useState(false);
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const toggleTag = t => setForm(p => ({ ...p, tags: p.tags.includes(t) ? p.tags.filter(x => x !== t) : [...p.tags, t] }));
+
   const convert = async () => {
+    if (!form.name.trim()) return;
     setSaving(true); setErr(null);
     try {
       const res = await fetch(`${API}/api/recipes`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ details:{ name:entry.name, cookbook:cookbookTitle, page_number:entry.page, cover_image_url:entry.image||'', status:'to try', tags:entry.tags||[] }, ingredients:[], instructions:[], notes:[] }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          details: {
+            name: form.name.trim(),
+            cuisine: form.cuisine || null,
+            time: form.time || null,
+            servings: form.servings || null,
+            calories: form.calories || null,
+            protein: form.protein || null,
+            cover_image_url: form.cover_image_url || '',
+            status: form.status || 'to try',
+            cookbook: cookbookTitle,
+            page_number: entry.page || '',
+            tags: form.tags,
+          },
+          ingredients: [], instructions: [], notes: [],
+        }),
       });
       let data = {}; try { data = await res.json(); } catch {}
       if (!res.ok) throw new Error(data.error || `Failed (${res.status})`);
       onConverted(data.recipe);
     } catch(e) { setErr(e.message); setSaving(false); }
   };
+
   return (
     <div className="create-modal-overlay" onClick={onClose}>
-      <div className="create-modal" style={{ maxWidth:420 }} onClick={e => e.stopPropagation()}>
+      <div className="create-modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title">✨ Convert to Full Recipe</h2>
+          <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
-        <div className="create-modal__body">
-          <p style={{ fontSize:14, lineHeight:1.5 }}>This will add <strong>{entry.name}</strong> to Hearth as a full recipe, pre-filled with the cookbook and page number. You can add ingredients and instructions afterwards.</p>
-          {err && <p style={{ color:'var(--terracotta)', fontSize:13, marginTop:8 }}>⚠️ {err}</p>}
+        <div className="create-modal__body" style={{ gap: 14 }}>
+          <p style={{ fontSize: 13, color: 'var(--warm-gray)', marginTop: -4 }}>
+            Fill in details before adding <strong>{entry.name}</strong> to Hearth. You can edit further afterwards.
+          </p>
+
+          {/* Image + name */}
+          <div className="create-modal__img-row">
+            <div className="create-modal__img-preview">
+              {form.cover_image_url && !imgErr
+                ? <img src={form.cover_image_url} alt="cover" onError={() => setImgErr(true)} />
+                : <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:28 }}>🍽</div>}
+            </div>
+            <div className="create-modal__img-input-wrap">
+              <label className="create-modal__field-label">Cover image URL</label>
+              <input className="editor-input" value={form.cover_image_url} onChange={e => { set('cover_image_url', e.target.value); setImgErr(false); }} placeholder="https://…" />
+            </div>
+          </div>
+
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Recipe name <span className="create-modal__required">*</span></label>
+            <input className="editor-input create-modal__name-input" value={form.name} onChange={e => set('name', e.target.value)} autoFocus />
+          </div>
+
+          <div className="create-modal__meta-grid">
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">⏱ Time</label>
+              <input className="editor-input" value={form.time} onChange={e => set('time', e.target.value)} placeholder="e.g. 30 mins" />
+            </div>
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">🍽 Servings</label>
+              <input className="editor-input" value={form.servings} onChange={e => set('servings', e.target.value)} placeholder="4" />
+            </div>
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">🔥 Calories</label>
+              <input className="editor-input" type="number" value={form.calories} onChange={e => set('calories', e.target.value)} placeholder="kcal" />
+            </div>
+            <div className="create-modal__field">
+              <label className="create-modal__field-label">💪 Protein (g)</label>
+              <input className="editor-input" type="number" value={form.protein} onChange={e => set('protein', e.target.value)} placeholder="g" />
+            </div>
+          </div>
+
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">🌍 Cuisine</label>
+            <input className="editor-input" value={form.cuisine} onChange={e => set('cuisine', e.target.value)} placeholder="e.g. Italian" />
+          </div>
+
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Tags</label>
+            <div className="picker__chips" style={{ marginTop: 6 }}>
+              {TAG_FILTERS.map(({ key, label }) => (
+                <button key={key} className={`chip ${form.tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggleTag(key)} type="button">
+                  {form.tags.includes(key) && <span className="chip__check">✓</span>}{label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">📋 Progress</label>
+            <div className="picker__chips" style={{ marginTop: 6 }}>
+              {[{v:'to try',l:'🔖 To Try'},{v:'complete',l:'✅ Complete'},{v:'needs tweaking',l:'🔧 Needs Tweaking'}].map(({v,l}) => (
+                <button key={v} className={`chip ${form.status===v?'chip--selected':''}`} onClick={() => set('status',v)} type="button">{l}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cookbook pre-filled info */}
+          <div style={{ background:'var(--surface-raised)', borderRadius:8, padding:'10px 14px', fontSize:13, color:'var(--warm-gray)' }}>
+            📖 Will be saved under <strong>{cookbookTitle}</strong>{entry.page ? ` · Page ${entry.page}` : ''}
+          </div>
+
+          {err && <p style={{ color: 'var(--terracotta)', fontSize: 13 }}>⚠️ {err}</p>}
         </div>
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn--primary" onClick={convert} disabled={saving}>{saving ? 'Creating…' : '✨ Convert'}</button>
+          <button className="btn btn--primary" onClick={convert} disabled={saving || !form.name.trim()}>{saving ? 'Creating…' : '✨ Convert to Recipe'}</button>
         </div>
       </div>
     </div>
@@ -2521,6 +2639,13 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
           <div className="cookbook-detail__empty"><p>No recipes match "{search}".</p></div>
         ) : (
           <div className="cookbook-recipe-list">
+            <div className="cbentry cbentry--header">
+              <div className="cbentry__thumb-wrap" />
+              <div className="cbentry__name-col"><span className="cbentry__col-label">Recipe</span></div>
+              <div className="cbentry__page-col"><span className="cbentry__col-label">Page</span></div>
+              <div className="cbentry__tags-col"><span className="cbentry__col-label">Tags</span></div>
+              <div className="cbentry__actions" />
+            </div>
             {filtered.map((entry, idx) => {
               const linked  = entry.recipeId ? recipes.find(r => r.id === entry.recipeId) : null;
               const isEditing = editingEntry === entry;
@@ -2543,18 +2668,19 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
                       ? <img className="cbentry__thumb" src={entry.image || linked?.coverImage} alt={entry.name} />
                       : <div className="cbentry__thumb cbentry__thumb--empty">📖</div>}
                   </div>
-                  {/* Info */}
-                  <div className="cbentry__info">
-                    <div className="cbentry__name-row">
-                      {linked
-                        ? <button className="cbentry__name cbentry__name--link" onClick={() => onOpenRecipe(linked)}>{entry.name}</button>
-                        : <span className="cbentry__name">{entry.name}</span>}
-                      {linked && <span className="cookbook-recipe-entry__saved-badge">✓ Saved</span>}
-                    </div>
+                  {/* Name */}
+                  <div className="cbentry__name-col">
+                    <span className="cbentry__name">{entry.name}</span>
+                  </div>
+                  {/* Page number */}
+                  <div className="cbentry__page-col">
                     {entry.page && <span className="cbentry__page">p. {entry.page}</span>}
+                  </div>
+                  {/* Tags */}
+                  <div className="cbentry__tags-col">
                     {entryTags.length > 0 && (
                       <div className="cbentry__tags">
-                        {entryTags.slice(0,5).map(t => <span key={t} className="cbentry__tag">{t}</span>)}
+                        {entryTags.slice(0,4).map(t => <span key={t} className="cbentry__tag">{t}</span>)}
                       </div>
                     )}
                   </div>
@@ -3046,6 +3172,7 @@ function AppInner() {
   const [units, setUnitsRaw] = useState(() => LS.get('units', 'metric'));
   const [dietaryFilters, setDietaryFiltersRaw] = useState(() => LS.get('dietaryFilters', []));
   const [cookbooks, setCookbooks] = useState(() => LS.get('cookbooks', []));
+  const [cookLog, setCookLog] = useState([]);
   const setUnits = (v) => { setUnitsRaw(v); LS.set('units', v); };
   const setDietaryFilters = (fn) => setDietaryFiltersRaw(prev => { const next = typeof fn === 'function' ? fn(prev) : fn; LS.set('dietaryFilters', next); return next; });
 
@@ -3055,12 +3182,20 @@ function AppInner() {
 
   const loadData = useCallback(async () => {
     try {
-      const [ingRes, recipeRes] = await Promise.all([fetch(`${API}/api/ingredients`), fetch(`${API}/api/recipes`)]);
+      const [ingRes, recipeRes, cookLogRes] = await Promise.all([
+        fetch(`${API}/api/ingredients`),
+        fetch(`${API}/api/recipes`),
+        fetch(`${API}/api/cook-log`),
+      ]);
       if (!ingRes.ok || !recipeRes.ok) throw new Error('Failed to load data');
       const { ingredients } = await ingRes.json();
       const { recipes: recipeData } = await recipeRes.json();
       setAllIngredients(ingredients.sort((a, b) => a.name.localeCompare(b.name)));
       setRecipes(recipeData);
+      if (cookLogRes.ok) {
+        const logData = await cookLogRes.json();
+        setCookLog(logData.entries || []);
+      }
       setLastSynced(Date.now());
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }, []);
@@ -3220,6 +3355,13 @@ function AppInner() {
           onDelete={(deletedId) => {
             setHeartedIds(prev => prev.filter(x => x !== deletedId));
             setMakeSoonIds(prev => prev.filter(x => x !== deletedId));
+            // Remove recipeId references from cookbooks so entry stays but loses the link
+            setCookbooks(prev => prev.map(cb => ({
+              ...cb,
+              recipes: (cb.recipes || []).map(e =>
+                e.recipeId === deletedId ? { ...e, recipeId: null } : e
+              ),
+            })));
             loadData();
             setView(lastView);
           }}
@@ -3682,7 +3824,7 @@ function AppInner() {
           onOpenRecipe={openRecipe}
           allTags={allTags}
           setCookingRecipe={setCookingRecipe}
-          cookLog={[]}
+          cookLog={cookLog}
           onRecipeConverted={(newRecipe) => { loadData(); openRecipe(newRecipe); }}
         />
       )}
@@ -3704,6 +3846,8 @@ function AppInner() {
           onSave={() => {
             setMakeSoonIds(prev => prev.filter(id => id !== cookingRecipe.id));
             setCookingRecipe(null);
+            // Refresh cook log so cookbook progress updates
+            fetch(`${API}/api/cook-log`).then(r => r.json()).then(d => setCookLog(d.entries || [])).catch(() => {});
           }}
           onClose={() => setCookingRecipe(null)}
         />
