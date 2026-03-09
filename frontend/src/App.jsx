@@ -108,11 +108,13 @@ const TAG_FILTERS = [
 
 // ── Progress filters — based on DB columns (recipe_incomplete, status)
 const PROGRESS_FILTERS = [
-  { key: '__incomplete',    label: '🚧 Incomplete'      },
-  { key: '__needstweaking', label: '🔧 Needs Tweaking'  },
-  { key: '__favorite',      label: '⭐ Favorite'         },
-  { key: '__complete',      label: '✅ Complete'         },
-  { key: '__totry',         label: '🔖 To Try'           },
+  { key: '__readytocook',   label: '✅ Ready to Cook'    },
+  { key: '__almostready',   label: '🔥 Almost Ready'      },
+  { key: '__favorite',      label: '♥ Favorites'          },
+  { key: '__incomplete',    label: '🚧 Incomplete'         },
+  { key: '__needstweaking', label: '🔧 Needs Tweaking'    },
+  { key: '__complete',      label: '✅ Complete'           },
+  { key: '__totry',         label: '🔖 To Try'             },
 ];
 
 const QUICK_CHIP_KEYS = new Set(TAG_FILTERS.map(f => f.key));
@@ -303,26 +305,30 @@ const MarkCookedModal = ({ recipe, onSave, onClose }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipe_id: recipe.id, rating: rating || null, notes: notes.trim() || null, cooked_at: new Date().toISOString() }),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to save'); }
+      if (!res.ok) {
+        let msg = 'Failed to save cook log';
+        try { const d = await res.json(); msg = d.error || msg; } catch {}
+        throw new Error(msg);
+      }
       onSave();
     } catch (e) { setError(e.message); setSaving(false); }
   };
 
   const displayRating = hoverRating || rating;
+  const RATING_LABELS = ['', "Didn't love it", 'It was okay', 'Pretty good!', 'Really good!', 'Perfect! ⭐'];
 
   return (
     <div className="create-modal-overlay" onClick={onClose}>
       <div className="create-modal cooked-modal" onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
-          <h2 className="create-modal__title">🍳 Marked as Cooked!</h2>
-          <button className="ing-modal__close" onClick={onClose}>✕</button>
+          <h2 className="create-modal__title">🍳 Cooked it!</h2>
         </div>
         <div className="create-modal__body cooked-modal__body">
           <p className="cooked-modal__recipe-name">{recipe?.name}</p>
           <p className="cooked-modal__date">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
 
           <div className="cooked-modal__rating-section">
-            <p className="cooked-modal__label">How did it turn out?</p>
+            <p className="cooked-modal__label">How did it turn out? <span className="cooked-modal__optional">(optional)</span></p>
             <div className="cooked-modal__stars">
               {[1,2,3,4,5].map(n => (
                 <button
@@ -334,12 +340,12 @@ const MarkCookedModal = ({ recipe, onSave, onClose }) => {
                   type="button"
                 >★</button>
               ))}
-              {rating > 0 && <span className="cooked-modal__rating-label">{['','Didn\'t love it','It was okay','Pretty good!','Really good!','Perfect! ⭐'][rating]}</span>}
+              {displayRating > 0 && <span className="cooked-modal__rating-label">{RATING_LABELS[displayRating]}</span>}
             </div>
           </div>
 
           <div className="cooked-modal__notes-section">
-            <p className="cooked-modal__label">Any notes? <span style={{opacity:0.5,fontWeight:400}}>(optional)</span></p>
+            <p className="cooked-modal__label">Notes <span className="cooked-modal__optional">(optional)</span></p>
             <textarea
               className="editor-textarea cooked-modal__notes-input"
               value={notes}
@@ -352,9 +358,9 @@ const MarkCookedModal = ({ recipe, onSave, onClose }) => {
           {error && <p className="editor-error">⚠️ {error}</p>}
         </div>
         <div className="create-modal__footer">
-          <button className="btn btn--ghost" onClick={onClose}>Skip</button>
+          <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn--primary cooked-modal__save-btn" onClick={save} disabled={saving}>
-            {saving ? 'Saving…' : '✓ Save Cook Log'}
+            {saving ? 'Saving…' : '✓ Save'}
           </button>
         </div>
       </div>
@@ -515,8 +521,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
       const res = await fetch(`${API}/api/recipes/${recipe.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Save failed');
+      let data = {};
+      try { data = await res.json(); } catch {}
+      if (!res.ok) throw new Error(data.error || `Save failed (${res.status})`);
       setEditingSection(null);
       if (onSaved) onSaved(data.recipe);
     } catch (e) { setSaveError(e.message); }
@@ -674,8 +681,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           onClose={() => setShowCookedModal(false)}
         />
       )}
-
-      {/* ── Hero ── */}
       <div className="rp2__hero">
         {recipe.coverImage
           ? <HeroImage src={recipe.coverImage} alt={recipe.name} />
@@ -921,11 +926,13 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       {/* Column headers — desktop only */}
                       <div className="ing-flat-header ing-flat-header--desktop">
                         <span className="ing-flat-header__drag" />
-                        <span className="ing-flat-header__col ing-flat-header__qty-col">Qty</span>
-                        <span className="ing-flat-header__col ing-flat-header__unit-col">Unit</span>
-                        <span className="ing-flat-header__col ing-flat-header__name-col">Ingredient</span>
-                        <span className="ing-flat-header__col ing-flat-header__prep-col">Prep note</span>
-                        <span className="ing-flat-header__col ing-flat-header__opt-col">Status</span>
+                        <div className="ing-flat-header__cols">
+                          <span className="ing-flat-header__qty-col">Qty</span>
+                          <span className="ing-flat-header__unit-col">Unit</span>
+                          <span className="ing-flat-header__name-col">Ingredient</span>
+                          <span className="ing-flat-header__prep-col">Prep note</span>
+                          <span className="ing-flat-header__opt-col">Optional</span>
+                        </div>
                         <span className="ing-flat-header__rm" />
                       </div>
                       {draftIngs.map((ing) => {
@@ -1766,38 +1773,201 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
   );
 };
 
-// ─── Settings Tab ────────────────────────────────────────────────────────────
-const DIETARY_OPTIONS = ['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Halal', 'Nut-Free'];
+// ─── Profile Tab ─────────────────────────────────────────────────────────────
+const DIETARY_OPTIONS = ['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Halal', 'Nut-Free', 'Keto', 'Paleo', 'Low-Carb', 'Diabetic-Friendly'];
+const THEME_OPTIONS = [
+  { key: 'default', label: 'Terracotta', color: '#C65D3B' },
+  { key: 'sage',    label: 'Sage',       color: '#7a9e7e' },
+  { key: 'navy',    label: 'Navy',       color: '#2E4057' },
+  { key: 'plum',    label: 'Plum',       color: '#6B3FA0' },
+];
+const STAR_LABELS = ['', "Didn't love it", 'It was okay', 'Pretty good!', 'Really good!', 'Perfect!'];
 
-const SettingsTab = ({ units, setUnits, dietaryFilters, setDietaryFilters }) => {
+const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes }) => {
+  const [cookHistory, setCookHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('hearth-theme') || 'default');
+  const [sharedUsers] = useState([]); // placeholder
+
   const toggleDiet = (d) => setDietaryFilters(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+
+  const setThemeAndSave = (key) => {
+    setTheme(key);
+    localStorage.setItem('hearth-theme', key);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setHistoryLoading(true);
+      try {
+        const res = await fetch(`${API}/api/cook-log`);
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        if (!cancelled) setCookHistory(data.entries || []);
+      } catch { if (!cancelled) setCookHistory([]); }
+      finally { if (!cancelled) setHistoryLoading(false); }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Group history by month
+  const groupedHistory = useMemo(() => {
+    const groups = {};
+    for (const entry of cookHistory) {
+      const d = new Date(entry.cooked_at);
+      const key = d.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(entry);
+    }
+    return Object.entries(groups);
+  }, [cookHistory]);
+
+  const getRecipeName = (entry) => {
+    const r = recipes.find(r => r.id === entry.recipe_id);
+    return r?.name || entry.recipe_name || 'Unknown Recipe';
+  };
+
   return (
-    <main className="view">
-      <h2 className="settings-title">Settings</h2>
-      <div className="settings-section">
-        <h3 className="settings-section__title">⚖️ Units</h3>
-        <p className="settings-section__hint">Choose your preferred measurement system</p>
-        <div className="settings-toggle-row">
-          <button className={`settings-toggle ${units === 'metric' ? 'settings-toggle--active' : ''}`} onClick={() => setUnits('metric')}>Metric <span className="settings-toggle__sub">g, ml, °C</span></button>
-          <button className={`settings-toggle ${units === 'imperial' ? 'settings-toggle--active' : ''}`} onClick={() => setUnits('imperial')}>Imperial <span className="settings-toggle__sub">oz, cups, °F</span></button>
+    <main className="view profile-view">
+      <div className="profile-header">
+        <div className="profile-header__avatar">👤</div>
+        <div>
+          <h2 className="profile-header__title">Your Kitchen</h2>
+          <p className="profile-header__sub">{totalRecipes} recipes · {cookHistory.length} times cooked</p>
         </div>
       </div>
-      <div className="settings-section">
-        <h3 className="settings-section__title">🥗 Dietary Filters</h3>
-        <p className="settings-section__hint">Active filters hide non-matching recipes across the whole app</p>
-        <div className="picker__chips" style={{ marginTop: 10 }}>
-          {DIETARY_OPTIONS.map(d => (
-            <button key={d} className={`chip ${dietaryFilters.includes(d) ? 'chip--selected' : ''}`} onClick={() => toggleDiet(d)}>
-              {dietaryFilters.includes(d) && <span className="chip__check">✓</span>}{d}
-            </button>
-          ))}
-        </div>
-        {dietaryFilters.length > 0 && <p className="settings-active-filters">Active: {dietaryFilters.join(', ')} — recipes without these tags will be hidden</p>}
-      </div>
-      <div className="settings-section">
-        <h3 className="settings-section__title">ℹ️ About</h3>
-        <p className="settings-section__hint">Hearth v1.0 · Postgres backend</p>
-      </div>
+
+      {/* ── Cooking History ── */}
+      <section className="profile-section">
+        <h3 className="profile-section__title">📅 Cooking History</h3>
+        {historyLoading ? (
+          <div className="grocery-loading"><div className="loading-spinner" /><p>Loading history…</p></div>
+        ) : cookHistory.length === 0 ? (
+          <div className="profile-empty">
+            <span className="profile-empty__icon">🍳</span>
+            <p className="profile-empty__text">No cooking history yet. Mark a recipe as cooked to start your log!</p>
+          </div>
+        ) : (
+          <div className="cook-timeline">
+            {groupedHistory.map(([month, entries]) => (
+              <div key={month} className="cook-timeline__month-group">
+                <div className="cook-timeline__month-label">{month}</div>
+                {entries.map((entry, i) => {
+                  const d = new Date(entry.cooked_at);
+                  const recipeName = getRecipeName(entry);
+                  const recipe = recipes.find(r => r.id === entry.recipe_id);
+                  return (
+                    <div key={entry.id || i} className="cook-timeline__entry">
+                      <div className="cook-timeline__dot" />
+                      <div className="cook-timeline__line" />
+                      <div className="cook-timeline__card">
+                        <div className="cook-timeline__card-top">
+                          {recipe?.coverImage && (
+                            <img className="cook-timeline__thumb" src={recipe.coverImage} alt={recipeName} />
+                          )}
+                          <div className="cook-timeline__info">
+                            <p className="cook-timeline__recipe-name">{recipeName}</p>
+                            <p className="cook-timeline__date">
+                              {d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            </p>
+                            {entry.rating > 0 && (
+                              <div className="cook-timeline__rating">
+                                {'★'.repeat(entry.rating)}<span className="cook-timeline__rating-empty">{'★'.repeat(5 - entry.rating)}</span>
+                                <span className="cook-timeline__rating-label">{STAR_LABELS[entry.rating]}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {entry.notes && <p className="cook-timeline__notes">"{entry.notes}"</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── Settings (collapsible) ── */}
+      <section className="profile-section profile-section--settings">
+        <button className="profile-settings-toggle" onClick={() => setSettingsOpen(o => !o)}>
+          <span className="profile-settings-toggle__title">⚙️ Settings</span>
+          <span className={`profile-settings-toggle__arrow ${settingsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
+        </button>
+
+        {settingsOpen && (
+          <div className="profile-settings-body">
+
+            <div className="settings-section">
+              <h4 className="settings-section__title">🥗 Dietary Restrictions</h4>
+              <p className="settings-section__hint">Active filters hide non-matching recipes across the app</p>
+              <div className="picker__chips" style={{ marginTop: 10, flexWrap: 'wrap' }}>
+                {DIETARY_OPTIONS.map(d => (
+                  <button key={d} className={`chip ${dietaryFilters.includes(d) ? 'chip--selected' : ''}`} onClick={() => toggleDiet(d)}>
+                    {dietaryFilters.includes(d) && <span className="chip__check">✓</span>}{d}
+                  </button>
+                ))}
+              </div>
+              {dietaryFilters.length > 0 && <p className="settings-active-filters">Active: {dietaryFilters.join(', ')}</p>}
+            </div>
+
+            <div className="settings-section">
+              <h4 className="settings-section__title">⚖️ Measurement Units</h4>
+              <div className="settings-toggle-row">
+                <button className={`settings-toggle ${units === 'metric' ? 'settings-toggle--active' : ''}`} onClick={() => setUnits('metric')}>Metric <span className="settings-toggle__sub">g, ml, °C</span></button>
+                <button className={`settings-toggle ${units === 'imperial' ? 'settings-toggle--active' : ''}`} onClick={() => setUnits('imperial')}>Imperial <span className="settings-toggle__sub">oz, cups, °F</span></button>
+              </div>
+            </div>
+
+            <div className="settings-section">
+              <h4 className="settings-section__title">🎨 Theme</h4>
+              <div className="profile-theme-picker">
+                {THEME_OPTIONS.map(t => (
+                  <button
+                    key={t.key}
+                    className={`profile-theme-swatch ${theme === t.key ? 'profile-theme-swatch--active' : ''}`}
+                    style={{ background: t.color }}
+                    onClick={() => setThemeAndSave(t.key)}
+                    title={t.label}
+                  >
+                    {theme === t.key && <span className="profile-theme-swatch__check">✓</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="settings-section">
+              <h4 className="settings-section__title">👥 Shared Access</h4>
+              <p className="settings-section__hint">Users who can view your recipe collection</p>
+              {sharedUsers.length === 0
+                ? <p className="profile-no-users">No shared users yet. Sharing coming soon.</p>
+                : sharedUsers.map((u, i) => (
+                  <div key={i} className="profile-shared-user">
+                    <span>{u.email}</span>
+                    <button className="btn btn--ghost btn--sm" style={{ color: 'var(--terracotta)' }}>Revoke</button>
+                  </div>
+                ))
+              }
+            </div>
+
+            <div className="settings-section">
+              <h4 className="settings-section__title">ℹ️ About</h4>
+              <div className="profile-about-grid">
+                <div className="profile-about-item"><span className="profile-about-item__label">Version</span><span className="profile-about-item__value">Hearth v1.0</span></div>
+                <div className="profile-about-item"><span className="profile-about-item__label">Total Recipes</span><span className="profile-about-item__value">{totalRecipes}</span></div>
+                <div className="profile-about-item"><span className="profile-about-item__label">Times Cooked</span><span className="profile-about-item__value">{cookHistory.length}</span></div>
+                <div className="profile-about-item"><span className="profile-about-item__label">Data</span><span className="profile-about-item__value">Supabase · PostgreSQL</span></div>
+                <div className="profile-about-item"><span className="profile-about-item__label">Built with</span><span className="profile-about-item__value">React · Node.js</span></div>
+              </div>
+            </div>
+
+          </div>
+        )}
+      </section>
     </main>
   );
 };
@@ -1899,15 +2069,15 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients }) => {
 
   return (
     <main className="view grocery-view">
-      <div className="grocery-header">
+      <div className="fridge-header grocery-header">
         <div>
-          <h2 className="grocery-title">Grocery List</h2>
+          <h2 className="fridge-title">Grocery List</h2>
           {makeSoonRecipes.length > 0 ? (
-            <p className="grocery-subtitle">
+            <p className="fridge-subtitle">
               Shopping for: <span className="grocery-subtitle__meals">{makeSoonRecipes.map(r => r.name).join(', ')}</span>
             </p>
           ) : (
-            <p className="grocery-subtitle">Add recipes to Make Soon to build your list</p>
+            <p className="fridge-subtitle">Add recipes to Make Soon to build your list</p>
           )}
         </div>
         {categories.length > 0 && (
@@ -2757,9 +2927,11 @@ function AppInner() {
     if (activeTags.length) list = list.filter(r => activeTags.every(tag => (r.tags || []).some(t => t.toLowerCase() === tag.toLowerCase())));
     if (activeProgresses.length) {
       list = list.filter(r => activeProgresses.some(p => {
+        if (p === '__readytocook')  return matchById.get(r.id)?.canMake;
+        if (p === '__almostready')  { const m = matchById.get(r.id); return m && m.matchScore >= 0.7 && !m.canMake; }
         if (p === '__incomplete') return r.recipe_incomplete;
         if (p === '__needstweaking') return r.status === 'needs tweaking';
-        if (p === '__favorite') return r.status === 'favorite';
+        if (p === '__favorite') return heartedIds.includes(r.id);
         if (p === '__complete') return !r.recipe_incomplete && r.status === 'complete';
         if (p === '__totry') return r.status === 'to try';
         return false;
@@ -2827,8 +2999,8 @@ function AppInner() {
               { key: 'kitchen',   label: 'Kitchen'      },
               { key: 'grocery',   label: 'Grocery'      },
               { key: 'cookbooks', label: 'Cookbooks'    },
-              { key: 'profile',   label: 'Profile'      },
               { key: 'add',       label: 'Add'          },
+              { key: 'profile',   label: 'Profile'      },
             ].map(({ key, label }) => (
               <button key={key} className={`nav-tab ${view === key ? 'nav-tab--active' : ''}`} onClick={() => setView(key)} disabled={key === 'recipes' && recipes.length === 0}>
                 {label}
@@ -2851,8 +3023,8 @@ function AppInner() {
               { key: 'kitchen',   label: '🧑‍🍳 Kitchen'    },
               { key: 'grocery',   label: '🛒 Grocery'     },
               { key: 'cookbooks', label: '📚 Cookbooks'   },
-              { key: 'profile',   label: '👤 Profile'     },
               { key: 'add',       label: '➕ Add'         },
+              { key: 'profile',   label: '👤 Profile'     },
             ].map(({ key, label }) => (
               <button key={key}
                 className={`mobile-nav-item ${view === key ? 'mobile-nav-item--active' : ''}`}
@@ -2872,8 +3044,7 @@ function AppInner() {
           allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
           cookbooks={cookbooks}
           onMarkCooked={(recipeId) => {
-            // RecipePage passes recipeId; open the full modal with rating
-            if (selectedRecipe) setCookingRecipe(selectedRecipe);
+            setMakeSoonIds(prev => prev.filter(id => id !== recipeId));
           }}
           isHearted={selectedRecipe ? heartedIds.includes(selectedRecipe.id) : false}
           onToggleHeart={() => selectedRecipe && toggleHeart(selectedRecipe.id)}
@@ -3012,7 +3183,7 @@ function AppInner() {
                   <div className="home-section__header">
                     <h2 className="home-section__title">♥ Favorites</h2>
                     {heartedIds.length > 0 && (
-                      <button className="btn btn--ghost btn--sm" onClick={() => setView('recipes')}>View all →</button>
+                      <button className="btn btn--ghost btn--sm" onClick={() => { setActiveProgresses(['__favorite']); setView('recipes'); }}>View all →</button>
                     )}
                   </div>
                   {heartedIds.length === 0 ? (
@@ -3046,19 +3217,19 @@ function AppInner() {
               <h3 className="insights-title">Recipe Insights</h3>
               <div className="insights-grid">
                 <button className="insight-item insight-item--green insight-item--btn"
-                  onClick={() => { setView('recipes'); setFiltersOpen(false); }}>
+                  onClick={() => { setActiveProgresses(['__readytocook']); setView('recipes'); }}>
                   <span className="insight-item__number">{matches.filter(m => m.canMake).length}</span>
                   <span className="insight-item__label">Ready to cook</span>
                   <span className="insight-item__icon">✅</span>
                 </button>
                 <button className="insight-item insight-item--amber insight-item--btn"
-                  onClick={() => { setView('recipes'); setMaxCalories(null); setMaxMinutes(null); }}>
+                  onClick={() => { setActiveProgresses(['__almostready']); setView('recipes'); }}>
                   <span className="insight-item__number">{matches.filter(m => m.matchScore >= 0.7 && !m.canMake).length}</span>
                   <span className="insight-item__label">Almost ready</span>
                   <span className="insight-item__icon">🔥</span>
                 </button>
                 <button className="insight-item insight-item--purple insight-item--btn"
-                  onClick={() => { setView('recipes'); setMaxMinutes(30); setFiltersOpen(false); }}>
+                  onClick={() => { setMaxMinutes(30); setView('recipes'); }}>
                   <span className="insight-item__number">
                     {recipes.filter(r => { const t = (r.time || '').toLowerCase(); const m = t.match(/(\d+)/); return m && parseInt(m[1]) <= 30; }).length}
                   </span>
@@ -3066,7 +3237,7 @@ function AppInner() {
                   <span className="insight-item__icon">⏱</span>
                 </button>
                 <button className="insight-item insight-item--blue insight-item--btn"
-                  onClick={() => { setView('recipes'); clearAllFilters(); }}>
+                  onClick={() => { clearAllFilters(); setView('recipes'); }}>
                   <span className="insight-item__number">{recipes.length}</span>
                   <span className="insight-item__label">Total recipes</span>
                   <span className="insight-item__icon">📚</span>
@@ -3344,19 +3515,14 @@ function AppInner() {
       )}
 
       {view === 'profile' && (
-        <main className="view">
-          <div className="placeholder-tab">
-            <div className="placeholder-tab__icon">👤</div>
-            <h2 className="placeholder-tab__title">Your Profile</h2>
-            <p className="placeholder-tab__sub">Your personal recipe stats, cooking streaks, and dietary preferences in one place. Coming soon.</p>
-            <div className="placeholder-tab__features">
-              <div className="placeholder-tab__feature">🔥 Cooking streaks</div>
-              <div className="placeholder-tab__feature">🥗 Dietary preferences</div>
-              <div className="placeholder-tab__feature">📊 Recipe stats</div>
-              <div className="placeholder-tab__feature">🏆 Achievements</div>
-            </div>
-          </div>
-        </main>
+        <ProfileTab
+          recipes={recipes}
+          dietaryFilters={dietaryFilters}
+          setDietaryFilters={setDietaryFilters}
+          units={units}
+          setUnits={setUnits}
+          totalRecipes={recipes.length}
+        />
       )}
 
       {cookingRecipe && (
