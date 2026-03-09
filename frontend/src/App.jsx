@@ -112,6 +112,7 @@ const PROGRESS_FILTERS = [
   { key: '__needstweaking', label: '🔧 Needs Tweaking'  },
   { key: '__favorite',      label: '⭐ Favorite'         },
   { key: '__complete',      label: '✅ Complete'         },
+  { key: '__totry',         label: '🔖 To Try'           },
 ];
 
 const QUICK_CHIP_KEYS = new Set(TAG_FILTERS.map(f => f.key));
@@ -164,7 +165,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
   const matchScore = match?.matchScore ?? null;
   const canMakeNow = Boolean(match?.canMake);
   const tags = recipe.tags || [];
-  const progress = recipe.recipe_incomplete ? '🚧' : recipe.status === 'needs tweaking' ? '🔧' : recipe.status === 'complete' ? '✅' : null;
+  const progress = recipe.recipe_incomplete ? '🚧' : recipe.status === 'needs tweaking' ? '🔧' : recipe.status === 'complete' ? '✅' : recipe.status === 'to try' ? '🔖' : null;
 
   return (
     <article className="recipe-card" onClick={() => onClick(recipe)}>
@@ -231,7 +232,7 @@ const HeroImage = ({ src, alt }) => (
 );
 
 // ─── Ingredient Flat Row (sortable) ────────────────────────────────────────
-const IngFlatRow = ({ ing, onUpdate, onRemove }) => {
+const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ing._id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1, zIndex: isDragging ? 10 : undefined };
   return (
@@ -245,7 +246,7 @@ const IngFlatRow = ({ ing, onUpdate, onRemove }) => {
             <UnitAutocomplete value={ing.unit} onChange={v => onUpdate('unit', v)} />
           </div>
           <div className="ing-flat-row__name-wrap">
-            <IngredientAutocomplete value={ing.name} onChange={v => onUpdate('name', v)} allIngredients={[]} />
+            <IngredientAutocomplete value={ing.name} onChange={v => onUpdate('name', v)} allIngredients={allIngredients} />
           </div>
         </div>
         <div className="ing-flat-row__row2">
@@ -280,7 +281,7 @@ const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
 };
 
 // ─── Recipe Page ────────────────────────────────────────────────────────────
-const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon }) => {
+const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [] }) => {
   const [checkedIngredients, setCheckedIngredients] = useState(new Set());
   const [doneSteps, setDoneSteps] = useState(new Set());
   const [showIngredientsModal, setShowIngredientsModal] = useState(false);
@@ -691,13 +692,13 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               <div className="rp2__hero-tag-wrap">
                 <button className={`rp2__tag rp2__tag--clickable ${recipe.recipe_incomplete ? 'rp2__tag--warning' : recipe.status === 'needs tweaking' ? 'rp2__tag--warning' : recipe.status === 'complete' ? 'rp2__tag--success' : 'rp2__tag--light'} ${isEdit('meta-progress') ? 'rp2__tag--editing' : ''}`}
                   onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-progress') ? null : 'meta-progress'); }}>
-                  {recipe.recipe_incomplete ? '🚧 Incomplete' : recipe.status === 'needs tweaking' ? '🔧 Tweaking' : recipe.status === 'complete' ? '✅ Complete' : <span style={{opacity:0.7}}>+ Progress</span>}
+                  {recipe.recipe_incomplete ? '🚧 Incomplete' : recipe.status === 'needs tweaking' ? '🔧 Tweaking' : recipe.status === 'complete' ? '✅ Complete' : recipe.status === 'to try' ? '🔖 To Try' : <span style={{opacity:0.7}}>+ Progress</span>}
                 </button>
                 {isEdit('meta-progress') && (
                   <div className="rp2__hero-dark-popover">
                     <p className="rp2__dark-pop-label">📋 Progress</p>
                     <div className="rp2__dark-pop-chips">
-                      {[{key:'',label:'— None'},{key:'complete',label:'✅ Complete'},{key:'needs tweaking',label:'🔧 Needs Tweaking'}].map(({key,label}) => (
+                      {[{key:'',label:'— None'},{key:'complete',label:'✅ Complete'},{key:'needs tweaking',label:'🔧 Needs Tweaking'},{key:'to try',label:'🔖 To Try'}].map(({key,label}) => (
                         <button key={key} className={`rp2__dark-chip ${draftMeta.status === key && !draftMeta.recipe_incomplete ? 'rp2__dark-chip--on' : ''}`}
                           onClick={() => setDraftMeta(p => ({...p, status: key, recipe_incomplete: false}))}>{label}</button>
                       ))}
@@ -800,7 +801,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 <div className="ing-modal__header-actions">
                   {isEdit('ingredients') ? (
                     <>
-                      <button className="ing-modal__save-btn" onClick={() => saveSection('ingredients')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                      <button className="ing-modal__save-btn" onClick={async () => { await saveSection('ingredients'); setShowIngredientsModal(false); }} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
                       <button className="ing-modal__close" onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}>✕</button>
                     </>
                   ) : (
@@ -847,6 +848,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                           <IngFlatRow key={ing._id} ing={ing}
                             onUpdate={(k, v) => updateDraftIng(ing._id, k, v)}
                             onRemove={() => removeDraftIng(ing._id)}
+                            allIngredients={allIngredients}
                           />
                         );
                       })}
@@ -979,7 +981,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               </div>
               {isEdit('cookbook') ? (
                 <div className="rp2__cookbook-editor">
-                  <input className="editor-input" value={draftCookbook.cookbook} onChange={e => setDraftCookbook(p => ({...p, cookbook: e.target.value}))} placeholder="Cookbook name or URL" />
+                  <CookbookAutocomplete value={draftCookbook.cookbook} onChange={v => setDraftCookbook(p => ({...p, cookbook: v}))} cookbooks={cookbooks} />
                   <input className="editor-input" value={draftCookbook.page_number} onChange={e => setDraftCookbook(p => ({...p, page_number: e.target.value}))} placeholder="Page number" style={{marginTop: 6}} />
                 </div>
               ) : (recipe.cookbook || recipe.page_number) ? (
@@ -1359,6 +1361,58 @@ const CuisineDropdown = ({ cuisines, value, onChange, onCreateNew }) => {
             )}
           </div>
         </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Cookbook Autocomplete Input ──────────────────────────────────────────
+const CookbookAutocomplete = ({ value, onChange, cookbooks = [] }) => {
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+  const wrapperRef = useRef(null);
+
+  const suggestions = useMemo(() => {
+    const val = value ?? '';
+    if (!val.trim()) return cookbooks.slice(0, 6).map(c => c.title);
+    const q = val.toLowerCase();
+    return cookbooks
+      .map(c => c.title)
+      .filter(t => t.toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [value, cookbooks]);
+
+  useEffect(() => { setHighlighted(0); }, [suggestions]);
+  useEffect(() => {
+    const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const select = (t) => { onChange(t); setOpen(false); };
+  const onKeyDown = (e) => {
+    if (!open || !suggestions.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, suggestions.length - 1)); }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
+    if (e.key === 'Enter' && suggestions[highlighted]) { e.preventDefault(); select(suggestions[highlighted]); }
+    if (e.key === 'Escape') setOpen(false);
+  };
+
+  return (
+    <div className="ing-ac-wrap" ref={wrapperRef}>
+      <input className="editor-input" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={onKeyDown} placeholder="e.g. Ottolenghi Simple" autoComplete="off" />
+      {open && suggestions.length > 0 && (
+        <ul className="ing-ac-dropdown">
+          {suggestions.map((t, i) => {
+            const q = (value ?? '').toLowerCase();
+            const idx = t.toLowerCase().indexOf(q);
+            return (
+              <li key={t} className={`ing-ac-option ${i === highlighted ? 'ing-ac-option--active' : ''}`} onMouseDown={() => select(t)} onMouseEnter={() => setHighlighted(i)}>
+                📚 {idx >= 0 && q ? (<>{t.slice(0, idx)}<strong>{t.slice(idx, idx + q.length)}</strong>{t.slice(idx + q.length)}</>) : t}
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );
@@ -1797,8 +1851,314 @@ const SiteFooter = ({ onNav }) => {
   );
 };
 
+// ─── Cookbooks Tab ─────────────────────────────────────────────────────────
+const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe }) => {
+  const [selectedCookbook, setSelectedCookbook] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingCookbook, setEditingCookbook] = useState(null);
+
+  const handleSaveCookbook = (data) => {
+    if (editingCookbook) {
+      setCookbooks(prev => prev.map(c => c.id === editingCookbook.id ? { ...c, ...data } : c));
+    } else {
+      setCookbooks(prev => [...prev, { id: `cb-${Date.now()}`, recipes: [], ...data }]);
+    }
+    setShowAddModal(false);
+    setEditingCookbook(null);
+  };
+
+  const handleDeleteCookbook = (id) => {
+    setCookbooks(prev => prev.filter(c => c.id !== id));
+    if (selectedCookbook?.id === id) setSelectedCookbook(null);
+  };
+
+  // Auto-sync: when a recipe references a cookbook, it should appear in that cookbook's recipe list
+  const enrichedCookbooks = useMemo(() => {
+    return cookbooks.map(cb => {
+      // Find all app recipes that reference this cookbook
+      const linkedRecipes = recipes.filter(r => r.cookbook && r.cookbook.toLowerCase().trim() === cb.title.toLowerCase().trim());
+      // Merge: manual entries + linked recipes (dedup by name)
+      const manualEntries = cb.recipes || [];
+      const allEntries = [...manualEntries];
+      for (const lr of linkedRecipes) {
+        if (!allEntries.some(e => e.name.toLowerCase() === lr.name.toLowerCase())) {
+          allEntries.push({ name: lr.name, page: lr.page_number || '', recipeId: lr.id });
+        } else {
+          // Update recipeId if not set
+          const idx = allEntries.findIndex(e => e.name.toLowerCase() === lr.name.toLowerCase());
+          if (idx >= 0 && !allEntries[idx].recipeId) {
+            allEntries[idx] = { ...allEntries[idx], recipeId: lr.id };
+          }
+        }
+      }
+      return { ...cb, recipes: allEntries, savedCount: linkedRecipes.length };
+    });
+  }, [cookbooks, recipes]);
+
+  const currentCb = selectedCookbook ? enrichedCookbooks.find(c => c.id === selectedCookbook.id) : null;
+
+  if (selectedCookbook && currentCb) {
+    return <CookbookDetail
+      cookbook={currentCb}
+      onBack={() => setSelectedCookbook(null)}
+      onEdit={() => { setEditingCookbook(currentCb); setShowAddModal(true); }}
+      onDelete={() => handleDeleteCookbook(currentCb.id)}
+      onOpenRecipe={onOpenRecipe}
+      recipes={recipes}
+      onUpdateRecipes={(newRecipes) => setCookbooks(prev => prev.map(c => c.id === currentCb.id ? { ...c, recipes: newRecipes } : c))}
+    />;
+  }
+
+  return (
+    <main className="view cookbooks-tab">
+      {(showAddModal || editingCookbook) && (
+        <CookbookEditModal
+          cookbook={editingCookbook}
+          onSave={handleSaveCookbook}
+          onClose={() => { setShowAddModal(false); setEditingCookbook(null); }}
+        />
+      )}
+
+      <div className="cookbooks-header">
+        <div>
+          <h2 className="cookbooks-title">My Cookbooks</h2>
+          <p className="cookbooks-subtitle">{cookbooks.length} {cookbooks.length === 1 ? 'cookbook' : 'cookbooks'} in your collection</p>
+        </div>
+        <button className="btn btn--primary" onClick={() => setShowAddModal(true)}>+ Add Cookbook</button>
+      </div>
+
+      {cookbooks.length === 0 ? (
+        <div className="cookbooks-empty">
+          <div className="cookbooks-empty__icon">📚</div>
+          <h3 className="cookbooks-empty__title">Start your cookbook shelf</h3>
+          <p className="cookbooks-empty__sub">Add your physical cookbooks and track which recipes you've saved in Hearth</p>
+          <button className="btn btn--primary" onClick={() => setShowAddModal(true)}>+ Add your first cookbook</button>
+        </div>
+      ) : (
+        <div className="cookbooks-grid">
+          {enrichedCookbooks.map(cb => (
+            <button key={cb.id} className="cookbook-card" onClick={() => setSelectedCookbook(cb)}>
+              <div className="cookbook-card__spine" style={{ background: cb.spineColor || '#C65D3B' }} />
+              <div className="cookbook-card__cover">
+                {cb.coverImage
+                  ? <img src={cb.coverImage} alt={cb.title} className="cookbook-card__img" />
+                  : <div className="cookbook-card__placeholder">
+                      <span className="cookbook-card__placeholder-icon">📖</span>
+                    </div>
+                }
+              </div>
+              <div className="cookbook-card__info">
+                <h3 className="cookbook-card__title">{cb.title}</h3>
+                {cb.author && <p className="cookbook-card__author">{cb.author}</p>}
+                <div className="cookbook-card__stats">
+                  <span className="cookbook-card__stat">{cb.recipes?.length || 0} recipes</span>
+                  {cb.savedCount > 0 && <span className="cookbook-card__stat cookbook-card__stat--saved">✓ {cb.savedCount} saved</span>}
+                </div>
+              </div>
+            </button>
+          ))}
+          <button className="cookbook-card cookbook-card--add" onClick={() => setShowAddModal(true)}>
+            <div className="cookbook-card__add-icon">+</div>
+            <p className="cookbook-card__add-label">Add cookbook</p>
+          </button>
+        </div>
+      )}
+    </main>
+  );
+};
+
+const CookbookEditModal = ({ cookbook, onSave, onClose }) => {
+  const isNew = !cookbook;
+  const [form, setForm] = useState({
+    title: cookbook?.title || '',
+    author: cookbook?.author || '',
+    coverImage: cookbook?.coverImage || '',
+    spineColor: cookbook?.spineColor || '#C65D3B',
+    notes: cookbook?.notes || '',
+  });
+  const [imgError, setImgError] = useState(false);
+  const SPINE_COLORS = ['#C65D3B','#2E2A27','#7a9e7e','#4a6fa5','#8B4513','#6B3FA0','#B5451B','#2C5F2E'];
+
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const save = () => {
+    if (!form.title.trim()) return;
+    onSave({ ...form, title: form.title.trim() });
+  };
+
+  return (
+    <div className="create-modal-overlay" onClick={onClose}>
+      <div className="create-modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+        <div className="create-modal__header">
+          <h2 className="create-modal__title">{isNew ? '📚 Add Cookbook' : `Edit "${cookbook.title}"`}</h2>
+          <button className="ing-modal__close" onClick={onClose}>✕</button>
+        </div>
+        <div className="create-modal__body" style={{ gap: 16 }}>
+          {/* Cover image preview + URL */}
+          <div className="create-modal__img-row">
+            <div className="create-modal__img-preview cookbook-edit__cover-preview">
+              {form.coverImage && !imgError
+                ? <img src={form.coverImage} alt="cover" onError={() => setImgError(true)} />
+                : <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', fontSize:32 }}>📖</div>}
+            </div>
+            <div className="create-modal__img-input-wrap">
+              <label className="create-modal__field-label">Cover image URL</label>
+              <input className="editor-input" value={form.coverImage} onChange={e => { set('coverImage', e.target.value); setImgError(false); }} placeholder="https://…" />
+              <p className="create-modal__field-hint">Paste a book cover URL</p>
+            </div>
+          </div>
+
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Cookbook title <span className="create-modal__required">*</span></label>
+            <input className="editor-input create-modal__name-input" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Ottolenghi Simple" autoFocus={isNew} />
+          </div>
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Author</label>
+            <input className="editor-input" value={form.author} onChange={e => set('author', e.target.value)} placeholder="e.g. Yotam Ottolenghi" />
+          </div>
+
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Spine colour</label>
+            <div className="cookbook-spine-picker">
+              {SPINE_COLORS.map(c => (
+                <button key={c} className={`cookbook-spine-swatch ${form.spineColor === c ? 'cookbook-spine-swatch--active' : ''}`}
+                  style={{ background: c }} onClick={() => set('spineColor', c)} type="button" />
+              ))}
+            </div>
+          </div>
+
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Notes</label>
+            <input className="editor-input" value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Any notes about this book…" />
+          </div>
+        </div>
+        <div className="create-modal__footer">
+          <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn--primary" onClick={save} disabled={!form.title.trim()}>{isNew ? '+ Add Cookbook' : '✓ Save Changes'}</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, recipes, onUpdateRecipes }) => {
+  const [showAddRecipe, setShowAddRecipe] = useState(false);
+  const [newRecipeName, setNewRecipeName] = useState('');
+  const [newRecipePage, setNewRecipePage] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const savedCount = useMemo(() => recipes.filter(r => r.cookbook && r.cookbook.toLowerCase().trim() === cookbook.title.toLowerCase().trim()).length, [recipes, cookbook]);
+
+  const addRecipeEntry = () => {
+    if (!newRecipeName.trim()) return;
+    const matchedRecipe = recipes.find(r => r.name.toLowerCase() === newRecipeName.trim().toLowerCase());
+    const newEntry = {
+      name: newRecipeName.trim(),
+      page: newRecipePage.trim(),
+      recipeId: matchedRecipe?.id || null,
+    };
+    onUpdateRecipes([...cookbook.recipes, newEntry]);
+    setNewRecipeName('');
+    setNewRecipePage('');
+    setShowAddRecipe(false);
+  };
+
+  const removeEntry = (idx) => {
+    onUpdateRecipes(cookbook.recipes.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <main className="view cookbook-detail">
+      <div className="cookbook-detail__header">
+        <button className="btn btn--ghost btn--sm" onClick={onBack}>← Cookbooks</button>
+        <div className="cookbook-detail__actions">
+          <button className="btn btn--ghost btn--sm" onClick={onEdit}>✎ Edit</button>
+          <button className="btn btn--ghost btn--sm" style={{ color: 'var(--terracotta)' }} onClick={() => setShowDeleteConfirm(true)}>🗑 Remove</button>
+        </div>
+      </div>
+
+      {showDeleteConfirm && (
+        <div className="create-modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="delete-confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="delete-confirm-modal__icon">🗑️</div>
+            <h2 className="delete-confirm-modal__title">Remove "{cookbook.title}"?</h2>
+            <p className="delete-confirm-modal__body">This removes it from your shelf but won't delete any saved recipes.</p>
+            <div className="delete-confirm-modal__actions">
+              <button className="btn btn--ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+              <button className="btn btn--danger" onClick={onDelete}>🗑️ Remove</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="cookbook-detail__hero">
+        <div className="cookbook-detail__cover">
+          {cookbook.coverImage
+            ? <img src={cookbook.coverImage} alt={cookbook.title} />
+            : <div className="cookbook-detail__cover-placeholder" style={{ background: cookbook.spineColor || '#C65D3B' }}>
+                <span>📖</span>
+              </div>
+          }
+        </div>
+        <div className="cookbook-detail__meta">
+          <h1 className="cookbook-detail__title">{cookbook.title}</h1>
+          {cookbook.author && <p className="cookbook-detail__author">by {cookbook.author}</p>}
+          {cookbook.notes && <p className="cookbook-detail__notes">{cookbook.notes}</p>}
+          <div className="cookbook-detail__stats">
+            <span className="cookbook-detail__stat"><strong>{cookbook.recipes.length}</strong> recipes listed</span>
+            <span className="cookbook-detail__stat cookbook-detail__stat--saved"><strong>{savedCount}</strong> saved in Hearth</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="cookbook-detail__recipes">
+        <div className="cookbook-detail__recipes-header">
+          <h2 className="cookbook-detail__recipes-title">Recipes</h2>
+          <button className="btn btn--primary btn--sm" onClick={() => setShowAddRecipe(v => !v)}>+ Add Recipe</button>
+        </div>
+
+        {showAddRecipe && (
+          <div className="cookbook-add-recipe-row">
+            <input className="editor-input" style={{ flex: 2 }} value={newRecipeName} onChange={e => setNewRecipeName(e.target.value)} placeholder="Recipe name" autoFocus onKeyDown={e => { if (e.key === 'Enter') addRecipeEntry(); }} />
+            <input className="editor-input" style={{ width: 90 }} value={newRecipePage} onChange={e => setNewRecipePage(e.target.value)} placeholder="Page #" onKeyDown={e => { if (e.key === 'Enter') addRecipeEntry(); }} />
+            <button className="btn btn--primary btn--sm" onClick={addRecipeEntry}>Add</button>
+            <button className="btn btn--ghost btn--sm" onClick={() => setShowAddRecipe(false)}>Cancel</button>
+          </div>
+        )}
+
+        {cookbook.recipes.length === 0 ? (
+          <div className="cookbook-detail__empty">
+            <p>No recipes listed yet. Add recipe names to track what's in this book.</p>
+          </div>
+        ) : (
+          <div className="cookbook-recipe-list">
+            {cookbook.recipes.map((entry, idx) => {
+              const linkedRecipe = entry.recipeId ? recipes.find(r => r.id === entry.recipeId) : null;
+              return (
+                <div key={idx} className={`cookbook-recipe-entry ${linkedRecipe ? 'cookbook-recipe-entry--linked' : ''}`}>
+                  <div className="cookbook-recipe-entry__main">
+                    {entry.page && <span className="cookbook-recipe-entry__page">p.{entry.page}</span>}
+                    {linkedRecipe
+                      ? <button className="cookbook-recipe-entry__name cookbook-recipe-entry__name--link" onClick={() => onOpenRecipe(linkedRecipe)}>
+                          {entry.name}
+                          <span className="cookbook-recipe-entry__saved-badge">✓ Saved</span>
+                        </button>
+                      : <span className="cookbook-recipe-entry__name">{entry.name}</span>
+                    }
+                  </div>
+                  <button className="editor-remove-btn cookbook-recipe-entry__remove" onClick={() => removeEntry(idx)} title="Remove">✕</button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </main>
+  );
+};
+
 // ─── Add Recipe Tab ─────────────────────────────────────────────────────────
-const AddRecipeTab = ({ allIngredients, onSaved }) => {
+const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   const [showModal, setShowModal] = useState(false);
 
@@ -2043,7 +2403,7 @@ const AddRecipeTab = ({ allIngredients, onSaved }) => {
               <div className="create-modal__meta-grid">
                 <div className="create-modal__field">
                   <label className="create-modal__field-label">📖 Cookbook</label>
-                  <input className="editor-input" value={details.cookbook} onChange={e => setDetail('cookbook', e.target.value)} placeholder="e.g. Ottolenghi Simple" />
+                  <CookbookAutocomplete value={details.cookbook} onChange={v => setDetail('cookbook', v)} cookbooks={cookbooks} />
                 </div>
                 <div className="create-modal__field">
                   <label className="create-modal__field-label">Page number</label>
@@ -2112,11 +2472,13 @@ function AppInner() {
 
   const [units, setUnitsRaw] = useState(() => LS.get('units', 'metric'));
   const [dietaryFilters, setDietaryFiltersRaw] = useState(() => LS.get('dietaryFilters', []));
+  const [cookbooks, setCookbooks] = useState(() => LS.get('cookbooks', []));
   const setUnits = (v) => { setUnitsRaw(v); LS.set('units', v); };
   const setDietaryFilters = (fn) => setDietaryFiltersRaw(prev => { const next = typeof fn === 'function' ? fn(prev) : fn; LS.set('dietaryFilters', next); return next; });
 
   useEffect(() => { LS.set('fridgeIngredients', fridgeIngredients); }, [fridgeIngredients]);
   useEffect(() => { LS.set('pantryStaples', pantryStaples); }, [pantryStaples]);
+  useEffect(() => { LS.set('cookbooks', cookbooks); }, [cookbooks]);
 
   const loadData = useCallback(async () => {
     try {
@@ -2163,6 +2525,7 @@ function AppInner() {
         if (p === '__needstweaking') return r.status === 'needs tweaking';
         if (p === '__favorite') return r.status === 'favorite';
         if (p === '__complete') return !r.recipe_incomplete && r.status === 'complete';
+        if (p === '__totry') return r.status === 'to try';
         return false;
       }));
     }
@@ -2223,14 +2586,15 @@ function AppInner() {
           {/* Desktop nav */}
           <nav className="nav-tabs">
             {[
-              { key: 'home',     label: 'Home'         },
-              { key: 'recipes',  label: 'Recipes'      },
-              { key: 'kitchen',  label: 'Kitchen'      },
-              { key: 'grocery',  label: 'Grocery'      },
-              { key: 'log',      label: 'Cook Log'     },
-              { key: 'profile',  label: 'Profile'      },
-              { key: 'add',      label: 'Add'          },
-              { key: 'settings', label: 'Settings'     },
+              { key: 'home',      label: 'Home'         },
+              { key: 'recipes',   label: 'Recipes'      },
+              { key: 'kitchen',   label: 'Kitchen'      },
+              { key: 'grocery',   label: 'Grocery'      },
+              { key: 'log',       label: 'Cook Log'     },
+              { key: 'cookbooks', label: 'Cookbooks'    },
+              { key: 'profile',   label: 'Profile'      },
+              { key: 'add',       label: 'Add'          },
+              { key: 'settings',  label: 'Settings'     },
             ].map(({ key, label }) => (
               <button key={key} className={`nav-tab ${view === key ? 'nav-tab--active' : ''}`} onClick={() => setView(key)} disabled={key === 'recipes' && recipes.length === 0}>
                 {label}
@@ -2248,14 +2612,15 @@ function AppInner() {
         {mobileNavOpen && (
           <nav className="mobile-nav-drawer">
             {[
-              { key: 'home',     label: '🏠 Home'       },
-              { key: 'recipes',  label: '📖 Recipes'    },
-              { key: 'kitchen',  label: '🧑‍🍳 Kitchen'   },
-              { key: 'grocery',  label: '🛒 Grocery'    },
-              { key: 'log',      label: '📓 Cook Log'   },
-              { key: 'profile',  label: '👤 Profile'    },
-              { key: 'add',      label: '➕ Add'        },
-              { key: 'settings', label: '⚙️ Settings'   },
+              { key: 'home',      label: '🏠 Home'        },
+              { key: 'recipes',   label: '📖 Recipes'     },
+              { key: 'kitchen',   label: '🧑‍🍳 Kitchen'    },
+              { key: 'grocery',   label: '🛒 Grocery'     },
+              { key: 'log',       label: '📓 Cook Log'    },
+              { key: 'cookbooks', label: '📚 Cookbooks'   },
+              { key: 'profile',   label: '👤 Profile'     },
+              { key: 'add',       label: '➕ Add'         },
+              { key: 'settings',  label: '⚙️ Settings'    },
             ].map(({ key, label }) => (
               <button key={key}
                 className={`mobile-nav-item ${view === key ? 'mobile-nav-item--active' : ''}`}
@@ -2272,6 +2637,8 @@ function AppInner() {
         <RecipePage
           recipe={selectedRecipe} bodyIngredients={recipeBodyIngredients} instructions={recipeInstructions} notes={recipeNotes}
           loading={recipeLoading} onBack={() => setView(lastView)}
+          allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
+          cookbooks={cookbooks}
           isHearted={selectedRecipe ? heartedIds.includes(selectedRecipe.id) : false}
           onToggleHeart={() => selectedRecipe && toggleHeart(selectedRecipe.id)}
           isMakeSoon={selectedRecipe ? makeSoonIds.includes(selectedRecipe.id) : false}
@@ -2721,6 +3088,7 @@ function AppInner() {
       {view === 'add' && (
         <AddRecipeTab
           allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
+          cookbooks={cookbooks}
           onSaved={(newRecipe) => {
             if (newRecipe?.id) setMakeSoonIds(prev => [...prev, newRecipe.id]);
             loadData();
@@ -2743,6 +3111,15 @@ function AppInner() {
             </div>
           </div>
         </main>
+      )}
+
+      {view === 'cookbooks' && (
+        <CookbooksTab
+          cookbooks={cookbooks}
+          setCookbooks={setCookbooks}
+          recipes={recipes}
+          onOpenRecipe={openRecipe}
+        />
       )}
 
       {view === 'profile' && (
