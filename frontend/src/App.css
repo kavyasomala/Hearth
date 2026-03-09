@@ -685,10 +685,14 @@ body {
 .insight-item--green  { background: #edfaf2; border: 1.5px solid #a3ddb8; }
 .insight-item--amber  { background: #fff8e6; border: 1.5px solid #fcd97a; }
 .insight-item--purple { background: #f3eeff; border: 1.5px solid #c9b3f5; }
+.insight-item--orange { background: #fff1eb; border: 1.5px solid #f5c4a8; }
+.insight-item--sage   { background: #edf4f0; border: 1.5px solid #a8ccb5; }
 .insight-item--btn.insight-item--blue   { border: 1.5px solid #c3d5fb; }
 .insight-item--btn.insight-item--green  { border: 1.5px solid #a3ddb8; }
 .insight-item--btn.insight-item--amber  { border: 1.5px solid #fcd97a; }
 .insight-item--btn.insight-item--purple { border: 1.5px solid #c9b3f5; }
+.insight-item--btn.insight-item--orange { border: 1.5px solid #f5c4a8; }
+.insight-item--btn.insight-item--sage   { border: 1.5px solid #a8ccb5; }
 .insight-item__number { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--charcoal); line-height: 1; }
 .insight-item__label { font-size: 11px; font-weight: 500; color: var(--warm-gray); line-height: 1.3; }
 .insight-item__icon { position: absolute; top: 8px; right: 10px; font-size: 18px; opacity: 0.35; }
@@ -3090,19 +3094,22 @@ body {
 /* ─── Cookbook overhaul — new entry row (cbentry) ─────────────────────────── */
 .cbentry {
   display: grid;
-  grid-template-columns: 56px 1fr 70px 180px auto;
-  align-items: center; gap: 12px;
-  padding: 10px 14px; background: var(--card-bg);
-  border: 1.5px solid var(--border); border-radius: 10px; margin-bottom: 6px;
+  grid-template-columns: 52px minmax(0,1fr) 72px minmax(0,160px) minmax(0,auto);
+  align-items: center; gap: 10px;
+  padding: 9px 12px; background: var(--card-bg);
+  border: 1.5px solid var(--border); border-left: 3px solid transparent;
+  border-radius: 10px; margin-bottom: 6px;
   transition: border-color .15s;
 }
-.cbentry:hover { border-color: var(--terracotta-light, #e8a08a); }
-.cbentry--linked { border-left: 3px solid var(--sage); }
+.cbentry:hover { border-color: var(--terracotta-light, #e8a08a); border-left-color: var(--terracotta-light, #e8a08a); }
+.cbentry--linked { border-left-color: var(--sage); }
+.cbentry--linked:hover { border-left-color: var(--sage); }
 .cbentry--header {
   border: none; border-bottom: 1.5px solid var(--border); border-radius: 0;
-  padding: 4px 14px 8px; margin-bottom: 4px; background: transparent;
+  padding: 4px 12px 8px; margin-bottom: 4px; background: transparent;
+  border-left: 3px solid transparent; /* keeps alignment with data rows */
 }
-.cbentry--header:hover { border-color: var(--border); }
+.cbentry--header:hover { border-color: transparent; border-bottom-color: var(--border); border-left-color: transparent; }
 
 .cbentry__thumb-wrap { flex-shrink: 0; }
 .cbentry__thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1.5px solid var(--border); }
