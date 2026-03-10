@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
-const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
@@ -141,10 +140,9 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const existing = await query('SELECT id FROM users WHERE username = $1', [username.trim().toLowerCase()]);
     if (existing.rows.length) return res.status(409).json({ error: 'Username already taken' });
-    const password_hash = await bcrypt.hash(password, 10);
     const { rows } = await query(
       `INSERT INTO users (username, password_hash, role) VALUES ($1, $2, 'guest') RETURNING id, username, role`,
-      [username.trim().toLowerCase(), password_hash]
+      [username.trim().toLowerCase(), password]
     );
     const user = rows[0];
     await query(`INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]);
@@ -164,8 +162,7 @@ app.post('/api/auth/login', async (req, res) => {
     const { rows } = await query('SELECT * FROM users WHERE username = $1', [username.trim().toLowerCase()]);
     if (!rows.length) return res.status(401).json({ error: 'Invalid username or password' });
     const user = rows[0];
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Invalid username or password' });
+    if (password !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password' });
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
   } catch (err) {
@@ -192,10 +189,9 @@ app.post('/api/auth/create-user', authenticateToken, requireAdmin, async (req, r
   try {
     const existing = await query('SELECT id FROM users WHERE username = $1', [username.trim().toLowerCase()]);
     if (existing.rows.length) return res.status(409).json({ error: 'Username already taken' });
-    const password_hash = await bcrypt.hash(password, 10);
     const { rows } = await query(
       `INSERT INTO users (username, password_hash, role) VALUES ($1, $2, 'guest') RETURNING id, username, role`,
-      [username.trim().toLowerCase(), password_hash]
+      [username.trim().toLowerCase(), password]
     );
     await query(`INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [rows[0].id]);
     res.status(201).json({ user: rows[0] });
