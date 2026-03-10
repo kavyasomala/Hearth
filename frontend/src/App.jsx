@@ -747,7 +747,7 @@ const StepItem = ({ step, done, isCurrent, enlarge, onToggle }) => {
       <div className="rp2__step-num">{done ? '✓' : step.step_number}</div>
       <div className="rp2__step-content">
         <p className="rp2__step-body">{step.body_text}</p>
-        {hasTimer && (
+        {hasTimer && !done && (
           <div className="rp2__step-timer" onClick={e => e.stopPropagation()}>
             {timerState === 'running' && (
               <div className="rp2__step-timer__bar"><div className="rp2__step-timer__fill" style={{ width: `${pct}%` }} /></div>
@@ -1575,7 +1575,17 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                         <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
                         <span className="rp2__ed-timer-row__sep">s</span>
                       </div>
-                      <button className="editor-remove-btn" onClick={() => setDraftSteps(prev => prev.filter(s => s._id !== item._id))}>✕</button>
+                      <button className="editor-remove-btn" onClick={() => {
+                        setDraftSteps(prev => {
+                          const idx = prev.findIndex(s => s._id === item._id);
+                          const next = prev.filter(s => s._id !== item._id);
+                          // Clear timer_seconds on the preceding step
+                          if (idx > 0 && !prev[idx - 1]._isTimer) {
+                            return next.map(s => s._id === prev[idx - 1]._id ? { ...s, timer_seconds: null } : s);
+                          }
+                          return next;
+                        });
+                      }}>✕</button>
                     </div>
                   );
                 }
@@ -3422,7 +3432,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
   const updateNote = (id, v) => setNotesList(prev => prev.map(n => n._id === id ? { ...n, text: v } : n));
   const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id));
   const groupLabels = [...new Set(ings.filter(i => !i._isGroup).map(i => i.group_label).filter(Boolean))];
-
+  
   const calcNutrition = (ingredients) => {
     const NUTRITION_DB = {
       'chicken breast': { cal: 165, prot: 31, fiber: 0 }, 'chicken': { cal: 165, prot: 31, fiber: 0 },
