@@ -3975,3 +3975,144 @@ body {
   flex-shrink: 0;
 }
 
+
+/* ─── Google Calendar-style cooking calendar ─────────────────────────────── */
+.cook-calendar--gcal {
+  background: var(--card-bg, #fff);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.cook-calendar__gcal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-top: 1px solid var(--border);
+}
+.cook-calendar__gcal-day-header {
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--warm-gray);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--surface, #faf9f7);
+  border-bottom: 1px solid var(--border);
+}
+.cook-calendar__gcal-cell {
+  min-height: 80px;
+  padding: 6px 6px 4px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  background: #fff;
+  transition: background 0.1s;
+}
+.cook-calendar__gcal-cell:nth-child(7n) { border-right: none; }
+.cook-calendar__gcal-cell--empty { background: var(--surface, #faf9f7); }
+.cook-calendar__gcal-cell--cooked { background: #fffaf3; }
+.cook-calendar__gcal-cell--today { background: #f0f7ff; }
+.cook-calendar__gcal-date {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+  border-radius: 50%;
+  margin-bottom: 2px;
+}
+.cook-calendar__gcal-date--today {
+  background: var(--flame, #e05a2b);
+  color: #fff;
+  font-weight: 700;
+}
+.cook-calendar__gcal-event {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: #fff3e0;
+  border-left: 3px solid #e05a2b;
+  border-radius: 4px;
+  padding: 2px 5px;
+  margin-top: 3px;
+  overflow: hidden;
+}
+.cook-calendar__gcal-event-dot { font-size: 10px; flex-shrink: 0; }
+.cook-calendar__gcal-event-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: #8B3A0F;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ─── Attempts list scrollable ───────────────────────────────────────────── */
+.attempts-list--scrollable {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.attempts-list--scrollable::-webkit-scrollbar { width: 4px; }
+.attempts-list--scrollable::-webkit-scrollbar-track { background: transparent; }
+.attempts-list--scrollable::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ─── About section: github left, stack right ────────────────────────────── */
+.about-stack-github-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.about-stack-github-row .about-stack { margin-bottom: 0; }
+.about-stack-github-row .about-github-btn { margin-bottom: 8px; }
+
+/* ─── Dietary Warning Banners ────────────────────────────────────────────── */
+.dietary-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+.dietary-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  border-left: 4px solid #f59e0b;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.dietary-warning__icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.dietary-warning__body { display: flex; flex-direction: column; gap: 2px; }
+.dietary-warning__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #92400e;
+  text-transform: capitalize;
+}
+.dietary-warning__detail {
+  font-size: 13px;
+  color: #78350f;
+}
+.dietary-warning__list {
+  margin: 2px 0 0 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: #78350f;
+}
+.dietary-warning__list li { margin-bottom: 1px; }
+
+/* ─── Dietary hide toggle ────────────────────────────────────────────────── */
+.dietary-hide-toggle {
+  color: var(--text, #333);
+  font-weight: 500;
+}

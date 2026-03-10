@@ -217,12 +217,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
         </div>
         {isCookbookRef && recipe.cookbook && (
           <div className="recipe-card__cb-ref-info">
-            <span>See <em>{recipe.cookbook}</em>{recipe.reference ? ` · p. ${recipe.reference}` : ''}</span>
-            {onConvertRef && (
-              <button className="recipe-card__convert-btn" onClick={e => { e.stopPropagation(); onConvertRef(recipe); }} title="Convert to full recipe">
-                ✨ Convert to Recipe
-              </button>
-            )}
+            <span>See <em>{recipe.cookbook}</em></span>
           </div>
         )}
         <div className="recipe-card__stats">
@@ -651,7 +646,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted }) =>
 };
 
 // ─── Recipe Page ────────────────────────────────────────────────────────────
-const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked }) => {
+const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [] }) => {
   const [checkedIngredients, setCheckedIngredients] = useState(new Set());
   const [doneSteps, setDoneSteps] = useState(new Set());
   const [showIngredientsModal, setShowIngredientsModal] = useState(false);
@@ -923,6 +918,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const doneCount  = doneSteps.size;
   const totalSteps = instructions?.length ?? 0;
 
+  // Dietary conflict warnings
+  const dietaryWarnings = checkDietaryConflicts(bodyIngredients || [], dietaryFilters);
+
   return (
     <main className="view rp2">
       {saveError && <p className="editor-error" style={{ margin: '8px 20px 0' }}>⚠️ {saveError}</p>}
@@ -1176,6 +1174,27 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           <SectionPencil isEditing={isEdit('title')} onEdit={() => startEdit('title')} onSave={() => saveSection('title')} onCancel={cancelEdit} saving={saving} />
           <button className="rp2__title-delete-btn" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe">🗑</button>
         </div>
+
+        {/* ── Dietary Conflict Warnings ── */}
+        {dietaryWarnings.length > 0 && (
+          <div className="dietary-warnings">
+            {dietaryWarnings.map((w, i) => (
+              <div key={i} className="dietary-warning">
+                <span className="dietary-warning__icon">⚠️</span>
+                <div className="dietary-warning__body">
+                  <span className="dietary-warning__title">Contains {w.label}</span>
+                  {w.conflicts.length > 1 ? (
+                    <ul className="dietary-warning__list">
+                      {w.conflicts.map((c, j) => <li key={j}>{c}</li>)}
+                    </ul>
+                  ) : (
+                    <span className="dietary-warning__detail"> — {w.conflicts[0]}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Cookbook Reference Card — shown INSTEAD of the two-column body for refs ── */}
@@ -2191,7 +2210,63 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
 };
 
 // ─── Profile Tab ─────────────────────────────────────────────────────────────
-const DIETARY_OPTIONS = ['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Halal', 'Nut-Free', 'Keto', 'Paleo', 'Low-Carb', 'Diabetic-Friendly'];
+const DIETARY_OPTIONS = ['Vegetarian', 'Vegan', 'Dairy-Free', 'Nut-Free', 'Gluten-Free'];
+
+// ─── Dietary Conflict Detection ────────────────────────────────────────────
+// Comprehensive ingredient classification for dietary conflict detection
+const DIETARY_CONFLICTS = {
+  'Vegetarian': {
+    keywords: ['chicken','beef','pork','lamb','turkey','duck','fish','salmon','tuna','shrimp','prawn','lobster','crab','anchovy','anchovies','bacon','ham','sausage','pepperoni','salami','prosciutto','pancetta','lard','gelatin','meat','veal','bison','venison','rabbit','mutton'],
+    label: 'meat/fish',
+  },
+  'Vegan': {
+    keywords: ['chicken','beef','pork','lamb','turkey','duck','fish','salmon','tuna','shrimp','prawn','lobster','crab','anchovy','anchovies','bacon','ham','sausage','pepperoni','salami','prosciutto','pancetta','lard','gelatin','meat','veal','bison','venison','rabbit','mutton','milk','cream','butter','cheese','yogurt','egg','eggs','honey','whey','casein','ghee','mayo','mayonnaise'],
+    label: 'animal products',
+  },
+  'Dairy-Free': {
+    keywords: ['milk','cream','butter','cheese','yogurt','whey','casein','ghee','cheddar','mozzarella','parmesan','brie','feta','ricotta','mascarpone','sour cream','half and half','buttermilk','kefir','cream cheese','crème fraîche','condensed milk','evaporated milk'],
+    label: 'dairy',
+  },
+  'Nut-Free': {
+    keywords: ['almond','almonds','walnut','walnuts','pecan','pecans','cashew','cashews','pistachio','pistachios','hazelnut','hazelnuts','peanut','peanuts','macadamia','pine nut','pine nuts','brazil nut','brazil nuts','chestnut','chestnuts','nut butter','almond flour','almond milk','tahini','marzipan','praline'],
+    label: 'nuts',
+  },
+  'Gluten-Free': {
+    keywords: ['flour','wheat','bread','pasta','barley','rye','semolina','spelt','kamut','farro','bulgur','couscous','breadcrumb','breadcrumbs','soy sauce','teriyaki','panko','crouton','croutons','malt','beer','seitan','triticale'],
+    label: 'gluten',
+    exceptions: { 'soy sauce': 'Soy sauce (contains gluten)' },
+  },
+};
+
+const checkDietaryConflicts = (ingredients, dietaryFilters) => {
+  if (!dietaryFilters?.length || !ingredients?.length) return [];
+  const warnings = [];
+  for (const diet of dietaryFilters) {
+    const rule = DIETARY_CONFLICTS[diet];
+    if (!rule) continue;
+    const conflicts = [];
+    const unrecognized = [];
+    for (const ing of ingredients) {
+      const name = (ing.name || '').toLowerCase().trim();
+      if (!name) continue;
+      // Check for keyword match
+      const matched = rule.keywords.find(k => name.includes(k));
+      if (matched) {
+        // Check if there's a special exception message
+        const exceptionKey = Object.keys(rule.exceptions || {}).find(k => name.includes(k));
+        if (exceptionKey) {
+          conflicts.push(rule.exceptions[exceptionKey]);
+        } else {
+          conflicts.push(ing.name);
+        }
+      }
+    }
+    if (conflicts.length > 0) {
+      warnings.push({ diet, label: rule.label, conflicts });
+    }
+  }
+  return warnings;
+};
 const THEME_OPTIONS = [
   { key: 'default', label: 'Terracotta', color: '#C65D3B' },
   { key: 'sage',    label: 'Sage',       color: '#7a9e7e' },
@@ -2204,18 +2279,15 @@ const STAR_LABELS = ['', "Didn't love it", 'It was okay', 'Pretty good!', 'Reall
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
-const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes }) => {
+const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible }) => {
   const [cookHistory, setCookHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [attemptsOpen, setAttemptsOpen] = useState(false);
   const [historyView, setHistoryView] = useState('timeline'); // 'timeline' | 'calendar'
   const [calendarDate, setCalendarDate] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() }; });
-  const [theme, setTheme] = useState(() => localStorage.getItem('hearth-theme') || 'default');
-  const [sharedUsers] = useState([]);
 
   const toggleDiet = (d) => setDietaryFilters(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
-  const setThemeAndSave = (key) => { setTheme(key); localStorage.setItem('hearth-theme', key); };
 
   useEffect(() => {
     let cancelled = false;
@@ -2354,25 +2426,31 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
             ))}
           </div>
         ) : (
-          /* Calendar view */
-          <div className="cook-calendar">
+          /* Calendar view — Google Calendar style */
+          <div className="cook-calendar cook-calendar--gcal">
             <div className="cook-calendar__nav">
               <button className="cook-calendar__nav-btn" onClick={prevMonth}>‹</button>
               <span className="cook-calendar__month-label">{MONTH_NAMES[calendarDate.month]} {calendarDate.year}</span>
               <button className="cook-calendar__nav-btn" onClick={nextMonth}>›</button>
             </div>
-            <div className="cook-calendar__grid">
-              {DAY_NAMES.map(d => <div key={d} className="cook-calendar__day-name">{d}</div>)}
+            <div className="cook-calendar__gcal-grid">
+              {DAY_NAMES.map(d => <div key={d} className="cook-calendar__gcal-day-header">{d}</div>)}
               {Array.from({ length: getFirstDayOfMonth(calendarDate.year, calendarDate.month) }).map((_, i) => (
-                <div key={`empty-${i}`} className="cook-calendar__cell cook-calendar__cell--empty" />
+                <div key={`empty-${i}`} className="cook-calendar__gcal-cell cook-calendar__gcal-cell--empty" />
               ))}
               {Array.from({ length: getDaysInMonth(calendarDate.year, calendarDate.month) }).map((_, i) => {
                 const day = i + 1;
                 const cooked = cookDatesInMonth[day];
+                const isToday = (() => { const t = new Date(); return t.getFullYear() === calendarDate.year && t.getMonth() === calendarDate.month && t.getDate() === day; })();
                 return (
-                  <div key={day} className={`cook-calendar__cell ${cooked ? 'cook-calendar__cell--cooked' : ''}`} title={cooked?.join(', ')}>
-                    <span className="cook-calendar__cell-day">{day}</span>
-                    {cooked && <span className="cook-calendar__cell-dot" title={cooked.join(', ')}>🍳</span>}
+                  <div key={day} className={`cook-calendar__gcal-cell ${cooked ? 'cook-calendar__gcal-cell--cooked' : ''} ${isToday ? 'cook-calendar__gcal-cell--today' : ''}`}>
+                    <span className={`cook-calendar__gcal-date ${isToday ? 'cook-calendar__gcal-date--today' : ''}`}>{day}</span>
+                    {cooked && cooked.map((name, j) => (
+                      <div key={j} className="cook-calendar__gcal-event" title={name}>
+                        <span className="cook-calendar__gcal-event-dot">🍳</span>
+                        <span className="cook-calendar__gcal-event-name">{name}</span>
+                      </div>
+                    ))}
                   </div>
                 );
               })}
@@ -2392,7 +2470,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
             {recipeCounts.length === 0 ? (
               <p className="profile-empty__text" style={{ padding: '12px 0' }}>No cooking history yet.</p>
             ) : (
-              <div className="attempts-list">
+              <div className="attempts-list attempts-list--scrollable">
                 {recipeCounts.map((item, i) => {
                   const recipe = recipes.find(r => r.id === item.id);
                   return (
@@ -2427,7 +2505,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
 
             <div className="settings-section">
               <h4 className="settings-section__title">🥗 Dietary Restrictions</h4>
-              <p className="settings-section__hint">Active filters hide non-matching recipes across the app</p>
+              <p className="settings-section__hint">Active filters warn you about conflicting ingredients on recipe pages</p>
               <div className="picker__chips" style={{ marginTop: 10, flexWrap: 'wrap' }}>
                 {DIETARY_OPTIONS.map(d => (
                   <button key={d} className={`chip ${dietaryFilters.includes(d) ? 'chip--selected' : ''}`} onClick={() => toggleDiet(d)}>
@@ -2435,25 +2513,14 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                   </button>
                 ))}
               </div>
-              {dietaryFilters.length > 0 && <p className="settings-active-filters">Active: {dietaryFilters.join(', ')}</p>}
+              {dietaryFilters.length > 0 && (
+                <label className="dietary-hide-toggle" style={{ display:'flex', alignItems:'center', gap:8, marginTop:12, cursor:'pointer', fontSize:13 }}>
+                  <input type="checkbox" checked={hideIncompatible} onChange={e => setHideIncompatible(e.target.checked)} style={{ width:16, height:16, cursor:'pointer' }} />
+                  <span>☑ Hide incompatible recipes from library</span>
+                </label>
+              )}
             </div>
 
-            <div className="settings-section">
-              <h4 className="settings-section__title">🎨 Theme</h4>
-              <div className="profile-theme-picker">
-                {THEME_OPTIONS.map(t => (
-                  <button key={t.key}
-                    className={`profile-theme-swatch ${theme === t.key ? 'profile-theme-swatch--active' : ''}`}
-                    style={{ background: t.color }}
-                    onClick={() => setThemeAndSave(t.key)}
-                    title={t.label}>
-                    {theme === t.key && <span className="profile-theme-swatch__check">✓</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* About */}
             <div className="settings-section settings-section--about">
               <h4 className="settings-section__title">ℹ️ About Hearth</h4>
               <div className="about-cards">
@@ -2486,22 +2553,24 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                   </div>
                 </div>
               </div>
-              <div className="about-stack">
-                <span className="about-stack__badge">React</span>
-                <span className="about-stack__badge">Node.js</span>
-                <span className="about-stack__badge">PostgreSQL</span>
+              <div className="about-stack-github-row">
+                <a
+                  className="about-github-btn"
+                  href="https://github.com/kavyasomala/Hearth"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <svg className="about-github-btn__icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                  </svg>
+                  View on GitHub
+                </a>
+                <div className="about-stack">
+                  <span className="about-stack__badge">React</span>
+                  <span className="about-stack__badge">Node.js</span>
+                  <span className="about-stack__badge">PostgreSQL</span>
+                </div>
               </div>
-              <a
-                className="about-github-btn"
-                href="https://github.com/kavyasomala/Hearth"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <svg className="about-github-btn__icon" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-                </svg>
-                View on GitHub
-              </a>
             </div>
 
           </div>
@@ -4192,6 +4261,8 @@ function AppInner() {
 
   const [units, setUnitsRaw] = useState(() => LS.get('units', 'metric'));
   const [dietaryFilters, setDietaryFiltersRaw] = useState(() => LS.get('dietaryFilters', []));
+  const [hideIncompatible, setHideIncompatibleRaw] = useState(() => LS.get('hideIncompatible', false));
+  const setHideIncompatible = (v) => { setHideIncompatibleRaw(v); LS.set('hideIncompatible', v); };
   const [cookbooks, setCookbooks] = useState(() => LS.get('cookbooks', []));
   const [cookLog, setCookLog] = useState([]);
   const setUnits = (v) => { setUnitsRaw(v); LS.set('units', v); };
@@ -4272,8 +4343,16 @@ function AppInner() {
         return !isNaN(m) && m <= maxMinutes;
       });
     }
+    // Hide recipes with dietary conflicts if user opted in
+    if (hideIncompatible && dietaryFilters.length > 0) {
+      list = list.filter(r => {
+        const ings = (r.ingredients || []).map(i => typeof i === 'string' ? { name: i } : i);
+        const conflicts = checkDietaryConflicts(ings, dietaryFilters);
+        return conflicts.length === 0;
+      });
+    }
     return list;
-  }, [recipes, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById]);
+  }, [recipes, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById, hideIncompatible, dietaryFilters]);
 
   const hasActiveFilters = !!(librarySearch || activeTags.length || activeCuisines.length || activeProgresses.length || maxCalories !== null || maxMinutes !== null);
   const clearAllFilters = () => { setLibrarySearch(''); setActiveTags([]); setActiveCuisines([]); setActiveProgresses([]); setMaxCalories(null); setMaxMinutes(null); };
@@ -4363,6 +4442,7 @@ function AppInner() {
           loading={recipeLoading} onBack={() => setView(lastView)}
           allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
           cookbooks={cookbooks}
+          dietaryFilters={dietaryFilters}
           onMarkCooked={(recipeId, toRemove) => {
             setMakeSoonIds(prev => prev.filter(id => id !== recipeId));
             if (toRemove?.length) {
@@ -4844,6 +4924,8 @@ function AppInner() {
           units={units}
           setUnits={setUnits}
           totalRecipes={recipes.length}
+          hideIncompatible={hideIncompatible}
+          setHideIncompatible={setHideIncompatible}
         />
       )}
 
