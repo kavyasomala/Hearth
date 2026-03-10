@@ -1287,8 +1287,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 </div>
               )}
 
-              {/* + Add tag button — always visible to add cuisine / tags / progress */}
-              {!isEdit('meta-tags') && (
+              {/* + Add tag button — admin only */}
+              {isAdmin && !isEdit('meta-tags') && (
                 <div className="rp2__hero-tag-wrap">
                   <button className="rp2__tag rp2__tag--add"
                     onClick={e => { e.stopPropagation(); startEdit('meta-tags'); }}
@@ -1302,8 +1302,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             {/* Pills — time and servings are clickable, nutrition is display-only */}
             <div className="rp2__hero-pills">
 
-              {/* Time pill */}
-              <div className="rp2__hero-tag-wrap rp2__hero-tag-wrap--right">
+              {/* Time pill — hide if empty for guests */}
+              {(isAdmin || recipe.time) && <div className="rp2__hero-tag-wrap rp2__hero-tag-wrap--right">
                 <button className={`rp2__pill rp2__pill--clickable ${isEdit('meta-time') ? 'rp2__pill--editing' : ''}`}
                   onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-time') ? null : 'meta-time'); }}>
                   <span className="rp2__pill-icon">⏱</span>
@@ -1322,10 +1322,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     </div>
                   </div>
                 )}
-              </div>
+              </div>}
 
-              {/* Servings pill */}
-              <div className="rp2__hero-tag-wrap rp2__hero-tag-wrap--right">
+              {/* Servings pill — hide if empty for guests */}
+              {(isAdmin || recipe.servings) && <div className="rp2__hero-tag-wrap rp2__hero-tag-wrap--right">
                 <button className={`rp2__pill rp2__pill--clickable ${isEdit('meta-servings') ? 'rp2__pill--editing' : ''}`}
                   onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-servings') ? null : 'meta-servings'); }}>
                   <span className="rp2__pill-icon">🍽</span>
@@ -1344,7 +1344,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     </div>
                   </div>
                 )}
-              </div>
+              </div>}
 
               {/* Display-only nutrition pills */}
               {displayCalories !== null && <span className="rp2__pill" title={nutritionIsEstimate ? 'Estimated — save ingredients to lock in' : 'Auto-calculated from ingredients'}><span className="rp2__pill-icon">🔥</span>{displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}</span>}
@@ -2563,7 +2563,7 @@ const AddFriendModal = ({ onClose, onCreated, authFetch }) => {
   const [creating, setCreating] = useState(false);
 
   const handleCreate = async () => {
-    if (!username.trim() || !password) return setError('Username and password are required.');
+    if (!username.trim() || !password) return setError('Username and password required.');
     setCreating(true); setError('');
     try {
       const res = await apiFetch(`${API}/api/auth/create-user`, {
@@ -2580,24 +2580,45 @@ const AddFriendModal = ({ onClose, onCreated, authFetch }) => {
   };
 
   return (
-    <div className="login-modal-overlay" onClick={onClose}>
-      <div className="login-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
-        <div className="login-modal__logo">👥</div>
-        <h2 className="login-modal__title">Add a Friend</h2>
-        <p className="login-modal__sub">Create an account so they can log in and track their own favorites and cooking history.</p>
-        {error && <div className="login-modal__error">{error}</div>}
-        <input className="login-modal__input" type="text" placeholder="Username" value={username}
-          onChange={e => setUsername(e.target.value)} autoCapitalize="none" autoFocus />
-        <input className="login-modal__input" type="text" placeholder="Password" value={password}
-          onChange={e => setPassword(e.target.value)} />
-        <input className="login-modal__input" type="text" placeholder="Display name (optional)" value={displayName}
-          onChange={e => setDisplayName(e.target.value)} />
-        <button className="login-modal__btn" onClick={handleCreate} disabled={creating}>
-          {creating ? 'Creating…' : 'Create Account'}
-        </button>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--warm-gray)', fontSize: '0.85rem', cursor: 'pointer', marginTop: 4 }}>
-          Cancel
-        </button>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={onClose}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: 'var(--warm-white)', borderRadius: 16, padding: '24px 22px', width: '100%', maxWidth: 320, boxShadow: '0 8px 40px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+          <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700, color: 'var(--charcoal)' }}>👥 Add a Friend</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--warm-gray)', lineHeight: 1, padding: '2px 4px' }}>×</button>
+        </div>
+        {error && <div style={{ background: '#fff0ee', border: '1px solid #f5c2b8', borderRadius: 8, padding: '7px 10px', fontSize: '0.8rem', color: 'var(--terracotta-dark, #b84a2e)' }}>{error}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--warm-gray)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Username</label>
+          <input className="editor-input" type="text" placeholder="e.g. priya" value={username}
+            onChange={e => setUsername(e.target.value)} autoCapitalize="none" autoFocus
+            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+            style={{ padding: '8px 10px', fontSize: '0.9rem' }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--warm-gray)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Password</label>
+          <input className="editor-input" type="text" placeholder="Set a password" value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+            style={{ padding: '8px 10px', fontSize: '0.9rem' }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--warm-gray)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Display Name <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '0.7rem' }}>(optional)</span></label>
+          <input className="editor-input" type="text" placeholder="e.g. Priya S." value={displayName}
+            onChange={e => setDisplayName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+            style={{ padding: '8px 10px', fontSize: '0.9rem' }} />
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '9px', borderRadius: 8, background: 'none', border: '1.5px solid var(--border)', color: 'var(--warm-gray)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
+            Cancel
+          </button>
+          <button onClick={handleCreate} disabled={creating}
+            style={{ flex: 1, padding: '9px', borderRadius: 8, background: 'var(--terracotta)', color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', opacity: creating ? 0.7 : 1 }}>
+            {creating ? 'Adding…' : 'Create'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -2957,12 +2978,12 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                 {usersLoading ? (
                   <p style={{ fontSize: 13, color: 'var(--warm-gray)' }}>Loading…</p>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 6 }}>
                     {users.map(u => (
-                      <div key={u.id} style={{ borderRadius: 10, border: '1px solid var(--border)', background: 'var(--cream)', overflow: 'hidden' }}>
+                      <div key={u.id} style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--cream)', overflow: 'hidden' }}>
                         {/* Top row: avatar + name + actions */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
-                          <div style={{ width: 34, height: 34, borderRadius: '50%', background: u.role === 'suspended' ? '#c8c3bc' : u.role === 'admin' ? 'var(--terracotta)' : 'var(--sage)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: u.role === 'suspended' ? '#c8c3bc' : u.role === 'admin' ? 'var(--terracotta)' : 'var(--sage)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, flexShrink: 0 }}>
                             {(u.display_name || u.username)?.[0]?.toUpperCase()}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -2982,15 +3003,43 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                             </div>
                           )}
                         </div>
-                        {/* Password row */}
-                        <div style={{ borderTop: '1px solid var(--border)', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--warm-white)' }}>
+                        {/* Password + admin toggle row */}
+                        <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--warm-white)', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '0.75rem', color: 'var(--warm-gray)', flexShrink: 0 }}>Password:</span>
-                          <span style={{ fontSize: '0.82rem', fontFamily: 'monospace', flex: 1, color: revealedPasswords[u.id] ? 'var(--charcoal)' : 'transparent', textShadow: revealedPasswords[u.id] ? 'none' : '0 0 6px rgba(0,0,0,0.35)', userSelect: revealedPasswords[u.id] ? 'text' : 'none', transition: 'all 0.2s' }}>
+                          <span style={{ fontSize: '0.82rem', fontFamily: 'monospace', flex: 1, minWidth: 60, color: revealedPasswords[u.id] ? 'var(--charcoal)' : 'transparent', textShadow: revealedPasswords[u.id] ? 'none' : '0 0 6px rgba(0,0,0,0.35)', userSelect: revealedPasswords[u.id] ? 'text' : 'none', transition: 'all 0.2s' }}>
                             {u.password || '—'}
                           </span>
-                          <button onClick={() => toggleReveal(u.id)} style={{ fontSize: '0.75rem', padding: '3px 9px', borderRadius: 999, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', color: 'var(--warm-gray)', flexShrink: 0 }}>
+                          <button onClick={() => toggleReveal(u.id)} style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: 999, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', color: 'var(--warm-gray)', flexShrink: 0 }}>
                             {revealedPasswords[u.id] ? 'Hide' : 'Reveal'}
                           </button>
+                          {u.role !== 'admin' && (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', marginLeft: 4, flexShrink: 0 }} title="Make admin">
+                              <input type="checkbox" checked={false} style={{ cursor: 'pointer' }}
+                                onChange={async () => {
+                                  if (!window.confirm(`Make ${u.display_name || u.username} an admin? They’ll be able to add/edit recipes.`)) return;
+                                  await apiFetch(`${API}/api/admin/users/${u.id}`, {
+                                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ role: 'admin' }),
+                                  });
+                                  loadUsers();
+                                }} />
+                              <span style={{ fontSize: '0.72rem', color: 'var(--warm-gray)' }}>Admin</span>
+                            </label>
+                          )}
+                          {u.role === 'admin' && (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', marginLeft: 4, flexShrink: 0 }} title="Revoke admin">
+                              <input type="checkbox" checked={true} style={{ cursor: 'pointer' }}
+                                onChange={async () => {
+                                  if (!window.confirm(`Remove admin from ${u.display_name || u.username}?`)) return;
+                                  await apiFetch(`${API}/api/admin/users/${u.id}`, {
+                                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ role: 'guest' }),
+                                  });
+                                  loadUsers();
+                                }} />
+                              <span style={{ fontSize: '0.72rem', color: 'var(--warm-gray)' }}>Admin</span>
+                            </label>
+                          )}
                         </div>
                       </div>
                     ))}
