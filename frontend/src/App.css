@@ -3673,19 +3673,19 @@ body {
 /* ── Cookbook Ref corner badge on RecipeCard ─────────────────────────────── */
 .recipe-card__book-corner {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
-  background: rgba(230, 168, 23, 0.92);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  bottom: 8px;
+  left: 8px;
+  background: rgba(230, 168, 23, 0.95);
+  color: #fff;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.22);
   pointer-events: none;
-  z-index: 3;
+  z-index: 4;
+  white-space: nowrap;
 }
 
 /* ── Grocery List: unit consolidation display ───────────────────────────── */

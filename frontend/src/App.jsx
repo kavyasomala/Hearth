@@ -183,7 +183,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
           ? <img src={coverImage} alt={name} loading="lazy" />
           : <div className="recipe-card__image-placeholder">No photo</div>}
         {isCookbookRef && (
-          <div className="recipe-card__book-corner" title="Cookbook reference">📖</div>
+          <div className="recipe-card__book-corner">📖 Ref</div>
         )}
         {showScore && matchScore !== null && (
           <div className={`recipe-card__score ${canMakeNow ? 'recipe-card__score--ready' : ''}`}>
