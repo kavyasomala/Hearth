@@ -4339,3 +4339,190 @@ body {
   color: var(--text, #333);
   font-weight: 500;
 }
+
+/* ─── Login Modal ────────────────────────────────────────────────────────── */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(46,42,39,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn 0.25s ease;
+}
+.login-modal {
+  background: var(--warm-white);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow-lg);
+  animation: scaleIn 0.25s cubic-bezier(0.22,1,0.36,1);
+  overflow: hidden;
+}
+.login-modal__header {
+  background: var(--charcoal);
+  padding: 28px 32px 24px;
+  text-align: center;
+}
+.login-modal__flame { font-size: 32px; display: block; margin-bottom: 8px; }
+.login-modal__title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+.login-modal__subtitle {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.55);
+  margin-top: 4px;
+}
+.login-modal__body {
+  padding: 28px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.login-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.login-modal__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--warm-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.login-modal__input {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--cream);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--charcoal);
+  transition: border-color var(--transition);
+  outline: none;
+}
+.login-modal__input:focus { border-color: var(--terracotta); }
+.login-modal__input::placeholder { color: var(--ash); }
+.login-modal__error {
+  background: #fff0ee;
+  border: 1px solid #f5c2b8;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: var(--terracotta-dark);
+}
+.login-modal__btn {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--terracotta);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition);
+  margin-top: 4px;
+}
+.login-modal__btn:hover:not(:disabled) { background: var(--terracotta-dark); }
+.login-modal__btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ─── Header user button ─────────────────────────────────────────────────── */
+.header-user-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 999px;
+  padding: 5px 12px 5px 6px;
+  cursor: pointer;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: background var(--transition);
+  flex-shrink: 0;
+}
+.header-user-btn:hover { background: rgba(255,255,255,0.18); }
+.header-user-btn__avatar {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--terracotta);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.header-user-btn__name { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ─── User dropdown ──────────────────────────────────────────────────────── */
+.user-dropdown-wrap { position: relative; flex-shrink: 0; }
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--warm-white);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  min-width: 180px;
+  overflow: hidden;
+  z-index: 500;
+  animation: scaleIn 0.15s cubic-bezier(0.22,1,0.36,1);
+}
+.user-dropdown__item {
+  display: block;
+  width: 100%;
+  padding: 11px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--charcoal);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.user-dropdown__item:hover { background: var(--parchment); }
+.user-dropdown__item--danger { color: var(--terracotta-dark); }
+.user-dropdown__divider { height: 1px; background: var(--border); margin: 2px 0; }
+.user-dropdown__email {
+  padding: 10px 16px 8px;
+  font-size: 0.78rem;
+  color: var(--warm-gray);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ─── Create User Modal (admin) ──────────────────────────────────────────── */
+.create-user-modal {
+  background: var(--warm-white);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow-lg);
+  animation: scaleIn 0.2s cubic-bezier(0.22,1,0.36,1);
+  overflow: hidden;
+}
+.create-user-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.create-user-modal__title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--charcoal);
+}

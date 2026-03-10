@@ -136,21 +136,20 @@ const CATEGORY_META = {
 
 // ─── POST /api/auth/register ─────────────────────────────────────────────────
 app.post('/api/auth/register', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email?.trim() || !password) return res.status(400).json({ error: 'Email and password are required' });
+  const { username, password } = req.body;
+  if (!username?.trim() || !password) return res.status(400).json({ error: 'Username and password are required' });
   try {
-    const existing = await query('SELECT id FROM users WHERE email = $1', [email.trim().toLowerCase()]);
-    if (existing.rows.length) return res.status(409).json({ error: 'Email already registered' });
+    const existing = await query('SELECT id FROM users WHERE username = $1', [username.trim().toLowerCase()]);
+    if (existing.rows.length) return res.status(409).json({ error: 'Username already taken' });
     const password_hash = await bcrypt.hash(password, 10);
     const { rows } = await query(
-      `INSERT INTO users (email, password_hash, role) VALUES ($1, $2, 'guest') RETURNING id, email, role`,
-      [email.trim().toLowerCase(), password_hash]
+      `INSERT INTO users (username, password_hash, role) VALUES ($1, $2, 'guest') RETURNING id, username, role`,
+      [username.trim().toLowerCase(), password_hash]
     );
     const user = rows[0];
-    // Create default user_settings row
     await query(`INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [user.id]);
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    res.status(201).json({ token, user: { id: user.id, email: user.email, role: user.role } });
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    res.status(201).json({ token, user: { id: user.id, username: user.username, role: user.role } });
   } catch (err) {
     console.error('POST /api/auth/register error:', err);
     res.status(500).json({ error: err.message || 'Failed to register' });
@@ -159,16 +158,16 @@ app.post('/api/auth/register', async (req, res) => {
 
 // ─── POST /api/auth/login ────────────────────────────────────────────────────
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email?.trim() || !password) return res.status(400).json({ error: 'Email and password are required' });
+  const { username, password } = req.body;
+  if (!username?.trim() || !password) return res.status(400).json({ error: 'Username and password are required' });
   try {
-    const { rows } = await query('SELECT * FROM users WHERE email = $1', [email.trim().toLowerCase()]);
-    if (!rows.length) return res.status(401).json({ error: 'Invalid email or password' });
+    const { rows } = await query('SELECT * FROM users WHERE username = $1', [username.trim().toLowerCase()]);
+    if (!rows.length) return res.status(401).json({ error: 'Invalid username or password' });
     const user = rows[0];
     const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
+    if (!valid) return res.status(401).json({ error: 'Invalid username or password' });
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
   } catch (err) {
     console.error('POST /api/auth/login error:', err);
     res.status(500).json({ error: err.message || 'Failed to login' });
@@ -178,11 +177,31 @@ app.post('/api/auth/login', async (req, res) => {
 // ─── GET /api/auth/me ────────────────────────────────────────────────────────
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
-    const { rows } = await query('SELECT id, email, role FROM users WHERE id = $1', [req.user.id]);
+    const { rows } = await query('SELECT id, username, role FROM users WHERE id = $1', [req.user.id]);
     if (!rows.length) return res.status(404).json({ error: 'User not found' });
     res.json({ user: rows[0] });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+// ─── POST /api/auth/create-user (admin only) ────────────────────────────────
+app.post('/api/auth/create-user', authenticateToken, requireAdmin, async (req, res) => {
+  const { username, password } = req.body;
+  if (!username?.trim() || !password) return res.status(400).json({ error: 'Username and password are required' });
+  try {
+    const existing = await query('SELECT id FROM users WHERE username = $1', [username.trim().toLowerCase()]);
+    if (existing.rows.length) return res.status(409).json({ error: 'Username already taken' });
+    const password_hash = await bcrypt.hash(password, 10);
+    const { rows } = await query(
+      `INSERT INTO users (username, password_hash, role) VALUES ($1, $2, 'guest') RETURNING id, username, role`,
+      [username.trim().toLowerCase(), password_hash]
+    );
+    await query(`INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [rows[0].id]);
+    res.status(201).json({ user: rows[0] });
+  } catch (err) {
+    console.error('POST /api/auth/create-user error:', err);
+    res.status(500).json({ error: err.message || 'Failed to create user' });
   }
 });
 

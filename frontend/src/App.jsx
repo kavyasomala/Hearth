@@ -321,7 +321,8 @@ const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
 // PERISHABLE_TYPES: categories where "use up / remove" makes sense after cooking
 const PERISHABLE_TYPES = new Set(['produce', 'meat & fish', 'dairy']);
 
-const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpdateKitchen }) => {
+const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpdateKitchen, authFetch }) => {
+  const apiFetch = authFetch || fetch;
   const [step, setStep] = useState(1); // 1 = rate/notes, 2 = ingredient cleanup
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -376,7 +377,7 @@ const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpda
         cooked_at: new Date().toISOString(),
       };
       if (isRealRecipe) payload.recipe_id = recipe.id;
-      const res = await fetch(`${API}/api/cook-log`, {
+      const res = await apiFetch(`${API}/api/user/cook-log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -769,7 +770,8 @@ const StepItem = ({ step, done, isCurrent, enlarge, onToggle }) => {
 };
 
 // ─── Recipe Page ─────────────────────────────────────────────────────────────
-const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [] }) => {
+const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin }) => {
+  const apiFetch = authFetch || fetch;
   const [checkedIngredients, setCheckedIngredients] = useState(new Set());
   const [doneSteps, setDoneSteps] = useState(new Set());
   const [showIngredientsModal, setShowIngredientsModal] = useState(false);
@@ -1113,7 +1115,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               <button className="btn btn--danger" onClick={async () => {
                 setDeleting(true); setDeleteError(null);
                 try {
-                  const res = await fetch(`${API}/api/recipes/${recipe.id}`, { method: 'DELETE' });
+                  const res = await apiFetch(`${API}/api/recipes/${recipe.id}`, { method: 'DELETE' });
                   if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Delete failed'); }
                   setShowDeleteConfirm(false);
                   if (onDelete) onDelete(recipe.id);
@@ -1130,6 +1132,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         <MarkCookedModal
           recipe={recipe}
           bodyIngredients={bodyIngredients}
+          authFetch={apiFetch}
           onSave={({ toRemove }) => {
             setShowCookedModal(false);
             if (onMarkCooked) onMarkCooked(recipe.id, toRemove);
@@ -1797,7 +1800,8 @@ const SortableItem = ({ id, children }) => {
 };
 
 // ─── Recipe Editor ──────────────────────────────────────────────────────────
-const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredients, onBack, onSaved }) => {
+const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredients, onBack, onSaved, authFetch }) => {
+  const apiFetch = authFetch || fetch;
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
   const [details, setDetails] = useState({
@@ -1866,7 +1870,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
         })(),
         notes: notesList.map((n, idx) => ({ ...n, order_index: idx })),
       };
-      const res = await fetch(`${API}/api/recipes/${recipe.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const res = await apiFetch(`${API}/api/recipes/${recipe.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Save failed');
       setSaveSuccess(true);
@@ -2549,7 +2553,8 @@ const STAR_LABELS = ['', "Didn't love it", 'It was okay', 'Pretty good!', 'Reall
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
-const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible }) => {
+const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser }) => {
+  const apiFetch = authFetch || fetch;
   const [cookHistory, setCookHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -2565,7 +2570,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
     const load = async () => {
       setHistoryLoading(true);
       try {
-        const res = await fetch(`${API}/api/cook-log`);
+        const res = await apiFetch(`${API}/api/user/cook-log`);
         if (!res.ok) throw new Error('Failed');
         const data = await res.json();
         if (!cancelled) setCookHistory(data.entries || []);
@@ -2574,6 +2579,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
     };
     load();
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Group history by month for timeline
@@ -4155,7 +4161,8 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags,
 };
 
 // ─── Add Recipe Tab ─────────────────────────────────────────────────────────
-const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
+const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) => {
+  const apiFetch = authFetch || fetch;
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   const [showModal, setShowModal] = useState(false);
 
@@ -4273,7 +4280,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
         })(),
         notes: notesList.map((n, idx) => ({ ...n, order_index: idx })),
       };
-      const res = await fetch(`${API}/api/recipes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const res = await apiFetch(`${API}/api/recipes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Save failed');
       closeModal();
@@ -4537,8 +4544,174 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
   );
 };
 
+// ─── Login Modal ─────────────────────────────────────────────────────────────
+const LoginModal = ({ onLogin }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    if (!username.trim() || !password) return setError('Please enter your username and password.');
+    setLoading(true); setError('');
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+      onLogin(data.token, data.user);
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="login-overlay">
+      <div className="login-modal">
+        <div className="login-modal__header">
+          <span className="login-modal__flame">🔥</span>
+          <div className="login-modal__title">Hearth</div>
+          <div className="login-modal__subtitle">Sign in to continue</div>
+        </div>
+        <div className="login-modal__body">
+          {error && <div className="login-modal__error">{error}</div>}
+          <div className="login-modal__field">
+            <label className="login-modal__label">Username</label>
+            <input
+              className="login-modal__input"
+              type="text"
+              placeholder="e.g. KavyaS"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              autoFocus
+              autoCapitalize="none"
+            />
+          </div>
+          <div className="login-modal__field">
+            <label className="login-modal__label">Password</label>
+            <input
+              className="login-modal__input"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+            />
+          </div>
+          <button className="login-modal__btn" onClick={handleSubmit} disabled={loading}>
+            {loading ? 'Signing in…' : 'Sign in'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Create User Modal (admin only) ──────────────────────────────────────────
+const CreateUserModal = ({ onClose, authFetch }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const handleCreate = async () => {
+    if (!username.trim() || !password) return setError('Username and password are required.');
+    setLoading(true); setError(''); setSuccess('');
+    try {
+      const res = await authFetch(`${API}/api/auth/create-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create user');
+      setSuccess(`Account created for ${data.user.username} ✓`);
+      setUsername(''); setPassword('');
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="login-overlay" onClick={onClose}>
+      <div className="create-user-modal" onClick={e => e.stopPropagation()}>
+        <div className="create-user-modal__header">
+          <span className="create-user-modal__title">👤 Create Account</span>
+          <button className="ing-modal__close" onClick={onClose}>✕</button>
+        </div>
+        <div className="login-modal__body">
+          {error && <div className="login-modal__error">{error}</div>}
+          {success && <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px', fontSize: '0.85rem', color: '#166534' }}>{success}</div>}
+          <div className="login-modal__field">
+            <label className="login-modal__label">Username</label>
+            <input className="login-modal__input" type="text" placeholder="e.g. PriyaK" value={username} onChange={e => setUsername(e.target.value)} autoCapitalize="none" />
+          </div>
+          <div className="login-modal__field">
+            <label className="login-modal__label">Password</label>
+            <input className="login-modal__input" type="password" placeholder="Set a password for them" value={password} onChange={e => setPassword(e.target.value)} />
+          </div>
+          <button className="login-modal__btn" onClick={handleCreate} disabled={loading}>
+            {loading ? 'Creating…' : 'Create Account'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main App ────────────────────────────────────────────────────────────────
 function AppInner() {
+  // ─── Auth ──────────────────────────────────────────────────────────────────
+  const [authToken, setAuthToken] = useState(() => LS.get('authToken', null));
+  const [authUser, setAuthUser]   = useState(() => LS.get('authUser', null));
+  const [showLogin, setShowLogin] = useState(false);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const isAdmin = authUser?.role === 'admin';
+
+  // Closes dropdown when clicking elsewhere
+  useEffect(() => {
+    if (!userDropdownOpen) return;
+    const close = () => setUserDropdownOpen(false);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [userDropdownOpen]);
+
+  // Show login gate if no token
+  useEffect(() => {
+    if (!authToken) setShowLogin(true);
+    else setShowLogin(false);
+  }, [authToken]);
+
+  const handleLogin = (token, user) => {
+    LS.set('authToken', token);
+    LS.set('authUser', user);
+    setAuthToken(token);
+    setAuthUser(user);
+    setShowLogin(false);
+  };
+
+  const handleLogout = () => {
+    LS.set('authToken', null);
+    LS.set('authUser', null);
+    setAuthToken(null);
+    setAuthUser(null);
+    setShowLogin(true);
+    setUserDropdownOpen(false);
+  };
+
+  // Authenticated fetch wrapper — adds Bearer token automatically
+  const authFetch = useCallback((url, opts = {}) => {
+    return fetch(url, {
+      ...opts,
+      headers: {
+        ...(opts.headers || {}),
+        ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
+      },
+    });
+  }, [authToken]);
+
   const [view, setView] = useState('home');
   const [lastView, setLastView] = useState('home');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -4577,10 +4750,22 @@ function AppInner() {
   const [lastSynced, setLastSynced] = useState(null);
 
   useEffect(() => { LS.set('customCuisines', customCuisines); }, [customCuisines]);
-  useEffect(() => { LS.set('heartedIds', heartedIds); }, [heartedIds]);
-  useEffect(() => { LS.set('makeSoonIds', makeSoonIds); }, [makeSoonIds]);
-  const toggleHeart = (id) => setHeartedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  const toggleMakeSoon = (id) => setMakeSoonIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const toggleHeart = useCallback((id) => {
+    setHeartedIds(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      if (authToken) authFetch(`${API}/api/user/favorites`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ favorites: next }) }).catch(() => {});
+      return next;
+    });
+  }, [authToken, authFetch]);
+
+  const toggleMakeSoon = useCallback((id) => {
+    setMakeSoonIds(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      if (authToken) authFetch(`${API}/api/user/make-soon`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ makeSoon: next }) }).catch(() => {});
+      return next;
+    });
+  }, [authToken, authFetch]);
 
   const [units, setUnitsRaw] = useState(() => LS.get('units', 'metric'));
   const [dietaryFilters, setDietaryFiltersRaw] = useState(() => LS.get('dietaryFilters', []));
@@ -4597,20 +4782,31 @@ function AppInner() {
 
   const loadData = useCallback(async () => {
     try {
-      const [ingRes, recipeRes, logRes] = await Promise.all([
+      const [ingRes, recipeRes] = await Promise.all([
         fetch(`${API}/api/ingredients`),
         fetch(`${API}/api/recipes`),
-        fetch(`${API}/api/cook-log`),
       ]);
       if (!ingRes.ok || !recipeRes.ok) throw new Error('Failed to load data');
       const { ingredients } = await ingRes.json();
       const { recipes: recipeData } = await recipeRes.json();
       setAllIngredients(ingredients.sort((a, b) => a.name.localeCompare(b.name)));
       setRecipes(recipeData);
-      if (logRes.ok) { const d = await logRes.json(); setCookLog(d.entries || []); }
+
+      // Load user-specific data if logged in
+      if (authToken) {
+        const [logRes, favsRes, soonRes] = await Promise.all([
+          authFetch(`${API}/api/user/cook-log`),
+          authFetch(`${API}/api/user/favorites`),
+          authFetch(`${API}/api/user/make-soon`),
+        ]);
+        if (logRes.ok)  { const d = await logRes.json();  setCookLog(d.entries || []); }
+        if (favsRes.ok) { const d = await favsRes.json(); setHeartedIds(d.favorites || []); }
+        if (soonRes.ok) { const d = await soonRes.json(); setMakeSoonIds(d.makeSoon || []); }
+      }
+
       setLastSynced(Date.now());
     } catch (e) { setError(e.message); } finally { setLoading(false); }
-  }, []);
+  }, [authToken, authFetch]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -4716,6 +4912,8 @@ function AppInner() {
 
   return (
     <div className="app">
+      {showLogin && <LoginModal onLogin={handleLogin} />}
+      {showCreateUser && <CreateUserModal onClose={() => setShowCreateUser(false)} authFetch={authFetch} />}
       <header className="app-header">
         <div className="app-header__bar">
           <button className="app-header__brand" onClick={() => setView('home')}>
@@ -4738,6 +4936,29 @@ function AppInner() {
               </button>
             ))}
           </nav>
+          {/* User avatar + dropdown */}
+          {authUser && (
+            <div className="user-dropdown-wrap" onClick={e => e.stopPropagation()}>
+              <button className="header-user-btn" onClick={() => setUserDropdownOpen(o => !o)}>
+                <span className="header-user-btn__avatar">{authUser.username?.[0]?.toUpperCase()}</span>
+                <span className="header-user-btn__name">{authUser.username}</span>
+              </button>
+              {userDropdownOpen && (
+                <div className="user-dropdown">
+                  <div className="user-dropdown__email">{authUser.username}</div>
+                  {isAdmin && (
+                    <button className="user-dropdown__item" onClick={() => { setShowCreateUser(true); setUserDropdownOpen(false); }}>
+                      👤 Create account for friend
+                    </button>
+                  )}
+                  <div className="user-dropdown__divider" />
+                  <button className="user-dropdown__item user-dropdown__item--danger" onClick={handleLogout}>
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {/* Mobile hamburger */}
           <button className="mobile-menu-btn" onClick={() => setMobileNavOpen(o => !o)} aria-label="Menu">
             <span className="mobile-menu-btn__bar" />
@@ -4775,6 +4996,8 @@ function AppInner() {
           allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
           cookbooks={cookbooks}
           dietaryFilters={dietaryFilters}
+          authFetch={authFetch}
+          isAdmin={isAdmin}
           onMarkCooked={(recipeId, toRemove) => {
             setMakeSoonIds(prev => prev.filter(id => id !== recipeId));
             if (toRemove?.length) {
@@ -4782,7 +5005,7 @@ function AppInner() {
               setFridgeIngredients(prev => prev.filter(x => !lower.includes(x.toLowerCase().trim())));
               setPantryStaples(prev => prev.filter(x => !lower.includes(x.toLowerCase().trim())));
             }
-            fetch(`${API}/api/cook-log`).then(r => r.json()).then(d => setCookLog(d.entries || [])).catch(() => {});
+            authFetch(`${API}/api/user/cook-log`).then(r => r.json()).then(d => setCookLog(d.entries || [])).catch(() => {});
           }}
           isHearted={selectedRecipe ? heartedIds.includes(selectedRecipe.id) : false}
           onToggleHeart={() => selectedRecipe && toggleHeart(selectedRecipe.id)}
@@ -4818,6 +5041,7 @@ function AppInner() {
         <RecipeEditor
           recipe={selectedRecipe} bodyIngredients={recipeBodyIngredients} instructions={recipeInstructions} notes={recipeNotes}
           allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
+          authFetch={authFetch}
           onBack={() => setEditingRecipe(false)}
           onSaved={async (updated) => {
             setSelectedRecipe(updated); setEditingRecipe(false);
@@ -5312,6 +5536,7 @@ function AppInner() {
         <AddRecipeTab
           allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
           cookbooks={cookbooks}
+          authFetch={authFetch}
           onSaved={(newRecipe) => {
             if (newRecipe?.id) setMakeSoonIds(prev => [...prev, newRecipe.id]);
             loadData();
@@ -5344,6 +5569,8 @@ function AppInner() {
           totalRecipes={recipes.length}
           hideIncompatible={hideIncompatible}
           setHideIncompatible={setHideIncompatible}
+          authFetch={authFetch}
+          authUser={authUser}
         />
       )}
 
@@ -5351,16 +5578,16 @@ function AppInner() {
         <MarkCookedModal
           recipe={cookingRecipe}
           bodyIngredients={cookingRecipe._bodyIngredients || []}
+          authFetch={authFetch}
           onSave={({ toRemove }) => {
             setMakeSoonIds(prev => prev.filter(id => id !== cookingRecipe.id));
-            // Remove "used up" ingredients from kitchen
             if (toRemove?.length) {
               const lower = toRemove.map(n => n.toLowerCase().trim());
               setFridgeIngredients(prev => prev.filter(x => !lower.includes(x.toLowerCase().trim())));
               setPantryStaples(prev => prev.filter(x => !lower.includes(x.toLowerCase().trim())));
             }
             setCookingRecipe(null);
-            fetch(`${API}/api/cook-log`).then(r => r.json()).then(d => setCookLog(d.entries || [])).catch(() => {});
+            authFetch(`${API}/api/user/cook-log`).then(r => r.json()).then(d => setCookLog(d.entries || [])).catch(() => {});
           }}
           onClose={() => setCookingRecipe(null)}
         />
