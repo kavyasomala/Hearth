@@ -3420,8 +3420,9 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
   const onStepDragEnd = ({ active, over }) => { if (over && active.id !== over.id) setSteps(prev => { const o = prev.findIndex(s => s._id === active.id); const n = prev.findIndex(s => s._id === over.id); return arrayMove(prev, o, n); }); };
   const addNote    = () => setNotesList(prev => [...prev, { _id: `note-${Date.now()}`, text: '' }]);
   const updateNote = (id, v) => setNotesList(prev => prev.map(n => n._id === id ? { ...n, text: v } : n));
-  const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id)); = [...new Set(ings.filter(i => !i._isGroup).map(i => i.group_label).filter(Boolean))];
-
+  const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id));
+  const groupLabels = [...new Set(ings.filter(i => !i._isGroup).map(i => i.group_label).filter(Boolean))];
+  
   const calcNutrition = (ingredients) => {
     const NUTRITION_DB = {
       'chicken breast': { cal: 165, prot: 31, fiber: 0 }, 'chicken': { cal: 165, prot: 31, fiber: 0 },
