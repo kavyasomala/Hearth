@@ -3272,3 +3272,177 @@ body {
   .cbentry--header { display: none; }
   .cbentry__action--menu { min-width: unset; }
 }
+
+/* ── Cookbook Reference badge on RecipeCard ─────────────────────────────── */
+.recipe-card--cookbook-ref {
+  border: 1.5px solid var(--terracotta);
+}
+.recipe-card__ref-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--terracotta);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+.recipe-card__cookbook-ref-info {
+  font-size: 11px;
+  color: var(--warm-gray);
+  margin: 2px 0 4px;
+  line-height: 1.4;
+}
+.recipe-card__convert-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 5px 10px;
+  background: transparent;
+  border: 1.5px solid var(--terracotta);
+  color: var(--terracotta);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.recipe-card__convert-btn:hover {
+  background: var(--terracotta);
+  color: #fff;
+}
+
+/* ── Kitchen: On Hand header with Recent mini card ──────────────────────── */
+.kitchen-split__header--with-recent {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.kitchen-recent-mini {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+  max-width: 320px;
+  flex-shrink: 0;
+}
+.kitchen-recent-mini__label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--warm-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.kitchen-recent-mini__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.chip--mini {
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+}
+
+/* ── AddRecipeTab: nicer layout tweaks ─────────────────────────────────── */
+.create-modal .picker__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── Cookbook Reference Badge on RecipeCard ─────────────────────────────── */
+.recipe-card--cb-ref {
+  border: 1.5px solid var(--amber, #e6a817);
+}
+.recipe-card__cb-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(230, 168, 23, 0.92);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 3px 9px;
+  letter-spacing: 0.02em;
+}
+.recipe-card__cb-ref-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--warm-gray);
+}
+.recipe-card__cb-ref-info em {
+  font-style: italic;
+  color: var(--text);
+}
+.recipe-card__convert-btn {
+  background: none;
+  border: 1px solid var(--terracotta);
+  color: var(--terracotta);
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  align-self: flex-start;
+}
+.recipe-card__convert-btn:hover {
+  background: var(--terracotta);
+  color: #fff;
+}
+
+/* ── Kitchen: On Hand + Recently Used side-by-side ──────────────────────── */
+.kitchen-split {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 0 20px;
+  margin-bottom: 12px;
+}
+.kitchen-split__section--have {
+  flex: 1;
+  min-width: 0;
+}
+.kitchen-split__section--recent {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--surface, #faf9f7);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+.kitchen-missing-section {
+  padding: 0 20px 20px;
+}
+.fridge-chips--compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+.chip--sm {
+  font-size: 12px !important;
+  padding: 4px 10px !important;
+}
+
+@media (max-width: 680px) {
+  .kitchen-split {
+    flex-direction: column;
+  }
+  .kitchen-split__section--recent {
+    width: 100%;
+  }
+}
+

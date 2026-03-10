@@ -166,7 +166,7 @@ const Badge = ({ children, variant = 'default' }) => (
 // ─── Recipe Summary Card ───────────────────────────────────────────────────
 const toNum = (v) => { const n = Number(v); return (!isNaN(n) && v !== '' && v !== null && v !== undefined) ? n : null; };
 
-const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked, showScore }) => {
+const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked, showScore, onConvertRef }) => {
   const { name, coverImage, cuisine, time } = recipe;
   const calories = toNum(recipe.calories);
   const protein  = toNum(recipe.protein);
@@ -174,13 +174,17 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
   const canMakeNow = Boolean(match?.canMake);
   const tags = recipe.tags || [];
   const progress = recipe.recipe_incomplete ? '🚧' : recipe.status === 'needs tweaking' ? '🔧' : recipe.status === 'complete' ? '✅' : recipe.status === 'to try' ? '🔖' : null;
+  const isCookbookRef = Boolean(recipe.cookbook && (!recipe.ingredients || recipe.ingredients.length === 0) && !recipe.status);
 
   return (
-    <article className="recipe-card" onClick={() => onClick(recipe)}>
+    <article className={`recipe-card ${isCookbookRef ? 'recipe-card--cb-ref' : ''}`} onClick={() => onClick(recipe)}>
       <div className="recipe-card__image">
         {coverImage
           ? <img src={coverImage} alt={name} loading="lazy" />
           : <div className="recipe-card__image-placeholder">No photo</div>}
+        {isCookbookRef && (
+          <div className="recipe-card__cb-badge">📖 Cookbook Ref</div>
+        )}
         {showScore && matchScore !== null && (
           <div className={`recipe-card__score ${canMakeNow ? 'recipe-card__score--ready' : ''}`}>
             {pct(matchScore)}%
@@ -211,6 +215,16 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
           <h3 className="recipe-card__title">{name}</h3>
           {cuisine && <span className="recipe-card__cuisine-tag">{cuisine}</span>}
         </div>
+        {isCookbookRef && recipe.cookbook && (
+          <div className="recipe-card__cb-ref-info">
+            <span>See <em>{recipe.cookbook}</em>{recipe.reference ? ` · p. ${recipe.reference}` : ''}</span>
+            {onConvertRef && (
+              <button className="recipe-card__convert-btn" onClick={e => { e.stopPropagation(); onConvertRef(recipe); }} title="Convert to full recipe">
+                ✨ Convert to Recipe
+              </button>
+            )}
+          </div>
+        )}
         <div className="recipe-card__stats">
           {time && <span className="recipe-card__stat"><span className="recipe-card__stat-icon">⏱</span>{time}</span>}
           {calories !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon">🔥</span>{Math.round(calories)} kcal</span>}
@@ -1867,35 +1881,11 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
         )}
       </div>
 
-      {/* Recently Used */}
-      {recentIngredients.length > 0 && (
-        <div className="fridge-group fridge-group--recent">
-          <div className="fridge-group__header">
-            <h3 className="fridge-group__title">🕐 Recently Used</h3>
-          </div>
-          <div className="fridge-chips">
-            {recentIngredients.map(ing => {
-              const isOn = allSelected.has(ing.name.toLowerCase());
-              return (
-                <div key={ing.name} className="fridge-ing-wrap">
-                  <div className="fridge-chip-group">
-                    <button className={`chip ${isOn ? 'chip--selected' : ''}`} onClick={() => toggle(ing.name, typeOverrides[ing.name] ?? ing.type)}>
-                      {isOn && <span className="chip__check">✓</span>}
-                      {ing.name}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── HAVE ── */}
+      {/* ── ON HAND + RECENTLY USED ── */}
       <div className="kitchen-split">
         <div className="kitchen-split__section kitchen-split__section--have">
           <div className="kitchen-split__header">
-            <h2 className="kitchen-split__title">✅ I Have <span className="kitchen-split__count">{haveList.length}</span></h2>
+            <h2 className="kitchen-split__title">✅ On Hand <span className="kitchen-split__count">{haveList.length}</span></h2>
           </div>
           <div className="fridge-groups">
             {ALL_TYPES.filter(t => haveGrouped[t]?.length > 0).map(t => renderGroup(t, haveGrouped[t], 'have'))}
@@ -1905,18 +1895,40 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
           </div>
         </div>
 
-        {/* ── MISSING ── */}
-        <div className="kitchen-split__section kitchen-split__section--missing">
-          <button className="kitchen-split__header kitchen-split__header--btn" onClick={() => setMissingCollapsed(p => !p)}>
-            <h2 className="kitchen-split__title">❌ Missing <span className="kitchen-split__count">{missingList.length}</span></h2>
-            <span className={`fridge-group__arrow ${missingCollapsed ? '' : 'fridge-group__arrow--open'}`}>▾</span>
-          </button>
-          {!missingCollapsed && (
-            <div className="fridge-groups">
-              {ALL_TYPES.filter(t => missingGrouped[t]?.length > 0).map(t => renderGroup(t, missingGrouped[t], 'missing'))}
+        {/* Recently Used — small card, right-aligned */}
+        {recentIngredients.length > 0 && (
+          <div className="kitchen-split__section kitchen-split__section--recent">
+            <div className="kitchen-split__header">
+              <h2 className="kitchen-split__title">🕐 Recently Used</h2>
             </div>
-          )}
-        </div>
+            <div className="fridge-chips fridge-chips--compact">
+              {recentIngredients.map(ing => {
+                const isOn = allSelected.has(ing.name.toLowerCase());
+                return (
+                  <div key={ing.name} className="fridge-ing-wrap">
+                    <button className={`chip chip--sm ${isOn ? 'chip--selected' : ''}`} onClick={() => toggle(ing.name, typeOverrides[ing.name] ?? ing.type)}>
+                      {isOn && <span className="chip__check">✓</span>}
+                      {ing.name}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── MISSING ── */}
+      <div className="kitchen-missing-section">
+        <button className="kitchen-split__header kitchen-split__header--btn" onClick={() => setMissingCollapsed(p => !p)}>
+          <h2 className="kitchen-split__title">❌ Missing <span className="kitchen-split__count">{missingList.length}</span></h2>
+          <span className={`fridge-group__arrow ${missingCollapsed ? '' : 'fridge-group__arrow--open'}`}>▾</span>
+        </button>
+        {!missingCollapsed && (
+          <div className="fridge-groups">
+            {ALL_TYPES.filter(t => missingGrouped[t]?.length > 0).map(t => renderGroup(t, missingGrouped[t], 'missing'))}
+          </div>
+        )}
       </div>
     </main>
   );
@@ -2333,22 +2345,66 @@ const COOKBOOK_SORTS = [
 ];
 
 // ─── Add Reference Modal ─────────────────────────────────────────────────────
-const AddReferenceModal = ({ onSave, onClose, allTags }) => {
-  const [name, setName]   = useState('');
-  const [page, setPage]   = useState('');
-  const [image, setImage] = useState('');
-  const [tags, setTags]   = useState([]);
-  const [imgErr, setImgErr] = useState(false);
+const AddReferenceModal = ({ onSave, onClose, allTags, cookbookTitle = '' }) => {
+  const [name, setName]       = useState('');
+  const [page, setPage]       = useState('');
+  const [image, setImage]     = useState('');
+  const [tags, setTags]       = useState([]);
+  const [cuisine, setCuisine] = useState('');
+  const [time, setTime]       = useState('');
+  const [servings, setServings] = useState('');
+  const [calories, setCalories] = useState('');
+  const [protein, setProtein]   = useState('');
+  const [fiber, setFiber]       = useState('');
+  const [status, setStatus]     = useState('');
+  const [saving, setSaving]     = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [imgErr, setImgErr]     = useState(false);
+
   const toggle = t => setTags(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]);
-  const save = () => { if (!name.trim()) return; onSave({ name: name.trim(), page: page.trim(), image: image.trim(), tags, recipeId: null, addedAt: Date.now() }); };
+
+  // Save directly to DB so it gets a real recipe_id for cook_log
+  const save = async () => {
+    if (!name.trim()) return;
+    setSaving(true); setSaveError(null);
+    try {
+      const payload = {
+        details: {
+          name: name.trim(),
+          cuisine: cuisine || null,
+          time: time.trim() || null,
+          servings: servings.trim() || null,
+          calories: calories !== '' ? Number(calories) : null,
+          protein:  protein  !== '' ? Number(protein)  : null,
+          fiber:    fiber    !== '' ? Number(fiber)     : null,
+          cover_image_url: image.trim() || null,
+          cookbook: cookbookTitle || null,
+          reference: page.trim() || null,
+          status: status || 'to try',
+          tags,
+        },
+        ingredients: [],
+        instructions: [],
+        notes: [],
+      };
+      const res = await fetch(`${API}/api/recipes`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+      onSave({ name: name.trim(), page: page.trim(), image: image.trim(), tags, recipeId: data.recipe.id, addedAt: Date.now() });
+    } catch (e) { setSaveError(e.message); setSaving(false); }
+  };
+
   return (
     <div className="create-modal-overlay" onClick={onClose}>
-      <div className="create-modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+      <div className="create-modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title">📌 Add Reference</h2>
           <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
         <div className="create-modal__body" style={{ gap: 14 }}>
+          {/* Name + Page */}
           <div className="create-modal__field">
             <label className="create-modal__field-label">Recipe name <span className="create-modal__required">*</span></label>
             <input className="editor-input create-modal__name-input" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Roast Chicken" autoFocus onKeyDown={e => e.key === 'Enter' && save()} />
@@ -2358,28 +2414,86 @@ const AddReferenceModal = ({ onSave, onClose, allTags }) => {
               <label className="create-modal__field-label">Page number</label>
               <input className="editor-input" value={page} onChange={e => setPage(e.target.value)} placeholder="e.g. 142" />
             </div>
+            <div className="create-modal__field" style={{ flex:1 }}>
+              <label className="create-modal__field-label">⏱ Time</label>
+              <input className="editor-input" value={time} onChange={e => setTime(e.target.value)} placeholder="e.g. 45 mins" />
+            </div>
+            <div className="create-modal__field" style={{ flex:1 }}>
+              <label className="create-modal__field-label">🍽 Servings</label>
+              <input className="editor-input" value={servings} onChange={e => setServings(e.target.value)} placeholder="e.g. 4" />
+            </div>
           </div>
+
+          {/* Nutrition row */}
+          <div style={{ display:'flex', gap:12 }}>
+            <div className="create-modal__field" style={{ flex:1 }}>
+              <label className="create-modal__field-label">🔥 Calories</label>
+              <input className="editor-input" type="number" value={calories} onChange={e => setCalories(e.target.value)} placeholder="kcal" />
+            </div>
+            <div className="create-modal__field" style={{ flex:1 }}>
+              <label className="create-modal__field-label">💪 Protein (g)</label>
+              <input className="editor-input" type="number" value={protein} onChange={e => setProtein(e.target.value)} placeholder="g" />
+            </div>
+            <div className="create-modal__field" style={{ flex:1 }}>
+              <label className="create-modal__field-label">🌿 Fiber (g)</label>
+              <input className="editor-input" type="number" value={fiber} onChange={e => setFiber(e.target.value)} placeholder="g" />
+            </div>
+          </div>
+
+          {/* Image */}
           <div className="create-modal__field">
             <label className="create-modal__field-label">Image URL <span style={{opacity:.5,fontWeight:400}}>(optional)</span></label>
             <input className="editor-input" value={image} onChange={e => { setImage(e.target.value); setImgErr(false); }} placeholder="https://…" />
             {image && !imgErr && <img src={image} alt="" onError={() => setImgErr(true)} style={{ width:72, height:72, objectFit:'cover', borderRadius:8, marginTop:6, border:'1.5px solid var(--border)' }} />}
           </div>
-          {allTags.length > 0 && (
-            <div className="create-modal__field">
-              <label className="create-modal__field-label">Tags</label>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:6 }}>
-                {allTags.map(t => (
-                  <button key={t} className={`chip ${tags.includes(t) ? 'chip--selected' : ''}`} onClick={() => toggle(t)} type="button">
-                    {tags.includes(t) && <span className="chip__check">✓</span>}{t}
-                  </button>
-                ))}
-              </div>
+
+          {/* Cuisine chips */}
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">🌍 Cuisine</label>
+            <div className="picker__chips" style={{ marginTop:6 }}>
+              {ALL_CUISINES.map(c => (
+                <button key={c} className={`chip ${cuisine === c ? 'chip--selected' : ''}`} onClick={() => setCuisine(p => p === c ? '' : c)} type="button">
+                  {cuisine === c && <span className="chip__check">✓</span>}{CUISINE_EMOJI[c] || '🌍'} {c}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+
+          {/* Status/Progress chips */}
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Progress</label>
+            <div className="picker__chips" style={{ marginTop:6 }}>
+              {[
+                { key: 'to try',        label: '🔖 To Try' },
+                { key: 'complete',      label: '✅ Complete' },
+                { key: 'needs tweaking',label: '🔧 Needs Tweaking' },
+              ].map(({ key, label }) => (
+                <button key={key} className={`chip ${status === key ? 'chip--selected' : ''}`} onClick={() => setStatus(p => p === key ? '' : key)} type="button">
+                  {status === key && <span className="chip__check">✓</span>}{label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tag chips */}
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Tags</label>
+            <div className="picker__chips" style={{ marginTop:6 }}>
+              {TAG_FILTERS.map(({ key, label }) => (
+                <button key={key} className={`chip ${tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggle(key)} type="button">
+                  {tags.includes(key) && <span className="chip__check">✓</span>}{label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {saveError && <p className="editor-error">⚠️ {saveError}</p>}
         </div>
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn--primary" onClick={save} disabled={!name.trim()}>+ Add Reference</button>
+          <button className="btn btn--primary" onClick={save} disabled={!name.trim() || saving}>
+            {saving ? 'Adding…' : '+ Add Reference'}
+          </button>
         </div>
       </div>
     </div>
@@ -2477,21 +2591,63 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
   const updateNote = (id, v) => setNotesList(prev => prev.map(n => n._id === id ? { ...n, text: v } : n));
   const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id));
 
-  const groupLabels = [...new Set(ings.map(i => i.group_label).filter(Boolean))];
+  const groupLabels = [...new Set(ings.filter(i => !i._isGroup).map(i => i.group_label).filter(Boolean))];
+
+  const calcNutrition = (ingredients) => {
+    const NUTRITION_DB = {
+      'chicken breast': { cal: 165, prot: 31, fiber: 0 }, 'chicken': { cal: 165, prot: 31, fiber: 0 },
+      'beef': { cal: 250, prot: 26, fiber: 0 }, 'salmon': { cal: 208, prot: 20, fiber: 0 },
+      'egg': { cal: 78, prot: 6, fiber: 0, perUnit: true }, 'eggs': { cal: 78, prot: 6, fiber: 0, perUnit: true },
+      'pasta': { cal: 157, prot: 6, fiber: 2 }, 'rice': { cal: 130, prot: 3, fiber: 0.4 },
+      'broccoli': { cal: 34, prot: 3, fiber: 3 }, 'spinach': { cal: 23, prot: 3, fiber: 2 },
+      'onion': { cal: 40, prot: 1, fiber: 2 }, 'garlic': { cal: 4, prot: 0.2, fiber: 0.1, perUnit: true },
+      'potato': { cal: 87, prot: 2, fiber: 2 }, 'butter': { cal: 717, prot: 1, fiber: 0 },
+      'olive oil': { cal: 884, prot: 0, fiber: 0 }, 'oil': { cal: 884, prot: 0, fiber: 0 },
+      'flour': { cal: 364, prot: 10, fiber: 3 }, 'milk': { cal: 61, prot: 3, fiber: 0 },
+      'lentils': { cal: 116, prot: 9, fiber: 8 }, 'chickpeas': { cal: 164, prot: 9, fiber: 7 },
+    };
+    const UNIT_GRAMS = { 'g': 1, 'kg': 1000, 'oz': 28, 'lb': 454, 'cup': 240, 'cups': 240, 'ml': 1, 'l': 1000, 'tbsp': 15, 'tsp': 5 };
+    let totalCal = 0, totalProt = 0, totalFiber = 0, matched = 0;
+    for (const ing of ingredients.filter(i => !i._isGroup)) {
+      const name = (ing.name || '').toLowerCase().trim();
+      const entry = Object.entries(NUTRITION_DB).find(([k]) => name.includes(k));
+      if (!entry) continue;
+      const [, nutr] = entry;
+      const amount = parseFloat(ing.amount) || 1;
+      const unit = (ing.unit || '').toLowerCase().trim();
+      const unitG = nutr.perUnit ? 100 : (UNIT_GRAMS[unit] || 100);
+      const factor = (amount * unitG) / 100;
+      totalCal += nutr.cal * factor; totalProt += nutr.prot * factor; totalFiber += nutr.fiber * factor;
+      matched++;
+    }
+    if (matched === 0) return { calories: null, protein: null, fiber: null };
+    return { calories: Math.round(totalCal), protein: Math.round(totalProt), fiber: Math.round(totalFiber) };
+  };
 
   const save = async () => {
     if (!details.name.trim()) { setSaveError('Recipe name is required.'); return; }
     setSaving(true); setSaveError(null);
     try {
+      const nutrition = calcNutrition(ings);
+      // Flatten groups
+      let grp = '';
+      const flatIngs = ings.map(i => {
+        if (i._isGroup) { grp = i.name || ''; return null; }
+        return { ...i, group_label: grp };
+      }).filter(Boolean);
+
       const payload = {
         details: {
           name: details.name, cuisine: details.cuisine, time: details.time,
-          servings: details.servings, calories: details.calories, protein: details.protein,
+          servings: details.servings,
+          calories: nutrition.calories,
+          protein: nutrition.protein,
+          fiber: nutrition.fiber,
           cover_image_url: details.cover_image_url,
           cookbook: details.cookbook, page_number: details.reference,
           status: details.status, recipe_incomplete: details.recipe_incomplete, tags: details.tags,
         },
-        ingredients: ings.map((i, idx) => ({ ...i, order_index: idx })),
+        ingredients: flatIngs.map((i, idx) => ({ ...i, order_index: idx })),
         instructions: steps.map((s, idx) => ({ ...s, step_number: idx + 1 })),
         notes: notesList.map((n, idx) => ({ ...n, order_index: idx })),
       };
@@ -2534,15 +2690,8 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
               onChange={e => setDetail('name', e.target.value)} placeholder="e.g. Grandma's Lasagne" autoFocus />
           </div>
 
-          {/* Meta row */}
-          <div className="create-modal__meta-grid">
-            <div className="create-modal__field">
-              <label className="create-modal__field-label">🌍 Cuisine</label>
-              <select className="editor-input editor-select" value={details.cuisine} onChange={e => setDetail('cuisine', e.target.value)}>
-                <option value="">— none —</option>
-                {ALL_CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
+          {/* Time + Servings */}
+          <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <div className="create-modal__field">
               <label className="create-modal__field-label">⏱ Time</label>
               <input className="editor-input" value={details.time} onChange={e => setDetail('time', e.target.value)} placeholder="45 mins" />
@@ -2551,19 +2700,24 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
               <label className="create-modal__field-label">🍽 Servings</label>
               <input className="editor-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" />
             </div>
-            <div className="create-modal__field">
-              <label className="create-modal__field-label">🔥 Calories</label>
-              <input className="editor-input" type="number" value={details.calories} onChange={e => setDetail('calories', e.target.value)} placeholder="kcal" />
-            </div>
-            <div className="create-modal__field">
-              <label className="create-modal__field-label">💪 Protein (g)</label>
-              <input className="editor-input" type="number" value={details.protein} onChange={e => setDetail('protein', e.target.value)} placeholder="g" />
+          </div>
+
+          {/* Cuisine chips */}
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">🌍 Cuisine</label>
+            <div className="picker__chips" style={{ marginTop: 6 }}>
+              {ALL_CUISINES.map(c => (
+                <button key={c} className={`chip ${details.cuisine === c ? 'chip--selected' : ''}`}
+                  onClick={() => setDetail('cuisine', details.cuisine === c ? '' : c)} type="button">
+                  {details.cuisine === c && <span className="chip__check">✓</span>}{CUISINE_EMOJI[c] || ''} {c}
+                </button>
+              ))}
             </div>
           </div>
 
           {/* Tags */}
           <div className="create-modal__field">
-            <label className="create-modal__field-label">Tags</label>
+            <label className="create-modal__field-label">🏷 Tags</label>
             <div className="picker__chips" style={{ marginTop: 6 }}>
               {TAG_FILTERS.map(({ key, label }) => (
                 <button key={key} className={`chip ${details.tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggleTag(key)}>
@@ -2573,33 +2727,64 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
             </div>
           </div>
 
-          {/* Ingredients */}
+          {/* Progress */}
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">📋 Progress</label>
+            <div className="picker__chips" style={{ marginTop: 6 }}>
+              {[
+                { key: 'to try', label: '🔖 To Try' },
+                { key: 'complete', label: '✅ Complete' },
+                { key: 'needs tweaking', label: '🔧 Needs Tweaking' },
+              ].map(({ key, label }) => (
+                <button key={key} className={`chip ${details.status === key ? 'chip--selected' : ''}`}
+                  onClick={() => setDetail('status', details.status === key ? '' : key)} type="button">
+                  {details.status === key && <span className="chip__check">✓</span>}{label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <p className="create-modal__field-hint">💡 Calories, protein &amp; fiber will be auto-calculated from your ingredients</p>
+
+          {/* Ingredients — group style */}
           <div className="create-modal__field">
             <label className="create-modal__field-label">Ingredients</label>
             <datalist id="cv-group-labels">{groupLabels.map(l => <option key={l} value={l} />)}</datalist>
-            {ings.length > 0 && (
-              <div className="editor-ing-header" style={{ marginBottom: 4 }}>
-                <span>Amount</span><span>Unit</span><span>Name</span><span>Group</span><span>Prep note</span><span>Opt?</span><span></span>
-              </div>
-            )}
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onIngDragEnd}>
               <SortableContext items={ings.map(i => i._id)} strategy={verticalListSortingStrategy}>
-                {ings.map(ing => (
-                  <SortableItem key={ing._id} id={ing._id}>
-                    <div className="editor-ing-row">
-                      <input className="editor-input editor-input--sm" value={ing.amount} onChange={e => updateIng(ing._id, 'amount', e.target.value)} placeholder="2" />
-                      <UnitAutocomplete value={ing.unit} onChange={v => updateIng(ing._id, 'unit', v)} />
-                      <IngredientAutocomplete value={ing.name} onChange={v => updateIng(ing._id, 'name', v)} allIngredients={allIngredients.filter(Boolean)} />
-                      <input className="editor-input editor-input--sm" value={ing.group_label || ''} onChange={e => updateIng(ing._id, 'group_label', e.target.value)} placeholder="e.g. Sauce" list="cv-group-labels" />
-                      <input className="editor-input" value={ing.prep_note || ''} onChange={e => updateIng(ing._id, 'prep_note', e.target.value)} placeholder="finely chopped" />
-                      <button className={`editor-optional-btn ${ing.optional ? 'editor-optional-btn--on' : ''}`} onClick={() => updateIng(ing._id, 'optional', !ing.optional)} title="Optional">{ing.optional ? '✓' : '○'}</button>
-                      <button className="editor-remove-btn" onClick={() => removeIng(ing._id)}>✕</button>
-                    </div>
-                  </SortableItem>
-                ))}
+                <div className="ing-flat-list">
+                  {ings.map(ing => {
+                    if (ing._isGroup) return (
+                      <IngGroupRow key={ing._id} ing={ing}
+                        onLabelChange={v => setIngs(prev => prev.map(i => i._id === ing._id ? { ...i, name: v } : i))}
+                        onRemove={() => setIngs(prev => prev.filter(i => i._id !== ing._id))}
+                        onAddIngredient={() => setIngs(prev => {
+                          const grpName = ing.name;
+                          let insertIdx = prev.findIndex(i => i._id === ing._id);
+                          for (let j = insertIdx + 1; j < prev.length; j++) {
+                            if (prev[j]._isGroup) break;
+                            insertIdx = j;
+                          }
+                          const newIng = { _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: grpName };
+                          const next = [...prev]; next.splice(insertIdx + 1, 0, newIng); return next;
+                        })}
+                      />
+                    );
+                    return (
+                      <IngFlatRow key={ing._id} ing={ing}
+                        onUpdate={(k, v) => updateIng(ing._id, k, v)}
+                        onRemove={() => removeIng(ing._id)}
+                        allIngredients={allIngredients.filter(Boolean)}
+                      />
+                    );
+                  })}
+                </div>
               </SortableContext>
             </DndContext>
-            <button className="btn btn--ghost editor-add-btn" onClick={addIng}>+ Add Ingredient</button>
+            <div className="ing-flat-add-row">
+              <button className="btn btn--ghost editor-add-btn" onClick={() => setIngs(prev => [...prev, { _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }])}>+ Add Ingredient</button>
+              <button className="btn btn--ghost editor-add-btn ing-add-group-btn" onClick={() => setIngs(prev => [...prev, { _id: `grp-${Date.now()}`, _isGroup: true, name: 'New Group' }])}>+ Add Group</button>
+            </div>
           </div>
 
           {/* Instructions */}
@@ -2836,7 +3021,7 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
 
   return (
     <main className="view cookbook-detail">
-      {showAddRef   && <AddReferenceModal onSave={e => addEntries([e])} onClose={() => setShowAddRef(false)} allTags={allTags} />}
+      {showAddRef   && <AddReferenceModal onSave={e => addEntries([e])} onClose={() => setShowAddRef(false)} allTags={allTags} cookbookTitle={cookbook.title} />}
       {showQuickAdd && <QuickAddModal onSave={addEntries} onClose={() => setShowQuickAdd(false)} />}
       {convertEntry && (
         <ConvertRecipeModal
@@ -3111,7 +3296,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
   const [showModal, setShowModal] = useState(false);
 
   const emptyForm = () => ({
-    name: '', cuisine: '', time: '', servings: '', calories: '', protein: '',
+    name: '', cuisine: '', time: '', servings: '',
     cover_image_url: '', cookbook: '', reference: '', status: '', recipe_incomplete: false, tags: [],
   });
 
@@ -3152,8 +3337,8 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
 
   const openModal = () => {
     setDetails(emptyForm());
-    setIngs([]);
-    setSteps([]);
+    setIngs([{ _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]);
+    setSteps([{ _id: `step-${Date.now()}`, step_number: 1, body_text: '' }]);
     setNotesList([]);
     setSaveError(null);
     setImgPreviewError(false);
@@ -3164,16 +3349,59 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
   const save = async () => {
     if (!details.name.trim()) { setSaveError('Recipe name is required.'); return; }
     setSaving(true); setSaveError(null);
+
+    // Auto-calculate nutrition from ingredients
+    const NUTRITION_DB = {
+      'chicken breast': { cal: 165, prot: 31, fiber: 0 }, 'chicken': { cal: 165, prot: 31, fiber: 0 },
+      'beef': { cal: 250, prot: 26, fiber: 0 }, 'salmon': { cal: 208, prot: 20, fiber: 0 },
+      'tuna': { cal: 132, prot: 29, fiber: 0 }, 'egg': { cal: 78, prot: 6, fiber: 0, perUnit: true },
+      'eggs': { cal: 78, prot: 6, fiber: 0, perUnit: true }, 'pasta': { cal: 157, prot: 6, fiber: 2 },
+      'rice': { cal: 130, prot: 3, fiber: 0.4 }, 'broccoli': { cal: 34, prot: 3, fiber: 3 },
+      'spinach': { cal: 23, prot: 3, fiber: 2 }, 'onion': { cal: 40, prot: 1, fiber: 2 },
+      'garlic': { cal: 4, prot: 0.2, fiber: 0.1, perUnit: true }, 'tomato': { cal: 22, prot: 1, fiber: 1.5 },
+      'potato': { cal: 87, prot: 2, fiber: 2 }, 'butter': { cal: 717, prot: 1, fiber: 0 },
+      'olive oil': { cal: 884, prot: 0, fiber: 0 }, 'oil': { cal: 884, prot: 0, fiber: 0 },
+      'flour': { cal: 364, prot: 10, fiber: 3 }, 'sugar': { cal: 387, prot: 0, fiber: 0 },
+      'milk': { cal: 61, prot: 3, fiber: 0 }, 'cream': { cal: 340, prot: 3, fiber: 0 },
+      'cheese': { cal: 400, prot: 25, fiber: 0 }, 'lentils': { cal: 116, prot: 9, fiber: 8 },
+      'chickpeas': { cal: 164, prot: 9, fiber: 7 }, 'beans': { cal: 127, prot: 8, fiber: 7 },
+      'oats': { cal: 389, prot: 17, fiber: 11 },
+    };
+    const UNIT_GRAMS = { 'g': 1, 'kg': 1000, 'oz': 28, 'lb': 454, 'cup': 240, 'cups': 240, 'ml': 1, 'l': 1000, 'tbsp': 15, 'tsp': 5 };
+    let totalCal = 0, totalProt = 0, totalFiber = 0, matched = 0;
+    for (const ing of ings.filter(i => !i._isGroup)) {
+      const name = (ing.name || '').toLowerCase().trim();
+      const entry = Object.entries(NUTRITION_DB).find(([k]) => name.includes(k));
+      if (!entry) continue;
+      const [, nutr] = entry;
+      const amount = parseFloat(ing.amount) || 1;
+      const unit = (ing.unit || '').toLowerCase().trim();
+      const unitG = nutr.perUnit ? 100 : (UNIT_GRAMS[unit] || 100);
+      const factor = (amount * unitG) / 100;
+      totalCal += nutr.cal * factor; totalProt += nutr.prot * factor; totalFiber += nutr.fiber * factor;
+      matched++;
+    }
+
     try {
+      // Flatten grouped ingredients
+      let grp = '';
+      const flatIngs = ings.map(i => {
+        if (i._isGroup) { grp = i.name || ''; return null; }
+        return { ...i, group_label: grp };
+      }).filter(Boolean);
+
       const payload = {
         details: {
           name: details.name, cuisine: details.cuisine, time: details.time,
-          servings: details.servings, calories: details.calories, protein: details.protein,
+          servings: details.servings,
+          calories: matched > 0 ? Math.round(totalCal) : null,
+          protein: matched > 0 ? Math.round(totalProt) : null,
+          fiber: matched > 0 ? Math.round(totalFiber) : null,
           cover_image_url: details.cover_image_url,
           cookbook: details.cookbook, page_number: details.reference,
           status: details.status, recipe_incomplete: details.recipe_incomplete, tags: details.tags,
         },
-        ingredients: ings.map((i, idx) => ({ ...i, order_index: idx })),
+        ingredients: flatIngs.map((i, idx) => ({ ...i, order_index: idx })),
         instructions: steps.map((s, idx) => ({ ...s, step_number: idx + 1 })),
         notes: notesList.map((n, idx) => ({ ...n, order_index: idx })),
       };
@@ -3248,15 +3476,8 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
                   onChange={e => setDetail('name', e.target.value)} placeholder="e.g. Grandma's Lasagne" autoFocus />
               </div>
 
-              {/* Meta row */}
-              <div className="create-modal__meta-grid">
-                <div className="create-modal__field">
-                  <label className="create-modal__field-label">🌍 Cuisine</label>
-                  <select className="editor-input editor-select" value={details.cuisine} onChange={e => setDetail('cuisine', e.target.value)}>
-                    <option value="">— none —</option>
-                    {ALL_CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
+              {/* Time + Servings */}
+              <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
                 <div className="create-modal__field">
                   <label className="create-modal__field-label">⏱ Time</label>
                   <input className="editor-input" value={details.time} onChange={e => setDetail('time', e.target.value)} placeholder="45 mins" />
@@ -3265,55 +3486,112 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
                   <label className="create-modal__field-label">🍽 Servings</label>
                   <input className="editor-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" />
                 </div>
-                <div className="create-modal__field">
-                  <label className="create-modal__field-label">🔥 Calories</label>
-                  <input className="editor-input" type="number" value={details.calories} onChange={e => setDetail('calories', e.target.value)} placeholder="kcal" />
-                </div>
-                <div className="create-modal__field">
-                  <label className="create-modal__field-label">💪 Protein (g)</label>
-                  <input className="editor-input" type="number" value={details.protein} onChange={e => setDetail('protein', e.target.value)} placeholder="g" />
+              </div>
+
+              {/* Cuisine chips */}
+              <div className="create-modal__field">
+                <label className="create-modal__field-label">🌍 Cuisine</label>
+                <div className="picker__chips" style={{ marginTop: 6 }}>
+                  {ALL_CUISINES.map(c => (
+                    <button key={c} className={`chip ${details.cuisine === c ? 'chip--selected' : ''}`}
+                      onClick={() => setDetail('cuisine', details.cuisine === c ? '' : c)} type="button">
+                      {details.cuisine === c && <span className="chip__check">✓</span>}{CUISINE_EMOJI[c] || ''} {c}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               {/* Tags */}
               <div className="create-modal__field">
-                <label className="create-modal__field-label">Tags</label>
+                <label className="create-modal__field-label">🏷 Tags</label>
                 <div className="picker__chips" style={{ marginTop: 6 }}>
                   {TAG_FILTERS.map(({ key, label }) => (
-                    <button key={key} className={`chip ${details.tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggleTag(key)}>
+                    <button key={key} className={`chip ${details.tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggleTag(key)} type="button">
                       {details.tags.includes(key) && <span className="chip__check">✓</span>}{label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Ingredients */}
+              {/* Progress */}
+              <div className="create-modal__field">
+                <label className="create-modal__field-label">📋 Progress</label>
+                <div className="picker__chips" style={{ marginTop: 6 }}>
+                  {[
+                    { key: '', label: '— None' },
+                    { key: 'complete', label: '✅ Complete' },
+                    { key: 'needs tweaking', label: '🔧 Needs Tweaking' },
+                    { key: 'to try', label: '🔖 To Try' },
+                  ].map(({ key, label }) => (
+                    <button key={key}
+                      className={`chip ${details.status === key && !details.recipe_incomplete ? 'chip--selected' : ''}`}
+                      onClick={() => { setDetail('status', key); setDetail('recipe_incomplete', false); }} type="button">
+                      {details.status === key && !details.recipe_incomplete && <span className="chip__check">✓</span>}{label}
+                    </button>
+                  ))}
+                  <button className={`chip ${details.recipe_incomplete ? 'chip--selected' : ''}`}
+                    onClick={() => { setDetail('recipe_incomplete', !details.recipe_incomplete); setDetail('status', ''); }} type="button">
+                    {details.recipe_incomplete && <span className="chip__check">✓</span>}🚧 Incomplete
+                  </button>
+                </div>
+              </div>
+
+              {/* Nutrition note */}
+              <p className="create-modal__field-hint" style={{ marginTop: -4 }}>
+                💡 Calories, protein &amp; fiber will be auto-calculated from your ingredients
+              </p>
+
+              {/* Ingredients — group-style like edit modal */}
               <div className="create-modal__field">
                 <label className="create-modal__field-label">Ingredients</label>
-                <datalist id="cm-group-labels">{groupLabels.map(l => <option key={l} value={l} />)}</datalist>
-                {ings.length > 0 && (
-                  <div className="editor-ing-header" style={{ marginBottom: 4 }}>
-                    <span>Amount</span><span>Unit</span><span>Name</span><span>Group</span><span>Prep note</span><span>Opt?</span><span></span>
-                  </div>
-                )}
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onIngDragEnd}>
                   <SortableContext items={ings.map(i => i._id)} strategy={verticalListSortingStrategy}>
-                    {ings.map(ing => (
-                      <SortableItem key={ing._id} id={ing._id}>
-                        <div className="editor-ing-row">
-                          <input className="editor-input editor-input--sm" value={ing.amount} onChange={e => updateIng(ing._id, 'amount', e.target.value)} placeholder="2" />
-                          <UnitAutocomplete value={ing.unit} onChange={v => updateIng(ing._id, 'unit', v)} />
-                          <IngredientAutocomplete value={ing.name} onChange={v => updateIng(ing._id, 'name', v)} allIngredients={allIngredients.filter(Boolean)} />
-                          <input className="editor-input editor-input--sm" value={ing.group_label || ''} onChange={e => updateIng(ing._id, 'group_label', e.target.value)} placeholder="e.g. Sauce" list="cm-group-labels" />
-                          <input className="editor-input" value={ing.prep_note || ''} onChange={e => updateIng(ing._id, 'prep_note', e.target.value)} placeholder="finely chopped" />
-                          <button className={`editor-optional-btn ${ing.optional ? 'editor-optional-btn--on' : ''}`} onClick={() => updateIng(ing._id, 'optional', !ing.optional)} title="Optional">{ing.optional ? '✓' : '○'}</button>
-                          <button className="editor-remove-btn" onClick={() => removeIng(ing._id)}>✕</button>
+                    <div className="ing-flat-list">
+                      <div className="ing-flat-header ing-flat-header--desktop">
+                        <span className="ing-flat-header__drag" />
+                        <div className="ing-flat-header__cols">
+                          <span className="ing-flat-header__qty-col">Qty</span>
+                          <span className="ing-flat-header__unit-col">Unit</span>
+                          <span className="ing-flat-header__name-col">Ingredient</span>
+                          <span className="ing-flat-header__prep-col">Prep note</span>
+                          <span className="ing-flat-header__opt-col">Optional</span>
                         </div>
-                      </SortableItem>
-                    ))}
+                        <span className="ing-flat-header__rm" />
+                      </div>
+                      {ings.map((ing) => {
+                        if (ing._isGroup) {
+                          return (
+                            <IngGroupRow key={ing._id} ing={ing}
+                              onLabelChange={v => setIngs(prev => prev.map(i => i._id === ing._id ? { ...i, name: v } : i))}
+                              onRemove={() => setIngs(prev => prev.filter(i => i._id !== ing._id))}
+                              onAddIngredient={() => setIngs(prev => {
+                                const groupName = ing.name;
+                                let insertIdx = prev.findIndex(i => i._id === ing._id);
+                                for (let j = insertIdx + 1; j < prev.length; j++) {
+                                  if (prev[j]._isGroup) break;
+                                  insertIdx = j;
+                                }
+                                const newIng = { _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: groupName };
+                                const next = [...prev]; next.splice(insertIdx + 1, 0, newIng); return next;
+                              })}
+                            />
+                          );
+                        }
+                        return (
+                          <IngFlatRow key={ing._id} ing={ing}
+                            onUpdate={(k, v) => updateIng(ing._id, k, v)}
+                            onRemove={() => removeIng(ing._id)}
+                            allIngredients={allIngredients}
+                          />
+                        );
+                      })}
+                    </div>
                   </SortableContext>
                 </DndContext>
-                <button className="btn btn--ghost editor-add-btn" onClick={addIng}>+ Add Ingredient</button>
+                <div className="ing-flat-add-row">
+                  <button className="btn btn--ghost editor-add-btn" onClick={() => setIngs(prev => [...prev, { _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }])}>+ Add Ingredient</button>
+                  <button className="btn btn--ghost editor-add-btn ing-add-group-btn" onClick={() => setIngs(prev => [...prev, { _id: `grp-${Date.now()}`, _isGroup: true, name: 'New Group' }])}>+ Add Group</button>
+                </div>
               </div>
 
               {/* Instructions */}
@@ -3348,7 +3626,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
               </div>
 
               {/* Cookbook reference */}
-              <div className="create-modal__meta-grid">
+              <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
                 <div className="create-modal__field">
                   <label className="create-modal__field-label">📖 Cookbook</label>
                   <CookbookAutocomplete value={details.cookbook} onChange={v => setDetail('cookbook', v)} cookbooks={cookbooks} />
@@ -4007,7 +4285,9 @@ function AppInner() {
                       <RecipeCard key={r.id} recipe={r} match={matchById.get(r.id)} onClick={openRecipe}
                         isHearted={heartedIds.includes(r.id)} onToggleHeart={() => toggleHeart(r.id)}
                         isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)}
-                        showScore={activeProgresses.some(p => p === '__readytocook' || p === '__almostready')} />
+                        showScore={activeProgresses.some(p => p === '__readytocook' || p === '__almostready')}
+                        onConvertRef={(recipe) => setCookingRecipe({ ...recipe, _convertRef: true })}
+                      />
                     ))}
                   </div>
                   {totalPages > 1 && (
