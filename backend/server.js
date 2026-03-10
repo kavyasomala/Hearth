@@ -165,7 +165,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (user.role === 'suspended') return res.status(403).json({ error: 'Your account has been suspended.' });
     if (password !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password' });
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
+    res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name || null, role: user.role } });
   } catch (err) {
     console.error('POST /api/auth/login error:', err);
     res.status(500).json({ error: err.message || 'Failed to login' });
@@ -175,7 +175,7 @@ app.post('/api/auth/login', async (req, res) => {
 // ─── GET /api/auth/me ────────────────────────────────────────────────────────
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
-    const { rows } = await query('SELECT id, username, role FROM users WHERE id = $1', [req.user.id]);
+    const { rows } = await query('SELECT id, username, display_name, role FROM users WHERE id = $1', [req.user.id]);
     if (!rows.length) return res.status(404).json({ error: 'User not found' });
     res.json({ user: rows[0] });
   } catch (err) {
@@ -185,14 +185,14 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 
 // ─── POST /api/auth/create-user (admin only) ────────────────────────────────
 app.post('/api/auth/create-user', authenticateToken, requireAdmin, async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, display_name } = req.body;
   if (!username?.trim() || !password) return res.status(400).json({ error: 'Username and password are required' });
   try {
     const existing = await query('SELECT id FROM users WHERE username = $1', [username.trim().toLowerCase()]);
     if (existing.rows.length) return res.status(409).json({ error: 'Username already taken' });
     const { rows } = await query(
-      `INSERT INTO users (username, password_hash, role) VALUES ($1, $2, 'guest') RETURNING id, username, role`,
-      [username.trim().toLowerCase(), password]
+      `INSERT INTO users (username, display_name, password_hash, role) VALUES ($1, $2, $3, 'guest') RETURNING id, username, display_name, role`,
+      [username.trim().toLowerCase(), display_name?.trim() || null, password]
     );
     await query(`INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`, [rows[0].id]);
     res.status(201).json({ user: rows[0] });
@@ -206,11 +206,22 @@ app.post('/api/auth/create-user', authenticateToken, requireAdmin, async (req, r
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT id, username, role, created_at FROM users ORDER BY created_at ASC`
+      `SELECT id, username, display_name, password_hash AS password, role, created_at FROM users ORDER BY created_at ASC`
     );
     res.json({ users: rows });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// ─── PUT /api/user/display-name ───────────────────────────────────────────────
+app.put('/api/user/display-name', authenticateToken, async (req, res) => {
+  const { display_name } = req.body;
+  try {
+    await query(`UPDATE users SET display_name = $1 WHERE id = $2`, [display_name?.trim() || null, req.user.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update display name' });
   }
 });
 

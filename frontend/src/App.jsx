@@ -812,6 +812,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const isEdit = (s) => editingSection === s;
 
   const startEdit = (section) => {
+    if (!isAdmin) return;
     setSaveError(null);
     if (section === 'title')        setDraftName(recipe.name || '');
     if (section === 'image')        setDraftImageInput(recipe.coverImage || '');
@@ -1169,8 +1170,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 onClick={e => { e.stopPropagation(); onToggleMakeSoon && onToggleMakeSoon(); }}
                 title={isMakeSoon ? 'Remove from Make Soon' : 'Add to Make Soon'}
               >⏱</button>
-              {/* Change photo — pencil icon, same size as heart/stopwatch */}
-              <div className="rp2__photo-btn-wrap">
+              {/* Change photo — admin only */}
+              {isAdmin && <div className="rp2__photo-btn-wrap">
                 <button className="rp2__hero-btn rp2__hero-soon rp2__hero-btn--photo" onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Change photo link">
                   ✎
                 </button>
@@ -1191,7 +1192,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     </div>
                   </div>
                 )}
-              </div>
+              </div>}
 
             </div>
           </div>
@@ -1368,7 +1369,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           ) : (
             <h1 className="rp2__title">{recipe.name}</h1>
           )}
-          <SectionPencil isEditing={isEdit('title')} onEdit={() => startEdit('title')} onSave={() => saveSection('title')} onCancel={cancelEdit} saving={saving} />
+          {isAdmin && <SectionPencil isEditing={isEdit('title')} onEdit={() => startEdit('title')} onSave={() => saveSection('title')} onCancel={cancelEdit} saving={saving} />}
           <button
             className={`rp2__cooking-mode-btn ${stayAwake ? 'rp2__cooking-mode-btn--on' : ''}`}
             onClick={() => setStayAwake(s => !s)}
@@ -1376,7 +1377,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           >
             {stayAwake ? '☀️ Awake' : '☀️ Stay Awake'}
           </button>
-          <button className="rp2__title-delete-btn" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe">🗑</button>
+          {isAdmin && <button className="rp2__title-delete-btn" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe">🗑</button>}
         </div>
 
         {/* ── Dietary Conflict Warnings ── */}
@@ -1512,7 +1513,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         <div className="rp2__ingredients">
           <div className="rp2__section-title-row">
             <h2 className="rp2__section-title rp2__section-title--sm">Ingredients</h2>
-            <button className="section-pencil" onClick={() => { startEdit('ingredients'); setShowIngredientsModal(true); }} title="Edit ingredients">✎</button>
+            {isAdmin && <button className="section-pencil" onClick={() => { startEdit('ingredients'); setShowIngredientsModal(true); }} title="Edit ingredients">✎</button>}
           </div>
 
           {ingredientGroups.length > 0
@@ -1550,7 +1551,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             {!isEdit('instructions') && totalSteps > 0 && (
               <span className="rp2__progress-label rp2__progress-label--right">{doneCount}/{totalSteps} steps</span>
             )}
-            <SectionPencil isEditing={isEdit('instructions')} onEdit={() => startEdit('instructions')} onSave={() => saveSection('instructions')} onCancel={cancelEdit} saving={saving} />
+            {isAdmin && <SectionPencil isEditing={isEdit('instructions')} onEdit={() => startEdit('instructions')} onSave={() => saveSection('instructions')} onCancel={cancelEdit} saving={saving} />}
           </div>
 
           {!isEdit('instructions') && totalSteps > 0 && (
@@ -1628,7 +1629,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             <div className="rp2__notes">
               <div className="rp2__section-title-row">
                 <h2 className="rp2__section-title rp2__section-title--sm">Notes &amp; Tips</h2>
-                <SectionPencil isEditing={isEdit('notes')} onEdit={() => startEdit('notes')} onSave={() => saveSection('notes')} onCancel={cancelEdit} saving={saving} />
+                {isAdmin && <SectionPencil isEditing={isEdit('notes')} onEdit={() => startEdit('notes')} onSave={() => saveSection('notes')} onCancel={cancelEdit} saving={saving} />}
               </div>
 
               {isEdit('notes') ? (
@@ -1656,7 +1657,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             <div className="rp2__cookbook">
               <div className="rp2__section-title-row">
                 <h2 className="rp2__section-title rp2__cookbook-title">📖 Cookbook</h2>
-                <SectionPencil isEditing={isEdit('cookbook')} onEdit={() => startEdit('cookbook')} onSave={() => saveSection('cookbook')} onCancel={cancelEdit} saving={saving} />
+                {isAdmin && <SectionPencil isEditing={isEdit('cookbook')} onEdit={() => startEdit('cookbook')} onSave={() => saveSection('cookbook')} onCancel={cancelEdit} saving={saving} />}
               </div>
               {isEdit('cookbook') ? (
                 <div className="rp2__cookbook-editor">
@@ -2553,7 +2554,56 @@ const STAR_LABELS = ['', "Didn't love it", 'It was okay', 'Pretty good!', 'Reall
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
-const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser, onLogout }) => {
+const AddFriendModal = ({ onClose, onCreated, authFetch }) => {
+  const apiFetch = authFetch || fetch;
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [error, setError] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const handleCreate = async () => {
+    if (!username.trim() || !password) return setError('Username and password are required.');
+    setCreating(true); setError('');
+    try {
+      const res = await apiFetch(`${API}/api/auth/create-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim(), password, display_name: displayName.trim() || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      onCreated(data.user.username);
+      onClose();
+    } catch (e) { setError(e.message); }
+    finally { setCreating(false); }
+  };
+
+  return (
+    <div className="login-modal-overlay" onClick={onClose}>
+      <div className="login-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
+        <div className="login-modal__logo">👥</div>
+        <h2 className="login-modal__title">Add a Friend</h2>
+        <p className="login-modal__sub">Create an account so they can log in and track their own favorites and cooking history.</p>
+        {error && <div className="login-modal__error">{error}</div>}
+        <input className="login-modal__input" type="text" placeholder="Username" value={username}
+          onChange={e => setUsername(e.target.value)} autoCapitalize="none" autoFocus />
+        <input className="login-modal__input" type="text" placeholder="Password" value={password}
+          onChange={e => setPassword(e.target.value)} />
+        <input className="login-modal__input" type="text" placeholder="Display name (optional)" value={displayName}
+          onChange={e => setDisplayName(e.target.value)} />
+        <button className="login-modal__btn" onClick={handleCreate} disabled={creating}>
+          {creating ? 'Creating…' : 'Create Account'}
+        </button>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--warm-gray)', fontSize: '0.85rem', cursor: 'pointer', marginTop: 4 }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser, onLogout, onAuthUserUpdate }) => {
   const apiFetch = authFetch || fetch;
   const isAdmin = authUser?.role === 'admin';
   const [cookHistory, setCookHistory] = useState([]);
@@ -2565,16 +2615,20 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const [historyView, setHistoryView] = useState('timeline');
   const [calendarDate, setCalendarDate] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() }; });
 
+  // Display name editing
+  const [editingDisplayName, setEditingDisplayName] = useState(false);
+  const [draftDisplayName, setDraftDisplayName] = useState('');
+  const [savingDisplayName, setSavingDisplayName] = useState(false);
+
   // Sharing state
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
-  const [newUsername, setNewUsername] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [createError, setCreateError] = useState('');
-  const [createSuccess, setCreateSuccess] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [showAddFriend, setShowAddFriend] = useState(false);
+  const [addFriendSuccess, setAddFriendSuccess] = useState('');
+  const [revealedPasswords, setRevealedPasswords] = useState({});
 
   const toggleDiet = (d) => setDietaryFilters(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+  const toggleReveal = (id) => setRevealedPasswords(p => ({ ...p, [id]: !p[id] }));
 
   useEffect(() => {
     let cancelled = false;
@@ -2606,22 +2660,17 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
     if (sharingOpen && isAdmin) loadUsers();
   }, [sharingOpen]); // eslint-disable-line
 
-  const handleCreateUser = async () => {
-    if (!newUsername.trim() || !newPassword) return setCreateError('Username and password are required.');
-    setCreating(true); setCreateError(''); setCreateSuccess('');
+  const handleSaveDisplayName = async () => {
+    setSavingDisplayName(true);
     try {
-      const res = await apiFetch(`${API}/api/auth/create-user`, {
-        method: 'POST',
+      await apiFetch(`${API}/api/user/display-name`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: newUsername.trim(), password: newPassword }),
+        body: JSON.stringify({ display_name: draftDisplayName.trim() || null }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed');
-      setCreateSuccess(`Account created for ${data.user.username} ✓`);
-      setNewUsername(''); setNewPassword('');
-      loadUsers();
-    } catch (e) { setCreateError(e.message); }
-    finally { setCreating(false); }
+      if (onAuthUserUpdate) onAuthUserUpdate({ ...authUser, display_name: draftDisplayName.trim() || null });
+    } catch {}
+    finally { setSavingDisplayName(false); setEditingDisplayName(false); }
   };
 
   const handleSuspend = async (user) => {
@@ -2694,14 +2743,48 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
 
   return (
     <main className="view profile-view">
+      {showAddFriend && (
+        <AddFriendModal
+          authFetch={authFetch}
+          onClose={() => setShowAddFriend(false)}
+          onCreated={(uname) => { setAddFriendSuccess(`Account created for ${uname} ✓`); loadUsers(); setTimeout(() => setAddFriendSuccess(''), 4000); }}
+        />
+      )}
       {/* ── User header ── */}
       <div className="profile-header">
         <div className="profile-header__avatar" style={{ background: 'var(--terracotta)', color: '#fff', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: 52, height: 52, fontWeight: 700, flexShrink: 0 }}>
-          {authUser?.username?.[0]?.toUpperCase() || '?'}
+          {(authUser?.display_name || authUser?.username)?.[0]?.toUpperCase() || '?'}
         </div>
         <div style={{ flex: 1 }}>
-          <h2 className="profile-header__title">{authUser?.username || 'Your Kitchen'}</h2>
-          <p className="profile-header__sub">{totalRecipes} recipes · {cookHistory.length} times cooked{isAdmin ? ' · admin' : ''}</p>
+          {editingDisplayName ? (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                autoFocus
+                className="login-modal__input"
+                style={{ margin: 0, flex: '1 1 140px', padding: '6px 10px', fontSize: '0.9rem' }}
+                placeholder="Display name (or leave blank to use username)"
+                value={draftDisplayName}
+                onChange={e => setDraftDisplayName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSaveDisplayName(); if (e.key === 'Escape') setEditingDisplayName(false); }}
+              />
+              <button onClick={handleSaveDisplayName} disabled={savingDisplayName} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--terracotta)', color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}>
+                {savingDisplayName ? '…' : 'Save'}
+              </button>
+              <button onClick={() => setEditingDisplayName(false)} style={{ padding: '6px 10px', borderRadius: 8, background: 'none', border: '1px solid var(--border)', color: 'var(--warm-gray)', fontSize: '0.82rem', cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <h2 className="profile-header__title" style={{ margin: 0 }}>{authUser?.display_name || authUser?.username || 'Your Kitchen'}</h2>
+              <button onClick={() => { setDraftDisplayName(authUser?.display_name || ''); setEditingDisplayName(true); }}
+                style={{ background: 'none', border: 'none', color: 'var(--warm-gray)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', lineHeight: 1 }} title="Edit display name">✎</button>
+            </div>
+          )}
+          <p className="profile-header__sub" style={{ marginTop: 2 }}>
+            {authUser?.display_name ? <span style={{ color: 'var(--warm-gray)', fontSize: '0.8rem' }}>@{authUser.username} · </span> : null}
+            {totalRecipes} recipes · {cookHistory.length} times cooked{isAdmin ? ' · admin' : ''}
+          </p>
         </div>
         <button onClick={onLogout} style={{ background: 'none', border: '1.5px solid var(--border)', borderRadius: 999, padding: '6px 16px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--warm-gray)', cursor: 'pointer', flexShrink: 0 }}>
           Sign out
@@ -2815,7 +2898,12 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         {attemptsOpen && (
           <div className="profile-attempts">
             {recipeCounts.length === 0 ? (
-              <p className="profile-empty__text" style={{ padding: '12px 0' }}>No cooking history yet.</p>
+              <div className="profile-settings-body">
+                <div className="profile-empty">
+                  <span className="profile-empty__icon">🔄</span>
+                  <p className="profile-empty__text">No recipe attempts yet. Start cooking to track how often you make each dish!</p>
+                </div>
+              </div>
             ) : (
               <div className="attempts-list attempts-list--scrollable">
                 {recipeCounts.map((item, i) => {
@@ -2850,62 +2938,60 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
           {sharingOpen && (
             <div className="profile-settings-body">
 
-              {/* Add new user */}
-              <div className="settings-section">
-                <h4 className="settings-section__title">➕ Add a Friend</h4>
-                <p className="settings-section__hint">Create an account so they can log in and track their own favorites and cook log.</p>
-                {createError && <div className="login-modal__error" style={{ marginBottom: 10 }}>{createError}</div>}
-                {createSuccess && <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 12px', fontSize: '0.85rem', color: '#166534', marginBottom: 10 }}>{createSuccess}</div>}
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <input
-                    className="login-modal__input"
-                    style={{ flex: '1 1 140px' }}
-                    type="text"
-                    placeholder="Username"
-                    value={newUsername}
-                    onChange={e => setNewUsername(e.target.value)}
-                    autoCapitalize="none"
-                  />
-                  <input
-                    className="login-modal__input"
-                    style={{ flex: '1 1 140px' }}
-                    type="text"
-                    placeholder="Password"
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                  />
-                  <button className="login-modal__btn" style={{ flex: '0 0 auto', marginTop: 0, padding: '10px 20px' }} onClick={handleCreateUser} disabled={creating}>
-                    {creating ? 'Adding…' : 'Add'}
+              {/* Header row: title + Add Friend button */}
+              <div className="settings-section" style={{ marginBottom: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <h4 className="settings-section__title" style={{ margin: 0 }}>👤 Current Users</h4>
+                  <button
+                    onClick={() => { setAddFriendSuccess(''); setShowAddFriend(true); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 999, background: 'var(--terracotta)', color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}
+                  >
+                    ➕ Add Friend
                   </button>
                 </div>
-              </div>
-
-              {/* User list */}
-              <div className="settings-section" style={{ marginBottom: 0 }}>
-                <h4 className="settings-section__title">👤 Current Users</h4>
+                {addFriendSuccess && (
+                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 12px', fontSize: '0.85rem', color: '#166534', marginBottom: 10 }}>
+                    {addFriendSuccess}
+                  </div>
+                )}
                 {usersLoading ? (
                   <p style={{ fontSize: 13, color: 'var(--warm-gray)' }}>Loading…</p>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {users.map(u => (
-                      <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--cream)', borderRadius: 10, border: '1px solid var(--border)' }}>
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: u.role === 'suspended' ? 'var(--light-gray)' : u.role === 'admin' ? 'var(--terracotta)' : 'var(--sage)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                          {u.username?.[0]?.toUpperCase()}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{u.username}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--warm-gray)', textTransform: 'capitalize' }}>{u.role}</div>
-                        </div>
-                        {u.role !== 'admin' && (
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={() => handleSuspend(u)} style={{ fontSize: '0.78rem', padding: '4px 10px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--warm-white)', cursor: 'pointer', color: u.role === 'suspended' ? 'var(--sage)' : 'var(--warm-gray)', fontWeight: 500 }}>
-                              {u.role === 'suspended' ? 'Restore' : 'Suspend'}
-                            </button>
-                            <button onClick={() => handleDelete(u)} style={{ fontSize: '0.78rem', padding: '4px 10px', borderRadius: 999, border: '1px solid #f5c2b8', background: '#fff0ee', cursor: 'pointer', color: 'var(--terracotta-dark)', fontWeight: 500 }}>
-                              Remove
-                            </button>
+                      <div key={u.id} style={{ borderRadius: 10, border: '1px solid var(--border)', background: 'var(--cream)', overflow: 'hidden' }}>
+                        {/* Top row: avatar + name + actions */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
+                          <div style={{ width: 34, height: 34, borderRadius: '50%', background: u.role === 'suspended' ? '#c8c3bc' : u.role === 'admin' ? 'var(--terracotta)' : 'var(--sage)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                            {(u.display_name || u.username)?.[0]?.toUpperCase()}
                           </div>
-                        )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{u.display_name || u.username}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--warm-gray)' }}>
+                              {u.display_name ? `@${u.username} · ` : ''}<span style={{ textTransform: 'capitalize' }}>{u.role}</span>
+                            </div>
+                          </div>
+                          {u.role !== 'admin' && (
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button onClick={() => handleSuspend(u)} style={{ fontSize: '0.78rem', padding: '4px 10px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--warm-white)', cursor: 'pointer', color: u.role === 'suspended' ? 'var(--sage)' : 'var(--warm-gray)', fontWeight: 500 }}>
+                                {u.role === 'suspended' ? 'Restore' : 'Suspend'}
+                              </button>
+                              <button onClick={() => handleDelete(u)} style={{ fontSize: '0.78rem', padding: '4px 10px', borderRadius: 999, border: '1px solid #f5c2b8', background: '#fff0ee', cursor: 'pointer', color: 'var(--terracotta-dark, #b84a2e)', fontWeight: 500 }}>
+                                Remove
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {/* Password row */}
+                        <div style={{ borderTop: '1px solid var(--border)', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--warm-white)' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--warm-gray)', flexShrink: 0 }}>Password:</span>
+                          <span style={{ fontSize: '0.82rem', fontFamily: 'monospace', flex: 1, color: revealedPasswords[u.id] ? 'var(--charcoal)' : 'transparent', textShadow: revealedPasswords[u.id] ? 'none' : '0 0 6px rgba(0,0,0,0.35)', userSelect: revealedPasswords[u.id] ? 'text' : 'none', transition: 'all 0.2s' }}>
+                            {u.password || '—'}
+                          </span>
+                          <button onClick={() => toggleReveal(u.id)} style={{ fontSize: '0.75rem', padding: '3px 9px', borderRadius: 999, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', color: 'var(--warm-gray)', flexShrink: 0 }}>
+                            {revealedPasswords[u.id] ? 'Hide' : 'Reveal'}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -4139,7 +4225,7 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
 };
 
 // ─── CookbooksTab ─────────────────────────────────────────────────────────────
-const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags, allIngredients, setCookingRecipe, cookLog, onRecipeConverted }) => {
+const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags, allIngredients, setCookingRecipe, cookLog, onRecipeConverted, isAdmin }) => {
   const [selectedCookbook, setSelectedCookbook] = useState(null);
   const [showAddModal,     setShowAddModal]     = useState(false);
   const [editingCookbook,  setEditingCookbook]  = useState(null);
@@ -4217,7 +4303,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags,
           <h2 className="cookbooks-title">My Cookbooks</h2>
           <p className="cookbooks-subtitle">{cookbooks.length} {cookbooks.length===1?'cookbook':'cookbooks'} · {enrichedCookbooks.reduce((s,c) => s+c.recipes.length, 0)} recipes indexed</p>
         </div>
-        <button className="btn btn--primary" onClick={() => setShowAddModal(true)}>+ Add Cookbook</button>
+        {isAdmin && <button className="btn btn--primary" onClick={() => setShowAddModal(true)}>+ Add Cookbook</button>}
       </div>
 
       {cookbooks.length > 0 && (
@@ -4255,7 +4341,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags,
           <div className="cookbooks-empty__icon">📚</div>
           <h3 className="cookbooks-empty__title">Start your cookbook shelf</h3>
           <p className="cookbooks-empty__sub">Add your physical cookbooks and track which recipes you've saved in Hearth</p>
-          <button className="btn btn--primary" onClick={() => setShowAddModal(true)}>+ Add your first cookbook</button>
+          {isAdmin && <button className="btn btn--primary" onClick={() => setShowAddModal(true)}>+ Add your first cookbook</button>}
         </div>
       ) : (
         <div className="cookbooks-grid">
@@ -4285,10 +4371,10 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags,
               </button>
             );
           })}
-          <button className="cookbook-card cookbook-card--add" onClick={() => setShowAddModal(true)}>
+          {isAdmin && <button className="cookbook-card cookbook-card--add" onClick={() => setShowAddModal(true)}>
             <div className="cookbook-card__add-icon">+</div>
             <p className="cookbook-card__add-label">Add cookbook</p>
-          </button>
+          </button>}
         </div>
       ))}
     </main>
@@ -4823,7 +4909,6 @@ function AppInner() {
     setAuthToken(null);
     setAuthUser(null);
     setShowLogin(true);
-    setUserDropdownOpen(false);
   };
 
   // Authenticated fetch wrapper — adds Bearer token automatically
@@ -5052,8 +5137,7 @@ function AppInner() {
               { key: 'kitchen',   label: 'Kitchen'      },
               { key: 'grocery',   label: 'Grocery'      },
               { key: 'cookbooks', label: 'Cookbooks'    },
-              { key: 'add',       label: 'Add'          },
-              { key: 'profile',   label: 'Profile'      },
+              ...(isAdmin ? [{ key: 'add', label: 'Add' }] : []),
             ].map(({ key, label }) => (
               <button key={key} className={`nav-tab ${view === key ? 'nav-tab--active' : ''}`} onClick={() => setView(key)} disabled={key === 'recipes' && recipes.length === 0}>
                 {label}
@@ -5063,8 +5147,8 @@ function AppInner() {
           {/* User avatar */}
           {authUser && (
             <button className="header-user-btn" onClick={() => setView('profile')} title="Go to profile">
-              <span className="header-user-btn__avatar">{authUser.username?.[0]?.toUpperCase()}</span>
-              <span className="header-user-btn__name">{authUser.username}</span>
+              <span className="header-user-btn__avatar">{(authUser.display_name || authUser.username)?.[0]?.toUpperCase()}</span>
+              <span className="header-user-btn__name">{authUser.display_name || authUser.username}</span>
             </button>
           )}
           {/* Mobile hamburger */}
@@ -5083,8 +5167,7 @@ function AppInner() {
               { key: 'kitchen',   label: '🧑‍🍳 Kitchen'    },
               { key: 'grocery',   label: '🛒 Grocery'     },
               { key: 'cookbooks', label: '📚 Cookbooks'   },
-              { key: 'add',       label: '➕ Add'         },
-              { key: 'profile',   label: '👤 Profile'     },
+              ...(isAdmin ? [{ key: 'add', label: '➕ Add' }] : []),
             ].map(({ key, label }) => (
               <button key={key}
                 className={`mobile-nav-item ${view === key ? 'mobile-nav-item--active' : ''}`}
@@ -5664,6 +5747,7 @@ function AppInner() {
           setCookingRecipe={setCookingRecipe}
           cookLog={cookLog}
           onRecipeConverted={(newRecipe) => { loadData(); openRecipe(newRecipe); }}
+          isAdmin={isAdmin}
         />
       )}
 
@@ -5680,6 +5764,7 @@ function AppInner() {
           authFetch={authFetch}
           authUser={authUser}
           onLogout={handleLogout}
+          onAuthUserUpdate={(updatedUser) => { setAuthUser(updatedUser); LS.set('authUser', updatedUser); }}
         />
       )}
 
