@@ -191,7 +191,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
   const matchScore = match?.matchScore ?? null;
   const canMakeNow = Boolean(match?.canMake);
   const tags = recipe.tags || [];
-  const progress = recipe.recipe_incomplete ? '🚧' : recipe.status === 'needs tweaking' ? '🔧' : recipe.status === 'complete' ? '✅' : recipe.status === 'to try' ? '🔖' : null;
+  const progress = recipe.status === 'incomplete' ? '🚧' : recipe.status === 'needs tweaking' ? '🔧' : recipe.status === 'complete' ? '✅' : recipe.status === 'to try' ? '🔖' : null;
   const isCookbookRef = Boolean(recipe.cookbook && (!recipe.ingredients || recipe.ingredients.length === 0));
 
   return (
@@ -522,7 +522,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted }) =>
     name: recipe?.name || '', cuisine: recipe?.cuisine || '', time: recipe?.time || '',
     servings: recipe?.servings || '', cover_image_url: recipe?.coverImage || '',
     cookbook: recipe?.cookbook || '', reference: recipe?.reference || '',
-    status: recipe?.status || 'to try', recipe_incomplete: false, tags: recipe?.tags || [],
+    status: recipe?.status || 'to try', tags: recipe?.tags || [],
   });
   const [ings, setIngs] = useState([{ _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]);
   const [steps, setSteps] = useState([{ _id: `step-${Date.now()}`, step_number: 1, body_text: '' }]);
@@ -850,7 +850,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
       cuisine: recipe.cuisine || '',
       tags: recipe.tags || [],
       status: recipe.status || '',
-      recipe_incomplete: recipe.recipe_incomplete || false,
     });
     setEditingSection(section);
   };
@@ -929,7 +928,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           fiber:           computedNutrition.fiber,
           cover_image_url: section === 'image' ? draftImageInput : (recipe.coverImage || ''),
           status:          isMeta ? draftMeta.status : (recipe.status || ''),
-          recipe_incomplete: isMeta ? draftMeta.recipe_incomplete : (recipe.recipe_incomplete || false),
           tags:            isMeta ? draftMeta.tags   : (recipe.tags || []),
           cookbook:        section === 'cookbook' ? draftCookbook.cookbook : (recipe.cookbook || ''),
           page_number:     section === 'cookbook' ? draftCookbook.reference : (recipe.reference || ''),
@@ -1261,22 +1259,20 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               )}
 
               {/* Progress chip — only shown when set */}
-              {(recipe.recipe_incomplete || (recipe.status && recipe.status !== '')) && (
+              {(recipe.status && recipe.status !== '') && (
                 <div className="rp2__hero-tag-wrap">
-                  <button className={`rp2__tag rp2__tag--clickable ${recipe.recipe_incomplete ? 'rp2__tag--warning' : recipe.status === 'needs tweaking' ? 'rp2__tag--warning' : recipe.status === 'complete' ? 'rp2__tag--success' : 'rp2__tag--light'} ${isEdit('meta-progress') ? 'rp2__tag--editing' : ''}`}
+                  <button className={`rp2__tag rp2__tag--clickable ${recipe.status === 'incomplete' ? 'rp2__tag--warning' : recipe.status === 'needs tweaking' ? 'rp2__tag--warning' : recipe.status === 'complete' ? 'rp2__tag--success' : 'rp2__tag--light'} ${isEdit('meta-progress') ? 'rp2__tag--editing' : ''}`}
                     onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-progress') ? null : 'meta-progress'); }}>
-                    {recipe.recipe_incomplete ? '🚧 Incomplete' : recipe.status === 'needs tweaking' ? '🔧 Tweaking' : recipe.status === 'complete' ? '✅ Complete' : recipe.status === 'to try' ? '🔖 To Try' : null}
+                    {recipe.status === 'incomplete' ? '🚧 Incomplete' : recipe.status === 'needs tweaking' ? '🔧 Tweaking' : recipe.status === 'complete' ? '✅ Complete' : recipe.status === 'to try' ? '🔖 To Try' : null}
                   </button>
                   {isEdit('meta-progress') && (
                     <div className="rp2__hero-dark-popover">
                       <p className="rp2__dark-pop-label">📋 Progress</p>
                       <div className="rp2__dark-pop-chips">
-                        {[{key:'',label:'— None'},{key:'complete',label:'✅ Complete'},{key:'needs tweaking',label:'🔧 Needs Tweaking'},{key:'to try',label:'🔖 To Try'}].map(({key,label}) => (
-                          <button key={key} className={`rp2__dark-chip ${draftMeta.status === key && !draftMeta.recipe_incomplete ? 'rp2__dark-chip--on' : ''}`}
-                            onClick={() => setDraftMeta(p => ({...p, status: key, recipe_incomplete: false}))}>{label}</button>
+                        {[{key:'',label:'— None'},{key:'complete',label:'✅ Complete'},{key:'needs tweaking',label:'🔧 Needs Tweaking'},{key:'to try',label:'🔖 To Try'},{key:'incomplete',label:'🚧 Incomplete'}].map(({key,label}) => (
+                          <button key={key} className={`rp2__dark-chip ${draftMeta.status === key ? 'rp2__dark-chip--on' : ''}`}
+                            onClick={() => setDraftMeta(p => ({...p, status: key}))}>{label}</button>
                         ))}
-                        <button className={`rp2__dark-chip ${draftMeta.recipe_incomplete ? 'rp2__dark-chip--on' : ''}`}
-                          onClick={() => setDraftMeta(p => ({...p, recipe_incomplete: !p.recipe_incomplete, status: ''}))}>🚧 Incomplete</button>
                       </div>
                       <div className="rp2__dark-pop-actions">
                         <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
@@ -3311,6 +3307,7 @@ const AddReferenceModal = ({ onSave, onClose, allTags, cookbookTitle = '' }) => 
                 { key: 'to try',        label: '🔖 To Try' },
                 { key: 'complete',      label: '✅ Complete' },
                 { key: 'needs tweaking',label: '🔧 Needs Tweaking' },
+                { key: 'incomplete',     label: '🚧 Incomplete' },
               ].map(({ key, label }) => (
                 <button key={key} className={`chip ${status === key ? 'chip--selected' : ''}`} onClick={() => setStatus(p => p === key ? '' : key)} type="button">
                   {status === key && <span className="chip__check">✓</span>}{label}
@@ -4164,7 +4161,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
 
   const emptyForm = () => ({
     name: '', cuisine: '', time: '', servings: '',
-    cover_image_url: '', cookbook: '', reference: '', status: '', recipe_incomplete: false, tags: [],
+    cover_image_url: '', cookbook: '', reference: '', status: '', tags: [],
   });
 
   const [details, setDetails] = useState(emptyForm);
@@ -4393,17 +4390,14 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
                     { key: 'complete', label: '✅ Complete' },
                     { key: 'needs tweaking', label: '🔧 Needs Tweaking' },
                     { key: 'to try', label: '🔖 To Try' },
+                    { key: 'incomplete', label: '🚧 Incomplete' },
                   ].map(({ key, label }) => (
                     <button key={key}
-                      className={`chip ${details.status === key && !details.recipe_incomplete ? 'chip--selected' : ''}`}
-                      onClick={() => { setDetail('status', key); setDetail('recipe_incomplete', false); }} type="button">
-                      {details.status === key && !details.recipe_incomplete && <span className="chip__check">✓</span>}{label}
+                      className={`chip ${details.status === key ? 'chip--selected' : ''}`}
+                      onClick={() => setDetail('status', key)} type="button">
+                      {details.status === key && <span className="chip__check">✓</span>}{label}
                     </button>
                   ))}
-                  <button className={`chip ${details.recipe_incomplete ? 'chip--selected' : ''}`}
-                    onClick={() => { setDetail('recipe_incomplete', !details.recipe_incomplete); setDetail('status', ''); }} type="button">
-                    {details.recipe_incomplete && <span className="chip__check">✓</span>}🚧 Incomplete
-                  </button>
                 </div>
               </div>
 
@@ -4650,7 +4644,7 @@ function AppInner() {
       list = list.filter(r => activeProgresses.some(p => {
         if (p === '__readytocook')  return matchById.get(r.id)?.canMake;
         if (p === '__almostready')  { const m = matchById.get(r.id); return m && m.matchScore >= 0.7 && !m.canMake; }
-        if (p === '__incomplete') return r.recipe_incomplete;
+        if (p === '__incomplete') return r.status === 'incomplete';
         if (p === '__needstweaking') return r.status === 'needs tweaking';
         if (p === '__favorite') return heartedIds.includes(r.id);
         if (p === '__complete') return !r.recipe_incomplete && r.status === 'complete';
