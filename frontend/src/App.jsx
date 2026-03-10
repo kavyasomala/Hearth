@@ -1178,11 +1178,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         </div>
       </div>
 
-      {/* ── Two-column body ── */}
-      <div className="rp2__body">
-
-        {/* ── Cookbook Reference Card — shown instead of ingredients/instructions for refs ── */}
-        {recipe.cookbook && (!bodyIngredients?.length) && (!instructions?.length) ? (
+      {/* ── Cookbook Reference Card — shown INSTEAD of the two-column body for refs ── */}
+      {recipe.cookbook && (!bodyIngredients?.length) && (!instructions?.length) && (
+        <div className="rp2__body">
           <div className="rp2__cb-ref-view">
             <div className="rp2__cb-ref-card">
               <div className="rp2__cb-ref-card__icon">📖</div>
@@ -1199,7 +1197,12 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               <ConvertRefButton recipe={recipe} allIngredients={allIngredients} cookbooks={cookbooks} onConverted={onSaved} />
             </div>
           </div>
-        ) : (<>
+        </div>
+      )}
+
+      {/* ── Two-column body (only shown for full recipes) ── */}
+      {!(recipe.cookbook && (!bodyIngredients?.length) && (!instructions?.length)) && (
+      <div className="rp2__body">
         {showIngredientsModal && (
           <div className="ing-modal-overlay" onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}>
             <div className="ing-modal ing-modal--wide" onClick={e => e.stopPropagation()}>
@@ -1414,8 +1417,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           </div>
         </div>
       </div>
-      </>)}
-      </div>
+      )}
     </main>
   );
 };
