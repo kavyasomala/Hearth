@@ -2286,11 +2286,30 @@ body {
 .rp2__step-content { flex: 1; min-width: 0; }
 
 /* ─── Step editor with timer ────────────────────────────────────────────── */
-.rp2__ed-step-fields { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.rp2__ed-step-timer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.rp2__ed-step-timer__label { font-size: 12px; color: var(--warm-gray); font-weight: 600; white-space: nowrap; }
-.rp2__ed-step-timer__select { width: auto; min-width: 110px; }
-.rp2__ed-step-timer__preview { font-size: 12px; color: var(--terracotta); font-weight: 600; }
+/* ─── Timer row in step editor ──────────────────────────────────────────── */
+.rp2__ed-timer-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-left: 40px; /* indent under steps */
+  padding: 7px 10px;
+  background: #fdf8f4;
+  border: 1.5px dashed var(--terracotta-light);
+  border-radius: var(--radius-sm);
+  margin-bottom: 4px;
+}
+.rp2__ed-timer-row__icon { font-size: 14px; flex-shrink: 0; color: var(--terracotta); }
+.rp2__ed-timer-row__inputs { display: flex; align-items: center; gap: 4px; flex: 1; }
+.rp2__ed-timer-row__num { width: 52px !important; text-align: center; padding: 4px 6px !important; }
+.rp2__ed-timer-row__sep { font-size: 12px; font-weight: 700; color: var(--warm-gray); flex-shrink: 0; }
+/* Small ⏱ button on each step row */
+.rp2__ed-add-timer-btn {
+  flex-shrink: 0;
+  background: none; border: none;
+  font-size: 15px; cursor: pointer;
+  opacity: 0.35; transition: opacity 0.15s;
+  padding: 4px;
+  line-height: 1;
+}
+.rp2__ed-add-timer-btn:hover { opacity: 1; }
 
 /* ─── Step integrated timer ─────────────────────────────────────────────── */
 .rp2__step-timer { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }

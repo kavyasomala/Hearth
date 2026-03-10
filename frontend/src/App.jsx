@@ -549,7 +549,16 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted }) =>
       const payload = {
         details: { ...details, calories: null, protein: null, fiber: null },
         ingredients: flatIngs.map((i, idx) => ({ ...i, order_index: idx })),
-        instructions: steps.map((s, idx) => ({ ...s, step_number: idx + 1 })),
+        instructions: (() => {
+          const result = []; let stepNum = 1;
+          for (const item of steps) {
+            if (item._isTimer) {
+              const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
+              if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
+            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null }); }
+          }
+          return result;
+        })(),
         notes: notesList.map((n, idx) => ({ ...n, order_index: idx })),
       };
       // Update the existing recipe record
@@ -623,18 +632,36 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted }) =>
             <label className="create-modal__field-label">Instructions</label>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
               <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
-                {steps.map((step, idx) => (
-                  <SortableItem key={step._id} id={step._id}>
-                    <div className="editor-step-row">
-                      <span className="editor-step-num">{idx+1}</span>
-                      <textarea className="editor-textarea" value={step.body_text} onChange={e => updateStep(step._id, e.target.value)} placeholder="Describe this step…" rows={2} />
-                      <button className="editor-remove-btn" onClick={() => removeStep(step._id)}>✕</button>
+                {steps.map((item, idx) => {
+                  if (item._isTimer) return (
+                    <div key={item._id} className="rp2__ed-timer-row">
+                      <span className="rp2__ed-timer-row__icon">⏱</span>
+                      <div className="rp2__ed-timer-row__inputs">
+                        <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" value={item.h} onChange={e => setSteps(prev => prev.map(s => s._id===item._id?{...s,h:e.target.value}:s))} placeholder="0" />
+                        <span className="rp2__ed-timer-row__sep">h</span>
+                        <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.m} onChange={e => setSteps(prev => prev.map(s => s._id===item._id?{...s,m:e.target.value}:s))} placeholder="0" />
+                        <span className="rp2__ed-timer-row__sep">m</span>
+                        <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setSteps(prev => prev.map(s => s._id===item._id?{...s,s:e.target.value}:s))} placeholder="0" />
+                        <span className="rp2__ed-timer-row__sep">s</span>
+                      </div>
+                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                     </div>
-                  </SortableItem>
-                ))}
+                  );
+                  const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
+                  return (
+                    <SortableItem key={item._id} id={item._id}>
+                      <div className="editor-step-row">
+                        <span className="editor-step-num">{stepNum}</span>
+                        <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                        <button className="rp2__ed-add-timer-btn" onClick={() => { const i = steps.findIndex(s => s._id===item._id); const t={_id:`timer-${Date.now()}`,_isTimer:true,h:'',m:'',s:''}; const n=[...steps]; n.splice(i+1,0,t); setSteps(n); }} title="Add timer">⏱</button>
+                        <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                      </div>
+                    </SortableItem>
+                  );
+                })}
               </SortableContext>
             </DndContext>
-            <button className="btn btn--ghost editor-add-btn" onClick={() => setSteps(prev => [...prev, { _id:`step-${Date.now()}`,step_number:prev.length+1,body_text:'' }])}>+ Add Step</button>
+            <button className="btn btn--ghost editor-add-btn" onClick={() => setSteps(prev => [...prev, { _id:`step-${Date.now()}`,step_number:prev.filter(s=>!s._isTimer).length+1,body_text:'',timer_seconds:null }])}>+ Add Step</button>
           </div>
           {/* Notes */}
           <div className="create-modal__field">
@@ -659,25 +686,18 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted }) =>
 };
 
 // ─── Step Item with integrated timer ──────────────────────────────────────
-const StepItem = ({ step, done, isCurrent, enlarge, isCookingMode, onToggle }) => {
+const StepItem = ({ step, done, isCurrent, enlarge, onToggle }) => {
   const hasTimer = step.timer_seconds && step.timer_seconds > 0;
   const [timerState, setTimerState] = useState('idle'); // 'idle' | 'running' | 'paused' | 'done'
   const [remaining, setRemaining] = useState(step.timer_seconds || 0);
   const intervalRef = useRef(null);
-  const audioRef = useRef(null);
 
-  // Reset timer if step changes
   useEffect(() => {
     setRemaining(step.timer_seconds || 0);
     setTimerState('idle');
   }, [step.timer_seconds]);
 
-  const startTimer = (e) => {
-    e.stopPropagation();
-    if (timerState === 'idle' || timerState === 'paused') {
-      setTimerState('running');
-    }
-  };
+  const startTimer = (e) => { e.stopPropagation(); if (timerState === 'idle' || timerState === 'paused') setTimerState('running'); };
   const pauseTimer = (e) => { e.stopPropagation(); setTimerState('paused'); };
   const resetTimer = (e) => { e.stopPropagation(); setTimerState('idle'); setRemaining(step.timer_seconds || 0); };
 
@@ -688,25 +708,20 @@ const StepItem = ({ step, done, isCurrent, enlarge, isCookingMode, onToggle }) =
           if (r <= 1) {
             clearInterval(intervalRef.current);
             setTimerState('done');
-            // Ring: Web Audio API beep
             try {
               const ctx = new (window.AudioContext || window.webkitAudioContext)();
               const playBeep = (time, freq) => {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
+                const osc = ctx.createOscillator(); const gain = ctx.createGain();
                 osc.connect(gain); gain.connect(ctx.destination);
                 osc.frequency.value = freq; osc.type = 'sine';
                 gain.gain.setValueAtTime(0.4, time);
                 gain.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
                 osc.start(time); osc.stop(time + 0.4);
               };
-              playBeep(ctx.currentTime, 880);
-              playBeep(ctx.currentTime + 0.45, 1100);
-              playBeep(ctx.currentTime + 0.9, 1320);
+              playBeep(ctx.currentTime, 880); playBeep(ctx.currentTime + 0.45, 1100); playBeep(ctx.currentTime + 0.9, 1320);
             } catch {}
-            // Browser notification if permitted
             if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification(`⏱ Timer done!`, { body: `Step ${step.step_number}: ${step.body_text.slice(0, 60)}…`, icon: '🍳' });
+              new Notification('⏱ Timer done!', { body: `Step ${step.step_number}: ${(step.body_text || '').slice(0, 60)}`, icon: '🍳' });
             }
             return 0;
           }
@@ -720,11 +735,9 @@ const StepItem = ({ step, done, isCurrent, enlarge, isCookingMode, onToggle }) =
   }, [timerState]);
 
   const fmtTime = (s) => {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
   };
 
   const pct = hasTimer ? ((step.timer_seconds - remaining) / step.timer_seconds) * 100 : 0;
@@ -737,26 +750,16 @@ const StepItem = ({ step, done, isCurrent, enlarge, isCookingMode, onToggle }) =
         {hasTimer && !done && (
           <div className="rp2__step-timer" onClick={e => e.stopPropagation()}>
             {timerState === 'running' && (
-              <div className="rp2__step-timer__bar">
-                <div className="rp2__step-timer__fill" style={{ width: `${pct}%` }} />
-              </div>
+              <div className="rp2__step-timer__bar"><div className="rp2__step-timer__fill" style={{ width: `${pct}%` }} /></div>
             )}
             <div className="rp2__step-timer__controls">
               <span className={`rp2__step-timer__display ${timerState === 'done' ? 'rp2__step-timer__display--done' : ''}`}>
                 {timerState === 'done' ? '✓ Done!' : fmtTime(remaining)}
               </span>
-              {timerState === 'idle' && (
-                <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer} title="Start timer">▶ Start</button>
-              )}
-              {timerState === 'running' && (
-                <button className="rp2__step-timer__btn rp2__step-timer__btn--pause" onClick={pauseTimer} title="Pause timer">⏸ Pause</button>
-              )}
-              {timerState === 'paused' && (
-                <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer} title="Resume timer">▶ Resume</button>
-              )}
-              {timerState !== 'idle' && (
-                <button className="rp2__step-timer__btn rp2__step-timer__btn--reset" onClick={resetTimer} title="Reset timer">↺</button>
-              )}
+              {timerState === 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}>▶ Start</button>}
+              {timerState === 'running' && <button className="rp2__step-timer__btn rp2__step-timer__btn--pause" onClick={pauseTimer}>⏸ Pause</button>}
+              {timerState === 'paused' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}>▶ Resume</button>}
+              {timerState !== 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--reset" onClick={resetTimer}>↺</button>}
             </div>
           </div>
         )}
@@ -774,26 +777,21 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [showCookedModal, setShowCookedModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
-  const [isCookingMode, setIsCookingMode] = useState(false);
+  const [stayAwake, setStayAwake] = useState(false);
   const wakeLockRef = useRef(null);
-  const firstStepRef = useRef(null);
   const ingDndSensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
-  // ── Wake Lock & scroll on cooking mode toggle ──
+  // ── Wake Lock ──
   useEffect(() => {
-    if (isCookingMode) {
-      // Request wake lock to keep screen on
+    if (stayAwake) {
       if ('wakeLock' in navigator) {
         navigator.wakeLock.request('screen').then(lock => { wakeLockRef.current = lock; }).catch(() => {});
       }
-      // Scroll to first step
-      setTimeout(() => { firstStepRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
     } else {
-      // Release wake lock
       if (wakeLockRef.current) { wakeLockRef.current.release().catch(() => {}); wakeLockRef.current = null; }
     }
     return () => { if (wakeLockRef.current) { wakeLockRef.current.release().catch(() => {}); wakeLockRef.current = null; } };
-  }, [isCookingMode]);
+  }, [stayAwake]);
 
   // ── Per-section edit state ──
   const [editingSection, setEditingSection] = useState(null);
@@ -831,7 +829,19 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
       }
       setDraftIngs(flat);
     }
-    if (section === 'instructions') setDraftSteps((instructions || []).map((s, idx) => ({ ...s, _id: `step-${idx}`, timer_seconds: s.timer_seconds ?? null })));
+    if (section === 'instructions') {
+      const flat = [];
+      for (const s of (instructions || [])) {
+        flat.push({ ...s, _id: `step-${s.step_number}`, timer_seconds: s.timer_seconds ?? null });
+        if (s.timer_seconds && s.timer_seconds > 0) {
+          const h = Math.floor(s.timer_seconds / 3600);
+          const m = Math.floor((s.timer_seconds % 3600) / 60);
+          const sec = s.timer_seconds % 60;
+          flat.push({ _id: `timer-exist-${s.step_number}`, _isTimer: true, h: h || '', m: m || '', s: sec || '' });
+        }
+      }
+      setDraftSteps(flat);
+    }
     if (section === 'notes')        setDraftNotes((notes || []).map((n, idx) => ({ ...n, _id: `note-${idx}`, text: n.text ?? n.body_text ?? '' })));
     if (section === 'cookbook')      setDraftCookbook({ cookbook: recipe.cookbook || '', reference: recipe.reference || '' });
     if (['meta','meta-cuisine','meta-tags','meta-progress','meta-time','meta-servings'].includes(section)) setDraftMeta({
@@ -931,7 +941,25 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             .filter(Boolean)
             .map((i, idx) => ({ ...i, order_index: idx }));
         })() : (bodyIngredients || []),
-        instructions: section === 'instructions' ? draftSteps.map((s, idx) => ({ ...s, step_number: idx + 1 })) : (instructions || []),
+        instructions: section === 'instructions' ? (() => {
+          // Collapse timer rows into the preceding step's timer_seconds
+          const result = [];
+          let stepNum = 1;
+          for (let i = 0; i < draftSteps.length; i++) {
+            const item = draftSteps[i];
+            if (item._isTimer) {
+              // Attach to preceding step
+              const h = parseInt(item.h) || 0;
+              const m = parseInt(item.m) || 0;
+              const s = parseInt(item.s) || 0;
+              const secs = h * 3600 + m * 60 + s;
+              if (result.length > 0) result[result.length - 1].timer_seconds = secs > 0 ? secs : null;
+            } else {
+              result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null });
+            }
+          }
+          return result;
+        })() : (instructions || []),
         notes:        section === 'notes'        ? draftNotes.map((n, idx) => ({ ...n, order_index: idx }))  : (notes || []),
       };
       const res = await fetch(`${API}/api/recipes/${recipe.id}`, {
@@ -959,6 +987,13 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
 
   // ── Step draft helpers ──
   const addDraftStep    = () => setDraftSteps(prev => [...prev, { _id: `step-new-${Date.now()}`, step_number: prev.length + 1, body_text: '', timer_seconds: null }]);
+  const addTimerAfterStep = (afterId) => setDraftSteps(prev => {
+    const idx = prev.findIndex(s => s._id === afterId);
+    const timer = { _id: `timer-${Date.now()}`, _isTimer: true, h: '', m: '', s: '' };
+    const next = [...prev];
+    next.splice(idx + 1, 0, timer);
+    return next;
+  });
   const updateDraftStep = (id, v) => setDraftSteps(prev => prev.map(s => s._id === id ? { ...s, body_text: v } : s));
   const removeDraftStep = (id) => setDraftSteps(prev => prev.filter(s => s._id !== id));
 
@@ -1336,11 +1371,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           )}
           <SectionPencil isEditing={isEdit('title')} onEdit={() => startEdit('title')} onSave={() => saveSection('title')} onCancel={cancelEdit} saving={saving} />
           <button
-            className={`rp2__cooking-mode-btn ${isCookingMode ? 'rp2__cooking-mode-btn--on' : ''}`}
-            onClick={() => setIsCookingMode(m => !m)}
-            title={isCookingMode ? 'Exit cooking mode' : 'Enter cooking mode'}
+            className={`rp2__cooking-mode-btn ${stayAwake ? 'rp2__cooking-mode-btn--on' : ''}`}
+            onClick={() => setStayAwake(s => !s)}
+            title={stayAwake ? 'Screen will stay on — click to disable' : 'Keep screen awake while cooking'}
           >
-            {isCookingMode ? '🍳 Cooking…' : '👨‍🍳 Cook'}
+            {stayAwake ? '☀️ Awake' : '☀️ Stay Awake'}
           </button>
           <button className="rp2__title-delete-btn" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe">🗑</button>
         </div>
@@ -1527,54 +1562,43 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
 
           {isEdit('instructions') ? (
             <div className="rp2__inline-editor">
-              {draftSteps.map((step, idx) => (
-                <div key={step._id} className="rp2__ed-step-row">
-                  <span className="editor-step-num">{idx + 1}</span>
-                  <div className="rp2__ed-step-fields">
-                    <textarea className="editor-textarea" value={step.body_text} onChange={e => updateDraftStep(step._id, e.target.value)} placeholder="Describe this step…" rows={2} />
-                    <div className="rp2__ed-step-timer">
-                      <span className="rp2__ed-step-timer__label">⏱ Timer</span>
-                      <select
-                        className="editor-input editor-input--sm rp2__ed-step-timer__select"
-                        value={step.timer_seconds ?? ''}
-                        onChange={e => setDraftSteps(prev => prev.map(s => s._id === step._id ? { ...s, timer_seconds: e.target.value === '' ? null : Number(e.target.value) } : s))}
-                      >
-                        <option value="">None</option>
-                        <option value="60">1 min</option>
-                        <option value="120">2 min</option>
-                        <option value="180">3 min</option>
-                        <option value="300">5 min</option>
-                        <option value="600">10 min</option>
-                        <option value="900">15 min</option>
-                        <option value="1200">20 min</option>
-                        <option value="1800">30 min</option>
-                        <option value="2700">45 min</option>
-                        <option value="3600">1 hr</option>
-                        <option value="custom">Custom…</option>
-                      </select>
-                      {step.timer_seconds !== null && step.timer_seconds !== undefined && (
-                        <span className="rp2__ed-step-timer__preview">
-                          {step.timer_seconds >= 3600
-                            ? `${Math.floor(step.timer_seconds/3600)}h ${Math.round((step.timer_seconds%3600)/60)}m`
-                            : `${Math.round(step.timer_seconds/60)} min`}
-                        </span>
-                      )}
+              {draftSteps.map((item, idx) => {
+                if (item._isTimer) {
+                  return (
+                    <div key={item._id} className="rp2__ed-timer-row">
+                      <span className="rp2__ed-timer-row__icon">⏱</span>
+                      <div className="rp2__ed-timer-row__inputs">
+                        <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" value={item.h} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, h: e.target.value} : s))} placeholder="0" />
+                        <span className="rp2__ed-timer-row__sep">h</span>
+                        <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.m} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, m: e.target.value} : s))} placeholder="0" />
+                        <span className="rp2__ed-timer-row__sep">m</span>
+                        <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
+                        <span className="rp2__ed-timer-row__sep">s</span>
+                      </div>
+                      <button className="editor-remove-btn" onClick={() => setDraftSteps(prev => prev.filter(s => s._id !== item._id))}>✕</button>
                     </div>
+                  );
+                }
+                const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer).length + 1;
+                return (
+                  <div key={item._id} className="rp2__ed-step-row">
+                    <span className="editor-step-num">{stepNum}</span>
+                    <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                    <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step">⏱</button>
+                    <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
                   </div>
-                  <button className="editor-remove-btn" onClick={() => removeDraftStep(step._id)}>✕</button>
-                </div>
-              ))}
+                );
+              })}
               <button className="btn btn--ghost editor-add-btn" onClick={addDraftStep}>+ Add Step</button>
             </div>
           ) : (
             instructions?.length > 0
-              ? <ol className="rp2__steps" ref={firstStepRef}>
+              ? <ol className="rp2__steps">
                   {[...instructions].sort((a, b) => a.step_number - b.step_number).map((step, listIdx) => {
                     const done = doneSteps.has(step.step_number);
                     const sortedUndone = [...instructions].sort((a, b) => a.step_number - b.step_number).filter(s => !doneSteps.has(s.step_number));
                     const isCurrent = !done && sortedUndone[0]?.step_number === step.step_number;
-                    const isFirst = listIdx === 0;
-                    const enlarge = isCookingMode && (isFirst && doneCount === 0 ? true : isCurrent);
+                    const enlarge = listIdx === 0 && doneCount === 0 ? true : isCurrent;
                     return (
                       <StepItem
                         key={step.step_number}
@@ -1582,7 +1606,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                         done={done}
                         isCurrent={isCurrent}
                         enlarge={enlarge}
-                        isCookingMode={isCookingMode}
                         onToggle={() => toggleStep(step.step_number)}
                       />
                     );
@@ -1800,7 +1823,12 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
     }
   };
 
-  const addStep = () => setSteps(prev => [...prev, { _id: `step-new-${Date.now()}`, step_number: prev.length + 1, body_text: '' }]);
+  const addStep = () => setSteps(prev => [...prev, { _id: `step-new-${Date.now()}`, step_number: prev.length + 1, body_text: '', timer_seconds: null }]);
+  const addTimerAfterStep = (afterId) => setSteps(prev => {
+    const idx = prev.findIndex(s => s._id === afterId);
+    const timer = { _id: `timer-${Date.now()}`, _isTimer: true, h: '', m: '', s: '' };
+    const next = [...prev]; next.splice(idx + 1, 0, timer); return next;
+  });
   const updateStep = (id, v) => setSteps(prev => prev.map(s => s._id === id ? { ...s, body_text: v } : s));
   const removeStep = (id) => setSteps(prev => prev.filter(s => s._id !== id));
   const onStepDragEnd = ({ active, over }) => {
@@ -1819,10 +1847,19 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
       const payload = {
         details,
         ingredients: ings.map((i, idx) => ({ ...i, order_index: idx })),
-        instructions: steps.map((s, idx) => ({ ...s, step_number: idx + 1 })),
+        instructions: (() => {
+          const result = []; let stepNum = 1;
+          for (let i = 0; i < steps.length; i++) {
+            const item = steps[i];
+            if (item._isTimer) {
+              const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
+              if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
+            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null }); }
+          }
+          return result;
+        })(),
         notes: notesList.map((n, idx) => ({ ...n, order_index: idx })),
       };
-      console.log('Saving payload:', JSON.stringify(payload, null, 2));
       const res = await fetch(`${API}/api/recipes/${recipe.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Save failed');
@@ -1925,15 +1962,35 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
         <h3 className="editor-section__title">Instructions</h3>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
           <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
-            {steps.map((step, idx) => (
-              <SortableItem key={step._id} id={step._id}>
-                <div className="editor-step-row">
-                  <span className="editor-step-num">{idx + 1}</span>
-                  <textarea className="editor-textarea" value={step.body_text} onChange={e => updateStep(step._id, e.target.value)} placeholder="Describe this step…" rows={2} />
-                  <button className="editor-remove-btn" onClick={() => removeStep(step._id)}>✕</button>
-                </div>
-              </SortableItem>
-            ))}
+            {steps.map((item, idx) => {
+              if (item._isTimer) {
+                return (
+                  <div key={item._id} className="rp2__ed-timer-row">
+                    <span className="rp2__ed-timer-row__icon">⏱</span>
+                    <div className="rp2__ed-timer-row__inputs">
+                      <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" value={item.h} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, h: e.target.value} : s))} placeholder="0" />
+                      <span className="rp2__ed-timer-row__sep">h</span>
+                      <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.m} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, m: e.target.value} : s))} placeholder="0" />
+                      <span className="rp2__ed-timer-row__sep">m</span>
+                      <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
+                      <span className="rp2__ed-timer-row__sep">s</span>
+                    </div>
+                    <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                  </div>
+                );
+              }
+              const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
+              return (
+                <SortableItem key={item._id} id={item._id}>
+                  <div className="editor-step-row">
+                    <span className="editor-step-num">{stepNum}</span>
+                    <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                    <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer">⏱</button>
+                    <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                  </div>
+                </SortableItem>
+              );
+            })}
           </SortableContext>
         </DndContext>
         <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
@@ -3356,19 +3413,14 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
       setIngs(prev => { const o = prev.findIndex(i => i._id === active.id); const n = prev.findIndex(i => i._id === over.id); return arrayMove(prev, o, n); });
     }
   };
-  const addStep    = () => setSteps(prev => [...prev, { _id: `step-${Date.now()}`, step_number: prev.length + 1, body_text: '' }]);
+  const addStep    = () => setSteps(prev => [...prev, { _id: `step-${Date.now()}`, step_number: prev.length + 1, body_text: '', timer_seconds: null }]);
+  const addTimerAfterStep = (afterId) => setSteps(prev => { const idx = prev.findIndex(s => s._id === afterId); const t = { _id: `timer-${Date.now()}`, _isTimer: true, h: '', m: '', s: '' }; const n = [...prev]; n.splice(idx+1, 0, t); return n; });
   const updateStep = (id, v) => setSteps(prev => prev.map(s => s._id === id ? { ...s, body_text: v } : s));
   const removeStep = (id) => setSteps(prev => prev.filter(s => s._id !== id));
-  const onStepDragEnd = ({ active, over }) => {
-    if (over && active.id !== over.id) {
-      setSteps(prev => { const o = prev.findIndex(s => s._id === active.id); const n = prev.findIndex(s => s._id === over.id); return arrayMove(prev, o, n); });
-    }
-  };
+  const onStepDragEnd = ({ active, over }) => { if (over && active.id !== over.id) setSteps(prev => { const o = prev.findIndex(s => s._id === active.id); const n = prev.findIndex(s => s._id === over.id); return arrayMove(prev, o, n); }); };
   const addNote    = () => setNotesList(prev => [...prev, { _id: `note-${Date.now()}`, text: '' }]);
   const updateNote = (id, v) => setNotesList(prev => prev.map(n => n._id === id ? { ...n, text: v } : n));
-  const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id));
-
-  const groupLabels = [...new Set(ings.filter(i => !i._isGroup).map(i => i.group_label).filter(Boolean))];
+  const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id)); = [...new Set(ings.filter(i => !i._isGroup).map(i => i.group_label).filter(Boolean))];
 
   const calcNutrition = (ingredients) => {
     const NUTRITION_DB = {
@@ -3425,7 +3477,16 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
           status: details.status, recipe_incomplete: details.recipe_incomplete, tags: details.tags,
         },
         ingredients: flatIngs.map((i, idx) => ({ ...i, order_index: idx })),
-        instructions: steps.map((s, idx) => ({ ...s, step_number: idx + 1 })),
+        instructions: (() => {
+          const result = []; let stepNum = 1;
+          for (const item of steps) {
+            if (item._isTimer) {
+              const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
+              if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
+            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null }); }
+          }
+          return result;
+        })(),
         notes: notesList.map((n, idx) => ({ ...n, order_index: idx })),
       };
       const res = await fetch(`${API}/api/recipes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -3569,15 +3630,33 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
             <label className="create-modal__field-label">Instructions</label>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
               <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
-                {steps.map((step, idx) => (
-                  <SortableItem key={step._id} id={step._id}>
-                    <div className="editor-step-row">
-                      <span className="editor-step-num">{idx + 1}</span>
-                      <textarea className="editor-textarea" value={step.body_text} onChange={e => updateStep(step._id, e.target.value)} placeholder="Describe this step…" rows={2} />
-                      <button className="editor-remove-btn" onClick={() => removeStep(step._id)}>✕</button>
+                {steps.map((item, idx) => {
+                  if (item._isTimer) return (
+                    <div key={item._id} className="rp2__ed-timer-row">
+                      <span className="rp2__ed-timer-row__icon">⏱</span>
+                      <div className="rp2__ed-timer-row__inputs">
+                        <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" value={item.h} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, h: e.target.value} : s))} placeholder="0" />
+                        <span className="rp2__ed-timer-row__sep">h</span>
+                        <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.m} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, m: e.target.value} : s))} placeholder="0" />
+                        <span className="rp2__ed-timer-row__sep">m</span>
+                        <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
+                        <span className="rp2__ed-timer-row__sep">s</span>
+                      </div>
+                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                     </div>
-                  </SortableItem>
-                ))}
+                  );
+                  const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
+                  return (
+                    <SortableItem key={item._id} id={item._id}>
+                      <div className="editor-step-row">
+                        <span className="editor-step-num">{stepNum}</span>
+                        <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                        <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer">⏱</button>
+                        <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                      </div>
+                    </SortableItem>
+                  );
+                })}
               </SortableContext>
             </DndContext>
             <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
@@ -4099,16 +4178,11 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
     }
   };
 
-  const addStep    = () => setSteps(prev => [...prev, { _id: `step-${Date.now()}`, step_number: prev.length + 1, body_text: '' }]);
+  const addStep    = () => setSteps(prev => [...prev, { _id: `step-${Date.now()}`, step_number: prev.length + 1, body_text: '', timer_seconds: null }]);
+  const addTimerAfterStep = (afterId) => setSteps(prev => { const idx = prev.findIndex(s => s._id === afterId); const t = { _id: `timer-${Date.now()}`, _isTimer: true, h: '', m: '', s: '' }; const n = [...prev]; n.splice(idx+1, 0, t); return n; });
   const updateStep = (id, v) => setSteps(prev => prev.map(s => s._id === id ? { ...s, body_text: v } : s));
   const removeStep = (id) => setSteps(prev => prev.filter(s => s._id !== id));
-  const onStepDragEnd = ({ active, over }) => {
-    if (over && active.id !== over.id) {
-      setSteps(prev => { const o = prev.findIndex(s => s._id === active.id); const n = prev.findIndex(s => s._id === over.id); return arrayMove(prev, o, n); });
-    }
-  };
-
-  const addNote    = () => setNotesList(prev => [...prev, { _id: `note-${Date.now()}`, text: '' }]);
+  const onStepDragEnd = ({ active, over }) => { if (over && active.id !== over.id) setSteps(prev => { const o = prev.findIndex(s => s._id === active.id); const n = prev.findIndex(s => s._id === over.id); return arrayMove(prev, o, n); }); };
   const updateNote = (id, v) => setNotesList(prev => prev.map(n => n._id === id ? { ...n, text: v } : n));
   const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id));
 
@@ -4179,7 +4253,16 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
           status: details.status, recipe_incomplete: details.recipe_incomplete, tags: details.tags,
         },
         ingredients: flatIngs.map((i, idx) => ({ ...i, order_index: idx })),
-        instructions: steps.map((s, idx) => ({ ...s, step_number: idx + 1 })),
+        instructions: (() => {
+          const result = []; let stepNum = 1;
+          for (const item of steps) {
+            if (item._isTimer) {
+              const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
+              if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
+            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null }); }
+          }
+          return result;
+        })(),
         notes: notesList.map((n, idx) => ({ ...n, order_index: idx })),
       };
       const res = await fetch(`${API}/api/recipes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -4376,15 +4459,33 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [] }) => {
                 <label className="create-modal__field-label">Instructions</label>
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
                   <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
-                    {steps.map((step, idx) => (
-                      <SortableItem key={step._id} id={step._id}>
-                        <div className="editor-step-row">
-                          <span className="editor-step-num">{idx + 1}</span>
-                          <textarea className="editor-textarea" value={step.body_text} onChange={e => updateStep(step._id, e.target.value)} placeholder="Describe this step…" rows={2} />
-                          <button className="editor-remove-btn" onClick={() => removeStep(step._id)}>✕</button>
+                    {steps.map((item, idx) => {
+                      if (item._isTimer) return (
+                        <div key={item._id} className="rp2__ed-timer-row">
+                          <span className="rp2__ed-timer-row__icon">⏱</span>
+                          <div className="rp2__ed-timer-row__inputs">
+                            <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" value={item.h} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, h: e.target.value} : s))} placeholder="0" />
+                            <span className="rp2__ed-timer-row__sep">h</span>
+                            <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.m} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, m: e.target.value} : s))} placeholder="0" />
+                            <span className="rp2__ed-timer-row__sep">m</span>
+                            <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
+                            <span className="rp2__ed-timer-row__sep">s</span>
+                          </div>
+                          <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                         </div>
-                      </SortableItem>
-                    ))}
+                      );
+                      const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
+                      return (
+                        <SortableItem key={item._id} id={item._id}>
+                          <div className="editor-step-row">
+                            <span className="editor-step-num">{stepNum}</span>
+                            <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                            <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer">⏱</button>
+                            <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                          </div>
+                        </SortableItem>
+                      );
+                    })}
                   </SortableContext>
                 </DndContext>
                 <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
