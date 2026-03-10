@@ -27,7 +27,7 @@ const HScrollRow = ({ children, count }) => {
     if (rowRef.current) rowRef.current.scrollBy({ left: dir * 260, behavior: 'smooth' });
   };
 
-  const showArrows = (count ?? React.Children.count(children)) >= 4;
+  const showArrows = (count ?? React.Children.count(children)) > 4;
 
   return (
     <div className="hscroll-wrap">
@@ -1019,41 +1019,52 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           {/* ── Bottom: tags (left) + pills (right) — hidden on mobile ── */}
           <div className="rp2__hero-bottom rp2__hero-bottom--desktop-only">
 
-            {/* Tags area — each item is individually clickable */}
+            {/* Tags area — only show fields that have values; add button for adding more */}
             <div className="rp2__hero-tags">
 
-              {/* Cuisine chip */}
-              <div className="rp2__hero-tag-wrap">
-                <button className={`rp2__tag rp2__tag--clickable ${isEdit('meta-cuisine') ? 'rp2__tag--editing' : ''}`}
-                  onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-cuisine') ? null : 'meta-cuisine'); }}>
-                  {recipe.cuisine || <span style={{opacity:0.7}}>+ Cuisine</span>}
-                </button>
-                {isEdit('meta-cuisine') && (
-                  <div className="rp2__hero-dark-popover">
-                    <p className="rp2__dark-pop-label">🌍 Cuisine</p>
-                    <div className="rp2__dark-pop-chips">
-                      <button className={`rp2__dark-chip ${draftMeta.cuisine === '' ? 'rp2__dark-chip--on' : ''}`}
-                        onClick={() => setDraftMeta(p => ({...p, cuisine: ''}))}>None</button>
-                      {GEO_CUISINES.map(c => (
-                        <button key={c} className={`rp2__dark-chip ${draftMeta.cuisine === c ? 'rp2__dark-chip--on' : ''}`}
-                          onClick={() => setDraftMeta(p => ({...p, cuisine: c}))}>{c}</button>
-                      ))}
+              {/* Cuisine chip — only shown when set */}
+              {recipe.cuisine && (
+                <div className="rp2__hero-tag-wrap">
+                  <button className={`rp2__tag rp2__tag--clickable ${isEdit('meta-cuisine') ? 'rp2__tag--editing' : ''}`}
+                    onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-cuisine') ? null : 'meta-cuisine'); }}>
+                    {recipe.cuisine}
+                  </button>
+                  {isEdit('meta-cuisine') && (
+                    <div className="rp2__hero-dark-popover">
+                      <p className="rp2__dark-pop-label">🌍 Cuisine</p>
+                      <div className="rp2__dark-pop-chips">
+                        <button className={`rp2__dark-chip ${draftMeta.cuisine === '' ? 'rp2__dark-chip--on' : ''}`}
+                          onClick={() => setDraftMeta(p => ({...p, cuisine: ''}))}>None</button>
+                        {GEO_CUISINES.map(c => (
+                          <button key={c} className={`rp2__dark-chip ${draftMeta.cuisine === c ? 'rp2__dark-chip--on' : ''}`}
+                            onClick={() => setDraftMeta(p => ({...p, cuisine: c}))}>{c}</button>
+                        ))}
+                      </div>
+                      <div className="rp2__dark-pop-actions">
+                        <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                        <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
+                      </div>
                     </div>
-                    <div className="rp2__dark-pop-actions">
-                      <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
-                      <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
-              {/* Tags chips */}
-              <div className="rp2__hero-tag-wrap">
-                <button className={`rp2__tag rp2__tag--light rp2__tag--clickable ${isEdit('meta-tags') ? 'rp2__tag--editing' : ''}`}
-                  onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-tags') ? null : 'meta-tags'); }}>
-                  {(recipe.tags || []).length > 0 ? (recipe.tags || []).join(', ') : <span style={{opacity:0.7}}>+ Tags</span>}
-                </button>
-                {isEdit('meta-tags') && (
+              {/* Individual tag chips — one per tag, each clickable to edit */}
+              {(recipe.tags || []).map(tag => {
+                const tagDef = TAG_FILTERS.find(f => f.key === tag);
+                return (
+                  <div key={tag} className="rp2__hero-tag-wrap">
+                    <button className={`rp2__tag rp2__tag--light rp2__tag--clickable ${isEdit('meta-tags') ? 'rp2__tag--editing' : ''}`}
+                      onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-tags') ? null : 'meta-tags'); }}>
+                      {tagDef ? tagDef.label : tag}
+                    </button>
+                  </div>
+                );
+              })}
+
+              {/* Tags popover — rendered once, attached to last chip or add button */}
+              {isEdit('meta-tags') && (
+                <div className="rp2__hero-tag-wrap">
                   <div className="rp2__hero-dark-popover">
                     <p className="rp2__dark-pop-label">🏷 Tags</p>
                     <div className="rp2__dark-pop-chips">
@@ -1067,33 +1078,46 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Progress chip */}
-              <div className="rp2__hero-tag-wrap">
-                <button className={`rp2__tag rp2__tag--clickable ${recipe.recipe_incomplete ? 'rp2__tag--warning' : recipe.status === 'needs tweaking' ? 'rp2__tag--warning' : recipe.status === 'complete' ? 'rp2__tag--success' : 'rp2__tag--light'} ${isEdit('meta-progress') ? 'rp2__tag--editing' : ''}`}
-                  onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-progress') ? null : 'meta-progress'); }}>
-                  {recipe.recipe_incomplete ? '🚧 Incomplete' : recipe.status === 'needs tweaking' ? '🔧 Tweaking' : recipe.status === 'complete' ? '✅ Complete' : recipe.status === 'to try' ? '🔖 To Try' : <span style={{opacity:0.7}}>+ Progress</span>}
-                </button>
-                {isEdit('meta-progress') && (
-                  <div className="rp2__hero-dark-popover">
-                    <p className="rp2__dark-pop-label">📋 Progress</p>
-                    <div className="rp2__dark-pop-chips">
-                      {[{key:'',label:'— None'},{key:'complete',label:'✅ Complete'},{key:'needs tweaking',label:'🔧 Needs Tweaking'},{key:'to try',label:'🔖 To Try'}].map(({key,label}) => (
-                        <button key={key} className={`rp2__dark-chip ${draftMeta.status === key && !draftMeta.recipe_incomplete ? 'rp2__dark-chip--on' : ''}`}
-                          onClick={() => setDraftMeta(p => ({...p, status: key, recipe_incomplete: false}))}>{label}</button>
-                      ))}
-                      <button className={`rp2__dark-chip ${draftMeta.recipe_incomplete ? 'rp2__dark-chip--on' : ''}`}
-                        onClick={() => setDraftMeta(p => ({...p, recipe_incomplete: !p.recipe_incomplete, status: ''}))}>🚧 Incomplete</button>
+              {/* Progress chip — only shown when set */}
+              {(recipe.recipe_incomplete || (recipe.status && recipe.status !== '')) && (
+                <div className="rp2__hero-tag-wrap">
+                  <button className={`rp2__tag rp2__tag--clickable ${recipe.recipe_incomplete ? 'rp2__tag--warning' : recipe.status === 'needs tweaking' ? 'rp2__tag--warning' : recipe.status === 'complete' ? 'rp2__tag--success' : 'rp2__tag--light'} ${isEdit('meta-progress') ? 'rp2__tag--editing' : ''}`}
+                    onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-progress') ? null : 'meta-progress'); }}>
+                    {recipe.recipe_incomplete ? '🚧 Incomplete' : recipe.status === 'needs tweaking' ? '🔧 Tweaking' : recipe.status === 'complete' ? '✅ Complete' : recipe.status === 'to try' ? '🔖 To Try' : null}
+                  </button>
+                  {isEdit('meta-progress') && (
+                    <div className="rp2__hero-dark-popover">
+                      <p className="rp2__dark-pop-label">📋 Progress</p>
+                      <div className="rp2__dark-pop-chips">
+                        {[{key:'',label:'— None'},{key:'complete',label:'✅ Complete'},{key:'needs tweaking',label:'🔧 Needs Tweaking'},{key:'to try',label:'🔖 To Try'}].map(({key,label}) => (
+                          <button key={key} className={`rp2__dark-chip ${draftMeta.status === key && !draftMeta.recipe_incomplete ? 'rp2__dark-chip--on' : ''}`}
+                            onClick={() => setDraftMeta(p => ({...p, status: key, recipe_incomplete: false}))}>{label}</button>
+                        ))}
+                        <button className={`rp2__dark-chip ${draftMeta.recipe_incomplete ? 'rp2__dark-chip--on' : ''}`}
+                          onClick={() => setDraftMeta(p => ({...p, recipe_incomplete: !p.recipe_incomplete, status: ''}))}>🚧 Incomplete</button>
+                      </div>
+                      <div className="rp2__dark-pop-actions">
+                        <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                        <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
+                      </div>
                     </div>
-                    <div className="rp2__dark-pop-actions">
-                      <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
-                      <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
+
+              {/* + Add tag button — always visible to add cuisine / tags / progress */}
+              {!isEdit('meta-tags') && (
+                <div className="rp2__hero-tag-wrap">
+                  <button className="rp2__tag rp2__tag--add"
+                    onClick={e => { e.stopPropagation(); startEdit('meta-tags'); }}
+                    title="Add tags">
+                    + tag
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Pills — time and servings are clickable, nutrition is display-only */}
@@ -4248,12 +4272,14 @@ function AppInner() {
   const [maxCalories, setMaxCalories] = useState(null);   // null = off
   const [calDir, setCalDir] = useState('under');          // 'under'|'over'
   const [maxMinutes, setMaxMinutes] = useState(null);     // null = off
+  const [activeCookbooks, setActiveCookbooks] = useState([]); // cookbook titles + '__uncategorized'
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [customCuisines, setCustomCuisines] = useState(() => LS.get('customCuisines', []));
   const [heartedIds, setHeartedIds] = useState(() => LS.get('heartedIds', []));
   const [makeSoonIds, setMakeSoonIds] = useState(() => LS.get('makeSoonIds', []));
   const [cookingRecipe, setCookingRecipe] = useState(null); // recipe object to mark cooked
   const [libraryPage, setLibraryPage] = useState(1);
+  const [libraryLayout, setLibraryLayout] = useState('grid'); // 'grid' | 'list'
   const [lastSynced, setLastSynced] = useState(null);
 
   useEffect(() => { LS.set('customCuisines', customCuisines); }, [customCuisines]);
@@ -4313,7 +4339,8 @@ function AppInner() {
 
   const matchById = useMemo(() => { const map = new Map(); for (const m of matches) map.set(m.id, m); return map; }, [matches]);
 
-  useEffect(() => { setLibraryPage(1); }, [librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes]);  const libraryRecipes = useMemo(() => {
+  useEffect(() => { setLibraryPage(1); }, [librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, activeCookbooks]);
+  const libraryRecipes = useMemo(() => {
     let list = recipes;
     const q = librarySearch.toLowerCase().trim();
     if (q) list = list.filter(r => r.name.toLowerCase().includes(q));
@@ -4346,6 +4373,16 @@ function AppInner() {
         return !isNaN(m) && m <= maxMinutes;
       });
     }
+    // Cookbook filter
+    if (activeCookbooks.length) {
+      list = list.filter(r => {
+        const cb = (r.cookbook || '').trim();
+        return activeCookbooks.some(k => {
+          if (k === '__uncategorized') return !cb;
+          return cb.toLowerCase() === k.toLowerCase();
+        });
+      });
+    }
     // Hide recipes with dietary conflicts if user opted in
     if (hideIncompatible && dietaryFilters.length > 0) {
       list = list.filter(r => {
@@ -4355,12 +4392,10 @@ function AppInner() {
       });
     }
     return list;
-  }, [recipes, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById, hideIncompatible, dietaryFilters]);
+  }, [recipes, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById, hideIncompatible, dietaryFilters, activeCookbooks]);
 
-  const hasActiveFilters = !!(librarySearch || activeTags.length || activeCuisines.length || activeProgresses.length || maxCalories !== null || maxMinutes !== null);
-  const clearAllFilters = () => { setLibrarySearch(''); setActiveTags([]); setActiveCuisines([]); setActiveProgresses([]); setMaxCalories(null); setMaxMinutes(null); };
-
-  useEffect(() => { setLibraryPage(1); }, [librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes]);
+  const hasActiveFilters = !!(librarySearch || activeTags.length || activeCuisines.length || activeProgresses.length || maxCalories !== null || maxMinutes !== null || activeCookbooks.length);
+  const clearAllFilters = () => { setLibrarySearch(''); setActiveTags([]); setActiveCuisines([]); setActiveProgresses([]); setMaxCalories(null); setMaxMinutes(null); setActiveCookbooks([]); };
 
   const openRecipe = async (recipe) => {
     setLastView(view); setView('recipe'); setRecipeLoading(true);
@@ -4700,14 +4735,15 @@ function AppInner() {
 
       {view === 'recipes' && (() => {
         const allCuisinesPool = GEO_CUISINES; // strictly geo only — DB cuisine values are not shown as filters
-        const PAGE_SIZE = 25;
+        const PAGE_SIZE = libraryLayout === 'list' ? 50 : 25;
         const totalPages = Math.max(1, Math.ceil(libraryRecipes.length / PAGE_SIZE));
         const safePage = Math.min(libraryPage, totalPages);
         const pageRecipes = libraryRecipes.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
         const toggleTag = k => setActiveTags(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]);
         const toggleCuisine = c => setActiveCuisines(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c]);
         const toggleProgress = k => setActiveProgresses(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]);
-        const activeCount = activeTags.length + activeCuisines.length + activeProgresses.length + (maxCalories !== null ? 1 : 0) + (maxMinutes !== null ? 1 : 0);
+        const toggleCookbook = k => setActiveCookbooks(p => p.includes(k) ? p.filter(x => x !== k) : [...p, k]);
+        const activeCount = activeTags.length + activeCuisines.length + activeProgresses.length + (maxCalories !== null ? 1 : 0) + (maxMinutes !== null ? 1 : 0) + activeCookbooks.length;
         return (
           <main className="view">
 
@@ -4736,6 +4772,13 @@ function AppInner() {
               {hasActiveFilters && (
                 <button className="filter-bar__reset" onClick={clearAllFilters}>✕ Clear</button>
               )}
+              <button
+                className={`layout-toggle-btn ${libraryLayout === 'list' ? 'layout-toggle-btn--active' : ''}`}
+                onClick={() => { setLibraryLayout(l => l === 'grid' ? 'list' : 'grid'); setLibraryPage(1); }}
+                title={libraryLayout === 'grid' ? 'Switch to list view' : 'Switch to gallery view'}
+              >
+                {libraryLayout === 'grid' ? '☰ List' : '⊞ Gallery'}
+              </button>
             </div>
 
             {/* ── Filter Panel ── */}
@@ -4776,6 +4819,23 @@ function AppInner() {
                       <button key={key}
                         className={`filter-bar__chip ${activeProgresses.includes(key) ? 'filter-bar__chip--active' : ''}`}
                         onClick={() => toggleProgress(key)}>{label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Cookbook */}
+                <div className="filter-panel__group">
+                  <span className="filter-panel__label">Cookbook</span>
+                  <div className="filter-panel__chips">
+                    <button
+                      className={`filter-bar__chip ${activeCookbooks.includes('__uncategorized') ? 'filter-bar__chip--active' : ''}`}
+                      onClick={() => toggleCookbook('__uncategorized')}
+                    >📂 No cookbook</button>
+                    {cookbooks.map(cb => (
+                      <button key={cb.title}
+                        className={`filter-bar__chip ${activeCookbooks.includes(cb.title) ? 'filter-bar__chip--active' : ''}`}
+                        onClick={() => toggleCookbook(cb.title)}
+                      >📖 {cb.title}</button>
                     ))}
                   </div>
                 </div>
@@ -4846,6 +4906,7 @@ function AppInner() {
                 {activeCuisines.map(c => <span key={c} className="active-filter-pill">{CUISINE_EMOJI[c] || '🌍'} {c} <button onClick={() => toggleCuisine(c)}>✕</button></span>)}
                 {activeTags.map(k => <span key={k} className="active-filter-pill">{TAG_FILTERS.find(f => f.key === k)?.label} <button onClick={() => toggleTag(k)}>✕</button></span>)}
                 {activeProgresses.map(k => <span key={k} className="active-filter-pill">{PROGRESS_FILTERS.find(f => f.key === k)?.label} <button onClick={() => toggleProgress(k)}>✕</button></span>)}
+                {activeCookbooks.map(k => <span key={k} className="active-filter-pill">{k === '__uncategorized' ? '📂 No cookbook' : `📖 ${k}`} <button onClick={() => toggleCookbook(k)}>✕</button></span>)}
                 {maxCalories !== null && <span className="active-filter-pill">{calDir} {maxCalories} kcal <button onClick={() => setMaxCalories(null)}>✕</button></span>}
                 {maxMinutes !== null && <span className="active-filter-pill">under {maxMinutes} min <button onClick={() => setMaxMinutes(null)}>✕</button></span>}
               </div>
@@ -4862,16 +4923,76 @@ function AppInner() {
               );
               return (
                 <>
-                  <div className="recipe-grid">
-                    {pageRecipes.map(r => (
-                      <RecipeCard key={r.id} recipe={r} match={matchById.get(r.id)} onClick={openRecipe}
-                        isHearted={heartedIds.includes(r.id)} onToggleHeart={() => toggleHeart(r.id)}
-                        isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)}
-                        showScore={activeProgresses.some(p => p === '__readytocook' || p === '__almostready')}
-                        onConvertRef={(recipe) => setCookingRecipe({ ...recipe, _convertRef: true })}
-                      />
-                    ))}
-                  </div>
+                  {libraryLayout === 'grid' ? (
+                    <div className="recipe-grid">
+                      {pageRecipes.map(r => (
+                        <RecipeCard key={r.id} recipe={r} match={matchById.get(r.id)} onClick={openRecipe}
+                          isHearted={heartedIds.includes(r.id)} onToggleHeart={() => toggleHeart(r.id)}
+                          isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)}
+                          showScore={activeProgresses.some(p => p === '__readytocook' || p === '__almostready')}
+                          onConvertRef={(recipe) => setCookingRecipe({ ...recipe, _convertRef: true })}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="recipe-list-table">
+                      <div className="recipe-list-table__header">
+                        <span className="rlt__col rlt__col--name">Recipe</span>
+                        <span className="rlt__col rlt__col--cuisine">Cuisine</span>
+                        <span className="rlt__col rlt__col--tags">Tags</span>
+                        <span className="rlt__col rlt__col--time">Time</span>
+                        <span className="rlt__col rlt__col--cal">Calories</span>
+                        <span className="rlt__col rlt__col--protein">Protein</span>
+                        <span className="rlt__col rlt__col--status">Status</span>
+                        <span className="rlt__col rlt__col--actions"></span>
+                      </div>
+                      {pageRecipes.map(r => {
+                        const calories = toNum(r.calories);
+                        const protein  = toNum(r.protein);
+                        const match = matchById.get(r.id);
+                        const canMakeNow = Boolean(match?.canMake);
+                        const progress = r.recipe_incomplete ? '🚧' : r.status === 'needs tweaking' ? '🔧' : r.status === 'complete' ? '✅' : r.status === 'to try' ? '🔖' : null;
+                        const tags = r.tags || [];
+                        return (
+                          <div key={r.id} className="recipe-list-table__row" onClick={() => openRecipe(r)}>
+                            <span className="rlt__col rlt__col--name">
+                              {r.coverImage
+                                ? <img className="rlt__thumb" src={r.coverImage} alt="" loading="lazy" />
+                                : <span className="rlt__thumb rlt__thumb--placeholder">🍽</span>}
+                              <span className="rlt__name">{r.name}</span>
+                              {canMakeNow && <span className="rlt__ready">✓</span>}
+                            </span>
+                            <span className="rlt__col rlt__col--cuisine">{r.cuisine || <span className="rlt__empty">—</span>}</span>
+                            <span className="rlt__col rlt__col--tags">
+                              {tags.length > 0
+                                ? tags.slice(0, 3).map(t => {
+                                    const def = TAG_FILTERS.find(f => f.key === t);
+                                    return <span key={t} className="rlt__tag">{def ? def.label.split(' ')[0] : t}</span>;
+                                  })
+                                : <span className="rlt__empty">—</span>}
+                              {tags.length > 3 && <span className="rlt__tag rlt__tag--more">+{tags.length - 3}</span>}
+                            </span>
+                            <span className="rlt__col rlt__col--time">{r.time || <span className="rlt__empty">—</span>}</span>
+                            <span className="rlt__col rlt__col--cal">{calories !== null ? `${Math.round(calories)} kcal` : <span className="rlt__empty">—</span>}</span>
+                            <span className="rlt__col rlt__col--protein">{protein !== null ? `${Math.round(protein)}g` : <span className="rlt__empty">—</span>}</span>
+                            <span className="rlt__col rlt__col--status">{progress || <span className="rlt__empty">—</span>}</span>
+                            <span className="rlt__col rlt__col--actions" onClick={e => e.stopPropagation()}>
+                              <button
+                                className={`rlt__heart ${heartedIds.includes(r.id) ? 'rlt__heart--on' : ''}`}
+                                onClick={() => toggleHeart(r.id)}
+                                title={heartedIds.includes(r.id) ? 'Remove from favorites' : 'Add to favorites'}
+                              >{heartedIds.includes(r.id) ? '♥' : '♡'}</button>
+                              <button
+                                className={`rlt__soon ${makeSoonIds.includes(r.id) ? 'rlt__soon--on' : ''}`}
+                                onClick={() => toggleMakeSoon(r.id)}
+                                title={makeSoonIds.includes(r.id) ? 'Remove from Make Soon' : 'Add to Make Soon'}
+                              >⏱</button>
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                   {totalPages > 1 && (
                     <div className="pager">
                       <button className="pager__btn" onClick={() => setLibraryPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>← Prev</button>
