@@ -183,7 +183,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
           ? <img src={coverImage} alt={name} loading="lazy" />
           : <div className="recipe-card__image-placeholder">No photo</div>}
         {isCookbookRef && (
-          <div className="recipe-card__book-corner">📖 Ref</div>
+          <div className="recipe-card__book-corner">📖</div>
         )}
         {showScore && matchScore !== null && (
           <div className={`recipe-card__score ${canMakeNow ? 'recipe-card__score--ready' : ''}`}>
@@ -215,11 +215,6 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
           <h3 className="recipe-card__title">{name}</h3>
           {cuisine && <span className="recipe-card__cuisine-tag">{cuisine}</span>}
         </div>
-        {isCookbookRef && recipe.cookbook && (
-          <div className="recipe-card__cb-ref-info">
-            <span>See <em>{recipe.cookbook}</em></span>
-          </div>
-        )}
         <div className="recipe-card__stats">
           {time && <span className="recipe-card__stat"><span className="recipe-card__stat-icon">⏱</span>{time}</span>}
           {calories !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon">🔥</span>{Math.round(calories)} kcal</span>}
