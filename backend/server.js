@@ -162,6 +162,7 @@ app.post('/api/auth/login', async (req, res) => {
     const { rows } = await query('SELECT * FROM users WHERE username = $1', [username.trim().toLowerCase()]);
     if (!rows.length) return res.status(401).json({ error: 'Invalid username or password' });
     const user = rows[0];
+    if (user.role === 'suspended') return res.status(403).json({ error: 'Your account has been suspended.' });
     if (password !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password' });
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
@@ -198,6 +199,52 @@ app.post('/api/auth/create-user', authenticateToken, requireAdmin, async (req, r
   } catch (err) {
     console.error('POST /api/auth/create-user error:', err);
     res.status(500).json({ error: err.message || 'Failed to create user' });
+  }
+});
+
+// ─── GET /api/admin/users (admin only) ───────────────────────────────────────
+app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT id, username, role, created_at FROM users ORDER BY created_at ASC`
+    );
+    res.json({ users: rows });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// ─── PUT /api/admin/users/:id (admin only) — suspend/restore/reset password ──
+app.put('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { role, password } = req.body;
+  try {
+    if (role !== undefined) {
+      await query(`UPDATE users SET role = $1 WHERE id = $2`, [role, id]);
+    }
+    if (password !== undefined) {
+      await query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [password, id]);
+    }
+    const { rows } = await query(`SELECT id, username, role FROM users WHERE id = $1`, [id]);
+    res.json({ user: rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// ─── DELETE /api/admin/users/:id (admin only) ────────────────────────────────
+app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    await query(`DELETE FROM user_settings WHERE user_id = $1`, [id]);
+    await query(`DELETE FROM user_favorites WHERE user_id = $1`, [id]);
+    await query(`DELETE FROM user_make_soon WHERE user_id = $1`, [id]);
+    await query(`DELETE FROM user_cook_log WHERE user_id = $1`, [id]);
+    await query(`DELETE FROM user_kitchen WHERE user_id = $1`, [id]);
+    await query(`DELETE FROM users WHERE id = $1`, [id]);
+    res.json({ deleted: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 

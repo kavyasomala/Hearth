@@ -2553,15 +2553,26 @@ const STAR_LABELS = ['', "Didn't love it", 'It was okay', 'Pretty good!', 'Reall
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
-const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser }) => {
+const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser, onLogout }) => {
   const apiFetch = authFetch || fetch;
+  const isAdmin = authUser?.role === 'admin';
   const [cookHistory, setCookHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [attemptsOpen, setAttemptsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(true);
-  const [historyView, setHistoryView] = useState('timeline'); // 'timeline' | 'calendar'
+  const [sharingOpen, setSharingOpen] = useState(false);
+  const [historyView, setHistoryView] = useState('timeline');
   const [calendarDate, setCalendarDate] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() }; });
+
+  // Sharing state
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [createError, setCreateError] = useState('');
+  const [createSuccess, setCreateSuccess] = useState('');
+  const [creating, setCreating] = useState(false);
 
   const toggleDiet = (d) => setDietaryFilters(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
 
@@ -2580,6 +2591,54 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
     load();
     return () => { cancelled = true; };
   }, []); // eslint-disable-line
+
+  const loadUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const res = await apiFetch(`${API}/api/admin/users`);
+      const data = await res.json();
+      setUsers(data.users || []);
+    } catch {}
+    finally { setUsersLoading(false); }
+  };
+
+  useEffect(() => {
+    if (sharingOpen && isAdmin) loadUsers();
+  }, [sharingOpen]); // eslint-disable-line
+
+  const handleCreateUser = async () => {
+    if (!newUsername.trim() || !newPassword) return setCreateError('Username and password are required.');
+    setCreating(true); setCreateError(''); setCreateSuccess('');
+    try {
+      const res = await apiFetch(`${API}/api/auth/create-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: newUsername.trim(), password: newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setCreateSuccess(`Account created for ${data.user.username} ✓`);
+      setNewUsername(''); setNewPassword('');
+      loadUsers();
+    } catch (e) { setCreateError(e.message); }
+    finally { setCreating(false); }
+  };
+
+  const handleSuspend = async (user) => {
+    const newRole = user.role === 'suspended' ? 'guest' : 'suspended';
+    await apiFetch(`${API}/api/admin/users/${user.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: newRole }),
+    });
+    loadUsers();
+  };
+
+  const handleDelete = async (user) => {
+    if (!window.confirm(`Permanently delete ${user.username}? This removes all their data.`)) return;
+    await apiFetch(`${API}/api/admin/users/${user.id}`, { method: 'DELETE' });
+    loadUsers();
+  };
 
   // Group history by month for timeline
   const groupedHistory = useMemo(() => {
@@ -2635,12 +2694,18 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
 
   return (
     <main className="view profile-view">
+      {/* ── User header ── */}
       <div className="profile-header">
-        <div className="profile-header__avatar">👤</div>
-        <div>
-          <h2 className="profile-header__title">Your Kitchen</h2>
-          <p className="profile-header__sub">{totalRecipes} recipes · {cookHistory.length} times cooked</p>
+        <div className="profile-header__avatar" style={{ background: 'var(--terracotta)', color: '#fff', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: 52, height: 52, fontWeight: 700, flexShrink: 0 }}>
+          {authUser?.username?.[0]?.toUpperCase() || '?'}
         </div>
+        <div style={{ flex: 1 }}>
+          <h2 className="profile-header__title">{authUser?.username || 'Your Kitchen'}</h2>
+          <p className="profile-header__sub">{totalRecipes} recipes · {cookHistory.length} times cooked{isAdmin ? ' · admin' : ''}</p>
+        </div>
+        <button onClick={onLogout} style={{ background: 'none', border: '1.5px solid var(--border)', borderRadius: 999, padding: '6px 16px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--warm-gray)', cursor: 'pointer', flexShrink: 0 }}>
+          Sign out
+        </button>
       </div>
 
       {/* ── 1. Cooking History ── */}
@@ -2707,7 +2772,6 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                 ))}
               </div>
             ) : (
-              /* Calendar view — Google Calendar style */
               <div className="cook-calendar cook-calendar--gcal">
                 <div className="cook-calendar__nav">
                   <button className="cook-calendar__nav-btn" onClick={prevMonth}>‹</button>
@@ -2776,7 +2840,84 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         )}
       </section>
 
-      {/* ── 3. Settings (with About inside) ── */}
+      {/* ── 3. Sharing Options (admin only) ── */}
+      {isAdmin && (
+        <section className="profile-section profile-section--collapsible">
+          <button className="profile-settings-toggle" onClick={() => setSharingOpen(o => !o)}>
+            <span className="profile-settings-toggle__title">👥 Sharing Options</span>
+            <span className={`profile-settings-toggle__arrow ${sharingOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
+          </button>
+          {sharingOpen && (
+            <div className="profile-settings-body">
+
+              {/* Add new user */}
+              <div className="settings-section">
+                <h4 className="settings-section__title">➕ Add a Friend</h4>
+                <p className="settings-section__hint">Create an account so they can log in and track their own favorites and cook log.</p>
+                {createError && <div className="login-modal__error" style={{ marginBottom: 10 }}>{createError}</div>}
+                {createSuccess && <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 12px', fontSize: '0.85rem', color: '#166534', marginBottom: 10 }}>{createSuccess}</div>}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <input
+                    className="login-modal__input"
+                    style={{ flex: '1 1 140px' }}
+                    type="text"
+                    placeholder="Username"
+                    value={newUsername}
+                    onChange={e => setNewUsername(e.target.value)}
+                    autoCapitalize="none"
+                  />
+                  <input
+                    className="login-modal__input"
+                    style={{ flex: '1 1 140px' }}
+                    type="text"
+                    placeholder="Password"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                  />
+                  <button className="login-modal__btn" style={{ flex: '0 0 auto', marginTop: 0, padding: '10px 20px' }} onClick={handleCreateUser} disabled={creating}>
+                    {creating ? 'Adding…' : 'Add'}
+                  </button>
+                </div>
+              </div>
+
+              {/* User list */}
+              <div className="settings-section" style={{ marginBottom: 0 }}>
+                <h4 className="settings-section__title">👤 Current Users</h4>
+                {usersLoading ? (
+                  <p style={{ fontSize: 13, color: 'var(--warm-gray)' }}>Loading…</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                    {users.map(u => (
+                      <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--cream)', borderRadius: 10, border: '1px solid var(--border)' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: u.role === 'suspended' ? 'var(--light-gray)' : u.role === 'admin' ? 'var(--terracotta)' : 'var(--sage)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                          {u.username?.[0]?.toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{u.username}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--warm-gray)', textTransform: 'capitalize' }}>{u.role}</div>
+                        </div>
+                        {u.role !== 'admin' && (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={() => handleSuspend(u)} style={{ fontSize: '0.78rem', padding: '4px 10px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--warm-white)', cursor: 'pointer', color: u.role === 'suspended' ? 'var(--sage)' : 'var(--warm-gray)', fontWeight: 500 }}>
+                              {u.role === 'suspended' ? 'Restore' : 'Suspend'}
+                            </button>
+                            <button onClick={() => handleDelete(u)} style={{ fontSize: '0.78rem', padding: '4px 10px', borderRadius: 999, border: '1px solid #f5c2b8', background: '#fff0ee', cursor: 'pointer', color: 'var(--terracotta-dark)', fontWeight: 500 }}>
+                              Remove
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── 4. Settings ── */}
       <section className="profile-section profile-section--settings">
         <button className="profile-settings-toggle" onClick={() => setSettingsOpen(o => !o)}>
           <span className="profile-settings-toggle__title">⚙️ Settings</span>
@@ -2837,12 +2978,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                 </div>
               </div>
               <div className="about-stack-github-row">
-                <a
-                  className="about-github-btn"
-                  href="https://github.com/kavyasomala/Hearth"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <a className="about-github-btn" href="https://github.com/kavyasomala/Hearth" target="_blank" rel="noopener noreferrer">
                   <svg className="about-github-btn__icon" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
                   </svg>
@@ -4665,17 +4801,7 @@ function AppInner() {
   const [authToken, setAuthToken] = useState(() => LS.get('authToken', null));
   const [authUser, setAuthUser]   = useState(() => LS.get('authUser', null));
   const [showLogin, setShowLogin] = useState(false);
-  const [showCreateUser, setShowCreateUser] = useState(false);
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const isAdmin = authUser?.role === 'admin';
-
-  // Closes dropdown when clicking elsewhere
-  useEffect(() => {
-    if (!userDropdownOpen) return;
-    const close = () => setUserDropdownOpen(false);
-    window.addEventListener('click', close);
-    return () => window.removeEventListener('click', close);
-  }, [userDropdownOpen]);
 
   // Show login gate if no token
   useEffect(() => {
@@ -4912,7 +5038,6 @@ function AppInner() {
   return (
     <div className="app">
       {showLogin && <LoginModal onLogin={handleLogin} />}
-      {showCreateUser && <CreateUserModal onClose={() => setShowCreateUser(false)} authFetch={authFetch} />}
       <header className="app-header">
         <div className="app-header__bar">
           <button className="app-header__brand" onClick={() => setView('home')}>
@@ -4935,28 +5060,12 @@ function AppInner() {
               </button>
             ))}
           </nav>
-          {/* User avatar + dropdown */}
+          {/* User avatar */}
           {authUser && (
-            <div className="user-dropdown-wrap" onClick={e => e.stopPropagation()}>
-              <button className="header-user-btn" onClick={() => setUserDropdownOpen(o => !o)}>
-                <span className="header-user-btn__avatar">{authUser.username?.[0]?.toUpperCase()}</span>
-                <span className="header-user-btn__name">{authUser.username}</span>
-              </button>
-              {userDropdownOpen && (
-                <div className="user-dropdown">
-                  <div className="user-dropdown__email">{authUser.username}</div>
-                  {isAdmin && (
-                    <button className="user-dropdown__item" onClick={() => { setShowCreateUser(true); setUserDropdownOpen(false); }}>
-                      👤 Create account for friend
-                    </button>
-                  )}
-                  <div className="user-dropdown__divider" />
-                  <button className="user-dropdown__item user-dropdown__item--danger" onClick={handleLogout}>
-                    Sign out
-                  </button>
-                </div>
-              )}
-            </div>
+            <button className="header-user-btn" onClick={() => setView('profile')} title="Go to profile">
+              <span className="header-user-btn__avatar">{authUser.username?.[0]?.toUpperCase()}</span>
+              <span className="header-user-btn__name">{authUser.username}</span>
+            </button>
           )}
           {/* Mobile hamburger */}
           <button className="mobile-menu-btn" onClick={() => setMobileNavOpen(o => !o)} aria-label="Menu">
@@ -5570,6 +5679,7 @@ function AppInner() {
           setHideIncompatible={setHideIncompatible}
           authFetch={authFetch}
           authUser={authUser}
+          onLogout={handleLogout}
         />
       )}
 
