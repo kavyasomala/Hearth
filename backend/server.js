@@ -598,13 +598,16 @@ app.post('/api/grocery-list', async (req, res) => {
     for (const row of rows) recipeNameMap.set(row.recipe_id, row.recipe_name);
     const recipeNames = Array.from(recipeNameMap.values());
 
+    // Aggregate: group by ingredient name + unit so we can sum numeric amounts
+    // Key: `${ingredient_name}||${unit}` to keep same-unit quantities together
     const itemMap = new Map();
     for (const row of rows) {
-      const key = row.ingredient_name.toLowerCase().trim();
-      if (!itemMap.has(key)) {
-        itemMap.set(key, {
+      const ingKey = `${row.ingredient_name.toLowerCase().trim()}||${(row.unit || '').toLowerCase().trim()}`;
+      if (!itemMap.has(ingKey)) {
+        itemMap.set(ingKey, {
           name: row.ingredient_name,
-          amount: row.amount || '',
+          amounts: [],           // collect all numeric amounts
+          rawAmounts: [],        // collect all raw amount strings (for non-numeric)
           unit: row.unit || '',
           prep_note: row.prep_note || '',
           optional: Boolean(row.optional),
@@ -612,16 +615,39 @@ app.post('/api/grocery-list', async (req, res) => {
           category: categorise(row.ingredient_name),
         });
       }
-      const entry = itemMap.get(key);
+      const entry = itemMap.get(ingKey);
+      // Track recipe name
       if (!entry.recipes.includes(row.recipe_name)) entry.recipes.push(row.recipe_name);
+      // Accumulate amounts
+      const n = row.amount ? parseFloat(row.amount) : NaN;
+      if (!isNaN(n)) {
+        entry.amounts.push(n);
+      } else if (row.amount) {
+        entry.rawAmounts.push(row.amount);
+      }
     }
 
     const catMap = new Map();
     for (const item of itemMap.values()) {
+      let displayAmount = '';
+      if (item.amounts.length > 0) {
+        const total = item.amounts.reduce((a, b) => a + b, 0);
+        // Format: integer if whole, otherwise 1 decimal
+        displayAmount = Number.isInteger(total) ? String(total) : total.toFixed(1).replace(/\.0$/, '');
+        // If there were also non-numeric entries, append them
+        if (item.rawAmounts.length > 0) displayAmount += ' + ' + item.rawAmounts.join(' + ');
+      } else if (item.rawAmounts.length > 0) {
+        displayAmount = item.rawAmounts.join(' + ');
+      }
+
       if (!catMap.has(item.category)) catMap.set(item.category, []);
       catMap.get(item.category).push({
-        name: item.name, amount: item.amount, unit: item.unit,
-        prep_note: item.prep_note, optional: item.optional, recipes: item.recipes,
+        name: item.name,
+        amount: displayAmount,
+        unit: item.unit,
+        prep_note: item.prep_note,
+        optional: item.optional,
+        recipes: item.recipes,
       });
     }
 
@@ -642,15 +668,18 @@ app.post('/api/grocery-list', async (req, res) => {
 
 // ─── POST /api/cook-log ─────────────────────────────────────────────────────
 app.post('/api/cook-log', async (req, res) => {
-  const { recipe_id, rating, notes, cooked_at } = req.body;
-  if (!recipe_id) return res.status(400).json({ error: 'recipe_id is required' });
+  const { recipe_id, recipe_name, rating, notes, cooked_at } = req.body;
+  // Allow either a real recipe_id (UUID) or just a recipe_name for cookbook-only entries
+  const hasRealId = recipe_id && !String(recipe_id).startsWith('ref-');
+  if (!hasRealId && !recipe_name) return res.status(400).json({ error: 'recipe_id or recipe_name is required' });
   try {
     const { rows } = await query(`
-      INSERT INTO cook_log (recipe_id, rating, notes, cooked_at)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO cook_log (recipe_id, recipe_name, rating, notes, cooked_at)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `, [
-      recipe_id,
+      hasRealId ? recipe_id : null,
+      recipe_name?.trim() || null,
       rating ?? null,
       notes?.trim() || null,
       cooked_at ? new Date(cooked_at) : new Date(),

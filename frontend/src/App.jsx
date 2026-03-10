@@ -306,19 +306,23 @@ const MarkCookedModal = ({ recipe, onSave, onClose }) => {
   const save = async () => {
     setSaving(true); setError(null);
     try {
-      // Only write to DB if this is a real persisted recipe (not a cookbook-only ref entry)
       const isRealRecipe = recipe.id && !String(recipe.id).startsWith('ref-');
-      if (isRealRecipe) {
-        const res = await fetch(`${API}/api/cook-log`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ recipe_id: recipe.id, rating: rating || null, notes: notes.trim() || null, cooked_at: new Date().toISOString() }),
-        });
-        if (!res.ok) {
-          let msg = 'Failed to save cook log';
-          try { const d = await res.json(); msg = d.error || msg; } catch {}
-          throw new Error(msg);
-        }
+      const payload = {
+        recipe_name: recipe.name,
+        rating: rating || null,
+        notes: notes.trim() || null,
+        cooked_at: new Date().toISOString(),
+      };
+      if (isRealRecipe) payload.recipe_id = recipe.id;
+      const res = await fetch(`${API}/api/cook-log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        let msg = 'Failed to save cook log';
+        try { const d = await res.json(); msg = d.error || msg; } catch {}
+        throw new Error(msg);
       }
       onSave();
     } catch (e) { setError(e.message); setSaving(false); }
@@ -1635,48 +1639,105 @@ const IngredientEditModal = ({ ing, onSave, onClose }) => {
   );
 };
 
+// ─── Always-expanded types ───────────────────────────────────────────────────
+const ALWAYS_OPEN_TYPES = new Set(['produce', 'meat']);
+
 const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples }) => {
-  const [search, setSearch] = useState('');
-  const [activeType, setActiveType] = useState(null);
   const [typeOverrides, setTypeOverrides] = useState(() => LS.get('ingredientTypeOverrides', {}));
-  const [editingIng, setEditingIng] = useState(null); // null = closed, false = new, object = editing
+  const [editingIng, setEditingIng] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  // Collapsible state for sections — all collapsed except produce/meat by default
+  const [collapsedTypes, setCollapsedTypes] = useState(() => {
+    const init = {};
+    ALL_TYPES.forEach(t => { if (!ALWAYS_OPEN_TYPES.has(t)) init[t] = true; });
+    return init;
+  });
+  // Missing half collapsed state
+  const [missingCollapsed, setMissingCollapsed] = useState(true);
+  // Quick-add bar
+  const [quickAddValue, setQuickAddValue] = useState('');
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const quickAddRef = useRef(null);
+  // Recently used
+  const [recentlyUsed, setRecentlyUsed] = useState(() => LS.get('kitchenRecentlyUsed', []));
 
   useEffect(() => { LS.set('ingredientTypeOverrides', typeOverrides); }, [typeOverrides]);
+  useEffect(() => { LS.set('kitchenRecentlyUsed', recentlyUsed); }, [recentlyUsed]);
+
+  // Close quick-add dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => { if (quickAddRef.current && !quickAddRef.current.contains(e.target)) setQuickAddOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const allSelected = useMemo(() => new Set([...fridgeIngredients, ...pantryStaples]), [fridgeIngredients, pantryStaples]);
   const enriched = useMemo(() => allIngredients.map(i => ({ ...i, type: typeOverrides[i.name] ?? i.type })), [allIngredients, typeOverrides]);
 
-  const filtered = useMemo(() => {
-    let list = enriched;
-    if (search.trim()) list = list.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
-    if (activeType) list = list.filter(i => i.type === activeType);
-    return list;
-  }, [enriched, search, activeType]);
+  // Split into Have vs Missing
+  const haveList = useMemo(() => enriched.filter(i => allSelected.has(i.name.toLowerCase())), [enriched, allSelected]);
+  const missingList = useMemo(() => enriched.filter(i => !allSelected.has(i.name.toLowerCase())), [enriched, allSelected]);
 
-  const grouped = useMemo(() => {
+  // Group by type
+  const groupBy = (list) => {
     const map = {};
-    for (const ing of filtered) { const t = ing.type || 'other'; if (!map[t]) map[t] = []; map[t].push(ing); }
+    for (const ing of list) { const t = ing.type || 'other'; if (!map[t]) map[t] = []; map[t].push(ing); }
     return map;
-  }, [filtered]);
+  };
+
+  const haveGrouped = useMemo(() => groupBy(haveList), [haveList]);
+  const missingGrouped = useMemo(() => groupBy(missingList), [missingList]);
 
   const toggle = (name, type) => {
     const lower = name.toLowerCase();
     const isFridgeType = ['produce', 'meat', 'dairy', 'sauce'].includes(type);
-    if (isFridgeType) { setFridgeIngredients(prev => prev.includes(lower) ? prev.filter(i => i !== lower) : [...prev, lower]); }
-    else { setPantryStaples(prev => prev.includes(lower) ? prev.filter(i => i !== lower) : [...prev, lower]); }
+    const isOn = allSelected.has(lower);
+    if (isOn) {
+      // Remove from have
+      setFridgeIngredients(prev => prev.filter(i => i !== lower));
+      setPantryStaples(prev => prev.filter(i => i !== lower));
+    } else {
+      // Add to have — also track in recently used
+      setRecentlyUsed(prev => {
+        const next = [lower, ...prev.filter(x => x !== lower)].slice(0, 12);
+        return next;
+      });
+      if (isFridgeType) setFridgeIngredients(prev => [...prev, lower]);
+      else setPantryStaples(prev => [...prev, lower]);
+    }
+  };
+
+  // Quick-add: adds an ingredient from missing → have immediately
+  const quickAddSuggestions = useMemo(() => {
+    const q = quickAddValue.toLowerCase().trim();
+    const missingNames = missingList.map(i => i.name.toLowerCase());
+    if (!q) return missingList.slice(0, 8);
+    return missingList.filter(i => i.name.toLowerCase().includes(q)).slice(0, 10);
+  }, [quickAddValue, missingList]);
+
+  const handleQuickAdd = (ing) => {
+    toggle(ing.name, typeOverrides[ing.name] ?? ing.type);
+    setQuickAddValue('');
+    setQuickAddOpen(false);
+  };
+
+  const toggleSection = (type) => {
+    if (ALWAYS_OPEN_TYPES.has(type)) return;
+    setCollapsedTypes(prev => ({ ...prev, [type]: !prev[type] }));
+  };
+
+  const clearSection = (type) => {
+    const names = (haveGrouped[type] || []).map(i => i.name.toLowerCase());
+    setFridgeIngredients(prev => prev.filter(x => !names.includes(x)));
+    setPantryStaples(prev => prev.filter(x => !names.includes(x)));
   };
 
   const handleSaveIng = (saved) => {
     if (editingIng === false) {
-      // new ingredient
       setAllIngredients(prev => [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)));
     } else {
-      // edited existing
       setAllIngredients(prev => prev.map(i => i.name === editingIng.name ? { ...i, ...saved } : i));
-      if (saved.type !== editingIng.type) {
-        setTypeOverrides(prev => ({ ...prev, [saved.name]: saved.type }));
-      }
+      if (saved.type !== editingIng.type) setTypeOverrides(prev => ({ ...prev, [saved.name]: saved.type }));
     }
     setEditingIng(null);
   };
@@ -1691,6 +1752,61 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
     } catch (e) { alert('Could not delete: ' + e.message); }
     setDeleteTarget(null);
   };
+
+  const renderGroup = (type, ings, side) => {
+    const isCollapsed = side === 'have' ? collapsedTypes[type] : false;
+    const isAlwaysOpen = ALWAYS_OPEN_TYPES.has(type);
+    const haveCount = (haveGrouped[type] || []).length;
+    return (
+      <div key={type} className="fridge-group">
+        <div className={`fridge-group__header ${!isAlwaysOpen ? 'fridge-group__header--collapsible' : ''}`}
+          onClick={() => !isAlwaysOpen && toggleSection(type)}>
+          <h3 className="fridge-group__title">
+            {TYPE_META[type]?.emoji ?? '?'} {TYPE_META[type]?.label ?? type}
+            {side === 'missing' && <span className="fridge-group__count">{ings.length}</span>}
+            {side === 'have' && <span className="fridge-group__count">{ings.length}</span>}
+          </h3>
+          <div className="fridge-group__header-actions" onClick={e => e.stopPropagation()}>
+            {side === 'have' && haveCount > 0 && (
+              <button className="fridge-group__clear-btn" title={`Clear ${TYPE_META[type]?.label}`} onClick={() => clearSection(type)}>
+                Clear
+              </button>
+            )}
+            {!isAlwaysOpen && (
+              <span className={`fridge-group__arrow ${isCollapsed ? '' : 'fridge-group__arrow--open'}`}>▾</span>
+            )}
+          </div>
+        </div>
+        {!isCollapsed && (
+          <div className="fridge-chips">
+            {ings.map(ing => {
+              const isOn = allSelected.has(ing.name.toLowerCase());
+              const hasNutrition = ing.calories != null || ing.protein != null || ing.fiber != null;
+              return (
+                <div key={ing.name} className="fridge-ing-wrap">
+                  <div className="fridge-chip-group">
+                    <button className={`chip ${isOn ? 'chip--selected' : ''}`} onClick={() => toggle(ing.name, typeOverrides[ing.name] ?? ing.type)}>
+                      {isOn && <span className="chip__check">✓</span>}
+                      {ing.name}
+                      {hasNutrition && <span className="fridge-chip__nutrition-dot" title="Has nutrition data" />}
+                    </button>
+                    <div className="fridge-chip-actions">
+                      <button className="fridge-chip-action fridge-chip-action--edit" title="Edit" onClick={() => setEditingIng({ ...ing, type: typeOverrides[ing.name] ?? ing.type })}>✎</button>
+                      <button className="fridge-chip-action fridge-chip-action--del" title="Delete" onClick={() => setDeleteTarget(ing)}>✕</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const recentIngredients = useMemo(() =>
+    recentlyUsed.map(name => enriched.find(i => i.name.toLowerCase() === name)).filter(Boolean),
+  [recentlyUsed, enriched]);
 
   return (
     <main className="view">
@@ -1717,67 +1833,90 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
 
       <div className="fridge-header">
         <div>
-          <h2 className="fridge-title">My Ingredients</h2>
-          <p className="fridge-subtitle">{fridgeIngredients.length} fridge · {pantryStaples.length} pantry items tracked</p>
+          <h2 className="fridge-title">My Kitchen</h2>
+          <p className="fridge-subtitle">{allSelected.size} ingredients tracked · {missingList.length} missing</p>
         </div>
         <div className="fridge-header__actions">
           <button className="btn btn--primary btn--sm" onClick={() => setEditingIng(false)}>+ Add ingredient</button>
-          <button className="btn btn--ghost btn--sm" onClick={() => { setFridgeIngredients([]); setPantryStaples([]); }}>Clear selection</button>
+          <button className="btn btn--ghost btn--sm" onClick={() => { setFridgeIngredients([]); setPantryStaples([]); }}>Clear all</button>
         </div>
       </div>
 
-      <div className="fridge-filter-bar">
-        <div className="fridge-filter-bar__search-wrap">
-          <span className="fridge-filter-bar__icon">🔍</span>
-          <input className="fridge-filter-bar__search" placeholder="Search ingredients…" value={search} onChange={e => setSearch(e.target.value)} />
-          {search && <button className="fridge-filter-bar__clear" onClick={() => setSearch('')}>✕</button>}
+      {/* Quick-Add Bar */}
+      <div className="kitchen-quickadd-wrap" ref={quickAddRef}>
+        <div className="kitchen-quickadd-bar">
+          <span className="kitchen-quickadd-icon">＋</span>
+          <input
+            className="kitchen-quickadd-input"
+            placeholder="Quick-add an ingredient to your kitchen…"
+            value={quickAddValue}
+            onChange={e => { setQuickAddValue(e.target.value); setQuickAddOpen(true); }}
+            onFocus={() => setQuickAddOpen(true)}
+          />
+          {quickAddValue && <button className="fridge-filter-bar__clear" onClick={() => { setQuickAddValue(''); setQuickAddOpen(false); }}>✕</button>}
         </div>
-        <div className="fridge-type-chips">
-          <button className={`fridge-type-chip ${!activeType ? 'fridge-type-chip--active' : ''}`} onClick={() => setActiveType(null)}>All</button>
-          {ALL_TYPES.map(t => (
-            <button key={t} className={`fridge-type-chip ${activeType === t ? 'fridge-type-chip--active' : ''}`} onClick={() => setActiveType(prev => prev === t ? null : t)}>
-              {TYPE_META[t].emoji} {TYPE_META[t].label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="fridge-groups">
-        {Object.entries(grouped).map(([type, ings]) => (
-          <div key={type} className="fridge-group">
-            <h3 className="fridge-group__title">
-              {TYPE_META[type]?.emoji ?? '?'} {TYPE_META[type]?.label ?? type}
-              <span className="fridge-group__count">{ings.filter(i => allSelected.has(i.name.toLowerCase())).length}/{ings.length}</span>
-            </h3>
-            <div className="fridge-chips">
-              {ings.map(ing => {
-                const isOn = allSelected.has(ing.name.toLowerCase());
-                const hasNutrition = ing.calories != null || ing.protein != null || ing.fiber != null;
-                return (
-                  <div key={ing.name} className="fridge-ing-wrap">
-                    <div className="fridge-chip-group">
-                      <button className={`chip ${isOn ? 'chip--selected' : ''}`} onClick={() => toggle(ing.name, typeOverrides[ing.name] ?? ing.type)}>
-                        {isOn && <span className="chip__check">✓</span>}
-                        {ing.name}
-                        {hasNutrition && <span className="fridge-chip__nutrition-dot" title="Has nutrition data" />}
-                      </button>
-                      <div className="fridge-chip-actions">
-                        <button className="fridge-chip-action fridge-chip-action--edit" title="Edit" onClick={() => setEditingIng({ ...ing, type: typeOverrides[ing.name] ?? ing.type })}>✎</button>
-                        <button className="fridge-chip-action fridge-chip-action--del" title="Delete" onClick={() => setDeleteTarget(ing)}>✕</button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-        {Object.keys(grouped).length === 0 && (
-          <div className="fridge-empty">
-            <p>No ingredients found{search ? ` for "${search}"` : ''}.</p>
-            <button className="btn btn--ghost btn--sm" style={{ marginTop: 8 }} onClick={() => setEditingIng(false)}>+ Add one</button>
+        {quickAddOpen && quickAddSuggestions.length > 0 && (
+          <div className="kitchen-quickadd-dropdown">
+            {quickAddSuggestions.map(ing => (
+              <button key={ing.name} className="kitchen-quickadd-option" onMouseDown={() => handleQuickAdd(ing)}>
+                <span className="kitchen-quickadd-option__emoji">{TYPE_META[ing.type]?.emoji ?? '🥗'}</span>
+                {ing.name}
+              </button>
+            ))}
           </div>
         )}
+      </div>
+
+      {/* Recently Used */}
+      {recentIngredients.length > 0 && (
+        <div className="fridge-group fridge-group--recent">
+          <div className="fridge-group__header">
+            <h3 className="fridge-group__title">🕐 Recently Used</h3>
+          </div>
+          <div className="fridge-chips">
+            {recentIngredients.map(ing => {
+              const isOn = allSelected.has(ing.name.toLowerCase());
+              return (
+                <div key={ing.name} className="fridge-ing-wrap">
+                  <div className="fridge-chip-group">
+                    <button className={`chip ${isOn ? 'chip--selected' : ''}`} onClick={() => toggle(ing.name, typeOverrides[ing.name] ?? ing.type)}>
+                      {isOn && <span className="chip__check">✓</span>}
+                      {ing.name}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── HAVE ── */}
+      <div className="kitchen-split">
+        <div className="kitchen-split__section kitchen-split__section--have">
+          <div className="kitchen-split__header">
+            <h2 className="kitchen-split__title">✅ I Have <span className="kitchen-split__count">{haveList.length}</span></h2>
+          </div>
+          <div className="fridge-groups">
+            {ALL_TYPES.filter(t => haveGrouped[t]?.length > 0).map(t => renderGroup(t, haveGrouped[t], 'have'))}
+            {haveList.length === 0 && (
+              <div className="fridge-empty"><p>Nothing added yet. Use quick-add above or tap ingredients below.</p></div>
+            )}
+          </div>
+        </div>
+
+        {/* ── MISSING ── */}
+        <div className="kitchen-split__section kitchen-split__section--missing">
+          <button className="kitchen-split__header kitchen-split__header--btn" onClick={() => setMissingCollapsed(p => !p)}>
+            <h2 className="kitchen-split__title">❌ Missing <span className="kitchen-split__count">{missingList.length}</span></h2>
+            <span className={`fridge-group__arrow ${missingCollapsed ? '' : 'fridge-group__arrow--open'}`}>▾</span>
+          </button>
+          {!missingCollapsed && (
+            <div className="fridge-groups">
+              {ALL_TYPES.filter(t => missingGrouped[t]?.length > 0).map(t => renderGroup(t, missingGrouped[t], 'missing'))}
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );
@@ -2003,40 +2142,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients }) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to build list');
         if (!cancelled) {
-          // Client-side: merge duplicate ingredient amounts across recipes
-          const rawCats = data.categories || [];
-          const mergedCats = rawCats.map(cat => {
-            const merged = {};
-            for (const item of cat.items) {
-              const key = item.name.toLowerCase().trim();
-              if (!merged[key]) {
-                merged[key] = { ...item, totalAmount: null, _amounts: [] };
-              }
-              const existing = merged[key];
-              // Try to sum numeric amounts
-              const n = parseFloat(item.amount);
-              if (!isNaN(n) && (existing.unit || '').toLowerCase() === (item.unit || '').toLowerCase()) {
-                existing._amounts.push(n);
-              }
-              // Merge recipe lists
-              if (item.recipes?.length) {
-                existing.recipes = [...new Set([...(existing.recipes || []), ...item.recipes])];
-              }
-            }
-            const items = Object.values(merged).map(item => {
-              if (item._amounts.length > 0) {
-                const total = item._amounts.reduce((a, b) => a + b, 0);
-                // Format nicely: avoid decimals if whole number
-                item.totalAmount = Number.isInteger(total) ? String(total) : total.toFixed(1).replace(/\.0$/, '');
-              } else {
-                item.totalAmount = item.amount;
-              }
-              delete item._amounts;
-              return item;
-            });
-            return { ...cat, items };
-          });
-          setCategories(mergedCats);
+          setCategories(data.categories || []);
           setRecipeNames(data.recipeNames || []);
           setChecked(new Set());
         }
@@ -2058,7 +2164,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients }) => {
       items.forEach(item => {
         const inKitchen = allMyIngredients.has(item.name.toLowerCase().trim());
         const tick = checked.has(`${cat.name}-${item.name}`) || inKitchen ? '✓' : '○';
-        const amount = [item.totalAmount, item.unit].filter(Boolean).join(' ');
+        const amount = [item.amount, item.unit].filter(Boolean).join(' ');
         lines.push(`  ${tick} ${amount} ${item.name}${item.prep_note ? ` (${item.prep_note})` : ''}`);
       });
     });
@@ -2127,7 +2233,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients }) => {
                       const key = `${cat.name}-${item.name}`;
                       const inKitchen = allMyIngredients.has(item.name.toLowerCase().trim());
                       const isChecked = checked.has(key) || inKitchen;
-                      const amountStr = [item.totalAmount ?? item.amount, item.unit].filter(Boolean).join(' ');
+                      const amountStr = [item.amount, item.unit].filter(Boolean).join(' ');
                       return (
                         <div
                           key={key}
@@ -2752,22 +2858,22 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
                       ? <img className="cbentry__thumb" src={entry.image || linked?.coverImage} alt={entry.name} />
                       : <div className="cbentry__thumb cbentry__thumb--empty">📖</div>}
                   </div>
-                  {/* Info */}
-                  <div className="cbentry__info">
-                    <div className="cbentry__name-row">
-                      {linked
-                        ? <button className="cbentry__name cbentry__name--link" onClick={() => onOpenRecipe(linked)}>{entry.name}</button>
-                        : <span className="cbentry__name">{entry.name}</span>}
-                      {linked && <span className="cookbook-recipe-entry__saved-badge">✓ Saved</span>}
-                    </div>
-                    {entry.page && <span className="cbentry__page">p. {entry.page}</span>}
-                    {entryTags.length > 0 && (
-                      <div className="cbentry__tags">
-                        {entryTags.slice(0,5).map(t => <span key={t} className="cbentry__tag">{t}</span>)}
-                      </div>
-                    )}
+                  {/* Name col */}
+                  <div className="cbentry__name-col">
+                    {linked
+                      ? <button className="cbentry__name cbentry__name--link" onClick={() => onOpenRecipe(linked)}>{entry.name}</button>
+                      : <span className="cbentry__name">{entry.name}</span>}
+                    {linked && <span className="cookbook-recipe-entry__saved-badge">✓ Saved</span>}
                   </div>
-                  {/* Actions */}
+                  {/* Tags col */}
+                  <div className="cbentry__tags-col">
+                    {entryTags.slice(0, 4).map(t => <span key={t} className="cbentry__tag">{t}</span>)}
+                  </div>
+                  {/* Page col */}
+                  <div className="cbentry__page-col">
+                    {entry.page && <span className="cbentry__page">p. {entry.page}</span>}
+                  </div>
+                  {/* Actions col */}
                   <div className="cbentry__actions">
                     <button className="cbentry__action cbentry__action--cook" title="Mark as Cooked"
                       onClick={() => setCookingRecipe({ id: entry.recipeId || `ref-${idx}`, name: entry.name, coverImage: entry.image || linked?.coverImage || null })}>
