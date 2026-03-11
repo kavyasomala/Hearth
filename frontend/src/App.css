@@ -2015,13 +2015,13 @@ body {
   display: flex;
   gap: 24px;
   width: 100%;
-  max-width: 680px;
-  flex-wrap: wrap;
+  max-width: 960px;
+  flex-wrap: nowrap;
   justify-content: center;
 }
 .add-tab__card {
   flex: 1;
-  min-width: 240px;
+  min-width: 0;
   max-width: 320px;
   background: var(--warm-white);
   border: 2px solid var(--border);

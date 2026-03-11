@@ -4792,55 +4792,135 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
   const openTextModal = () => { setPastedText(''); setTextError(null); setShowTextModal(true); };
   const closeTextModal = () => { setShowTextModal(false); setTextParsing(false); };
 
-  const parseTextAndOpen = async () => {
+  const parseTextAndOpen = () => {
     if (!pastedText.trim()) { setTextError('Please paste some recipe text'); return; }
-    setTextParsing(true); setTextError(null);
-    try {
-      const res = await apiFetch(`${API}/api/parse-recipe-text`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: pastedText.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Parse failed');
+    setTextError(null);
 
-      setDetails({
-        name: data.name || '',
-        cuisine: normaliseCuisine(data.cuisine),
-        time: data.time || '',
-        servings: data.servings || '',
-        cover_image_url: data.image || '',
-        cookbook: '', reference: '', status: 'to try', tags: [],
-      });
-      setIngs(
-        data.ingredients?.length
-          ? data.ingredients.map((i, idx) => ({
-              _id: `ing-txt-${idx}-${Date.now()}`,
-              name: i.name || '', amount: i.amount || '', unit: i.unit || '',
-              prep_note: '', optional: false, group_label: '',
-            }))
-          : [{ _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]
+    const text = pastedText.trim();
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    const UNITS_RE = new RegExp(
+      `^(\\d[\\d\\s\\/\\.]*)?\\s*(${COMMON_UNITS.join('|')})\\.?\\s+(.+)$`, 'i'
+    );
+    const FRAC_MAP = { '½': '1/2', '⅓': '1/3', '⅔': '2/3', '¼': '1/4', '¾': '3/4',
+      '⅛': '1/8', '⅜': '3/8', '⅝': '5/8', '⅞': '7/8' };
+    const normFrac = s => s.replace(/[½⅓⅔¼¾⅛⅜⅝⅞]/g, m => FRAC_MAP[m] || m);
+
+    const parseIngLine = (raw) => {
+      const s = normFrac(raw.replace(/^[-•*]\s*/, '').trim());
+      // Try "amount unit name"
+      const m = s.match(UNITS_RE);
+      if (m) {
+        return { amount: (m[1] || '').trim(), unit: m[2].toLowerCase(), name: m[3].trim() };
+      }
+      // Try leading number/fraction then rest
+      const numMatch = s.match(/^([\d\s\/\.]+)\s+(.+)$/);
+      if (numMatch) {
+        const words = numMatch[2].split(/\s+/);
+        const maybeUnit = words[0].toLowerCase().replace(/\.$/, '');
+        if (COMMON_UNITS.includes(maybeUnit)) {
+          return { amount: numMatch[1].trim(), unit: maybeUnit, name: words.slice(1).join(' ') };
+        }
+        return { amount: numMatch[1].trim(), unit: '', name: numMatch[2].trim() };
+      }
+      return { amount: '', unit: '', name: s };
+    };
+
+    const isSectionHeader = (line) =>
+      /^(ingredients|instructions|directions|method|steps|notes?|description|for the|to make|prep|cook):?$/i.test(line)
+      || /^(ingredients|instructions|directions|method|steps)[\s:]/i.test(line);
+
+    const isIngredientLine = (line) => {
+      const s = normFrac(line.replace(/^[-•*\d\.]+\s*/, '').trim());
+      return (
+        /^[\d½⅓⅔¼¾⅛⅜⅝⅞]/.test(s) ||
+        new RegExp(`^(${COMMON_UNITS.join('|')})\\b`, 'i').test(s) ||
+        /^[-•*]/.test(line)
       );
-      setSteps(
-        data.steps?.length
-          ? data.steps.map((s, idx) => ({
-              _id: `step-txt-${idx}-${Date.now()}`,
-              step_number: idx + 1, body_text: s, timer_seconds: null,
-            }))
-          : [{ _id: `step-${Date.now()}`, step_number: 1, body_text: '' }]
-      );
-      setNotesList(
-        data.description ? [{ _id: `note-txt-${Date.now()}`, text: data.description }] : []
-      );
-      setImgPreviewError(false);
-      setSaveError(null);
-      setShowTextModal(false);
-      setShowModal(true);
-    } catch (e) {
-      setTextError(e.message);
-    } finally {
-      setTextParsing(false);
+    };
+
+    const isStepLine = (line) =>
+      /^\d+[\.\)]\s/.test(line) || line.length > 60;
+
+    // ── Section detection ─────────────────────────────────────────────────────
+    let name = '';
+    let timeStr = '';
+    let servingsStr = '';
+    const ingLines = [];
+    const stepLines = [];
+
+    // Extract name from first non-empty line (skip URLs)
+    const firstReal = lines.find(l => l.length > 1 && !/^https?:\/\//i.test(l));
+    if (firstReal) name = firstReal.replace(/^#+\s*/, '').trim();
+
+    // Extract time/servings from anywhere
+    for (const line of lines) {
+      const tm = line.match(/(?:total\s+)?(?:time|cook(?:ing)?\s+time|prep(?:\s+time)?)[:\s]+([^\n,|]+)/i);
+      if (tm && !timeStr) timeStr = tm[1].trim();
+      const sv = line.match(/(?:serves?|servings?|yield)[:\s]+([^\n,|]+)/i);
+      if (sv && !servingsStr) servingsStr = sv[1].trim().split(/\s/)[0];
     }
+
+    // Split into sections
+    let section = 'preamble';
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (isSectionHeader(line)) {
+        if (/ingred/i.test(line)) { section = 'ingredients'; continue; }
+        if (/instruct|direct|method|steps|cook|prep/i.test(line)) { section = 'steps'; continue; }
+        if (/notes?/i.test(line)) { section = 'notes'; continue; }
+        continue;
+      }
+      if (section === 'ingredients' || (section === 'preamble' && isIngredientLine(line))) {
+        if (section === 'preamble') section = 'ingredients';
+        ingLines.push(line);
+      } else if (section === 'steps' || (section === 'preamble' && isStepLine(line))) {
+        if (section === 'preamble') section = 'steps';
+        const cleaned = line.replace(/^\d+[\.\)]\s*/, '').trim();
+        if (cleaned) stepLines.push(cleaned);
+      }
+    }
+
+    // Fallback: if nothing parsed, treat all non-name lines as steps
+    if (!ingLines.length && !stepLines.length) {
+      for (let i = 1; i < lines.length; i++) stepLines.push(lines[i]);
+    }
+
+    const parsedIngs = ingLines.map(parseIngLine).filter(i => i.name);
+    const parsedSteps = stepLines.filter(s => s.length > 2);
+
+    // ── Populate form ─────────────────────────────────────────────────────────
+    setDetails({
+      name,
+      cuisine: '',
+      time: timeStr,
+      servings: servingsStr,
+      cover_image_url: '',
+      cookbook: '', reference: '', status: 'to try', tags: [],
+    });
+    setIngs(
+      parsedIngs.length
+        ? parsedIngs.map((i, idx) => ({
+            _id: `ing-txt-${idx}-${Date.now()}`,
+            name: i.name, amount: i.amount, unit: i.unit,
+            prep_note: '', optional: false, group_label: '',
+          }))
+        : [{ _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]
+    );
+    setSteps(
+      parsedSteps.length
+        ? parsedSteps.map((s, idx) => ({
+            _id: `step-txt-${idx}-${Date.now()}`,
+            step_number: idx + 1, body_text: s, timer_seconds: null,
+          }))
+        : [{ _id: `step-${Date.now()}`, step_number: 1, body_text: '' }]
+    );
+    setNotesList([]);
+    setImgPreviewError(false);
+    setSaveError(null);
+    setShowTextModal(false);
+    setShowModal(true);
   };
 
   const emptyForm = () => ({
@@ -5064,17 +5144,11 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                 />
               </div>
               {textError && <p className="editor-error">⚠️ {textError}</p>}
-              {textParsing && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--warm-gray)', fontSize: '0.88rem' }}>
-                  <span className="link-import__spinner" />
-                  Parsing recipe…
-                </div>
-              )}
             </div>
             <div className="create-modal__footer">
               <button className="btn btn--ghost" onClick={closeTextModal}>Cancel</button>
-              <button className="btn btn--primary" onClick={parseTextAndOpen} disabled={textParsing || !pastedText.trim()}>
-                {textParsing ? 'Parsing…' : 'Next →'}
+              <button className="btn btn--primary" onClick={parseTextAndOpen} disabled={!pastedText.trim()}>
+                Next →
               </button>
             </div>
           </div>
