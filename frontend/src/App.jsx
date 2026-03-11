@@ -3314,7 +3314,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                 recipe notes, TikTok descriptions, and more. Might require an AI integration to
                 reliably extract structure from freeform text.
               </p>
-              <span className="roadmap-badge">Planned</span>
+              <span className="roadmap-badge" style={{ marginBottom: 8, display: 'inline-block' }}>Planned</span>
             </div>
 
           </div>
@@ -3406,14 +3406,6 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
   const [error, setError] = useState(null);
   const [hideInKitchen, setHideInKitchen] = useState(false);
 
-  // Snapshot of kitchen contents at the time the list loaded — used to determine
-  // which items were ALREADY in the kitchen (locked, non-clickable) vs items the
-  // user checked during this session (clickable, unchecable).
-  const preExistingKitchen = useRef(null);
-  useEffect(() => {
-    preExistingKitchen.current = new Set(allMyIngredients);
-  }, []); // intentionally only runs once on mount
-
   const makeSoonRecipes = useMemo(() => recipes.filter(r => makeSoonIds.includes(r.id)), [recipes, makeSoonIds]);
 
   // Consolidate items per category
@@ -3424,16 +3416,15 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
   const toggleChecked = (key, itemName) => {
     setChecked(prev => {
       const next = new Set(prev);
+      const lower = itemName.toLowerCase().trim();
       if (next.has(key)) {
         next.delete(key);
         // Remove from kitchen when unchecked
-        const lower = itemName.toLowerCase().trim();
         setFridgeIngredients(prev2 => prev2.filter(x => x.toLowerCase().trim() !== lower));
         setPantryStaples(prev2 => prev2.filter(x => x.toLowerCase().trim() !== lower));
       } else {
         next.add(key);
-        // Auto-add to kitchen
-        const lower = itemName.toLowerCase().trim();
+        // Add to kitchen when checked
         const known = allIngredients?.find(i => (typeof i === 'string' ? i : i.name).toLowerCase() === lower);
         const isFridgeType = known && typeof known === 'object' && ['produce','meat & fish','dairy'].includes(known.type);
         if (isFridgeType) {
@@ -3462,7 +3453,16 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
         if (!cancelled) {
           setCategories(data.categories || []);
           setRecipeNames(data.recipeNames || []);
-          setChecked(new Set());
+          // Pre-check items already in the kitchen
+          const preChecked = new Set();
+          (data.categories || []).forEach(cat => {
+            consolidateItems(cat.items).forEach(item => {
+              if (allMyIngredients.has(item.name.toLowerCase().trim())) {
+                preChecked.add(`${cat.name}-${item.name}`);
+              }
+            });
+          });
+          setChecked(preChecked);
         }
       } catch (e) { if (!cancelled) setError(e.message); }
       finally { if (!cancelled) setLoading(false); }
@@ -3475,13 +3475,12 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
     const lines = [`Grocery List — ${recipeNames.join(', ')}\n`];
     consolidatedCategories.forEach(cat => {
       const items = hideInKitchen
-        ? cat.items.filter(item => !allMyIngredients.has(item.name.toLowerCase().trim()))
+        ? cat.items.filter(item => !checked.has(`${cat.name}-${item.name}`))
         : cat.items;
       if (!items.length) return;
       lines.push(`\n${cat.emoji} ${cat.name}`);
       items.forEach(item => {
-        const inKitchen = allMyIngredients.has(item.name.toLowerCase().trim());
-        const tick = checked.has(`${cat.name}-${item.name}`) || inKitchen ? '✓' : '○';
+        const tick = checked.has(`${cat.name}-${item.name}`) ? '✓' : '○';
         const amount = [item.amount, item.unit].filter(Boolean).join(' ');
         const extra = item._extra ? ` + ${item._extra}` : '';
         lines.push(`  ${tick} ${amount}${extra} ${item.name}${item.prep_note ? ` (${item.prep_note})` : ''}`);
@@ -3492,7 +3491,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
 
   const totalItems = consolidatedCategories.reduce((sum, cat) => sum + cat.items.length, 0);
   const inKitchenCount = consolidatedCategories.reduce((sum, cat) =>
-    sum + cat.items.filter(item => (preExistingKitchen.current || allMyIngredients).has(item.name.toLowerCase().trim())).length, 0);
+    sum + cat.items.filter(item => checked.has(`${cat.name}-${item.name}`)).length, 0);
   const checkedCount = checked.size;
 
   return (
@@ -3548,7 +3547,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
             {consolidatedCategories.map(cat => {
               const allItems = cat.items;
               const visibleItems = hideInKitchen
-                ? allItems.filter(item => !allMyIngredients.has(item.name.toLowerCase().trim()))
+                ? allItems.filter(item => !checked.has(`${cat.name}-${item.name}`))
                 : allItems;
               if (!visibleItems.length) return null;
               return (
@@ -3557,18 +3556,14 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
                   <div className="grocery-items">
                     {visibleItems.map(item => {
                       const key = `${cat.name}-${item.name}`;
-                      const itemKey = item.name.toLowerCase().trim();
-                      // inKitchen = was already in kitchen BEFORE this session (locked, non-clickable)
-                      const inKitchen = preExistingKitchen.current
-                        ? preExistingKitchen.current.has(itemKey)
-                        : allMyIngredients.has(itemKey);
-                      const isChecked = checked.has(key) || inKitchen;
+                      const isChecked = checked.has(key);
+                      const wasInKitchen = allMyIngredients.has(item.name.toLowerCase().trim()) && !checked.has(key) === false;
                       const amountStr = [item.amount, item.unit].filter(Boolean).join(' ');
                       return (
                         <div
                           key={key}
-                          className={`grocery-item ${isChecked ? 'grocery-item--checked' : ''} ${inKitchen ? 'grocery-item--in-kitchen' : ''}`}
-                          onClick={() => !inKitchen && toggleChecked(key, item.name)}
+                          className={`grocery-item ${isChecked ? 'grocery-item--checked' : ''}`}
+                          onClick={() => toggleChecked(key, item.name)}
                         >
                           <div className={`grocery-item__checkbox ${isChecked ? 'grocery-item__checkbox--checked' : ''}`}>
                             {isChecked && '✓'}
@@ -3580,10 +3575,10 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
                               {' '}{item.name}
                             </span>
                             {item.prep_note && <span className="grocery-item__note">{item.prep_note}</span>}
-                            {inKitchen && <span className="grocery-item__kitchen-tag">in kitchen</span>}
-                            {!inKitchen && !isChecked && <span className="grocery-item__tap-hint">tap to check off → adds to kitchen</span>}
-                            {!inKitchen && isChecked && <span className="grocery-item__tap-hint">tap to uncheck → removes from kitchen</span>}
-                            {item.recipes?.length > 1 && !inKitchen && (
+                            {isChecked
+                              ? <span className="grocery-item__tap-hint">tap to uncheck → removes from kitchen</span>
+                              : <span className="grocery-item__tap-hint">tap to check off → adds to kitchen</span>}
+                            {item.recipes?.length > 1 && (
                               <span className="grocery-item__recipes">for {item.recipes.join(', ')}</span>
                             )}
                           </div>

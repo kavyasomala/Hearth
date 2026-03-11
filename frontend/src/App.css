@@ -3391,6 +3391,7 @@ body {
 }
 .profile-settings-body .settings-section { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 20px; }
 .profile-settings-body .settings-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.profile-settings-body .settings-section:last-child .roadmap-badge { margin-bottom: 6px; }
 .profile-settings-body .settings-section__title { font-size: 14px !important; }
 
 /* ── Theme picker ── */
