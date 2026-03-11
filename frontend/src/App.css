@@ -2081,6 +2081,19 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* ─── Link Import Spinner ────────────────────────────────────────────────── */
+.link-import__spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--terracotta);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ─── Create Recipe Modal ────────────────────────────────────────────────── */
 .create-modal-overlay {
   position: fixed;

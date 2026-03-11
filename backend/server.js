@@ -1159,6 +1159,181 @@ app.get('/api/user/cook-log', authenticateToken, async (req, res) => {
   }
 });
 
+// ─── POST /api/scrape-recipe ─────────────────────────────────────────────────
+// Fetches a URL and extracts Recipe structured data (JSON-LD first, then meta fallback)
+app.post('/api/scrape-recipe', authenticateToken, requireAdmin, async (req, res) => {
+  const { url } = req.body;
+  if (!url?.trim()) return res.status(400).json({ error: 'url is required' });
+
+  let html = '';
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    const response = await fetch(url.trim(), {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
+    clearTimeout(timeout);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    html = await response.text();
+  } catch (err) {
+    return res.status(422).json({ error: `Could not fetch page: ${err.message}` });
+  }
+
+  // ── 1. Try JSON-LD structured data (the cleanest source) ──────────────────
+  const jsonLdRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let recipeSchema = null;
+  let match;
+  while ((match = jsonLdRegex.exec(html)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1].trim());
+      // Handle single object or @graph array
+      const candidates = parsed['@graph']
+        ? parsed['@graph']
+        : [parsed];
+      for (const node of candidates) {
+        const type = Array.isArray(node['@type']) ? node['@type'] : [node['@type'] || ''];
+        if (type.some(t => (t || '').toLowerCase().includes('recipe'))) {
+          recipeSchema = node;
+          break;
+        }
+      }
+      if (recipeSchema) break;
+    } catch {}
+  }
+
+  // Helper: strip HTML tags from a string
+  const stripHtml = (s) => (s || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // Helper: parse ISO 8601 duration to human string e.g. PT1H30M → "1 hr 30 mins"
+  const parseDuration = (iso) => {
+    if (!iso) return null;
+    const m = iso.match(/P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?/);
+    if (!m) return null;
+    const days  = parseInt(m[1] || 0);
+    const hours = parseInt(m[2] || 0) + days * 24;
+    const mins  = parseInt(m[3] || 0);
+    if (!hours && !mins) return null;
+    const parts = [];
+    if (hours) parts.push(`${hours} hr${hours > 1 ? 's' : ''}`);
+    if (mins)  parts.push(`${mins} min${mins > 1 ? 's' : ''}`);
+    return parts.join(' ');
+  };
+
+  // Helper: parse ingredient string "1 cup flour" → {amount, unit, name}
+  const parseIngredient = (raw) => {
+    const text = stripHtml(raw).trim();
+    // Match optional leading fraction/number + unit + rest
+    const m = text.match(/^([\d\s\u00BC-\u00BE\u2150-\u215E\/\.]+)?\s*([a-zA-Z]+\b)?\s*(.+)?$/);
+    if (!m) return { name: text, amount: '', unit: '' };
+    const UNITS = new Set(['tsp','teaspoon','teaspoons','tbsp','tablespoon','tablespoons','cup','cups',
+      'oz','ounce','ounces','lb','pound','pounds','g','gram','grams','kg','kilogram','kilograms',
+      'ml','milliliter','milliliters','l','liter','liters','litre','litres',
+      'pinch','handful','bunch','clove','cloves','slice','slices','piece','pieces',
+      'can','jar','bag','sprig','sprigs','rasher','rashers','fillet','fillets',
+      'sheet','sheets','head','heads','stalk','stalks','strip','strips']);
+    // Vulgar fraction map
+    const fracs = { '¼':'0.25','½':'0.5','¾':'0.75','⅓':'0.333','⅔':'0.667','⅛':'0.125','⅜':'0.375','⅝':'0.625','⅞':'0.875' };
+    let rawNum = (m[1] || '').trim();
+    for (const [f, d] of Object.entries(fracs)) rawNum = rawNum.replace(f, d);
+    // Handle "1 1/2" style
+    const numMatch = rawNum.match(/^(\d+)\s+(\d+)\/(\d+)$/) || rawNum.match(/^(\d+)\/(\d+)$/);
+    let amount = '';
+    if (numMatch && numMatch.length === 4) amount = String(parseInt(numMatch[1]) + parseInt(numMatch[2]) / parseInt(numMatch[3]));
+    else if (numMatch && numMatch.length === 3) amount = String(parseInt(numMatch[1]) / parseInt(numMatch[2]));
+    else amount = rawNum;
+    const maybeUnit = (m[2] || '').toLowerCase();
+    if (UNITS.has(maybeUnit)) {
+      return { amount: amount.trim(), unit: maybeUnit, name: stripHtml(m[3] || '').trim() || maybeUnit };
+    }
+    // No unit recognised — everything after the number is the ingredient name
+    return { amount: amount.trim(), unit: '', name: stripHtml((m[2] ? m[2] + ' ' : '') + (m[3] || '')).trim() };
+  };
+
+  if (recipeSchema) {
+    // ── Parse JSON-LD Recipe schema ──────────────────────────────────────────
+    const name = stripHtml(recipeSchema.name || '');
+
+    // Time: prefer totalTime, fallback cookTime + prepTime
+    let time = parseDuration(recipeSchema.totalTime);
+    if (!time) {
+      const cook = parseDuration(recipeSchema.cookTime);
+      const prep = parseDuration(recipeSchema.prepTime);
+      time = [prep, cook].filter(Boolean).join(' + ') || null;
+    }
+
+    const servingsRaw = recipeSchema.recipeYield;
+    let servings = '';
+    if (Array.isArray(servingsRaw)) servings = String(servingsRaw[0] || '');
+    else if (servingsRaw) servings = String(servingsRaw);
+    // Strip non-numeric suffix if it's just a number like "4 servings"
+    servings = servings.replace(/\s*(servings?|serves?|portions?).*/i, '').trim();
+
+    // Image
+    let image = '';
+    const imgField = recipeSchema.image;
+    if (typeof imgField === 'string') image = imgField;
+    else if (Array.isArray(imgField)) image = imgField[0]?.url || imgField[0] || '';
+    else if (imgField?.url) image = imgField.url;
+
+    // Cuisine
+    const cuisineRaw = recipeSchema.recipeCuisine;
+    const cuisine = Array.isArray(cuisineRaw) ? cuisineRaw[0] || '' : (cuisineRaw || '');
+
+    // Ingredients
+    const rawIngs = Array.isArray(recipeSchema.recipeIngredient) ? recipeSchema.recipeIngredient : [];
+    const ingredients = rawIngs.map(r => parseIngredient(r)).filter(i => i.name);
+
+    // Instructions
+    const rawSteps = recipeSchema.recipeInstructions || [];
+    const steps = [];
+    const flattenSteps = (arr) => {
+      for (const s of arr) {
+        if (typeof s === 'string') { steps.push(stripHtml(s)); }
+        else if (s['@type'] === 'HowToStep') { steps.push(stripHtml(s.text || s.name || '')); }
+        else if (s['@type'] === 'HowToSection' && Array.isArray(s.itemListElement)) { flattenSteps(s.itemListElement); }
+      }
+    };
+    flattenSteps(Array.isArray(rawSteps) ? rawSteps : [rawSteps]);
+
+    // Nutrition
+    const n = recipeSchema.nutrition || {};
+    const calories = parseInt(n.calories) || null;
+
+    // Description / notes
+    const description = stripHtml(recipeSchema.description || '');
+
+    return res.json({
+      source: 'json-ld',
+      name, time, servings, image, cuisine,
+      calories, ingredients, steps, description,
+    });
+  }
+
+  // ── 2. Meta / OpenGraph fallback ──────────────────────────────────────────
+  const getMeta = (prop) => {
+    const m = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']+)["']`, 'i'))
+           || html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${prop}["']`, 'i'));
+    return m ? stripHtml(decodeURIComponent(m[1])) : null;
+  };
+  const title = getMeta('og:title') || getMeta('twitter:title') ||
+    (html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || '').trim();
+  const image = getMeta('og:image') || getMeta('twitter:image') || '';
+  const description = getMeta('og:description') || getMeta('twitter:description') || '';
+
+  if (!title) return res.status(422).json({ error: 'No recipe data found on this page. Try a different URL or add manually.' });
+
+  return res.json({
+    source: 'meta',
+    name: stripHtml(title), time: null, servings: '', image,
+    cuisine: '', calories: null, ingredients: [], steps: [], description,
+  });
+});
+
 // ─── Start ──────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`🍳 Hearth API running on http://localhost:${PORT}`));

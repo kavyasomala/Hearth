@@ -4781,6 +4781,12 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   const [showModal, setShowModal] = useState(false);
 
+  // ── Link import state ──
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkScraping, setLinkScraping] = useState(false);
+  const [linkError, setLinkError] = useState(null);
+
   const emptyForm = () => ({
     name: '', cuisine: '', time: '', servings: '',
     cover_image_url: '', cookbook: '', reference: '', status: '', tags: [],
@@ -4793,6 +4799,73 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [imgPreviewError, setImgPreviewError] = useState(false);
+
+  // Map a scraped cuisine string to one of our known cuisines (best-effort)
+  const normaliseCuisine = (raw) => {
+    if (!raw) return '';
+    const r = raw.toLowerCase();
+    for (const c of ALL_CUISINES) {
+      if (r.includes(c.toLowerCase())) return c;
+    }
+    return '';
+  };
+
+  const openLinkModal = () => { setLinkUrl(''); setLinkError(null); setShowLinkModal(true); };
+  const closeLinkModal = () => { setShowLinkModal(false); setLinkScraping(false); };
+
+  const scrapeAndOpen = async () => {
+    if (!linkUrl.trim()) { setLinkError('Please paste a URL'); return; }
+    setLinkScraping(true); setLinkError(null);
+    try {
+      const res = await apiFetch(`${API}/api/scrape-recipe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: linkUrl.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Scrape failed');
+
+      // Pre-fill the manual form with scraped data
+      setDetails({
+        name: data.name || '',
+        cuisine: normaliseCuisine(data.cuisine),
+        time: data.time || '',
+        servings: data.servings || '',
+        cover_image_url: data.image || '',
+        cookbook: '', reference: '', status: 'to try', tags: [],
+      });
+      setIngs(
+        data.ingredients?.length
+          ? data.ingredients.map((i, idx) => ({
+              _id: `ing-link-${idx}-${Date.now()}`,
+              name: i.name || '', amount: i.amount || '', unit: i.unit || '',
+              prep_note: '', optional: false, group_label: '',
+            }))
+          : [{ _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]
+      );
+      setSteps(
+        data.steps?.length
+          ? data.steps.map((s, idx) => ({
+              _id: `step-link-${idx}-${Date.now()}`,
+              step_number: idx + 1, body_text: s, timer_seconds: null,
+            }))
+          : [{ _id: `step-${Date.now()}`, step_number: 1, body_text: '' }]
+      );
+      setNotesList(
+        data.description
+          ? [{ _id: `note-link-${Date.now()}`, text: data.description }]
+          : []
+      );
+      setImgPreviewError(false);
+      setSaveError(null);
+      setShowLinkModal(false);
+      setShowModal(true);
+    } catch (e) {
+      setLinkError(e.message);
+    } finally {
+      setLinkScraping(false);
+    }
+  };
 
   const setDetail = (k, v) => setDetails(prev => ({ ...prev, [k]: v }));
   const toggleTag = (tag) => setDetails(prev => ({
@@ -4893,14 +4966,58 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
           <span className="add-tab__card-cta">Get started →</span>
         </button>
 
-        {/* From link card — coming soon */}
-        <div className="add-tab__card add-tab__card--soon">
+        {/* From link card */}
+        <button className="add-tab__card" onClick={openLinkModal}>
           <span className="add-tab__card-icon">🔗</span>
           <h3 className="add-tab__card-title">Add from Link</h3>
-          <p className="add-tab__card-desc">Paste an Instagram, TikTok, or web link and we'll draft a recipe for you</p>
-          <span className="add-tab__card-badge">Coming soon</span>
-        </div>
+          <p className="add-tab__card-desc">Paste any recipe URL and we'll pull in the name, ingredients, and steps automatically</p>
+          <span className="add-tab__card-cta">Import →</span>
+        </button>
       </div>
+
+      {/* ── Link Import Modal ── */}
+      {showLinkModal && (
+        <div className="create-modal-overlay" onClick={closeLinkModal}>
+          <div className="create-modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+            <div className="create-modal__header">
+              <h2 className="create-modal__title">🔗 Import from Link</h2>
+              <button className="ing-modal__close" onClick={closeLinkModal}>✕</button>
+            </div>
+            <div className="create-modal__body" style={{ gap: 14 }}>
+              <p style={{ fontSize: '0.9rem', color: 'var(--warm-gray)', margin: 0 }}>
+                Paste the URL of any recipe page — we'll extract the name, ingredients, steps, and image automatically using the page's structured data.
+              </p>
+              <div className="create-modal__field">
+                <label className="create-modal__field-label">Recipe URL</label>
+                <input
+                  className="editor-input"
+                  value={linkUrl}
+                  onChange={e => { setLinkUrl(e.target.value); setLinkError(null); }}
+                  onKeyDown={e => e.key === 'Enter' && scrapeAndOpen()}
+                  placeholder="https://www.seriouseats.com/..."
+                  autoFocus
+                />
+              </div>
+              {linkError && <p className="editor-error">⚠️ {linkError}</p>}
+              {linkScraping && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--warm-gray)', fontSize: '0.88rem' }}>
+                  <span className="link-import__spinner" />
+                  Fetching recipe data…
+                </div>
+              )}
+              <p style={{ fontSize: '0.8rem', color: 'var(--warm-gray)', margin: 0 }}>
+                Works best with recipe sites that use structured data (most major food blogs, NYT Cooking, Serious Eats, BBC Good Food, etc). You can always edit anything after import.
+              </p>
+            </div>
+            <div className="create-modal__footer">
+              <button className="btn btn--ghost" onClick={closeLinkModal}>Cancel</button>
+              <button className="btn btn--primary" onClick={scrapeAndOpen} disabled={linkScraping || !linkUrl.trim()}>
+                {linkScraping ? 'Importing…' : 'Next →'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Create Recipe Modal ── */}
       {showModal && (
