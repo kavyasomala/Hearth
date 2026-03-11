@@ -4440,31 +4440,21 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.12);
+  border: 1.5px solid rgba(255,255,255,0.25);
   border-radius: 999px;
-  padding: 5px 12px 5px 6px;
+  padding: 6px 14px;
   cursor: pointer;
   color: #fff;
   font-family: var(--font-body);
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.82rem;
+  font-weight: 600;
   transition: background var(--transition);
   flex-shrink: 0;
+  letter-spacing: 0.01em;
 }
-.header-user-btn:hover { background: rgba(255,255,255,0.18); }
-.header-user-btn__avatar {
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  background: var(--terracotta);
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  text-transform: uppercase;
-  flex-shrink: 0;
-}
-.header-user-btn__name { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-user-btn:hover { background: rgba(255,255,255,0.22); }
+.header-user-btn__name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ─── User dropdown ──────────────────────────────────────────────────────── */
 .user-dropdown-wrap { position: relative; flex-shrink: 0; }
@@ -4525,4 +4515,132 @@ body {
   font-family: var(--font-display);
   font-size: 1.1rem;
   color: var(--charcoal);
+}
+
+/* ─── Admin Pill Toggle ──────────────────────────────────────────────────── */
+.admin-pill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 0;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+.admin-pill-toggle__track {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.admin-pill-toggle--on .admin-pill-toggle__track {
+  background: var(--terracotta);
+}
+.admin-pill-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+}
+.admin-pill-toggle--on .admin-pill-toggle__thumb {
+  transform: translateX(14px);
+}
+.admin-pill-toggle__label {
+  font-size: 0.72rem;
+  color: var(--warm-gray);
+  font-weight: 500;
+}
+.admin-pill-toggle--on .admin-pill-toggle__label {
+  color: var(--terracotta);
+  font-weight: 600;
+}
+
+/* ─── Display Name Save/Cancel Buttons ───────────────────────────────────── */
+.display-name-save-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: var(--terracotta);
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: opacity 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+.display-name-save-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.display-name-save-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.display-name-cancel-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: none;
+  border: 1.5px solid var(--border);
+  color: var(--warm-gray);
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.display-name-cancel-btn:hover { border-color: var(--warm-gray); color: var(--charcoal); }
+
+/* ─── Mobile Nav: Profile + Sign Out ─────────────────────────────────────── */
+.mobile-nav-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 12px;
+}
+.mobile-nav-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--terracotta);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+.mobile-nav-item--signout {
+  color: var(--terracotta) !important;
+}
+
+/* ─── Draggable Step Number ───────────────────────────────────────────────── */
+.step-sortable-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.editor-step-num--drag {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+.editor-step-num--drag:hover {
+  background: var(--terracotta);
+  color: #fff;
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(198,93,59,0.3);
+}
+.editor-step-num--drag:active {
+  cursor: grabbing;
+  background: var(--terracotta-dark, #b84a2e);
+  transform: scale(1.08);
 }

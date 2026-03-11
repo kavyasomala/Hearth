@@ -650,14 +650,11 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted }) =>
                   );
                   const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
                   return (
-                    <SortableItem key={item._id} id={item._id}>
-                      <div className="editor-step-row">
-                        <span className="editor-step-num">{stepNum}</span>
-                        <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
-                        <button className="rp2__ed-add-timer-btn" onClick={() => { const i = steps.findIndex(s => s._id===item._id); const t={_id:`timer-${Date.now()}`,_isTimer:true,h:'',m:'',s:''}; const n=[...steps]; n.splice(i+1,0,t); setSteps(n); }} title="Add timer">⏱</button>
-                        <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
-                      </div>
-                    </SortableItem>
+                    <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
+                      <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                      <button className="rp2__ed-add-timer-btn" onClick={() => { const i = steps.findIndex(s => s._id===item._id); const t={_id:`timer-${'{'}Date.now(){'}'}`,_isTimer:true,h:'',m:'',s:''}; const n=[...steps]; n.splice(i+1,0,t); setSteps(n); }} title="Add timer">⏱</button>
+                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                    </StepSortableItem>
                   );
                 })}
               </SortableContext>
@@ -907,8 +904,14 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         const [, nutr] = entry;
         const amount = parseFloat(ing.amount) || 1;
         const unit = (ing.unit || '').toLowerCase().trim();
-        const unitG = nutr.perUnit ? 100 : (UNIT_GRAMS[unit] || 100);
-        const factor = (amount * unitG) / 100;
+        // For perUnit items (eggs, cloves garlic): if no unit or non-weight unit, count by piece; if weight unit given, use per 100g
+        let factor;
+        if (nutr.perUnit && !UNIT_GRAMS[unit]) {
+          factor = amount; // e.g. "3 eggs" → 3 × cal
+        } else {
+          const unitG = UNIT_GRAMS[unit] || 100;
+          factor = (amount * unitG) / 100;
+        }
         totalCal   += nutr.cal  * factor;
         totalProt  += nutr.prot * factor;
         totalFiber += nutr.fiber * factor;
@@ -1067,8 +1070,14 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
       const [, nutr] = entry;
       const amount = parseFloat(ing.amount) || 1;
       const unit = (ing.unit || '').toLowerCase().trim();
-      const unitG = nutr.perUnit ? 100 : (UNIT_GRAMS[unit] || 100);
-      const factor = (amount * unitG) / 100;
+      // For perUnit items (eggs, garlic cloves): count by piece unless a weight unit is given
+      let factor;
+      if (nutr.perUnit && !UNIT_GRAMS[unit]) {
+        factor = amount; // e.g. "3 eggs" → 3 × cal
+      } else {
+        const unitG = UNIT_GRAMS[unit] || 100;
+        factor = (amount * unitG) / 100;
+      }
       totalCal   += nutr.cal  * factor;
       totalProt  += nutr.prot * factor;
       totalFiber += nutr.fiber * factor;
@@ -1800,6 +1809,18 @@ const SortableItem = ({ id, children }) => {
   );
 };
 
+// Step sortable item — the step number bubble IS the drag handle
+const StepSortableItem = ({ id, stepNum, children }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1, zIndex: isDragging ? 10 : undefined };
+  return (
+    <div ref={setNodeRef} style={style} className="step-sortable-row">
+      <span className="editor-step-num editor-step-num--drag" title="Drag to reorder" {...attributes} {...listeners}>{stepNum}</span>
+      {children}
+    </div>
+  );
+};
+
 // ─── Recipe Editor ──────────────────────────────────────────────────────────
 const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredients, onBack, onSaved, authFetch }) => {
   const apiFetch = authFetch || fetch;
@@ -1992,14 +2013,11 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
               }
               const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
               return (
-                <SortableItem key={item._id} id={item._id}>
-                  <div className="editor-step-row">
-                    <span className="editor-step-num">{stepNum}</span>
-                    <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
-                    <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer">⏱</button>
-                    <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
-                  </div>
-                </SortableItem>
+                <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
+                  <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                  <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer">⏱</button>
+                  <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                </StepSortableItem>
               );
             })}
           </SortableContext>
@@ -2788,10 +2806,10 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                 onChange={e => setDraftDisplayName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleSaveDisplayName(); if (e.key === 'Escape') setEditingDisplayName(false); }}
               />
-              <button onClick={handleSaveDisplayName} disabled={savingDisplayName} style={{ padding: '6px 12px', borderRadius: 8, background: 'var(--terracotta)', color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}>
-                {savingDisplayName ? '…' : 'Save'}
+              <button onClick={handleSaveDisplayName} disabled={savingDisplayName} className="display-name-save-btn">
+                {savingDisplayName ? '…' : '✓ Save'}
               </button>
-              <button onClick={() => setEditingDisplayName(false)} style={{ padding: '6px 10px', borderRadius: 8, background: 'none', border: '1px solid var(--border)', color: 'var(--warm-gray)', fontSize: '0.82rem', cursor: 'pointer' }}>
+              <button onClick={() => setEditingDisplayName(false)} className="display-name-cancel-btn">
                 Cancel
               </button>
             </div>
@@ -3012,34 +3030,25 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                           <button onClick={() => toggleReveal(u.id)} style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: 999, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', color: 'var(--warm-gray)', flexShrink: 0 }}>
                             {revealedPasswords[u.id] ? 'Hide' : 'Reveal'}
                           </button>
-                          {u.role !== 'admin' && (
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', marginLeft: 4, flexShrink: 0 }} title="Make admin">
-                              <input type="checkbox" checked={false} style={{ cursor: 'pointer' }}
-                                onChange={async () => {
-                                  if (!window.confirm(`Make ${u.display_name || u.username} an admin? They’ll be able to add/edit recipes.`)) return;
-                                  await apiFetch(`${API}/api/admin/users/${u.id}`, {
-                                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ role: 'admin' }),
-                                  });
-                                  loadUsers();
-                                }} />
-                              <span style={{ fontSize: '0.72rem', color: 'var(--warm-gray)' }}>Admin</span>
-                            </label>
-                          )}
-                          {u.role === 'admin' && (
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', marginLeft: 4, flexShrink: 0 }} title="Revoke admin">
-                              <input type="checkbox" checked={true} style={{ cursor: 'pointer' }}
-                                onChange={async () => {
-                                  if (!window.confirm(`Remove admin from ${u.display_name || u.username}?`)) return;
-                                  await apiFetch(`${API}/api/admin/users/${u.id}`, {
-                                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ role: 'guest' }),
-                                  });
-                                  loadUsers();
-                                }} />
-                              <span style={{ fontSize: '0.72rem', color: 'var(--warm-gray)' }}>Admin</span>
-                            </label>
-                          )}
+                          <button
+                            className={`admin-pill-toggle ${u.role === 'admin' ? 'admin-pill-toggle--on' : 'admin-pill-toggle--off'}`}
+                            title={u.role === 'admin' ? 'Revoke admin access' : 'Grant admin access'}
+                            onClick={async () => {
+                              const isAdminNow = u.role === 'admin';
+                              const msg = isAdminNow
+                                ? `Remove admin from ${u.display_name || u.username}?`
+                                : `Make ${u.display_name || u.username} an admin? They’ll be able to add/edit recipes.`;
+                              if (!window.confirm(msg)) return;
+                              await apiFetch(`${API}/api/admin/users/${u.id}`, {
+                                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ role: isAdminNow ? 'guest' : 'admin' }),
+                              });
+                              loadUsers();
+                            }}
+                          >
+                            <span className="admin-pill-toggle__track"><span className="admin-pill-toggle__thumb" /></span>
+                            <span className="admin-pill-toggle__label">Admin</span>
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -3427,16 +3436,16 @@ const SiteFooter = ({ onNav }) => {
           <ul className="site-footer__links">
             <li><button onClick={() => onNav('recipes')}>Browse recipes</button></li>
             <li><button onClick={() => onNav('home')}>Favorites</button></li>
-            <li><button className="site-footer__coming-soon" disabled>Show cooked <span>soon</span></button></li>
+            <li><button onClick={() => onNav('profile')}>Show cooked</button></li>
           </ul>
         </div>
 
         <div className="site-footer__col">
-          <h4 className="site-footer__col-title">About</h4>
+          <h4 className="site-footer__col-title">Kitchen</h4>
           <ul className="site-footer__links">
             <li><button onClick={() => onNav('kitchen')}>What's in my kitchen</button></li>
-            <li><button className="site-footer__coming-soon" disabled>Share a recipe <span>soon</span></button></li>
-            <li><button className="site-footer__coming-soon" disabled>My cookbooks <span>soon</span></button></li>
+            <li><button onClick={() => onNav('grocery')}>Grocery list</button></li>
+            <li><button onClick={() => onNav('cookbooks')}>My cookbooks</button></li>
           </ul>
         </div>
       </div>
@@ -3728,8 +3737,14 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
       const [, nutr] = entry;
       const amount = parseFloat(ing.amount) || 1;
       const unit = (ing.unit || '').toLowerCase().trim();
-      const unitG = nutr.perUnit ? 100 : (UNIT_GRAMS[unit] || 100);
-      const factor = (amount * unitG) / 100;
+      // For perUnit items (eggs, garlic cloves): count by piece unless a weight unit is given
+      let factor;
+      if (nutr.perUnit && !UNIT_GRAMS[unit]) {
+        factor = amount; // e.g. "3 eggs" → 3 × cal
+      } else {
+        const unitG = UNIT_GRAMS[unit] || 100;
+        factor = (amount * unitG) / 100;
+      }
       totalCal += nutr.cal * factor; totalProt += nutr.prot * factor; totalFiber += nutr.fiber * factor;
       matched++;
     }
@@ -3931,14 +3946,11 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
                   );
                   const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
                   return (
-                    <SortableItem key={item._id} id={item._id}>
-                      <div className="editor-step-row">
-                        <span className="editor-step-num">{stepNum}</span>
-                        <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
-                        <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer">⏱</button>
-                        <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
-                      </div>
-                    </SortableItem>
+                    <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
+                      <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                      <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer">⏱</button>
+                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                    </StepSortableItem>
                   );
                 })}
               </SortableContext>
@@ -4512,8 +4524,14 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
       const [, nutr] = entry;
       const amount = parseFloat(ing.amount) || 1;
       const unit = (ing.unit || '').toLowerCase().trim();
-      const unitG = nutr.perUnit ? 100 : (UNIT_GRAMS[unit] || 100);
-      const factor = (amount * unitG) / 100;
+      // For perUnit items (eggs, garlic cloves): count by piece unless a weight unit is given
+      let factor;
+      if (nutr.perUnit && !UNIT_GRAMS[unit]) {
+        factor = amount; // e.g. "3 eggs" → 3 × cal
+      } else {
+        const unitG = UNIT_GRAMS[unit] || 100;
+        factor = (amount * unitG) / 100;
+      }
       totalCal += nutr.cal * factor; totalProt += nutr.prot * factor; totalFiber += nutr.fiber * factor;
       matched++;
     }
@@ -4758,14 +4776,11 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                       );
                       const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
                       return (
-                        <SortableItem key={item._id} id={item._id}>
-                          <div className="editor-step-row">
-                            <span className="editor-step-num">{stepNum}</span>
-                            <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
-                            <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer">⏱</button>
-                            <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
-                          </div>
-                        </SortableItem>
+                        <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
+                          <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                          <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer">⏱</button>
+                          <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                        </StepSortableItem>
                       );
                     })}
                   </SortableContext>
@@ -4851,7 +4866,7 @@ const LoginModal = ({ onLogin }) => {
             <input
               className="login-modal__input"
               type="text"
-              placeholder="e.g. KavyaS"
+              placeholder="e.g. kavya"
               value={username}
               onChange={e => setUsername(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
@@ -5196,7 +5211,6 @@ function AppInner() {
           {/* User avatar */}
           {authUser && (
             <button className="header-user-btn" onClick={() => setView('profile')} title="Go to profile">
-              <span className="header-user-btn__avatar">{(authUser.display_name || authUser.username)?.[0]?.toUpperCase()}</span>
               <span className="header-user-btn__name">{authUser.display_name || authUser.username}</span>
             </button>
           )}
@@ -5225,6 +5239,23 @@ function AppInner() {
                 {label}
               </button>
             ))}
+            {authUser && (
+              <div className="mobile-nav-divider" />
+            )}
+            {authUser && (
+              <button
+                className={`mobile-nav-item ${view === 'profile' ? 'mobile-nav-item--active' : ''}`}
+                onClick={() => { setView('profile'); setMobileNavOpen(false); }}
+              >
+                <span className="mobile-nav-avatar">{(authUser.display_name || authUser.username)?.[0]?.toUpperCase()}</span>
+                {authUser.display_name || authUser.username}
+              </button>
+            )}
+            {authUser && (
+              <button className="mobile-nav-item mobile-nav-item--signout" onClick={() => { handleLogout(); setMobileNavOpen(false); }}>
+                🚪 Sign out
+              </button>
+            )}
           </nav>
         )}
       </header>
