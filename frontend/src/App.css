@@ -2511,23 +2511,40 @@ body {
   display: flex;
   gap: 2px;
   position: absolute;
-  left: calc(100% + 4px);
+  left: calc(100% + 2px);
   top: 50%;
   transform: translateY(-50%);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease;
+  /* Longer delay before hiding so cursor can reach the buttons */
+  transition: opacity 0.08s ease 0s;
   background: var(--warm-white);
   border: 1.5px solid var(--border);
   border-radius: 8px;
   padding: 2px 3px;
   box-shadow: var(--shadow);
   z-index: 10;
+  /* Extend hit-area leftward with invisible pseudo padding so gap doesn't break hover */
+}
+/* Invisible bridge between chip and action buttons — keeps hover active while cursor crosses the gap */
+.fridge-chip-actions::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 0;
+  width: 10px;
+  height: 100%;
 }
 .fridge-ing-wrap { position: relative; display: inline-flex; }
-.fridge-ing-wrap:hover .fridge-chip-actions {
+.fridge-ing-wrap:hover .fridge-chip-actions,
+.fridge-chip-actions:hover {
   opacity: 1;
   pointer-events: auto;
+  transition-delay: 0s;
+}
+/* Slow fade-out when leaving chip but not yet on buttons */
+.fridge-ing-wrap:not(:hover) .fridge-chip-actions:not(:hover) {
+  transition: opacity 0.3s ease 0.1s;
 }
 .fridge-chip-action {
   width: 22px; height: 22px; border-radius: 5px; border: none;

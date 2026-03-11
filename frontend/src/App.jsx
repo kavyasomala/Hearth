@@ -136,6 +136,82 @@ const CUISINE_EMOJI = {
 
 const ALL_CUISINES = [...GEO_CUISINES].sort();
 
+// ─── Shared Nutrition Database ─────────────────────────────────────────────
+// All values are per 100g unless perUnit:true (then per whole item, e.g. 1 egg)
+const NUTRITION_DB = {
+  'chicken breast': { cal: 165, prot: 31, fiber: 0 },
+  'chicken': { cal: 165, prot: 31, fiber: 0 },
+  'beef': { cal: 250, prot: 26, fiber: 0 },
+  'pork': { cal: 242, prot: 27, fiber: 0 },
+  'lamb': { cal: 294, prot: 25, fiber: 0 },
+  'salmon': { cal: 208, prot: 20, fiber: 0 },
+  'tuna': { cal: 132, prot: 29, fiber: 0 },
+  'cod': { cal: 82, prot: 18, fiber: 0 },
+  'shrimp': { cal: 99, prot: 24, fiber: 0 },
+  'egg': { cal: 78, prot: 6, fiber: 0, perUnit: true },
+  'eggs': { cal: 78, prot: 6, fiber: 0, perUnit: true },
+  'pasta': { cal: 157, prot: 6, fiber: 2 },
+  'rice': { cal: 130, prot: 3, fiber: 0.4 },
+  'bread': { cal: 265, prot: 9, fiber: 2.7 },
+  'broccoli': { cal: 34, prot: 3, fiber: 3 },
+  'spinach': { cal: 23, prot: 3, fiber: 2 },
+  'onion': { cal: 40, prot: 1, fiber: 2 },
+  'garlic': { cal: 4, prot: 0.2, fiber: 0.1, perUnit: true },
+  'tomato': { cal: 22, prot: 1, fiber: 1.5 },
+  'potato': { cal: 87, prot: 2, fiber: 2 },
+  'carrot': { cal: 41, prot: 0.9, fiber: 2.8 },
+  'pepper': { cal: 31, prot: 1, fiber: 2.5 },
+  'mushroom': { cal: 22, prot: 3, fiber: 1 },
+  'butter': { cal: 717, prot: 1, fiber: 0 },
+  'olive oil': { cal: 884, prot: 0, fiber: 0 },
+  'oil': { cal: 884, prot: 0, fiber: 0 },
+  'flour': { cal: 364, prot: 10, fiber: 3 },
+  'sugar': { cal: 387, prot: 0, fiber: 0 },
+  'honey': { cal: 304, prot: 0.3, fiber: 0.2 },
+  'milk': { cal: 61, prot: 3, fiber: 0 },
+  'cream': { cal: 340, prot: 3, fiber: 0 },
+  'yogurt': { cal: 59, prot: 10, fiber: 0 },
+  'cheese': { cal: 400, prot: 25, fiber: 0 },
+  'lentils': { cal: 116, prot: 9, fiber: 8 },
+  'chickpeas': { cal: 164, prot: 9, fiber: 7 },
+  'beans': { cal: 127, prot: 8, fiber: 7 },
+  'oats': { cal: 389, prot: 17, fiber: 11 },
+  'coconut milk': { cal: 197, prot: 2, fiber: 0 },
+  'tofu': { cal: 76, prot: 8, fiber: 0.3 },
+};
+
+// Shared unit → grams conversion
+const UNIT_GRAMS = {
+  'g': 1, 'kg': 1000, 'oz': 28.35, 'lb': 453.6,
+  'cup': 240, 'cups': 240, 'ml': 1, 'l': 1000,
+  'tbsp': 15, 'tsp': 5,
+};
+
+// Calculate nutrition totals from an ingredient list
+const calcNutrition = (ings) => {
+  let totalCal = 0, totalProt = 0, totalFiber = 0, matched = 0;
+  for (const ing of (ings || [])) {
+    if (ing._isGroup) continue;
+    const name = (ing.name || '').toLowerCase().trim();
+    const entry = Object.entries(NUTRITION_DB).find(([k]) => name.includes(k));
+    if (!entry) continue;
+    const [, nutr] = entry;
+    const amount = parseFloat(ing.amount) || 1;
+    const unit = (ing.unit || '').toLowerCase().trim();
+    let factor;
+    if (nutr.perUnit && !UNIT_GRAMS[unit]) {
+      factor = amount; // e.g. "3 eggs" → 3 × 78 kcal
+    } else {
+      factor = (amount * (UNIT_GRAMS[unit] || 100)) / 100;
+    }
+    totalCal   += nutr.cal   * factor;
+    totalProt  += nutr.prot  * factor;
+    totalFiber += nutr.fiber * factor;
+    matched++;
+  }
+  return matched > 0 ? { calories: Math.round(totalCal), protein: Math.round(totalProt), fiber: Math.round(totalFiber) } : null;
+};
+
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const pct = (score) => Math.round(score * 100);
 // Auto-pluralize ingredient names — only for clearly countable nouns
@@ -802,6 +878,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [draftImageInput, setDraftImageInput] = useState('');
   const [draftIngs, setDraftIngs] = useState([]);
   const [draftSteps, setDraftSteps] = useState([]);
+  const rpSensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   const [draftNotes, setDraftNotes] = useState([]);
   const [draftMeta, setDraftMeta] = useState({});
   const [draftCookbook, setDraftCookbook] = useState({ cookbook: '', reference: '' });
@@ -866,60 +943,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
       const ingsToCalc = draftIngs
         .map(i => { if (i._isGroup) return null; return i; })
         .filter(Boolean);
-      const NUTRITION_DB = {
-        'chicken breast': { cal: 165, prot: 31, fiber: 0 },
-        'chicken': { cal: 165, prot: 31, fiber: 0 },
-        'beef': { cal: 250, prot: 26, fiber: 0 },
-        'salmon': { cal: 208, prot: 20, fiber: 0 },
-        'tuna': { cal: 132, prot: 29, fiber: 0 },
-        'egg': { cal: 78, prot: 6, fiber: 0, perUnit: true },
-        'eggs': { cal: 78, prot: 6, fiber: 0, perUnit: true },
-        'pasta': { cal: 157, prot: 6, fiber: 2 },
-        'rice': { cal: 130, prot: 3, fiber: 0.4 },
-        'broccoli': { cal: 34, prot: 3, fiber: 3 },
-        'spinach': { cal: 23, prot: 3, fiber: 2 },
-        'onion': { cal: 40, prot: 1, fiber: 2 },
-        'garlic': { cal: 4, prot: 0.2, fiber: 0.1, perUnit: true },
-        'tomato': { cal: 22, prot: 1, fiber: 1.5 },
-        'potato': { cal: 87, prot: 2, fiber: 2 },
-        'butter': { cal: 717, prot: 1, fiber: 0 },
-        'olive oil': { cal: 884, prot: 0, fiber: 0 },
-        'oil': { cal: 884, prot: 0, fiber: 0 },
-        'flour': { cal: 364, prot: 10, fiber: 3 },
-        'sugar': { cal: 387, prot: 0, fiber: 0 },
-        'milk': { cal: 61, prot: 3, fiber: 0 },
-        'cream': { cal: 340, prot: 3, fiber: 0 },
-        'cheese': { cal: 400, prot: 25, fiber: 0 },
-        'lentils': { cal: 116, prot: 9, fiber: 8 },
-        'chickpeas': { cal: 164, prot: 9, fiber: 7 },
-        'beans': { cal: 127, prot: 8, fiber: 7 },
-        'oats': { cal: 389, prot: 17, fiber: 11 },
-      };
-      const UNIT_GRAMS = { 'g': 1, 'kg': 1000, 'oz': 28, 'lb': 454, 'cup': 240, 'cups': 240, 'ml': 1, 'l': 1000, 'tbsp': 15, 'tsp': 5 };
-      let totalCal = 0, totalProt = 0, totalFiber = 0, matched = 0;
-      for (const ing of ingsToCalc) {
-        const name = (ing.name || '').toLowerCase().trim();
-        const entry = Object.entries(NUTRITION_DB).find(([k]) => name.includes(k));
-        if (!entry) continue;
-        const [, nutr] = entry;
-        const amount = parseFloat(ing.amount) || 1;
-        const unit = (ing.unit || '').toLowerCase().trim();
-        // For perUnit items (eggs, cloves garlic): if no unit or non-weight unit, count by piece; if weight unit given, use per 100g
-        let factor;
-        if (nutr.perUnit && !UNIT_GRAMS[unit]) {
-          factor = amount; // e.g. "3 eggs" → 3 × cal
-        } else {
-          const unitG = UNIT_GRAMS[unit] || 100;
-          factor = (amount * unitG) / 100;
-        }
-        totalCal   += nutr.cal  * factor;
-        totalProt  += nutr.prot * factor;
-        totalFiber += nutr.fiber * factor;
-        matched++;
-      }
-      if (matched > 0) {
-        computedNutrition = { calories: Math.round(totalCal), protein: Math.round(totalProt), fiber: Math.round(totalFiber) };
-      }
+      const nutrition = calcNutrition(ingsToCalc);
+      if (nutrition) computedNutrition = nutrition;
     }
 
     try {
@@ -991,6 +1016,15 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
 
   // ── Step draft helpers ──
   const addDraftStep    = () => setDraftSteps(prev => [...prev, { _id: `step-new-${Date.now()}`, step_number: prev.length + 1, body_text: '', timer_seconds: null }]);
+  const onDraftStepDragEnd = ({ active, over }) => {
+    if (over && active.id !== over.id) {
+      setDraftSteps(prev => {
+        const o = prev.findIndex(s => s._id === active.id);
+        const n = prev.findIndex(s => s._id === over.id);
+        return arrayMove(prev, o, n);
+      });
+    }
+  };
   const addTimerAfterStep = (afterId) => setDraftSteps(prev => {
     const idx = prev.findIndex(s => s._id === afterId);
     const timer = { _id: `timer-${Date.now()}`, _isTimer: true, h: '', m: '', s: '' };
@@ -1028,63 +1062,12 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   // ── Auto-calculate nutrition — must be before any early returns (Rules of Hooks) ──
   const autoNutrition = useMemo(() => {
     if (!bodyIngredients?.length) return { calories: null, protein: null, fiber: null };
-    const NUTRITION_DB = {
-      'chicken breast': { cal: 165, prot: 31, fiber: 0 },
-      'chicken': { cal: 165, prot: 31, fiber: 0 },
-      'beef': { cal: 250, prot: 26, fiber: 0 },
-      'salmon': { cal: 208, prot: 20, fiber: 0 },
-      'tuna': { cal: 132, prot: 29, fiber: 0 },
-      'egg': { cal: 78, prot: 6, fiber: 0, perUnit: true },
-      'eggs': { cal: 78, prot: 6, fiber: 0, perUnit: true },
-      'pasta': { cal: 157, prot: 6, fiber: 2 },
-      'rice': { cal: 130, prot: 3, fiber: 0.4 },
-      'broccoli': { cal: 34, prot: 3, fiber: 3 },
-      'spinach': { cal: 23, prot: 3, fiber: 2 },
-      'onion': { cal: 40, prot: 1, fiber: 2 },
-      'garlic': { cal: 4, prot: 0.2, fiber: 0.1, perUnit: true },
-      'tomato': { cal: 22, prot: 1, fiber: 1.5 },
-      'potato': { cal: 87, prot: 2, fiber: 2 },
-      'butter': { cal: 717, prot: 1, fiber: 0 },
-      'olive oil': { cal: 884, prot: 0, fiber: 0 },
-      'oil': { cal: 884, prot: 0, fiber: 0 },
-      'flour': { cal: 364, prot: 10, fiber: 3 },
-      'sugar': { cal: 387, prot: 0, fiber: 0 },
-      'milk': { cal: 61, prot: 3, fiber: 0 },
-      'cream': { cal: 340, prot: 3, fiber: 0 },
-      'cheese': { cal: 400, prot: 25, fiber: 0 },
-      'lentils': { cal: 116, prot: 9, fiber: 8 },
-      'chickpeas': { cal: 164, prot: 9, fiber: 7 },
-      'beans': { cal: 127, prot: 8, fiber: 7 },
-      'oats': { cal: 389, prot: 17, fiber: 11 },
-    };
-    const UNIT_GRAMS = {
-      'g': 1, 'kg': 1000, 'oz': 28, 'lb': 454,
-      'cup': 240, 'cups': 240, 'ml': 1, 'l': 1000,
-      'tbsp': 15, 'tsp': 5,
-    };
-    let totalCal = 0, totalProt = 0, totalFiber = 0, matched = 0;
-    for (const ing of bodyIngredients) {
-      const name = (ing.name || '').toLowerCase().trim();
-      const entry = Object.entries(NUTRITION_DB).find(([k]) => name.includes(k));
-      if (!entry) continue;
-      const [, nutr] = entry;
-      const amount = parseFloat(ing.amount) || 1;
-      const unit = (ing.unit || '').toLowerCase().trim();
-      // For perUnit items (eggs, garlic cloves): count by piece unless a weight unit is given
-      let factor;
-      if (nutr.perUnit && !UNIT_GRAMS[unit]) {
-        factor = amount; // e.g. "3 eggs" → 3 × cal
-      } else {
-        const unitG = UNIT_GRAMS[unit] || 100;
-        factor = (amount * unitG) / 100;
-      }
-      totalCal   += nutr.cal  * factor;
-      totalProt  += nutr.prot * factor;
-      totalFiber += nutr.fiber * factor;
-      matched++;
-    }
+    const { calories: totalCal, protein: totalProt, fiber: totalFiber, matched } = (() => {
+      const r = calcNutrition(bodyIngredients);
+      return r ? { ...r, matched: 1 } : { calories: 0, protein: 0, fiber: 0, matched: 0 };
+    })();
     if (matched === 0) return { calories: null, protein: null, fiber: null };
-    return { calories: Math.round(totalCal), protein: Math.round(totalProt), fiber: Math.round(totalFiber) };
+    return { calories: totalCal, protein: totalProt, fiber: totalFiber };
   }, [bodyIngredients]);
 
   if (loading) return <main className="view"><div className="placeholder"><h2>Loading recipe…</h2></div></main>;
@@ -1571,43 +1554,45 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
 
           {isEdit('instructions') ? (
             <div className="rp2__inline-editor">
-              {draftSteps.map((item, idx) => {
-                if (item._isTimer) {
-                  return (
-                    <div key={item._id} className="rp2__ed-timer-row">
-                      <span className="rp2__ed-timer-row__icon">⏱</span>
-                      <div className="rp2__ed-timer-row__inputs">
-                        <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" value={item.h} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, h: e.target.value} : s))} placeholder="0" />
-                        <span className="rp2__ed-timer-row__sep">h</span>
-                        <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.m} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, m: e.target.value} : s))} placeholder="0" />
-                        <span className="rp2__ed-timer-row__sep">m</span>
-                        <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
-                        <span className="rp2__ed-timer-row__sep">s</span>
-                      </div>
-                      <button className="editor-remove-btn" onClick={() => {
-                        setDraftSteps(prev => {
-                          const idx = prev.findIndex(s => s._id === item._id);
-                          const next = prev.filter(s => s._id !== item._id);
-                          // Clear timer_seconds on the preceding step
-                          if (idx > 0 && !prev[idx - 1]._isTimer) {
-                            return next.map(s => s._id === prev[idx - 1]._id ? { ...s, timer_seconds: null } : s);
-                          }
-                          return next;
-                        });
-                      }}>✕</button>
-                    </div>
-                  );
-                }
-                const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer).length + 1;
-                return (
-                  <div key={item._id} className="rp2__ed-step-row">
-                    <span className="editor-step-num">{stepNum}</span>
-                    <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
-                    <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step">⏱</button>
-                    <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
-                  </div>
-                );
-              })}
+              <DndContext sensors={rpSensors} collisionDetection={closestCenter} onDragEnd={onDraftStepDragEnd}>
+                <SortableContext items={draftSteps.map(s => s._id)} strategy={verticalListSortingStrategy}>
+                  {draftSteps.map((item, idx) => {
+                    if (item._isTimer) {
+                      return (
+                        <div key={item._id} className="rp2__ed-timer-row">
+                          <span className="rp2__ed-timer-row__icon">⏱</span>
+                          <div className="rp2__ed-timer-row__inputs">
+                            <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" value={item.h} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, h: e.target.value} : s))} placeholder="0" />
+                            <span className="rp2__ed-timer-row__sep">h</span>
+                            <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.m} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, m: e.target.value} : s))} placeholder="0" />
+                            <span className="rp2__ed-timer-row__sep">m</span>
+                            <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
+                            <span className="rp2__ed-timer-row__sep">s</span>
+                          </div>
+                          <button className="editor-remove-btn" onClick={() => {
+                            setDraftSteps(prev => {
+                              const i2 = prev.findIndex(s => s._id === item._id);
+                              const next = prev.filter(s => s._id !== item._id);
+                              if (i2 > 0 && !prev[i2 - 1]._isTimer) {
+                                return next.map(s => s._id === prev[i2 - 1]._id ? { ...s, timer_seconds: null } : s);
+                              }
+                              return next;
+                            });
+                          }}>✕</button>
+                        </div>
+                      );
+                    }
+                    const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer).length + 1;
+                    return (
+                      <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
+                        <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                        <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step">⏱</button>
+                        <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
+                      </StepSortableItem>
+                    );
+                  })}
+                </SortableContext>
+              </DndContext>
               <button className="btn btn--ghost editor-add-btn" onClick={addDraftStep}>+ Add Step</button>
             </div>
           ) : (
@@ -3005,7 +2990,28 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                             {(u.display_name || u.username)?.[0]?.toUpperCase()}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{u.display_name || u.username}</div>
+                            <div style={{ fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                              {u.display_name || u.username}
+                              <button
+                                className={`admin-pill-toggle ${u.role === 'admin' ? 'admin-pill-toggle--on' : 'admin-pill-toggle--off'}`}
+                                title={u.role === 'admin' ? 'Revoke admin access' : 'Grant admin access'}
+                                onClick={async () => {
+                                  const isAdminNow = u.role === 'admin';
+                                  const msg = isAdminNow
+                                    ? `Remove admin from ${u.display_name || u.username}?`
+                                    : `Make ${u.display_name || u.username} an admin? They’ll be able to add/edit recipes.`;
+                                  if (!window.confirm(msg)) return;
+                                  await apiFetch(`${API}/api/admin/users/${u.id}`, {
+                                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ role: isAdminNow ? 'guest' : 'admin' }),
+                                  });
+                                  loadUsers();
+                                }}
+                              >
+                                <span className="admin-pill-toggle__track"><span className="admin-pill-toggle__thumb" /></span>
+                                <span className="admin-pill-toggle__label">Admin</span>
+                              </button>
+                            </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--warm-gray)' }}>
                               {u.display_name ? `@${u.username} · ` : ''}<span style={{ textTransform: 'capitalize' }}>{u.role}</span>
                             </div>
@@ -3021,7 +3027,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                             </div>
                           )}
                         </div>
-                        {/* Password + admin toggle row */}
+                        {/* Password row */}
                         <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--warm-white)', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '0.75rem', color: 'var(--warm-gray)', flexShrink: 0 }}>Password:</span>
                           <span style={{ fontSize: '0.82rem', fontFamily: 'monospace', flex: 1, minWidth: 60, color: revealedPasswords[u.id] ? 'var(--charcoal)' : 'transparent', textShadow: revealedPasswords[u.id] ? 'none' : '0 0 6px rgba(0,0,0,0.35)', userSelect: revealedPasswords[u.id] ? 'text' : 'none', transition: 'all 0.2s' }}>
@@ -3029,25 +3035,6 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                           </span>
                           <button onClick={() => toggleReveal(u.id)} style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: 999, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', color: 'var(--warm-gray)', flexShrink: 0 }}>
                             {revealedPasswords[u.id] ? 'Hide' : 'Reveal'}
-                          </button>
-                          <button
-                            className={`admin-pill-toggle ${u.role === 'admin' ? 'admin-pill-toggle--on' : 'admin-pill-toggle--off'}`}
-                            title={u.role === 'admin' ? 'Revoke admin access' : 'Grant admin access'}
-                            onClick={async () => {
-                              const isAdminNow = u.role === 'admin';
-                              const msg = isAdminNow
-                                ? `Remove admin from ${u.display_name || u.username}?`
-                                : `Make ${u.display_name || u.username} an admin? They’ll be able to add/edit recipes.`;
-                              if (!window.confirm(msg)) return;
-                              await apiFetch(`${API}/api/admin/users/${u.id}`, {
-                                method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ role: isAdminNow ? 'guest' : 'admin' }),
-                              });
-                              loadUsers();
-                            }}
-                          >
-                            <span className="admin-pill-toggle__track"><span className="admin-pill-toggle__thumb" /></span>
-                            <span className="admin-pill-toggle__label">Admin</span>
                           </button>
                         </div>
                       </div>
@@ -3715,42 +3702,6 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
   const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id));
   const groupLabels = [...new Set(ings.filter(i => !i._isGroup).map(i => i.group_label).filter(Boolean))];
   
-  const calcNutrition = (ingredients) => {
-    const NUTRITION_DB = {
-      'chicken breast': { cal: 165, prot: 31, fiber: 0 }, 'chicken': { cal: 165, prot: 31, fiber: 0 },
-      'beef': { cal: 250, prot: 26, fiber: 0 }, 'salmon': { cal: 208, prot: 20, fiber: 0 },
-      'egg': { cal: 78, prot: 6, fiber: 0, perUnit: true }, 'eggs': { cal: 78, prot: 6, fiber: 0, perUnit: true },
-      'pasta': { cal: 157, prot: 6, fiber: 2 }, 'rice': { cal: 130, prot: 3, fiber: 0.4 },
-      'broccoli': { cal: 34, prot: 3, fiber: 3 }, 'spinach': { cal: 23, prot: 3, fiber: 2 },
-      'onion': { cal: 40, prot: 1, fiber: 2 }, 'garlic': { cal: 4, prot: 0.2, fiber: 0.1, perUnit: true },
-      'potato': { cal: 87, prot: 2, fiber: 2 }, 'butter': { cal: 717, prot: 1, fiber: 0 },
-      'olive oil': { cal: 884, prot: 0, fiber: 0 }, 'oil': { cal: 884, prot: 0, fiber: 0 },
-      'flour': { cal: 364, prot: 10, fiber: 3 }, 'milk': { cal: 61, prot: 3, fiber: 0 },
-      'lentils': { cal: 116, prot: 9, fiber: 8 }, 'chickpeas': { cal: 164, prot: 9, fiber: 7 },
-    };
-    const UNIT_GRAMS = { 'g': 1, 'kg': 1000, 'oz': 28, 'lb': 454, 'cup': 240, 'cups': 240, 'ml': 1, 'l': 1000, 'tbsp': 15, 'tsp': 5 };
-    let totalCal = 0, totalProt = 0, totalFiber = 0, matched = 0;
-    for (const ing of ingredients.filter(i => !i._isGroup)) {
-      const name = (ing.name || '').toLowerCase().trim();
-      const entry = Object.entries(NUTRITION_DB).find(([k]) => name.includes(k));
-      if (!entry) continue;
-      const [, nutr] = entry;
-      const amount = parseFloat(ing.amount) || 1;
-      const unit = (ing.unit || '').toLowerCase().trim();
-      // For perUnit items (eggs, garlic cloves): count by piece unless a weight unit is given
-      let factor;
-      if (nutr.perUnit && !UNIT_GRAMS[unit]) {
-        factor = amount; // e.g. "3 eggs" → 3 × cal
-      } else {
-        const unitG = UNIT_GRAMS[unit] || 100;
-        factor = (amount * unitG) / 100;
-      }
-      totalCal += nutr.cal * factor; totalProt += nutr.prot * factor; totalFiber += nutr.fiber * factor;
-      matched++;
-    }
-    if (matched === 0) return { calories: null, protein: null, fiber: null };
-    return { calories: Math.round(totalCal), protein: Math.round(totalProt), fiber: Math.round(totalFiber) };
-  };
 
   const save = async () => {
     if (!details.name.trim()) { setSaveError('Recipe name is required.'); return; }
@@ -4499,42 +4450,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
     setSaving(true); setSaveError(null);
 
     // Auto-calculate nutrition from ingredients
-    const NUTRITION_DB = {
-      'chicken breast': { cal: 165, prot: 31, fiber: 0 }, 'chicken': { cal: 165, prot: 31, fiber: 0 },
-      'beef': { cal: 250, prot: 26, fiber: 0 }, 'salmon': { cal: 208, prot: 20, fiber: 0 },
-      'tuna': { cal: 132, prot: 29, fiber: 0 }, 'egg': { cal: 78, prot: 6, fiber: 0, perUnit: true },
-      'eggs': { cal: 78, prot: 6, fiber: 0, perUnit: true }, 'pasta': { cal: 157, prot: 6, fiber: 2 },
-      'rice': { cal: 130, prot: 3, fiber: 0.4 }, 'broccoli': { cal: 34, prot: 3, fiber: 3 },
-      'spinach': { cal: 23, prot: 3, fiber: 2 }, 'onion': { cal: 40, prot: 1, fiber: 2 },
-      'garlic': { cal: 4, prot: 0.2, fiber: 0.1, perUnit: true }, 'tomato': { cal: 22, prot: 1, fiber: 1.5 },
-      'potato': { cal: 87, prot: 2, fiber: 2 }, 'butter': { cal: 717, prot: 1, fiber: 0 },
-      'olive oil': { cal: 884, prot: 0, fiber: 0 }, 'oil': { cal: 884, prot: 0, fiber: 0 },
-      'flour': { cal: 364, prot: 10, fiber: 3 }, 'sugar': { cal: 387, prot: 0, fiber: 0 },
-      'milk': { cal: 61, prot: 3, fiber: 0 }, 'cream': { cal: 340, prot: 3, fiber: 0 },
-      'cheese': { cal: 400, prot: 25, fiber: 0 }, 'lentils': { cal: 116, prot: 9, fiber: 8 },
-      'chickpeas': { cal: 164, prot: 9, fiber: 7 }, 'beans': { cal: 127, prot: 8, fiber: 7 },
-      'oats': { cal: 389, prot: 17, fiber: 11 },
-    };
-    const UNIT_GRAMS = { 'g': 1, 'kg': 1000, 'oz': 28, 'lb': 454, 'cup': 240, 'cups': 240, 'ml': 1, 'l': 1000, 'tbsp': 15, 'tsp': 5 };
-    let totalCal = 0, totalProt = 0, totalFiber = 0, matched = 0;
-    for (const ing of ings.filter(i => !i._isGroup)) {
-      const name = (ing.name || '').toLowerCase().trim();
-      const entry = Object.entries(NUTRITION_DB).find(([k]) => name.includes(k));
-      if (!entry) continue;
-      const [, nutr] = entry;
-      const amount = parseFloat(ing.amount) || 1;
-      const unit = (ing.unit || '').toLowerCase().trim();
-      // For perUnit items (eggs, garlic cloves): count by piece unless a weight unit is given
-      let factor;
-      if (nutr.perUnit && !UNIT_GRAMS[unit]) {
-        factor = amount; // e.g. "3 eggs" → 3 × cal
-      } else {
-        const unitG = UNIT_GRAMS[unit] || 100;
-        factor = (amount * unitG) / 100;
-      }
-      totalCal += nutr.cal * factor; totalProt += nutr.prot * factor; totalFiber += nutr.fiber * factor;
-      matched++;
-    }
+    const _nutrition = calcNutrition(ings);
 
     try {
       // Flatten grouped ingredients
@@ -4548,9 +4464,9 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
         details: {
           name: details.name, cuisine: details.cuisine, time: details.time,
           servings: details.servings,
-          calories: matched > 0 ? Math.round(totalCal) : null,
-          protein: matched > 0 ? Math.round(totalProt) : null,
-          fiber: matched > 0 ? Math.round(totalFiber) : null,
+          calories: _nutrition?.calories ?? null,
+          protein: _nutrition?.protein ?? null,
+          fiber: _nutrition?.fiber ?? null,
           cover_image_url: details.cover_image_url,
           cookbook: details.cookbook, page_number: details.reference,
           status: details.status, recipe_incomplete: details.recipe_incomplete, tags: details.tags,
