@@ -2700,6 +2700,9 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const [attemptsOpen, setAttemptsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [sharingOpen, setSharingOpen] = useState(false);
+  const [adminToolsOpen, setAdminToolsOpen] = useState(false);
+  const [recalcRunning, setRecalcRunning] = useState(false);
+  const [recalcResult, setRecalcResult] = useState(null);
   const [historyView, setHistoryView] = useState('timeline');
   const [calendarDate, setCalendarDate] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() }; });
 
@@ -3112,6 +3115,39 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         </section>
       )}
 
+      {isAdmin && (
+        <section className="profile-section">
+          <button className="profile-settings-toggle" onClick={() => setAdminToolsOpen(o => !o)}>
+            <span className="profile-settings-toggle__title">🔧 Admin Tools</span>
+            <span className={`profile-settings-toggle__arrow ${adminToolsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
+          </button>
+          {adminToolsOpen && (
+            <div className="profile-settings-body">
+              <div className="settings-section">
+                <h4 className="settings-section__title">🔄 Nutrition Data</h4>
+                <p className="settings-section__hint" style={{ marginBottom: 12 }}>Clears all pre-populated calories/protein/fiber from the database and recalculates them from each recipe's ingredients. Only recipes with ingredient nutrition data will get values.</p>
+                <button
+                  className="btn btn--primary btn--sm"
+                  disabled={recalcRunning}
+                  onClick={async () => {
+                    if (!window.confirm('This will clear ALL existing calories/protein/fiber from every recipe and recalculate from ingredients. Continue?')) return;
+                    setRecalcRunning(true); setRecalcResult(null);
+                    try {
+                      const res = await apiFetch(`${API}/api/admin/recalculate-nutrition`, { method: 'POST' });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.error || 'Failed');
+                      setRecalcResult(`✓ Done — updated ${data.updated} of ${data.total} recipes`);
+                    } catch (e) { setRecalcResult(`⚠️ ${e.message}`); }
+                    setRecalcRunning(false);
+                  }}
+                >{recalcRunning ? 'Running…' : 'Recalculate All Nutrition'}</button>
+                {recalcResult && <p style={{ marginTop: 10, fontSize: '0.85rem', color: recalcResult.startsWith('✓') ? 'var(--sage)' : 'var(--terracotta)' }}>{recalcResult}</p>}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* ── 4. Settings ── */}
       <section className="profile-section profile-section--settings">
         <button className="profile-settings-toggle" onClick={() => setSettingsOpen(o => !o)}>
@@ -3463,34 +3499,63 @@ const NOTE_TYPE_META = {
 };
 const NOTE_CATEGORIES = ['General Technique', 'Pasta', 'Baking', 'Meat & Fish', 'Sauces', 'Eggs', 'Vegetables', 'Bread', 'Desserts', 'Equipment'];
 
+// Auto-extract keywords from a description string
+const autoKeywordsFromDescription = (desc) => {
+  const STOP_WORDS = new Set([
+    'a','an','the','and','or','but','in','on','at','to','for','of','with',
+    'is','are','was','were','be','been','being','have','has','had','do','does',
+    'did','will','would','could','should','may','might','must','shall','can',
+    'it','its','this','that','these','those','i','you','he','she','we','they',
+    'not','no','so','if','as','by','from','up','out','more','also','than','then',
+    'when','always','never','very','too','just','well','make','use','your','their',
+  ]);
+  const words = desc.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean);
+  const seen = new Set();
+  const keywords = [];
+  for (const w of words) {
+    if (w.length >= 4 && !STOP_WORDS.has(w) && !seen.has(w)) {
+      seen.add(w);
+      keywords.push(w);
+      if (keywords.length >= 8) break;
+    }
+  }
+  return keywords;
+};
+
 const NoteFormModal = ({ note, onSave, onClose, authFetch }) => {
   const isNew = !note;
   const [form, setForm] = useState({
-    title:    note?.title    || '',
-    body:     note?.body     || '',
-    type:     note?.type     || 'rule',
-    category: note?.category || 'General Technique',
+    title:     note?.title     || '',
+    body:      note?.body      || '',
+    type:      note?.type      || 'rule',
     image_url: note?.image_url || '',
-    keywords: (note?.keywords || []).join(', '),
-    bullets:  note?.bullets?.length ? note.bullets.map(b => b.text).join('\n') : '',
+    keywords:  (note?.keywords || []).join(', '),
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
+  // When body changes, auto-populate keywords if field is empty or was auto-generated
+  const handleBodyChange = (v) => {
+    set('body', v);
+    // Only auto-generate if user hasn't manually edited keywords
+    const autoKw = autoKeywordsFromDescription(v).join(', ');
+    setForm(p => ({ ...p, body: v, keywords: autoKw }));
+  };
+
   const save = async () => {
     if (!form.title.trim()) { setError('Title is required'); return; }
-    if (!form.body.trim())  { setError('Body is required');  return; }
+    if (!form.body.trim())  { setError('Description is required'); return; }
     setSaving(true); setError(null);
     try {
       const payload = {
         title:     form.title.trim(),
         body:      form.body.trim(),
         type:      form.type,
-        category:  form.category,
+        category:  note?.category || 'General Technique',
         image_url: form.image_url.trim() || null,
         keywords:  form.keywords.split(',').map(k => k.trim().toLowerCase()).filter(Boolean),
-        bullets:   form.bullets.split('\n').map(t => t.trim()).filter(Boolean).map((text, i) => ({ text, order_index: i })),
+        bullets:   [],
       };
       const url = isNew ? `${API}/api/cooking-notes` : `${API}/api/cooking-notes/${note.id}`;
       const method = isNew ? 'POST' : 'PUT';
@@ -3503,7 +3568,7 @@ const NoteFormModal = ({ note, onSave, onClose, authFetch }) => {
 
   return (
     <div className="create-modal-overlay" onClick={onClose}>
-      <div className="create-modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+      <div className="create-modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title">{isNew ? 'Add Cooking Note' : 'Edit Note'}</h2>
           <button className="ing-modal__close" onClick={onClose}>✕</button>
@@ -3513,35 +3578,23 @@ const NoteFormModal = ({ note, onSave, onClose, authFetch }) => {
             <label className="create-modal__field-label">Title <span className="create-modal__required">*</span></label>
             <input className="editor-input" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Pasta water salinity" autoFocus={isNew} />
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <div className="create-modal__field" style={{ flex: 1 }}>
-              <label className="create-modal__field-label">Type</label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                {NOTE_TYPES.map(t => (
-                  <button key={t} className={`chip ${form.type === t ? 'chip--selected' : ''}`} onClick={() => set('type', t)}>
-                    {form.type === t && <span className="chip__check">✓</span>}{NOTE_TYPE_META[t].emoji} {NOTE_TYPE_META[t].label}
-                  </button>
-                ))}
-              </div>
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Type</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+              {NOTE_TYPES.map(t => (
+                <button key={t} className={`chip ${form.type === t ? 'chip--selected' : ''}`} onClick={() => set('type', t)}>
+                  {form.type === t && <span className="chip__check">✓</span>}{NOTE_TYPE_META[t].emoji} {NOTE_TYPE_META[t].label}
+                </button>
+              ))}
             </div>
           </div>
           <div className="create-modal__field">
-            <label className="create-modal__field-label">Category</label>
-            <select className="editor-input editor-select" value={form.category} onChange={e => set('category', e.target.value)}>
-              {NOTE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <label className="create-modal__field-label">Description <span className="create-modal__required">*</span></label>
+            <textarea className="editor-textarea" value={form.body} onChange={e => handleBodyChange(e.target.value)} placeholder="Describe the rule, technique, or tip…" rows={4} style={{ resize: 'vertical' }} />
           </div>
           <div className="create-modal__field">
-            <label className="create-modal__field-label">Body <span className="create-modal__required">*</span></label>
-            <textarea className="editor-textarea" value={form.body} onChange={e => set('body', e.target.value)} placeholder="The main note text…" rows={3} style={{ resize: 'vertical' }} />
-          </div>
-          <div className="create-modal__field">
-            <label className="create-modal__field-label">Sub-bullets <span style={{opacity:0.6, fontWeight:400}}>optional — one per line</span></label>
-            <textarea className="editor-textarea" value={form.bullets} onChange={e => set('bullets', e.target.value)} placeholder={"don't overmix cakes\ndo over-knead breads"} rows={3} style={{ resize: 'vertical' }} />
-          </div>
-          <div className="create-modal__field">
-            <label className="create-modal__field-label">💡 Tooltip keywords <span style={{opacity:0.6, fontWeight:400}}>comma-separated</span></label>
-            <input className="editor-input" value={form.keywords} onChange={e => set('keywords', e.target.value)} placeholder="flour, cake, bread, mix, knead" />
+            <label className="create-modal__field-label">💡 Tooltip keywords <span style={{opacity:0.6, fontWeight:400}}>auto-generated · edit freely</span></label>
+            <input className="editor-input" value={form.keywords} onChange={e => set('keywords', e.target.value)} placeholder="e.g. pasta, salt, water, boil" />
             <p className="create-modal__field-hint" style={{ marginTop: 4 }}>These words trigger this note as a tooltip on recipe steps.</p>
           </div>
           <div className="create-modal__field">
@@ -4760,6 +4813,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
   const updateStep = (id, v) => setSteps(prev => prev.map(s => s._id === id ? { ...s, body_text: v } : s));
   const removeStep = (id) => setSteps(prev => prev.filter(s => s._id !== id));
   const onStepDragEnd = ({ active, over }) => { if (over && active.id !== over.id) setSteps(prev => { const o = prev.findIndex(s => s._id === active.id); const n = prev.findIndex(s => s._id === over.id); return arrayMove(prev, o, n); }); };
+  const addNote    = () => setNotesList(prev => [...prev, { _id: `note-${Date.now()}`, text: '' }]);
   const updateNote = (id, v) => setNotesList(prev => prev.map(n => n._id === id ? { ...n, text: v } : n));
   const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id));
 

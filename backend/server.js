@@ -670,6 +670,45 @@ app.post('/api/recipes', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// ─── Server-side nutrition calculator ─────────────────────────────────────────
+const UNIT_GRAMS_SERVER = {
+  'g': 1, 'kg': 1000, 'oz': 28.35, 'lb': 453.6,
+  'cup': 240, 'cups': 240, 'ml': 1, 'l': 1000,
+  'tbsp': 15, 'tsp': 5,
+};
+
+async function calcNutritionFromIngredients(client, recipeIngredients) {
+  if (!recipeIngredients || !recipeIngredients.length) return null;
+  let totalCal = 0, totalProt = 0, totalFiber = 0, matched = 0;
+  for (const ing of recipeIngredients) {
+    const ingName = (ing.name || '').trim().toLowerCase();
+    if (!ingName) continue;
+    const { rows } = await client.query(
+      `SELECT calories, protein, fiber, grams_per_unit FROM ingredients WHERE name = $1 LIMIT 1`,
+      [ingName]
+    );
+    const dbIng = rows[0];
+    if (!dbIng || dbIng.calories == null) continue;
+    const amount = parseFloat(ing.amount) || 1;
+    const unit = (ing.unit || '').toLowerCase().trim();
+    let gramsTotal;
+    if (UNIT_GRAMS_SERVER[unit]) {
+      gramsTotal = amount * UNIT_GRAMS_SERVER[unit];
+    } else if (dbIng.grams_per_unit) {
+      gramsTotal = amount * dbIng.grams_per_unit;
+    } else {
+      continue;
+    }
+    const factor = gramsTotal / 100;
+    totalCal   += (dbIng.calories || 0) * factor;
+    totalProt  += (dbIng.protein  || 0) * factor;
+    totalFiber += (dbIng.fiber    || 0) * factor;
+    matched++;
+  }
+  if (matched === 0) return null;
+  return { calories: Math.round(totalCal), protein: Math.round(totalProt), fiber: Math.round(totalFiber) };
+}
+
 // ─── PUT /api/recipes/:id ───────────────────────────────────────────────────
 app.put('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) => {
   const { id } = req.params;
@@ -679,34 +718,12 @@ app.put('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) =>
   try {
     await client.query('BEGIN');
 
-    await client.query(`
-      UPDATE recipes SET
-        name            = $1,
-        cuisine         = $2,
-        time            = $3,
-        servings        = $4,
-        calories        = $5,
-        protein         = $6,
-        cover_image_url = $7,
-        status          = $8,
-        cookbook        = $9,
-        reference       = $10,
-        tags            = $11
-      WHERE id = $12
-    `, [
-      details.name,
-      details.cuisine || null,
-      details.time || null,
-      details.servings || null,
-      details.calories !== '' && details.calories != null ? Number(details.calories) : null,
-      details.protein  !== '' && details.protein  != null ? Number(details.protein)  : null,
-      details.cover_image_url || null,
-      details.status || null,
-      details.cookbook || null,
-      details.reference || details.page_number || null,
-      Array.isArray(details.tags) ? details.tags : [],
-      id,
-    ]);
+    // Save ingredients first so we can recalculate nutrition from them
+    let nutritionUpdate = {
+      calories: details.calories !== '' && details.calories != null ? Number(details.calories) : null,
+      protein:  details.protein  !== '' && details.protein  != null ? Number(details.protein)  : null,
+      fiber:    details.fiber    !== '' && details.fiber    != null ? Number(details.fiber)    : null,
+    };
 
     if (ingredients !== null && ingredients !== undefined) {
       await client.query('DELETE FROM recipe_body_ingredients WHERE recipe_id = $1', [id]);
@@ -725,7 +742,41 @@ app.put('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) =>
            ing.prep_note || null, Boolean(ing.optional), ing.group_label || null, ing.order_index ?? 0]
         );
       }
+      // Recalculate nutrition from the saved ingredients
+      const calc = await calcNutritionFromIngredients(client, ingredients);
+      if (calc) nutritionUpdate = calc;
     }
+
+    await client.query(`
+      UPDATE recipes SET
+        name            = $1,
+        cuisine         = $2,
+        time            = $3,
+        servings        = $4,
+        calories        = $5,
+        protein         = $6,
+        fiber           = $7,
+        cover_image_url = $8,
+        status          = $9,
+        cookbook        = $10,
+        reference       = $11,
+        tags            = $12
+      WHERE id = $13
+    `, [
+      details.name,
+      details.cuisine || null,
+      details.time || null,
+      details.servings || null,
+      nutritionUpdate.calories,
+      nutritionUpdate.protein,
+      nutritionUpdate.fiber,
+      details.cover_image_url || null,
+      details.status || null,
+      details.cookbook || null,
+      details.reference || details.page_number || null,
+      Array.isArray(details.tags) ? details.tags : [],
+      id,
+    ]);
 
     if (instructions !== null && instructions !== undefined) {
       await client.query('DELETE FROM instructions WHERE recipe_id = $1', [id]);
@@ -769,6 +820,45 @@ app.put('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) =>
     await client.query('ROLLBACK');
     console.error('PUT /api/recipes/:id error:', err);
     res.status(500).json({ error: err.message || 'Failed to save recipe' });
+  } finally {
+    client.release();
+  }
+});
+
+// ─── POST /api/admin/recalculate-nutrition ────────────────────────────────────
+// Clears all pre-populated calories/protein/fiber and recalculates from ingredients
+app.post('/api/admin/recalculate-nutrition', authenticateToken, requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // First, clear all nutrition data
+    await client.query('UPDATE recipes SET calories = NULL, protein = NULL, fiber = NULL');
+    // Get all recipes that have body ingredients
+    const { rows: recipes } = await client.query('SELECT id FROM recipes');
+    let updated = 0;
+    for (const recipe of recipes) {
+      const { rows: ings } = await client.query(`
+        SELECT i.name, rbi.amount, rbi.unit
+        FROM recipe_body_ingredients rbi
+        JOIN ingredients i ON i.id = rbi.ingredient_id
+        WHERE rbi.recipe_id = $1
+      `, [recipe.id]);
+      if (!ings.length) continue;
+      const nutrition = await calcNutritionFromIngredients(client, ings);
+      if (nutrition) {
+        await client.query(
+          'UPDATE recipes SET calories=$1, protein=$2, fiber=$3 WHERE id=$4',
+          [nutrition.calories, nutrition.protein, nutrition.fiber, recipe.id]
+        );
+        updated++;
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ success: true, updated, total: recipes.length });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('recalculate-nutrition error:', err);
+    res.status(500).json({ error: err.message });
   } finally {
     client.release();
   }
