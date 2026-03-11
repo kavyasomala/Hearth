@@ -732,7 +732,8 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
 };
 
 // ─── Step Item with integrated timer ──────────────────────────────────────
-const StepItem = ({ step, done, isCurrent, enlarge, onToggle }) => {
+const StepItem = ({ step, done, isCurrent, enlarge, onToggle, matchedNotes = [] }) => {
+  const [activeNote, setActiveNote] = useState(null);
   const hasTimer = step.timer_seconds && step.timer_seconds > 0;
   const [timerState, setTimerState] = useState('idle'); // 'idle' | 'running' | 'paused' | 'done'
   const [remaining, setRemaining] = useState(step.timer_seconds || 0);
@@ -792,7 +793,34 @@ const StepItem = ({ step, done, isCurrent, enlarge, onToggle }) => {
     <li className={`rp2__step ${done ? 'rp2__step--done' : ''} ${isCurrent ? 'rp2__step--current' : ''} ${enlarge ? 'rp2__step--enlarged' : ''}`} onClick={onToggle}>
       <div className="rp2__step-num">{done ? '✓' : step.step_number}</div>
       <div className="rp2__step-content">
-        <p className="rp2__step-body">{step.body_text}</p>
+        <div className="rp2__step-body-row">
+          <p className="rp2__step-body">{step.body_text}</p>
+          {matchedNotes.length > 0 && (
+            <div className="rp2__step-hints">
+              {matchedNotes.map(n => (
+                <div key={n.id} className="rp2__step-hint-wrap">
+                  <button
+                    className={`rp2__step-hint-btn ${activeNote?.id === n.id ? 'rp2__step-hint-btn--active' : ''}`}
+                    onClick={e => { e.stopPropagation(); setActiveNote(prev => prev?.id === n.id ? null : n); }}
+                    title={n.title}
+                  >💡</button>
+                  {activeNote?.id === n.id && (
+                    <div className="rp2__step-hint-popover" onClick={e => e.stopPropagation()}>
+                      <div className="rp2__step-hint-popover__title">{n.title}</div>
+                      <p className="rp2__step-hint-popover__body">{n.body}</p>
+                      {n.bullets?.length > 0 && (
+                        <ul className="rp2__step-hint-popover__bullets">
+                          {n.bullets.map((b, i) => <li key={i}>{b.text}</li>)}
+                        </ul>
+                      )}
+                      {n.image_url && <img src={n.image_url} alt="" className="rp2__step-hint-popover__img" />}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         {hasTimer && !done && (
           <div className="rp2__step-timer" onClick={e => e.stopPropagation()}>
             {timerState === 'running' && (
@@ -815,7 +843,7 @@ const StepItem = ({ step, done, isCurrent, enlarge, onToggle }) => {
 };
 
 // ─── Recipe Page ─────────────────────────────────────────────────────────────
-const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin }) => {
+const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [] }) => {
   const apiFetch = authFetch || fetch;
   const [checkedIngredients, setCheckedIngredients] = useState(new Set());
   const [doneSteps, setDoneSteps] = useState(new Set());
@@ -1571,6 +1599,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     const sortedUndone = [...instructions].sort((a, b) => a.step_number - b.step_number).filter(s => !doneSteps.has(s.step_number));
                     const isCurrent = !done && sortedUndone[0]?.step_number === step.step_number;
                     const enlarge = listIdx === 0 && doneCount === 0 ? true : isCurrent;
+                    const stepText = (step.body_text || '').toLowerCase();
+                    const matchedNotes = cookingNotes.filter(n =>
+                      (n.keywords || []).some(kw => stepText.includes(kw.toLowerCase()))
+                    );
                     return (
                       <StepItem
                         key={step.step_number}
@@ -1579,6 +1611,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                         isCurrent={isCurrent}
                         enlarge={enlarge}
                         onToggle={() => toggleStep(step.step_number)}
+                        matchedNotes={matchedNotes}
                       />
                     );
                   })}
@@ -3420,6 +3453,267 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
   );
 };
 
+
+// ─── Cooking Notes Tab ──────────────────────────────────────────────────────
+const NOTE_TYPES = ['rule', 'theory', 'shortcut'];
+const NOTE_TYPE_META = {
+  rule:     { label: 'Rule / Ratio',   emoji: '📐', color: '#e8f5e9', border: '#a5d6a7' },
+  theory:   { label: 'Theory',         emoji: '🧠', color: '#e3f2fd', border: '#90caf9' },
+  shortcut: { label: 'Shortcut',       emoji: '⚡', color: '#fff8e1', border: '#ffe082' },
+};
+const NOTE_CATEGORIES = ['General Technique', 'Pasta', 'Baking', 'Meat & Fish', 'Sauces', 'Eggs', 'Vegetables', 'Bread', 'Desserts', 'Equipment'];
+
+const NoteFormModal = ({ note, onSave, onClose, authFetch }) => {
+  const isNew = !note;
+  const [form, setForm] = useState({
+    title:    note?.title    || '',
+    body:     note?.body     || '',
+    type:     note?.type     || 'rule',
+    category: note?.category || 'General Technique',
+    image_url: note?.image_url || '',
+    keywords: (note?.keywords || []).join(', '),
+    bullets:  note?.bullets?.length ? note.bullets.map(b => b.text).join('\n') : '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const save = async () => {
+    if (!form.title.trim()) { setError('Title is required'); return; }
+    if (!form.body.trim())  { setError('Body is required');  return; }
+    setSaving(true); setError(null);
+    try {
+      const payload = {
+        title:     form.title.trim(),
+        body:      form.body.trim(),
+        type:      form.type,
+        category:  form.category,
+        image_url: form.image_url.trim() || null,
+        keywords:  form.keywords.split(',').map(k => k.trim().toLowerCase()).filter(Boolean),
+        bullets:   form.bullets.split('\n').map(t => t.trim()).filter(Boolean).map((text, i) => ({ text, order_index: i })),
+      };
+      const url = isNew ? `${API}/api/cooking-notes` : `${API}/api/cooking-notes/${note.id}`;
+      const method = isNew ? 'POST' : 'PUT';
+      const res = await authFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+      onSave(data.note);
+    } catch (e) { setError(e.message); setSaving(false); }
+  };
+
+  return (
+    <div className="create-modal-overlay" onClick={onClose}>
+      <div className="create-modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+        <div className="create-modal__header">
+          <h2 className="create-modal__title">{isNew ? 'Add Cooking Note' : 'Edit Note'}</h2>
+          <button className="ing-modal__close" onClick={onClose}>✕</button>
+        </div>
+        <div className="create-modal__body" style={{ gap: 14 }}>
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Title <span className="create-modal__required">*</span></label>
+            <input className="editor-input" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Pasta water salinity" autoFocus={isNew} />
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div className="create-modal__field" style={{ flex: 1 }}>
+              <label className="create-modal__field-label">Type</label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                {NOTE_TYPES.map(t => (
+                  <button key={t} className={`chip ${form.type === t ? 'chip--selected' : ''}`} onClick={() => set('type', t)}>
+                    {form.type === t && <span className="chip__check">✓</span>}{NOTE_TYPE_META[t].emoji} {NOTE_TYPE_META[t].label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Category</label>
+            <select className="editor-input editor-select" value={form.category} onChange={e => set('category', e.target.value)}>
+              {NOTE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Body <span className="create-modal__required">*</span></label>
+            <textarea className="editor-textarea" value={form.body} onChange={e => set('body', e.target.value)} placeholder="The main note text…" rows={3} style={{ resize: 'vertical' }} />
+          </div>
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Sub-bullets <span style={{opacity:0.6, fontWeight:400}}>optional — one per line</span></label>
+            <textarea className="editor-textarea" value={form.bullets} onChange={e => set('bullets', e.target.value)} placeholder={"don't overmix cakes\ndo over-knead breads"} rows={3} style={{ resize: 'vertical' }} />
+          </div>
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">💡 Tooltip keywords <span style={{opacity:0.6, fontWeight:400}}>comma-separated</span></label>
+            <input className="editor-input" value={form.keywords} onChange={e => set('keywords', e.target.value)} placeholder="flour, cake, bread, mix, knead" />
+            <p className="create-modal__field-hint" style={{ marginTop: 4 }}>These words trigger this note as a tooltip on recipe steps.</p>
+          </div>
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">Image URL <span style={{opacity:0.6, fontWeight:400}}>optional</span></label>
+            <input className="editor-input" value={form.image_url} onChange={e => set('image_url', e.target.value)} placeholder="https://…" />
+          </div>
+          {error && <p className="editor-error">⚠️ {error}</p>}
+        </div>
+        <div className="create-modal__footer">
+          <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : isNew ? '+ Add Note' : '✓ Save'}</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const NoteCard = ({ note, isAdmin, onEdit, onDelete }) => {
+  const [expanded, setExpanded] = useState(false);
+  const meta = NOTE_TYPE_META[note.type] || NOTE_TYPE_META.rule;
+  return (
+    <div className="cn-card" style={{ '--cn-bg': meta.color, '--cn-border': meta.border }}>
+      <div className="cn-card__header" onClick={() => setExpanded(e => !e)}>
+        <span className="cn-card__type-badge">{meta.emoji}</span>
+        <span className="cn-card__title">{note.title}</span>
+        <span className="cn-card__chevron">{expanded ? '▴' : '▾'}</span>
+        {isAdmin && (
+          <div className="cn-card__actions" onClick={e => e.stopPropagation()}>
+            <button className="cn-card__action-btn" onClick={onEdit} title="Edit">✎</button>
+            <button className="cn-card__action-btn cn-card__action-btn--del" onClick={onDelete} title="Delete">✕</button>
+          </div>
+        )}
+      </div>
+      {expanded && (
+        <div className="cn-card__body">
+          <p className="cn-card__text">{note.body}</p>
+          {note.bullets?.length > 0 && (
+            <ul className="cn-card__bullets">
+              {note.bullets.map((b, i) => <li key={i}>{b.text}</li>)}
+            </ul>
+          )}
+          {note.image_url && <img src={note.image_url} alt="" className="cn-card__img" />}
+          {note.keywords?.length > 0 && (
+            <div className="cn-card__keywords">
+              {note.keywords.map(k => <span key={k} className="cn-card__keyword">#{k}</span>)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const CookingNotesTab = ({ notes, setNotes, authFetch, isAdmin }) => {
+  const [editingNote, setEditingNote] = useState(null); // null = closed, false = new, obj = editing
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
+
+  const categories = useMemo(() => {
+    const cats = ['All', ...new Set(notes.map(n => n.category).filter(Boolean))].sort((a, b) => a === 'All' ? -1 : a.localeCompare(b));
+    return cats;
+  }, [notes]);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return notes.filter(n => {
+      if (activeCategory !== 'All' && n.category !== activeCategory) return false;
+      if (!q) return true;
+      return n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q) ||
+        (n.keywords || []).some(k => k.includes(q)) ||
+        (n.bullets || []).some(b => b.text.toLowerCase().includes(q));
+    });
+  }, [notes, search, activeCategory]);
+
+  const grouped = useMemo(() => {
+    const map = new Map();
+    for (const n of filtered) {
+      const cat = n.category || 'General Technique';
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat).push(n);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filtered]);
+
+  const handleSave = (saved) => {
+    setNotes(prev => {
+      const exists = prev.find(n => n.id === saved.id);
+      return exists ? prev.map(n => n.id === saved.id ? saved : n) : [...prev, saved];
+    });
+    setEditingNote(null);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await authFetch(`${API}/api/cooking-notes/${deleteTarget.id}`, { method: 'DELETE' });
+      setNotes(prev => prev.filter(n => n.id !== deleteTarget.id));
+    } catch {}
+    setDeleteTarget(null);
+  };
+
+  return (
+    <main className="view cn-tab">
+      {editingNote !== null && (
+        <NoteFormModal
+          note={editingNote === false ? null : editingNote}
+          onSave={handleSave}
+          onClose={() => setEditingNote(null)}
+          authFetch={authFetch}
+        />
+      )}
+      {deleteTarget && (
+        <div className="create-modal-overlay" onClick={() => setDeleteTarget(null)}>
+          <div className="delete-confirm-modal" onClick={e => e.stopPropagation()}>
+            <p>Delete <strong>"{deleteTarget.title}"</strong>?</p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="btn btn--ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
+              <button className="btn btn--danger" onClick={handleDelete}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="cn-tab__header">
+        <div className="cn-tab__title-row">
+          <h1 className="cn-tab__title">💡 Cooking Notes</h1>
+          {isAdmin && (
+            <button className="btn btn--primary btn--sm" onClick={() => setEditingNote(false)}>+ Add Note</button>
+          )}
+        </div>
+        <p className="cn-tab__subtitle">Rules, ratios, and theory — the things that make cooking click.</p>
+        <input className="editor-input cn-tab__search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search notes…" />
+        <div className="cn-tab__cats">
+          {categories.map(cat => (
+            <button key={cat} className={`chip ${activeCategory === cat ? 'chip--selected' : ''}`} onClick={() => setActiveCategory(cat)}>
+              {activeCategory === cat && <span className="chip__check">✓</span>}{cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {notes.length === 0 ? (
+        <div className="cn-tab__empty">
+          <p>No notes yet.{isAdmin ? ' Add your first cooking note!' : ''}</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="cn-tab__empty"><p>No notes match your search.</p></div>
+      ) : (
+        <div className="cn-tab__groups">
+          {grouped.map(([cat, catNotes]) => (
+            <div key={cat} className="cn-group">
+              <h2 className="cn-group__title">{cat}</h2>
+              <div className="cn-group__cards">
+                {catNotes.map(n => (
+                  <NoteCard
+                    key={n.id}
+                    note={n}
+                    isAdmin={isAdmin}
+                    onEdit={() => setEditingNote(n)}
+                    onDelete={() => setDeleteTarget(n)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </main>
+  );
+};
+
 // ─── Site Footer ────────────────────────────────────────────────────────────
 const GITHUB_REPO = 'kavyasomala/RecipeApp'; // update with actual repo path
 
@@ -4998,6 +5292,7 @@ function AppInner() {
   const setHideIncompatible = (v) => { setHideIncompatibleRaw(v); LS.set('hideIncompatible', v); };
   const [cookbooks, setCookbooks] = useState(() => LS.get('cookbooks', []));
   const [cookLog, setCookLog] = useState([]);
+  const [cookingNotes, setCookingNotes] = useState([]);
   const setUnits = (v) => { setUnitsRaw(v); LS.set('units', v); };
   const setDietaryFilters = (fn) => setDietaryFiltersRaw(prev => { const next = typeof fn === 'function' ? fn(prev) : fn; LS.set('dietaryFilters', next); return next; });
 
@@ -5007,13 +5302,15 @@ function AppInner() {
 
   const loadData = useCallback(async () => {
     try {
-      const [ingRes, recipeRes] = await Promise.all([
+      const [ingRes, recipeRes, notesRes] = await Promise.all([
         fetch(`${API}/api/ingredients`),
         fetch(`${API}/api/recipes`),
+        fetch(`${API}/api/cooking-notes`),
       ]);
       if (!ingRes.ok || !recipeRes.ok) throw new Error('Failed to load data');
       const { ingredients } = await ingRes.json();
       const { recipes: recipeData } = await recipeRes.json();
+      if (notesRes.ok) { const d = await notesRes.json(); setCookingNotes(d.notes || []); }
       setAllIngredients(ingredients.sort((a, b) => a.name.localeCompare(b.name)));
       setRecipes(recipeData);
 
@@ -5152,6 +5449,7 @@ function AppInner() {
               { key: 'kitchen',   label: 'Kitchen'      },
               { key: 'grocery',   label: 'Grocery'      },
               { key: 'cookbooks', label: 'Cookbooks'    },
+              { key: 'notes',     label: 'Notes'        },
               ...(isAdmin ? [{ key: 'add', label: 'Add' }] : []),
             ].map(({ key, label }) => (
               <button key={key} className={`nav-tab ${view === key ? 'nav-tab--active' : ''}`} onClick={() => setView(key)} disabled={key === 'recipes' && recipes.length === 0}>
@@ -5181,6 +5479,7 @@ function AppInner() {
               { key: 'kitchen',   label: '🧑‍🍳 Kitchen'    },
               { key: 'grocery',   label: '🛒 Grocery'     },
               { key: 'cookbooks', label: '📚 Cookbooks'   },
+              { key: 'notes',     label: '💡 Notes'       },
               ...(isAdmin ? [{ key: 'add', label: '➕ Add' }] : []),
             ].map(({ key, label }) => (
               <button key={key}
@@ -5213,7 +5512,7 @@ function AppInner() {
 
       {view === 'recipe' && !editingRecipe && (
         <RecipePage
-          recipe={selectedRecipe} bodyIngredients={recipeBodyIngredients} instructions={recipeInstructions} notes={recipeNotes}
+          recipe={selectedRecipe} bodyIngredients={recipeBodyIngredients} instructions={recipeInstructions} notes={recipeNotes} cookingNotes={cookingNotes}
           loading={recipeLoading} onBack={() => setView(lastView)}
           allIngredients={allIngredients}
           cookbooks={cookbooks}
@@ -5765,6 +6064,10 @@ function AppInner() {
             openRecipe(newRecipe);
           }}
         />
+      )}
+
+      {view === 'notes' && (
+        <CookingNotesTab notes={cookingNotes} setNotes={setCookingNotes} authFetch={authFetch} isAdmin={isAdmin} />
       )}
 
       {view === 'cookbooks' && (

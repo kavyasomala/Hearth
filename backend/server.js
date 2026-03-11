@@ -798,6 +798,129 @@ app.delete('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res)
   }
 });
 
+
+// ─── GET /api/cooking-notes ──────────────────────────────────────────────────
+app.get('/api/cooking-notes', async (req, res) => {
+  try {
+    const { rows: notes } = await query(`
+      SELECT id, title, body, type, category, image_url, created_at
+      FROM cooking_notes ORDER BY category ASC, created_at ASC
+    `);
+    if (!notes.length) return res.json({ notes: [] });
+
+    const noteIds = notes.map(n => n.id);
+    const { rows: bullets } = await query(`
+      SELECT note_id, text, order_index FROM cooking_note_bullets
+      WHERE note_id = ANY($1) ORDER BY order_index ASC
+    `, [noteIds]);
+    const { rows: keywords } = await query(`
+      SELECT note_id, keyword FROM cooking_note_keywords
+      WHERE note_id = ANY($1)
+    `, [noteIds]);
+
+    const bulletsMap = {};
+    for (const b of bullets) {
+      if (!bulletsMap[b.note_id]) bulletsMap[b.note_id] = [];
+      bulletsMap[b.note_id].push({ text: b.text, order_index: b.order_index });
+    }
+    const keywordsMap = {};
+    for (const k of keywords) {
+      if (!keywordsMap[k.note_id]) keywordsMap[k.note_id] = [];
+      keywordsMap[k.note_id].push(k.keyword);
+    }
+
+    const enriched = notes.map(n => ({
+      ...n,
+      bullets:  bulletsMap[n.id]  || [],
+      keywords: keywordsMap[n.id] || [],
+    }));
+    res.json({ notes: enriched });
+  } catch (err) {
+    console.error('GET /api/cooking-notes error:', err);
+    res.status(500).json({ error: 'Failed to load cooking notes' });
+  }
+});
+
+// ─── POST /api/cooking-notes ─────────────────────────────────────────────────
+app.post('/api/cooking-notes', authenticateToken, requireAdmin, async (req, res) => {
+  const { title, body, type, category, image_url, keywords = [], bullets = [] } = req.body;
+  if (!title?.trim()) return res.status(400).json({ error: 'title is required' });
+  if (!body?.trim())  return res.status(400).json({ error: 'body is required' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(`
+      INSERT INTO cooking_notes (title, body, type, category, image_url)
+      VALUES ($1, $2, $3, $4, $5) RETURNING *
+    `, [title.trim(), body.trim(), type || 'rule', category || 'General Technique', image_url || null]);
+    const note = rows[0];
+
+    for (const b of bullets) {
+      await client.query(`INSERT INTO cooking_note_bullets (note_id, text, order_index) VALUES ($1, $2, $3)`,
+        [note.id, b.text, b.order_index ?? 0]);
+    }
+    for (const kw of keywords) {
+      if (kw.trim()) await client.query(`INSERT INTO cooking_note_keywords (note_id, keyword) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [note.id, kw.trim().toLowerCase()]);
+    }
+    await client.query('COMMIT');
+
+    const savedNote = { ...note, bullets, keywords };
+    res.status(201).json({ note: savedNote });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('POST /api/cooking-notes error:', err);
+    res.status(500).json({ error: err.message || 'Failed to create note' });
+  } finally { client.release(); }
+});
+
+// ─── PUT /api/cooking-notes/:id ──────────────────────────────────────────────
+app.put('/api/cooking-notes/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { title, body, type, category, image_url, keywords = [], bullets = [] } = req.body;
+  if (!title?.trim()) return res.status(400).json({ error: 'title is required' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(`
+      UPDATE cooking_notes SET title=$1, body=$2, type=$3, category=$4, image_url=$5
+      WHERE id=$6 RETURNING *
+    `, [title.trim(), body.trim(), type || 'rule', category || 'General Technique', image_url || null, id]);
+    if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Note not found' }); }
+
+    await client.query('DELETE FROM cooking_note_bullets  WHERE note_id=$1', [id]);
+    await client.query('DELETE FROM cooking_note_keywords WHERE note_id=$1', [id]);
+
+    for (const b of bullets) {
+      await client.query(`INSERT INTO cooking_note_bullets (note_id, text, order_index) VALUES ($1, $2, $3)`,
+        [id, b.text, b.order_index ?? 0]);
+    }
+    for (const kw of keywords) {
+      if (kw.trim()) await client.query(`INSERT INTO cooking_note_keywords (note_id, keyword) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [id, kw.trim().toLowerCase()]);
+    }
+    await client.query('COMMIT');
+    res.json({ note: { ...rows[0], bullets, keywords } });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('PUT /api/cooking-notes/:id error:', err);
+    res.status(500).json({ error: err.message || 'Failed to update note' });
+  } finally { client.release(); }
+});
+
+// ─── DELETE /api/cooking-notes/:id ───────────────────────────────────────────
+app.delete('/api/cooking-notes/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { rowCount } = await query('DELETE FROM cooking_notes WHERE id=$1', [id]);
+    if (!rowCount) return res.status(404).json({ error: 'Note not found' });
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error('DELETE /api/cooking-notes/:id error:', err);
+    res.status(500).json({ error: err.message || 'Failed to delete note' });
+  }
+});
+
 // ─── POST /api/match ────────────────────────────────────────────────────────
 app.post('/api/match', async (req, res) => {
   try {

@@ -4676,3 +4676,80 @@ body {
   background: var(--terracotta-dark, #b84a2e);
   transform: scale(1.08);
 }
+
+/* ─── Cooking Notes Tab ─────────────────────────────────────────────────────── */
+.cn-tab { padding: 24px 20px 80px; max-width: 760px; margin: 0 auto; }
+.cn-tab__header { margin-bottom: 28px; }
+.cn-tab__title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.cn-tab__title { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; color: var(--charcoal); margin: 0; }
+.cn-tab__subtitle { font-size: 0.9rem; color: var(--warm-gray); margin: 0 0 14px; }
+.cn-tab__search { margin-bottom: 12px; }
+.cn-tab__cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.cn-tab__empty { text-align: center; padding: 60px 20px; color: var(--warm-gray); font-size: 0.95rem; }
+
+.cn-tab__groups { display: flex; flex-direction: column; gap: 28px; }
+.cn-group__title { font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--warm-gray); text-transform: uppercase; letter-spacing: 0.07em; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1.5px solid var(--border); }
+.cn-group__cards { display: flex; flex-direction: column; gap: 8px; }
+
+/* Note card */
+.cn-card {
+  background: var(--cn-bg, var(--cream));
+  border: 1.5px solid var(--cn-border, var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+}
+.cn-card:hover { box-shadow: var(--shadow); }
+.cn-card__header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; cursor: pointer; user-select: none;
+}
+.cn-card__type-badge { font-size: 16px; flex-shrink: 0; }
+.cn-card__title { flex: 1; font-weight: 600; font-size: 0.92rem; color: var(--charcoal); }
+.cn-card__chevron { font-size: 11px; color: var(--warm-gray); flex-shrink: 0; }
+.cn-card__actions { display: flex; gap: 4px; margin-left: 4px; }
+.cn-card__action-btn {
+  width: 26px; height: 26px; border-radius: 6px; border: none;
+  background: rgba(255,255,255,0.7); font-size: 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; color: var(--warm-gray);
+  transition: all 0.12s;
+}
+.cn-card__action-btn:hover { background: var(--warm-white); color: var(--charcoal); }
+.cn-card__action-btn--del:hover { background: #fdf0eb; color: var(--terracotta); }
+.cn-card__body { padding: 0 14px 14px; }
+.cn-card__text { font-size: 0.9rem; color: var(--charcoal); margin: 0 0 8px; line-height: 1.55; }
+.cn-card__bullets { margin: 4px 0 8px 16px; padding: 0; font-size: 0.88rem; color: var(--charcoal); line-height: 1.6; }
+.cn-card__bullets li { margin-bottom: 2px; }
+.cn-card__img { max-width: 100%; border-radius: var(--radius-sm); margin-top: 8px; display: block; }
+.cn-card__keywords { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.cn-card__keyword { font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,0.06); color: var(--warm-gray); font-weight: 500; }
+
+/* Step tooltip (💡) */
+.rp2__step-body-row { display: flex; align-items: flex-start; gap: 8px; }
+.rp2__step-body-row .rp2__step-body { flex: 1; margin: 0; }
+.rp2__step-hints { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; padding-top: 1px; }
+.rp2__step-hint-wrap { position: relative; }
+.rp2__step-hint-btn {
+  width: 26px; height: 26px; border-radius: 50%; border: none;
+  background: #fff9c4; font-size: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s; box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+.rp2__step-hint-btn:hover { transform: scale(1.1); background: #fff176; }
+.rp2__step-hint-btn--active { background: #fff176; box-shadow: 0 0 0 2px #fdd835; }
+.rp2__step-hint-popover {
+  position: absolute; right: 0; top: 32px; width: 280px;
+  background: var(--warm-white); border: 1.5px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 6px 24px rgba(0,0,0,0.13);
+  padding: 14px; z-index: 100;
+  animation: slideDown 0.15s ease;
+}
+.rp2__step-hint-popover__title { font-weight: 700; font-size: 0.88rem; color: var(--charcoal); margin-bottom: 6px; }
+.rp2__step-hint-popover__body { font-size: 0.87rem; color: var(--charcoal); margin: 0 0 6px; line-height: 1.5; }
+.rp2__step-hint-popover__bullets { margin: 4px 0 0 14px; padding: 0; font-size: 0.84rem; color: var(--charcoal); line-height: 1.6; }
+.rp2__step-hint-popover__img { max-width: 100%; border-radius: var(--radius-sm); margin-top: 8px; display: block; }
+
+@media (max-width: 600px) {
+  .cn-tab { padding: 16px 14px 80px; }
+  .rp2__step-hint-popover { width: 240px; right: -8px; }
+}
