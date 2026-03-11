@@ -136,50 +136,6 @@ const CUISINE_EMOJI = {
 
 const ALL_CUISINES = [...GEO_CUISINES].sort();
 
-// ─── Shared Nutrition Database ─────────────────────────────────────────────
-// All values are per 100g unless perUnit:true (then per whole item, e.g. 1 egg)
-const NUTRITION_DB = {
-  'chicken breast': { cal: 165, prot: 31, fiber: 0 },
-  'chicken': { cal: 165, prot: 31, fiber: 0 },
-  'beef': { cal: 250, prot: 26, fiber: 0 },
-  'pork': { cal: 242, prot: 27, fiber: 0 },
-  'lamb': { cal: 294, prot: 25, fiber: 0 },
-  'salmon': { cal: 208, prot: 20, fiber: 0 },
-  'tuna': { cal: 132, prot: 29, fiber: 0 },
-  'cod': { cal: 82, prot: 18, fiber: 0 },
-  'shrimp': { cal: 99, prot: 24, fiber: 0 },
-  'egg': { cal: 78, prot: 6, fiber: 0, perUnit: true },
-  'eggs': { cal: 78, prot: 6, fiber: 0, perUnit: true },
-  'pasta': { cal: 157, prot: 6, fiber: 2 },
-  'rice': { cal: 130, prot: 3, fiber: 0.4 },
-  'bread': { cal: 265, prot: 9, fiber: 2.7 },
-  'broccoli': { cal: 34, prot: 3, fiber: 3 },
-  'spinach': { cal: 23, prot: 3, fiber: 2 },
-  'onion': { cal: 40, prot: 1, fiber: 2 },
-  'garlic': { cal: 4, prot: 0.2, fiber: 0.1, perUnit: true },
-  'tomato': { cal: 22, prot: 1, fiber: 1.5 },
-  'potato': { cal: 87, prot: 2, fiber: 2 },
-  'carrot': { cal: 41, prot: 0.9, fiber: 2.8 },
-  'pepper': { cal: 31, prot: 1, fiber: 2.5 },
-  'mushroom': { cal: 22, prot: 3, fiber: 1 },
-  'butter': { cal: 717, prot: 1, fiber: 0 },
-  'olive oil': { cal: 884, prot: 0, fiber: 0 },
-  'oil': { cal: 884, prot: 0, fiber: 0 },
-  'flour': { cal: 364, prot: 10, fiber: 3 },
-  'sugar': { cal: 387, prot: 0, fiber: 0 },
-  'honey': { cal: 304, prot: 0.3, fiber: 0.2 },
-  'milk': { cal: 61, prot: 3, fiber: 0 },
-  'cream': { cal: 340, prot: 3, fiber: 0 },
-  'yogurt': { cal: 59, prot: 10, fiber: 0 },
-  'cheese': { cal: 400, prot: 25, fiber: 0 },
-  'lentils': { cal: 116, prot: 9, fiber: 8 },
-  'chickpeas': { cal: 164, prot: 9, fiber: 7 },
-  'beans': { cal: 127, prot: 8, fiber: 7 },
-  'oats': { cal: 389, prot: 17, fiber: 11 },
-  'coconut milk': { cal: 197, prot: 2, fiber: 0 },
-  'tofu': { cal: 76, prot: 8, fiber: 0.3 },
-};
-
 // Shared unit → grams conversion
 const UNIT_GRAMS = {
   'g': 1, 'kg': 1000, 'oz': 28.35, 'lb': 453.6,
@@ -187,26 +143,41 @@ const UNIT_GRAMS = {
   'tbsp': 15, 'tsp': 5,
 };
 
-// Calculate nutrition totals from an ingredient list
-const calcNutrition = (ings) => {
+// Calculate nutrition totals from a recipe ingredient list.
+// allIngredients = full objects from the DB (with .calories/.protein/.fiber per 100g, optional .grams_per_unit)
+// Recipe ingredients have .name, .amount, .unit — we look up nutrition from allIngredients by name match.
+const calcNutrition = (ings, allIngredients = []) => {
   let totalCal = 0, totalProt = 0, totalFiber = 0, matched = 0;
   for (const ing of (ings || [])) {
     if (ing._isGroup) continue;
     const name = (ing.name || '').toLowerCase().trim();
-    const entry = Object.entries(NUTRITION_DB).find(([k]) => name.includes(k));
-    if (!entry) continue;
-    const [, nutr] = entry;
+    // Find matching ingredient in the DB (exact first, then substring)
+    const dbIng = allIngredients.find(a => {
+      const n = (typeof a === 'string' ? a : a.name || '').toLowerCase();
+      return n === name;
+    }) || allIngredients.find(a => {
+      const n = (typeof a === 'string' ? a : a.name || '').toLowerCase();
+      return name.includes(n) || n.includes(name);
+    });
+    if (!dbIng || typeof dbIng === 'string') continue;
+    if (dbIng.calories == null) continue; // no nutrition data entered yet
     const amount = parseFloat(ing.amount) || 1;
     const unit = (ing.unit || '').toLowerCase().trim();
-    let factor;
-    if (nutr.perUnit && !UNIT_GRAMS[unit]) {
-      factor = amount; // e.g. "3 eggs" → 3 × 78 kcal
+    let gramsTotal;
+    if (UNIT_GRAMS[unit]) {
+      // Known weight/volume unit — straightforward
+      gramsTotal = amount * UNIT_GRAMS[unit];
+    } else if (dbIng.grams_per_unit) {
+      // Unitless (e.g. "3 eggs") or unrecognised unit (e.g. "cloves") — use grams_per_unit
+      gramsTotal = amount * dbIng.grams_per_unit;
     } else {
-      factor = (amount * (UNIT_GRAMS[unit] || 100)) / 100;
+      // No unit info at all — skip rather than guess
+      continue;
     }
-    totalCal   += nutr.cal   * factor;
-    totalProt  += nutr.prot  * factor;
-    totalFiber += nutr.fiber * factor;
+    const factor = gramsTotal / 100;
+    totalCal   += (dbIng.calories || 0) * factor;
+    totalProt  += (dbIng.protein  || 0) * factor;
+    totalFiber += (dbIng.fiber    || 0) * factor;
     matched++;
   }
   return matched > 0 ? { calories: Math.round(totalCal), protein: Math.round(totalProt), fiber: Math.round(totalFiber) } : null;
@@ -943,7 +914,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
       const ingsToCalc = draftIngs
         .map(i => { if (i._isGroup) return null; return i; })
         .filter(Boolean);
-      const nutrition = calcNutrition(ingsToCalc);
+      const nutrition = calcNutrition(ingsToCalc, allIngredients);
       if (nutrition) computedNutrition = nutrition;
     }
 
@@ -1062,13 +1033,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   // ── Auto-calculate nutrition — must be before any early returns (Rules of Hooks) ──
   const autoNutrition = useMemo(() => {
     if (!bodyIngredients?.length) return { calories: null, protein: null, fiber: null };
-    const { calories: totalCal, protein: totalProt, fiber: totalFiber, matched } = (() => {
-      const r = calcNutrition(bodyIngredients);
-      return r ? { ...r, matched: 1 } : { calories: 0, protein: 0, fiber: 0, matched: 0 };
-    })();
-    if (matched === 0) return { calories: null, protein: null, fiber: null };
-    return { calories: totalCal, protein: totalProt, fiber: totalFiber };
-  }, [bodyIngredients]);
+    const r = calcNutrition(bodyIngredients, allIngredients);
+    return r ?? { calories: null, protein: null, fiber: null };
+  }, [bodyIngredients, allIngredients]);
 
   if (loading) return <main className="view"><div className="placeholder"><h2>Loading recipe…</h2></div></main>;
   if (!recipe) return <main className="view"><div className="placeholder"><h2>Recipe not found</h2><button className="btn btn--ghost" onClick={onBack}>← Back</button></div></main>;
@@ -1687,11 +1654,12 @@ const IngredientAutocomplete = ({ value, onChange, allIngredients }) => {
     const q = val.toLowerCase();
     return allIngredients
       .map(ing => {
-        if (!ing || typeof ing !== 'string') return null;
-        const lower = ing.toLowerCase();
+        const name = typeof ing === 'string' ? ing : ing?.name;
+        if (!name) return null;
+        const lower = name.toLowerCase();
         if (!lower.includes(q)) return null;
         const score = lower.startsWith(q) ? 0 : lower.indexOf(q);
-        return { ing, score };
+        return { ing: name, score };
       })
       .filter(Boolean)
       .sort((a, b) => a.score - b.score)
@@ -2149,27 +2117,64 @@ const TYPE_META = {
 const IngredientEditModal = ({ ing, onSave, onClose }) => {
   const isNew = !ing;
   const [form, setForm] = useState({
-    name:     ing?.name     || '',
-    type:     ing?.type     || 'staple',
-    calories: ing?.calories ?? '',
-    protein:  ing?.protein  ?? '',
-    fiber:    ing?.fiber    ?? '',
+    name:           ing?.name           || '',
+    type:           ing?.type           || 'staple',
+    calories:       ing?.calories       ?? '',
+    protein:        ing?.protein        ?? '',
+    fiber:          ing?.fiber          ?? '',
+    grams_per_unit: ing?.grams_per_unit ?? '',
   });
   const [saving, setSaving] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [fetchMsg, setFetchMsg] = useState(null);
   const [error, setError] = useState(null);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const fetchNutrition = async () => {
+    const query = form.name.trim();
+    if (!query) { setFetchMsg({ type: 'err', text: 'Enter a name first' }); return; }
+    setFetching(true); setFetchMsg(null);
+    try {
+      const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=5&fields=product_name,nutriments,serving_quantity,serving_size`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const products = (data.products || []).filter(p =>
+        p.nutriments && p.nutriments['energy-kcal_100g'] != null
+      );
+      if (!products.length) {
+        setFetchMsg({ type: 'err', text: 'No nutrition data found — try a simpler name' });
+        setFetching(false); return;
+      }
+      const p = products[0];
+      const n = p.nutriments;
+      const cal  = Math.round(n['energy-kcal_100g'] ?? n['energy-kcal'] ?? 0);
+      const prot = Math.round((n['proteins_100g']   ?? 0) * 10) / 10;
+      const fib  = Math.round((n['fiber_100g']       ?? 0) * 10) / 10;
+      // Try to extract a sensible grams-per-unit from serving data
+      const servingG = parseFloat(p.serving_quantity) || null;
+      const updates = { calories: cal, protein: prot, fiber: fib };
+      if (servingG && servingG > 0 && servingG < 1000) updates.grams_per_unit = Math.round(servingG);
+      setForm(prev => ({ ...prev, ...updates }));
+      const gpuNote = updates.grams_per_unit ? ` · ${updates.grams_per_unit}g/unit` : '';
+      setFetchMsg({ type: 'ok', text: `Fetched from Open Food Facts${p.product_name ? ` · "${p.product_name}"` : ''}${gpuNote}` });
+    } catch {
+      setFetchMsg({ type: 'err', text: 'Fetch failed — check your connection' });
+    }
+    setFetching(false);
+  };
 
   const save = async () => {
     if (!form.name.trim()) { setError('Name is required'); return; }
     setSaving(true); setError(null);
     try {
       const payload = {
-        name: form.name.trim(),
-        type: form.type,
-        calories: form.calories === '' ? null : Number(form.calories),
-        protein:  form.protein  === '' ? null : Number(form.protein),
-        fiber:    form.fiber    === '' ? null : Number(form.fiber),
+        name:           form.name.trim(),
+        type:           form.type,
+        calories:       form.calories       === '' ? null : Number(form.calories),
+        protein:        form.protein        === '' ? null : Number(form.protein),
+        fiber:          form.fiber          === '' ? null : Number(form.fiber),
+        grams_per_unit: form.grams_per_unit === '' ? null : Number(form.grams_per_unit),
       };
       const url = isNew ? `${API}/api/ingredients` : `${API}/api/ingredients/${encodeURIComponent(ing.name)}`;
       const method = isNew ? 'POST' : 'PUT';
@@ -2196,29 +2201,51 @@ const IngredientEditModal = ({ ing, onSave, onClose }) => {
             <label className="create-modal__field-label">Category</label>
             <div className="picker__chips" style={{ marginTop: 4 }}>
               {ALL_TYPES.map(t => (
-                <button key={t}
-                  className={`chip ${form.type === t ? 'chip--selected' : ''}`}
-                  onClick={() => set('type', t)}>
+                <button key={t} className={`chip ${form.type === t ? 'chip--selected' : ''}`} onClick={() => set('type', t)}>
                   {form.type === t && <span className="chip__check">✓</span>}{TYPE_META[t].emoji} {TYPE_META[t].label}
                 </button>
               ))}
             </div>
           </div>
-          <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
-            <div className="create-modal__field">
-              <label className="create-modal__field-label">🔥 Cal <span style={{opacity:0.6,fontWeight:400}}>/ 100g</span></label>
-              <input className="editor-input" type="number" value={form.calories} onChange={e => set('calories', e.target.value)} placeholder="kcal" />
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span className="create-modal__field-label" style={{ margin: 0 }}>Nutrition <span style={{opacity:0.6,fontWeight:400}}>/ 100g</span></span>
+              <button className="ing-fetch-btn" onClick={fetchNutrition} disabled={fetching}>
+                {fetching ? '⏳ Fetching…' : '🔍 Fetch Nutrition'}
+              </button>
             </div>
-            <div className="create-modal__field">
-              <label className="create-modal__field-label">💪 Protein <span style={{opacity:0.6,fontWeight:400}}>/ 100g</span></label>
-              <input className="editor-input" type="number" value={form.protein} onChange={e => set('protein', e.target.value)} placeholder="g" />
-            </div>
-            <div className="create-modal__field">
-              <label className="create-modal__field-label">🌿 Fiber <span style={{opacity:0.6,fontWeight:400}}>/ 100g</span></label>
-              <input className="editor-input" type="number" value={form.fiber} onChange={e => set('fiber', e.target.value)} placeholder="g" />
+            {fetchMsg && <p className={`ing-fetch-msg ing-fetch-msg--${fetchMsg.type}`}>{fetchMsg.text}</p>}
+            <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+              <div className="create-modal__field">
+                <label className="create-modal__field-label">🔥 Calories</label>
+                <input className="editor-input" type="number" value={form.calories} onChange={e => set('calories', e.target.value)} placeholder="kcal" />
+              </div>
+              <div className="create-modal__field">
+                <label className="create-modal__field-label">💪 Protein</label>
+                <input className="editor-input" type="number" value={form.protein} onChange={e => set('protein', e.target.value)} placeholder="g" />
+              </div>
+              <div className="create-modal__field">
+                <label className="create-modal__field-label">🌿 Fiber</label>
+                <input className="editor-input" type="number" value={form.fiber} onChange={e => set('fiber', e.target.value)} placeholder="g" />
+              </div>
             </div>
           </div>
-          <p className="create-modal__field-hint" style={{ marginTop: -4 }}>Nutrition values per 100g — used for automatic recipe nutrition calculation</p>
+          <div className="create-modal__field">
+            <label className="create-modal__field-label">
+              ⚖️ Grams per unit
+              <span style={{ fontWeight: 400, opacity: 0.6, marginLeft: 6 }}>optional</span>
+            </label>
+            <input
+              className="editor-input"
+              type="number"
+              value={form.grams_per_unit}
+              onChange={e => set('grams_per_unit', e.target.value)}
+              placeholder="e.g. 50 for eggs, 5 for garlic cloves"
+            />
+            <p className="create-modal__field-hint" style={{ marginTop: 4 }}>
+              Used when a recipe says "3 eggs" or "2 cloves" — no weight unit. Leave blank for ingredients always measured by weight or volume.
+            </p>
+          </div>
           {error && <p className="editor-error">⚠️ {error}</p>}
         </div>
         <div className="create-modal__footer">
@@ -3707,7 +3734,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
     if (!details.name.trim()) { setSaveError('Recipe name is required.'); return; }
     setSaving(true); setSaveError(null);
     try {
-      const nutrition = calcNutrition(ings);
+      const nutrition = calcNutrition(ings, allIngredients);
       // Flatten groups
       let grp = '';
       const flatIngs = ings.map(i => {
@@ -4450,7 +4477,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
     setSaving(true); setSaveError(null);
 
     // Auto-calculate nutrition from ingredients
-    const _nutrition = calcNutrition(ings);
+    const _nutrition = calcNutrition(ings, allIngredients);
 
     try {
       // Flatten grouped ingredients
@@ -5180,7 +5207,7 @@ function AppInner() {
         <RecipePage
           recipe={selectedRecipe} bodyIngredients={recipeBodyIngredients} instructions={recipeInstructions} notes={recipeNotes}
           loading={recipeLoading} onBack={() => setView(lastView)}
-          allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
+          allIngredients={allIngredients}
           cookbooks={cookbooks}
           dietaryFilters={dietaryFilters}
           authFetch={authFetch}
@@ -5227,7 +5254,7 @@ function AppInner() {
       {view === 'recipe' && editingRecipe && (
         <RecipeEditor
           recipe={selectedRecipe} bodyIngredients={recipeBodyIngredients} instructions={recipeInstructions} notes={recipeNotes}
-          allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
+          allIngredients={allIngredients}
           authFetch={authFetch}
           onBack={() => setEditingRecipe(false)}
           onSaved={async (updated) => {
@@ -5721,7 +5748,7 @@ function AppInner() {
 
       {view === 'add' && (
         <AddRecipeTab
-          allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
+          allIngredients={allIngredients}
           cookbooks={cookbooks}
           authFetch={authFetch}
           onSaved={(newRecipe) => {
@@ -5739,7 +5766,7 @@ function AppInner() {
           recipes={recipes}
           onOpenRecipe={openRecipe}
           allTags={allTags}
-          allIngredients={allIngredients.map(i => typeof i === 'string' ? i : i.name).filter(Boolean)}
+          allIngredients={allIngredients}
           setCookingRecipe={setCookingRecipe}
           cookLog={cookLog}
           onRecipeConverted={(newRecipe) => { loadData(); openRecipe(newRecipe); }}
