@@ -438,7 +438,7 @@ app.get('/api/recipes', async (req, res) => {
 app.get('/api/ingredients', async (req, res) => {
   try {
     const { rows } = await query(
-      'SELECT name, type, calories, protein, fiber FROM ingredients ORDER BY name ASC;'
+      'SELECT name, type, calories, protein, fiber, grams_per_unit FROM ingredients ORDER BY name ASC;'
     );
     res.json({ ingredients: rows });
   } catch (err) {
@@ -449,19 +449,20 @@ app.get('/api/ingredients', async (req, res) => {
 
 // ─── POST /api/ingredients ──────────────────────────────────────────────────
 app.post('/api/ingredients', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, type, calories, protein, fiber } = req.body;
+  const { name, type, calories, protein, fiber, grams_per_unit } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
   try {
     const { rows } = await query(
-      `INSERT INTO ingredients (name, type, calories, protein, fiber)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO ingredients (name, type, calories, protein, fiber, grams_per_unit)
+       VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (name) DO UPDATE SET
-         type     = EXCLUDED.type,
-         calories = EXCLUDED.calories,
-         protein  = EXCLUDED.protein,
-         fiber    = EXCLUDED.fiber
-       RETURNING name, type, calories, protein, fiber`,
-      [name.trim().toLowerCase(), type || 'staple', calories ?? null, protein ?? null, fiber ?? null]
+         type           = EXCLUDED.type,
+         calories       = EXCLUDED.calories,
+         protein        = EXCLUDED.protein,
+         fiber          = EXCLUDED.fiber,
+         grams_per_unit = EXCLUDED.grams_per_unit
+       RETURNING name, type, calories, protein, fiber, grams_per_unit`,
+      [name.trim().toLowerCase(), type || 'staple', calories ?? null, protein ?? null, fiber ?? null, grams_per_unit ?? null]
     );
     res.json({ ingredient: rows[0] });
   } catch (err) {
@@ -473,20 +474,21 @@ app.post('/api/ingredients', authenticateToken, requireAdmin, async (req, res) =
 // ─── PUT /api/ingredients/:name ─────────────────────────────────────────────
 app.put('/api/ingredients/:name', authenticateToken, requireAdmin, async (req, res) => {
   const oldName = decodeURIComponent(req.params.name).toLowerCase().trim();
-  const { name, type, calories, protein, fiber } = req.body;
+  const { name, type, calories, protein, fiber, grams_per_unit } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
   const newName = name.trim().toLowerCase();
   try {
     const { rows } = await query(
       `UPDATE ingredients SET
-         name     = $1,
-         type     = $2,
-         calories = $3,
-         protein  = $4,
-         fiber    = $5
-       WHERE name = $6
-       RETURNING name, type, calories, protein, fiber`,
-      [newName, type || 'staple', calories ?? null, protein ?? null, fiber ?? null, oldName]
+         name           = $1,
+         type           = $2,
+         calories       = $3,
+         protein        = $4,
+         fiber          = $5,
+         grams_per_unit = $6
+       WHERE name = $7
+       RETURNING name, type, calories, protein, fiber, grams_per_unit`,
+      [newName, type || 'staple', calories ?? null, protein ?? null, fiber ?? null, grams_per_unit ?? null, oldName]
     );
     if (!rows.length) return res.status(404).json({ error: 'Ingredient not found' });
     res.json({ ingredient: rows[0] });
