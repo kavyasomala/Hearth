@@ -1232,8 +1232,9 @@ body {
   display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;
   color: var(--warm-gray); box-shadow: 0 1px 6px rgba(0,0,0,0.15);
 }
-.recipe-card__heart:hover { transform: scale(1.15); }
+.recipe-card__heart:hover { transform: scale(1.15); color: #e03e5c; }
 .recipe-card__heart--on { color: #e03e5c; background: rgba(255,255,255,0.95); }
+.recipe-card__heart--on svg { fill: #e03e5c; }
 
 /* ─── Hero topbar ────────────────────────────────────────────────────────── */
 .rp2__hero-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: auto; padding-bottom: 8px; }
@@ -1247,8 +1248,9 @@ body {
 .rp2__hero-btn:hover { background: rgba(0,0,0,0.65); }
 .rp2__hero-btn--primary { background: var(--terracotta); border-color: var(--terracotta-dark); }
 .rp2__hero-btn--primary:hover { background: var(--terracotta-dark); }
-.rp2__hero-heart { font-size: 18px; padding: 7px 10px; }
+.rp2__hero-heart { padding: 7px 10px; }
 .rp2__hero-heart--on { color: #ff6b8a; }
+.rp2__hero-heart--on svg { fill: #ff6b8a; }
 
 /* ─── Hero tag/pill wrappers with popovers ───────────────────────────────── */
 .rp2__hero-tags { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; align-items: flex-end; }
@@ -1707,7 +1709,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--ash);
+  color: var(--charcoal);
   margin-bottom: 14px;
 }
 .site-footer__links {
@@ -1802,8 +1804,7 @@ body {
 }
 .cuisine-icon-btn:hover { border-color: var(--terracotta-light); background: var(--parchment); }
 .cuisine-icon-btn--active { border-color: var(--terracotta); background: #fdf0eb; }
-.cuisine-icon-btn__emoji { font-size: 24px; line-height: 1; }
-.cuisine-icon-btn__label { font-size: 10px; font-weight: 600; color: var(--warm-gray); text-align: center; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 58px; }
+.cuisine-icon-btn__label { font-size: 11px; font-weight: 600; color: var(--warm-gray); text-align: center; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70px; padding: 4px 6px; }
 .cuisine-icon-btn--active .cuisine-icon-btn__label { color: var(--terracotta); }
 
 /* ─── Filter sliders ─────────────────────────────────────────────────────── */
@@ -1824,10 +1825,11 @@ body {
 }
 .filter-panel__dir-btn:hover { border-color: var(--terracotta-light); }
 .filter-panel__dir-btn--active { background: var(--charcoal); border-color: var(--charcoal); color: white; }
-.filter-panel__slider-wrap { display: flex; align-items: center; gap: 10px; width: 100%; }
+.filter-panel__slider-wrap { display: flex; align-items: flex-end; gap: 10px; width: 100%; }
 .filter-panel__slider-edge {
   font-size: 11px; color: var(--warm-gray); font-weight: 600;
   flex-shrink: 0; white-space: nowrap; min-width: 30px; text-align: center;
+  padding-bottom: 2px;
 }
 .filter-panel__slider-track { position: relative; flex: 1; padding-top: 28px; }
 .filter-panel__slider-bubble {
@@ -2071,6 +2073,9 @@ body {
   font-size: 2.4rem;
   margin-bottom: 4px;
 }
+.add-tab__card-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 2px; color: var(--terracotta);
+}
 .add-tab__card-title {
   font-family: var(--font-display);
   font-size: 1.2rem;
@@ -2284,18 +2289,8 @@ body {
 /* ─── Title row delete button ────────────────────────────────────────────── */
 .rp2__title-delete-btn {
   flex-shrink: 0;
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  opacity: 0.12;
-  transition: opacity 0.2s ease, color 0.2s ease;
-  padding: 4px 6px;
-  border-radius: 6px;
-  color: var(--charcoal);
-  line-height: 1;
+  margin-left: 4px;
 }
-.rp2__title-delete-btn:hover { opacity: 1; color: #c0392b; }
 
 /* ─── Cooking Mode Button ───────────────────────────────────────────────── */
 .rp2__cooking-mode-btn {
@@ -2971,6 +2966,7 @@ body {
 .cookbook-card--add:hover { background: var(--cream); border-color: var(--terracotta); }
 .cookbook-card__add-icon { font-size: 32px; color: var(--ash); }
 .cookbook-card__add-label { font-size: 13px; font-weight: 600; color: var(--warm-gray); }
+.cookbook-card__add-content { display: flex; align-items: center; gap: 8px; }
 
 /* Spine color picker */
 .cookbook-spine-picker { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
@@ -3143,6 +3139,7 @@ body {
 .grocery-header__actions {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
 }
+.grocery-copy-btn { width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; }
 .grocery-toggle {
   display: flex; align-items: center; gap: 8px;
   font-size: 13px; color: var(--warm-gray); cursor: pointer;
@@ -3497,7 +3494,7 @@ body {
 
 .cbentry__thumb-wrap { flex-shrink: 0; }
 .cbentry__thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1.5px solid var(--border); }
-.cbentry__thumb--empty { display:flex; align-items:center; justify-content:center; background: var(--bg-muted, #f5f0eb); font-size: 20px; width: 48px; height: 48px; border-radius: 8px; }
+.cbentry__thumb--empty { display:flex; align-items:center; justify-content:center; background: var(--bg-muted, #f5f0eb); width: 48px; height: 48px; border-radius: 8px; border: 1.5px solid var(--border); }
 
 .cbentry__name-col { min-width: 0; }
 .cbentry__name { font-weight: 600; font-size: 14px; color: var(--charcoal); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -3531,7 +3528,7 @@ body {
   position: absolute; top: calc(100% + 4px); right: 0;
   background: var(--warm-white); border: 1.5px solid var(--border);
   border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
-  z-index: 300; min-width: 140px; overflow: hidden;
+  z-index: 9999; min-width: 140px; overflow: hidden;
 }
 .cbentry__menu-item {
   display: flex; align-items: center; gap: 8px; width: 100%;
@@ -3787,6 +3784,7 @@ body {
   margin-bottom: 18px;
 }
 .cooked-cleanup__group-label {
+  display: flex; align-items: center; gap: 6px;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
@@ -4266,7 +4264,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #24292e;
+  background: #4A3728;
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -4277,7 +4275,7 @@ body {
   cursor: pointer;
   transition: background 0.15s;
 }
-.about-github-btn:hover { background: #3a3a3a; }
+.about-github-btn:hover { background: #5c4535; }
 .about-github-btn__icon {
   width: 18px;
   height: 18px;

@@ -55,6 +55,18 @@ const ICONS = {
   shoppingBag: ['M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z', 'M3 6h18', 'M16 10a4 4 0 0 1-8 0'],
   // header flame
   campfire:    ['M12 2c0 0-4 4-4 8a4 4 0 0 0 8 0c0-4-4-8-4-8z', 'M8 20h8', 'M12 14v6'],
+  // kitchen categories
+  apple:       ['M12 20.94c1.5 0 4-1.5 4-8a4 4 0 0 0-4-4 4 4 0 0 0-4 4c0 6.5 2.5 8 4 8z', 'M12 8.94V4', 'M9 6c0 0 1 0 3-2 1 1 3 2 3 2'],
+  beef:        ['M7 5H3v6l4 0', 'M21 5h-4v6l4 0', 'M7 11c0 3.31 2.24 6 5 6s5-2.69 5-6V5H7v6z', 'M7 8h10'],
+  milk:        ['M8 2h8', 'M9 2v2.789a4 4 0 0 1-.672 2.219l-.656.984A4 4 0 0 0 7 10.212V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.789a4 4 0 0 0-.672-2.219l-.656-.984A4 4 0 0 1 15 4.788V2', 'M7 15a6.472 6.472 0 0 1 5 0 6.47 6.47 0 0 0 5 0'],
+  amphora:     ['M10 2h4', 'M12 2v20', 'M7 5C5.3 7 4 9 4 11c0 4 3 7 8 7s8-3 8-7c0-2-1.3-4-3-6', 'M5 11h14'],
+  clover:      ['M8 12 A4 4 0 0 1 4 8 A4 4 0 0 1 8 4 A4 4 0 0 1 12 8 A4 4 0 0 0 8 12z', 'M16 12 A4 4 0 0 0 20 8 A4 4 0 0 0 16 4 A4 4 0 0 0 12 8 A4 4 0 0 1 16 12z', 'M8 12 A4 4 0 0 0 4 16 A4 4 0 0 0 8 20 A4 4 0 0 0 12 16 A4 4 0 0 1 8 12z', 'M16 12 A4 4 0 0 1 20 16 A4 4 0 0 1 16 20 A4 4 0 0 1 12 16 A4 4 0 0 0 16 12z', 'M12 8v8'],
+  martini:     ['M8 22h8', 'M12 11v11', 'M3 3l9 8 9-8H3z'],
+  anchor:      ['M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'M12 8v14', 'M3 17c0 2.76 4.03 5 9 5s9-2.24 9-5', 'M4.5 12C4.5 12 7 14 12 14s7.5-2 7.5-2'],
+  chartNoAxes: ['M7 2h10v4H7z', 'M7 10h10v4H7z', 'M7 18h10v4H7z'],
+  trash2:      ['M3 6h18', 'M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6', 'M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2', 'M10 11v6', 'M14 11v6'],
+  clipboardCopy: ['M13 7H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3', 'M8 5H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4', 'M14 2h4v4', 'M18 2l-5 5'],
+  plusCircle:  ['M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z', 'M12 8v8', 'M8 12h8'],
 };
 
 const Icon = ({ name, size = 16, color = 'currentColor', strokeWidth = 2 }) => {
@@ -307,7 +319,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
   const matchScore = match?.matchScore ?? null;
   const canMakeNow = Boolean(match?.canMake);
   const tags = recipe.tags || [];
-  const progress = recipe.status === 'incomplete' ? '🚧' : recipe.status === 'needs tweaking' ? '🔧' : recipe.status === 'complete' ? '✅' : recipe.status === 'to try' ? '🔖' : null;
+  const progressLabel = recipe.status === 'incomplete' ? 'Incomplete' : recipe.status === 'needs tweaking' ? 'Tweaking' : recipe.status === 'complete' ? 'Complete' : recipe.status === 'to try' ? 'To Try' : null;
   const isCookbookRef = Boolean(recipe.cookbook && (!recipe.ingredients || recipe.ingredients.length === 0));
 
   return (
@@ -317,7 +329,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
           ? <img src={coverImage} alt={name} loading="lazy" />
           : <div className="recipe-card__image-placeholder">No photo</div>}
         {isCookbookRef && (
-          <div className="recipe-card__book-corner">📖</div>
+          <div className="recipe-card__book-corner"><Icon name="bookOpen" size={12} color="#fff" strokeWidth={2} /></div>
         )}
         {showScore && matchScore !== null && (
           <div className={`recipe-card__score ${canMakeNow ? 'recipe-card__score--ready' : ''}`}>
@@ -329,7 +341,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
             className={`recipe-card__heart ${isHearted ? 'recipe-card__heart--on' : ''}`}
             onClick={e => { e.stopPropagation(); onToggleHeart(); }}
             title={isHearted ? 'Remove from Favorites' : 'Add to Favorites'}
-          >{isHearted ? '♥' : '♡'}</button>
+          ><Icon name="heart" size={14} strokeWidth={2} /></button>
         )}
         <button
           className={`recipe-card__soon ${isMakeSoon ? 'recipe-card__soon--on' : ''}`}
@@ -341,7 +353,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
             className="recipe-card__cooked-btn"
             onClick={e => { e.stopPropagation(); onMarkCooked(recipe); }}
             title="Mark as Cooked"
-          >🍳</button>
+          ><Icon name="chefHat" size={14} strokeWidth={2} /></button>
         )}
       </div>
       <div className="recipe-card__body">
@@ -354,7 +366,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
           {calories !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="zap" size={12} strokeWidth={2} /></span>{Math.round(calories)} kcal</span>}
           {protein !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="dumbbell" size={12} strokeWidth={2} /></span>{Math.round(protein)}g</span>}
           {canMakeNow && <span className="recipe-card__can-make">✓ Ready</span>}
-          {progress && <span className="recipe-card__progress">{progress}</span>}
+          {progressLabel && <span className="recipe-card__progress">{progressLabel}</span>}
         </div>
       </div>
     </article>
@@ -520,7 +532,7 @@ const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpda
 
   const displayRating = hoverRating || rating;
   const RATING_LABELS = ['', "Didn't love it", 'It was okay', 'Pretty good!', 'Really good!', 'Perfect! ⭐'];
-  const CAT_EMOJI = { produce: '🥦', 'meat & fish': '🥩', dairy: '🥛' };
+  const CAT_ICON = { produce: 'apple', 'meat & fish': 'beef', dairy: 'milk' };
   const CAT_LABEL = { produce: 'Produce', 'meat & fish': 'Meat & Fish', dairy: 'Dairy' };
 
   // Group perishables by category
@@ -539,7 +551,7 @@ const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpda
 
         {step === 1 && (<>
           <div className="create-modal__header">
-            <h2 className="create-modal__title"><Icon name="chefHat" size={18} strokeWidth={2} /> Cooked it!</h2>
+            <h2 className="create-modal__title" style={{display:'flex',alignItems:'center',gap:8}}><Icon name="chefHat" size={18} strokeWidth={2} /> Cooked it!</h2>
           </div>
           <div className="create-modal__body cooked-modal__body">
             {recipe?.coverImage && (
@@ -591,7 +603,7 @@ const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpda
             {Object.entries(grouped).map(([cat, items]) => (
               <div key={cat} className="cooked-cleanup__group">
                 <div className="cooked-cleanup__group-label">
-                  {CAT_EMOJI[cat]} {CAT_LABEL[cat]}
+                  <Icon name={CAT_ICON[cat] || 'package'} size={14} strokeWidth={2} /> {CAT_LABEL[cat]}
                 </div>
                 <div className="cooked-cleanup__items">
                   {items.map(ing => {
@@ -1213,14 +1225,14 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   className="rp2__hero-btn rp2__hero-cooked-btn"
                   onClick={e => { e.stopPropagation(); setShowCookedModal(true); }}
                   title="Mark as Cooked"
-                >🍳 Cooked</button>
+                ><Icon name="chefHat" size={15} strokeWidth={2} /> Cooked</button>
               )}
               {onToggleHeart && (
                 <button
                   className={`rp2__hero-btn rp2__hero-heart ${isHearted ? 'rp2__hero-heart--on' : ''}`}
                   onClick={e => { e.stopPropagation(); onToggleHeart(); }}
                   title={isHearted ? 'Remove from favorites' : 'Save to favorites'}
-                >{isHearted ? '♥' : '♡'}</button>
+                ><Icon name="heart" size={15} strokeWidth={2} /></button>
               )}
               <button
                 className={`rp2__hero-btn rp2__hero-soon ${isMakeSoon ? 'rp2__hero-soon--on' : ''}`}
@@ -1324,11 +1336,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 <div className="rp2__hero-tag-wrap">
                   <button className={`rp2__tag rp2__tag--clickable ${recipe.status === 'incomplete' ? 'rp2__tag--warning' : recipe.status === 'needs tweaking' ? 'rp2__tag--warning' : recipe.status === 'complete' ? 'rp2__tag--success' : 'rp2__tag--light'} ${isEdit('meta-progress') ? 'rp2__tag--editing' : ''}`}
                     onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-progress') ? null : 'meta-progress'); }}>
-                    {recipe.status === 'incomplete' ? '🚧 Incomplete' : recipe.status === 'needs tweaking' ? '🔧 Tweaking' : recipe.status === 'complete' ? '✅ Complete' : recipe.status === 'to try' ? '🔖 To Try' : null}
+                    {recipe.status === 'incomplete' ? 'Incomplete' : recipe.status === 'needs tweaking' ? 'Tweaking' : recipe.status === 'complete' ? 'Complete' : recipe.status === 'to try' ? 'To Try' : null}
                   </button>
                   {isEdit('meta-progress') && (
                     <div className="rp2__hero-dark-popover">
-                      <p className="rp2__dark-pop-label">📋 Progress</p>
+                      <p className="rp2__dark-pop-label"><Icon name="list" size={13} strokeWidth={2} /> Progress</p>
                       <div className="rp2__dark-pop-chips">
                         {[{key:'',label:'— None'},{key:'complete',label:'✅ Complete'},{key:'needs tweaking',label:'🔧 Needs Tweaking'},{key:'to try',label:'🔖 To Try'},{key:'incomplete',label:'🚧 Incomplete'}].map(({key,label}) => (
                           <button key={key} className={`rp2__dark-chip ${draftMeta.status === key ? 'rp2__dark-chip--on' : ''}`}
@@ -1434,7 +1446,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           >
             {stayAwake ? <><Icon name="sun" size={14} strokeWidth={2} /> Awake</> : <Icon name="sun" size={14} strokeWidth={2} />}
           </button>
-          {isAdmin && <button className="rp2__title-delete-btn" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe">🗑</button>}
+          {isAdmin && <button className="rp2__title-delete-btn rp2__cooking-mode-btn" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe"><Icon name="trash2" size={14} strokeWidth={2} /></button>}
         </div>
 
         {/* ── Dietary Conflict Warnings ── */}
@@ -1464,7 +1476,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         <div className="rp2__body">
           <div className="rp2__cb-ref-view">
             <div className="rp2__cb-ref-card">
-              <div className="rp2__cb-ref-card__icon">📖</div>
+              <div className="rp2__cb-ref-card__icon"><Icon name="bookOpen" size={28} color="var(--terracotta)" strokeWidth={1.5} /></div>
               <div className="rp2__cb-ref-card__content">
                 <p className="rp2__cb-ref-card__label">Find this recipe in</p>
                 <h3 className="rp2__cb-ref-card__book">{recipe.cookbook}</h3>
@@ -2206,15 +2218,16 @@ const CookbookAutocomplete = ({ value, onChange, cookbooks = [] }) => {
 };
 
 // ─── Fridge Tab ─────────────────────────────────────────────────────────────
-const ALL_TYPES = ['produce', 'meat', 'dairy', 'sauce', 'spice', 'alcohol', 'staple'];
+const ALL_TYPES = ['produce', 'meat', 'dairy', 'sauce', 'spice', 'alcohol', 'staple', 'other'];
 const TYPE_META = {
-  produce:  { label: 'Produce',     icon: 'leaf',     group: 'fridge'  },
-  meat:     { label: 'Meat & Fish', icon: 'utensils', group: 'fridge'  },
-  dairy:    { label: 'Dairy',       icon: 'coffee',   group: 'fridge'  },
-  sauce:    { label: 'Sauces',      icon: 'package',  group: 'fridge'  },
-  spice:    { label: 'Spices',      icon: 'zap',      group: 'pantry'  },
-  alcohol:  { label: 'Alcohol',     icon: 'shuffle',  group: 'pantry'  },
-  staple:   { label: 'Staples',     icon: 'list',     group: 'pantry'  },
+  produce:  { label: 'Produce',     icon: 'apple',       group: 'fridge'  },
+  meat:     { label: 'Meat & Fish', icon: 'beef',        group: 'fridge'  },
+  dairy:    { label: 'Dairy',       icon: 'milk',        group: 'fridge'  },
+  sauce:    { label: 'Sauces',      icon: 'amphora',     group: 'fridge'  },
+  spice:    { label: 'Spices',      icon: 'clover',      group: 'pantry'  },
+  alcohol:  { label: 'Alcohol',     icon: 'martini',     group: 'pantry'  },
+  staple:   { label: 'Staples',     icon: 'anchor',      group: 'pantry'  },
+  other:    { label: 'Other',       icon: 'chartNoAxes', group: 'pantry'  },
 };
 
 const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
@@ -2569,7 +2582,7 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
       {/* Quick-Add Bar */}
       <div className="kitchen-quickadd-wrap" ref={quickAddRef}>
         <div className="kitchen-quickadd-bar">
-          <span className="kitchen-quickadd-icon">＋</span>
+          <span className="kitchen-quickadd-icon"><Icon name="plusCircle" size={16} strokeWidth={2} /></span>
           <input
             className="kitchen-quickadd-input"
             placeholder="Quick-add an ingredient to your kitchen…"
@@ -3480,7 +3493,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
               <span className="grocery-toggle__switch" />
               <span>Hide items in kitchen</span>
             </label>
-            <button className="btn btn--ghost btn--sm" onClick={copyList}>📋 Copy</button>
+            <button className="btn btn--ghost btn--sm grocery-copy-btn" onClick={copyList} title="Copy list to clipboard"><Icon name="clipboardCopy" size={15} strokeWidth={2} /></button>
           </div>
         )}
       </div>
@@ -3502,7 +3515,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
             <div className="grocery-progress-bar">
               <div className="grocery-progress-fill" style={{ width: totalItems ? `${((checkedCount + inKitchenCount) / totalItems) * 100}%` : '0%' }} />
             </div>
-            <span className="grocery-progress-label">{checkedCount + inKitchenCount}/{totalItems} got</span>
+            <span className="grocery-progress-label">{checkedCount + inKitchenCount}/{totalItems}</span>
           </div>
           {inKitchenCount > 0 && (
             <div className="grocery-kitchen-banner">
@@ -3518,7 +3531,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
               if (!visibleItems.length) return null;
               return (
                 <div key={cat.name} className="grocery-category">
-                  <h3 className="grocery-category__title"><Icon name={({Produce:'leaf',Meat:'utensils','Meat & Fish':'utensils',Dairy:'coffee',Sauces:'package',Spices:'zap',Staples:'list',Alcohol:'shuffle'})[cat.name] || 'list'} size={14} strokeWidth={2} /> {cat.name}</h3>
+                  <h3 className="grocery-category__title"><Icon name={({Produce:'apple','Meat & Fish':'beef',Meat:'beef',Dairy:'milk',Sauces:'amphora',Spices:'clover',Staples:'anchor',Alcohol:'martini',Other:'chartNoAxes'})[cat.name] || 'chartNoAxes'} size={14} strokeWidth={2} /> {cat.name}</h3>
                   <div className="grocery-items">
                     {visibleItems.map(item => {
                       const key = `${cat.name}-${item.name}`;
@@ -3856,7 +3869,7 @@ const SiteFooter = ({ onNav }) => {
       <div className="site-footer__inner">
         {/* Brand + tagline */}
         <div className="site-footer__brand">
-          <div className="site-footer__logo"><Icon name="flame" size={16} color="var(--terracotta)" strokeWidth={1.75} /> Hearth</div>
+          <div className="site-footer__logo" style={{display:'flex',alignItems:'center',gap:6}}><Icon name="flame" size={16} color="var(--terracotta)" strokeWidth={1.75} /> Hearth</div>
           <p className="site-footer__tagline">A cozy corner for every recipe<br/>you love, tweak, and return to.</p>
         </div>
 
@@ -4265,9 +4278,9 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
             <label className="create-modal__field-label"><Icon name="list" size={13} strokeWidth={2} /> Progress</label>
             <div className="picker__chips" style={{ marginTop: 6 }}>
               {[
-                { key: 'to try', label: '🔖 To Try' },
-                { key: 'complete', label: '✅ Complete' },
-                { key: 'needs tweaking', label: '🔧 Needs Tweaking' },
+                { key: 'to try', label: 'To Try' },
+                { key: 'complete', label: 'Complete' },
+                { key: 'needs tweaking', label: 'Needs Tweaking' },
               ].map(({ key, label }) => (
                 <button key={key} className={`chip ${details.status === key ? 'chip--selected' : ''}`}
                   onClick={() => setDetail('status', details.status === key ? '' : key)} type="button">
@@ -4397,7 +4410,7 @@ const CookbookEditModal = ({ cookbook, onSave, onClose }) => {
   const isNew = !cookbook;
   const [form, setForm] = useState({ title:cookbook?.title||'', author:cookbook?.author||'', coverImage:cookbook?.coverImage||'', spineColor:cookbook?.spineColor||'#C65D3B', notes:cookbook?.notes||'' });
   const [imgError, setImgError] = useState(false);
-  const SPINE_COLORS = ['#C65D3B','#2E2A27','#7a9e7e','#4a6fa5','#8B4513','#6B3FA0','#B5451B','#2C5F2E'];
+  const SPINE_COLORS = ['#C65D3B','#8B4513','#7a9e7e','#2C5F2E','#4a6fa5','#2E4057','#9B6B3A','#5C3D2E'];
   const set = (k,v) => setForm(p => ({...p,[k]:v}));
   const save = () => { if (!form.title.trim()) return; onSave({...form, title:form.title.trim()}); };
   return (
@@ -4410,7 +4423,7 @@ const CookbookEditModal = ({ cookbook, onSave, onClose }) => {
         <div className="create-modal__body" style={{ gap:16 }}>
           <div className="create-modal__img-row">
             <div className="create-modal__img-preview cookbook-edit__cover-preview">
-              {form.coverImage && !imgError ? <img src={form.coverImage} alt="cover" onError={() => setImgError(true)} /> : <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:32 }}>📖</div>}
+              {form.coverImage && !imgError ? <img src={form.coverImage} alt="cover" onError={() => setImgError(true)} /> : <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'100%' }}><Icon name="bookOpen" size={36} color="var(--ash)" strokeWidth={1.5} /></div>}
             </div>
             <div className="create-modal__img-input-wrap">
               <label className="create-modal__field-label">Cover image URL</label>
@@ -4464,7 +4477,7 @@ const CbEntry = ({ entry, linked, entryTags, idx, onOpenRecipe, onMarkCooked, on
       <div className="cbentry__thumb-wrap">
         {(entry.image || linked?.coverImage)
           ? <img className="cbentry__thumb" src={entry.image || linked?.coverImage} alt={entry.name} />
-          : <div className="cbentry__thumb cbentry__thumb--empty">📖</div>}
+          : <div className="cbentry__thumb cbentry__thumb--empty"><Icon name="bookOpen" size={18} color="var(--ash)" strokeWidth={1.5} /></div>}
       </div>
 
       {/* Name col — plain text, never a link */}
@@ -4487,7 +4500,7 @@ const CbEntry = ({ entry, linked, entryTags, idx, onOpenRecipe, onMarkCooked, on
       <div className="cbentry__actions">
         {/* Cook button — always visible */}
         <button className="cbentry__action cbentry__action--cook" title="Mark as Cooked" onClick={onMarkCooked}>
-          🍳
+          <Icon name="chefHat" size={14} strokeWidth={2} />
         </button>
 
         {/* View button — for linked recipes */}
@@ -4508,15 +4521,15 @@ const CbEntry = ({ entry, linked, entryTags, idx, onOpenRecipe, onMarkCooked, on
               Actions ▾
             </button>
             {menuOpen && (
-              <div className="cbentry__menu-dropdown">
+              <div className="cbentry__menu-dropdown" style={{zIndex:9999}}>
                 <button className="cbentry__menu-item" onClick={() => { onConvert(); setMenuOpen(false); }}>
-                  ✨ Convert
+                  <Icon name="shuffle" size={13} strokeWidth={2} /> Convert
                 </button>
                 <button className="cbentry__menu-item" onClick={() => { onEdit(); setMenuOpen(false); }}>
-                  ✎ Edit
+                  <Icon name="tool" size={13} strokeWidth={2} /> Edit
                 </button>
                 <button className="cbentry__menu-item cbentry__menu-item--danger" onClick={() => { onRemove(); setMenuOpen(false); }}>
-                  ✕ Remove
+                  <Icon name="trash2" size={13} strokeWidth={2} /> Remove
                 </button>
               </div>
             )}
@@ -4634,7 +4647,7 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
             <div className="cookbook-sort-tabs">
               {COOKBOOK_SORTS.map(o => <button key={o.key} className={`cookbook-sort-tab ${sortKey===o.key?'cookbook-sort-tab--active':''}`} onClick={() => setSortKey(o.key)}>{o.label}</button>)}
             </div>
-            <button className="btn btn--ghost btn--sm" onClick={() => setShowQuickAdd(true)}>⚡ Quick Add</button>
+            <button className="btn btn--ghost btn--sm" onClick={() => setShowQuickAdd(true)}><Icon name="zap" size={13} strokeWidth={2} /> Quick Add</button>
             <button className="btn btn--primary btn--sm" onClick={() => setShowAddRef(true)}>+ Add Reference</button>
           </div>
         </div>
@@ -4831,8 +4844,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags,
             );
           })}
           {isAdmin && <button className="cookbook-card cookbook-card--add" onClick={() => setShowAddModal(true)}>
-            <div className="cookbook-card__add-icon"><Icon name="bookMarked" size={24} color="var(--terracotta)" strokeWidth={2} /></div>
-            <p className="cookbook-card__add-label">Add cookbook</p>
+            <div className="cookbook-card__add-content"><Icon name="bookOpen" size={22} color="var(--terracotta)" strokeWidth={2} /><p className="cookbook-card__add-label">Add cookbook</p></div>
           </button>}
         </div>
       ))}
@@ -5085,24 +5097,21 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
       <div className="add-tab__cards">
         {/* Manual card */}
         <button className="add-tab__card" onClick={openModal}>
-          <span className="add-tab__card-icon"><Icon name="note" size={28} strokeWidth={1.5} /></span>
-          <h3 className="add-tab__card-title">Add Manually</h3>
+          <div className="add-tab__card-header"><Icon name="note" size={22} strokeWidth={1.5} /><h3 className="add-tab__card-title">Add Manually</h3></div>
           <p className="add-tab__card-desc">Type in the name, ingredients, steps, and notes yourself</p>
           <span className="add-tab__card-cta">Get started →</span>
         </button>
 
         {/* From link card */}
         <button className="add-tab__card" onClick={openLinkModal}>
-          <span className="add-tab__card-icon"><Icon name="arrowRight" size={28} strokeWidth={1.5} /></span>
-          <h3 className="add-tab__card-title">Add from Link</h3>
+          <div className="add-tab__card-header"><Icon name="arrowRight" size={22} strokeWidth={1.5} /><h3 className="add-tab__card-title">Add from Link</h3></div>
           <p className="add-tab__card-desc">Paste any recipe URL and we'll pull in the name, ingredients, and steps automatically</p>
           <span className="add-tab__card-cta">Import →</span>
         </button>
 
         {/* From text card */}
         <button className="add-tab__card" onClick={openTextModal}>
-          <span className="add-tab__card-icon"><Icon name="list" size={28} strokeWidth={1.5} /></span>
-          <h3 className="add-tab__card-title">Add from Text</h3>
+          <div className="add-tab__card-header"><Icon name="list" size={22} strokeWidth={1.5} /><h3 className="add-tab__card-title">Add from Text</h3></div>
           <p className="add-tab__card-desc">Paste copied text — we'll parse it automatically</p>
           <span className="add-tab__card-cta">Paste &amp; import →</span>
         </button>
@@ -5273,10 +5282,10 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                 <div className="picker__chips" style={{ marginTop: 6 }}>
                   {[
                     { key: '', label: '— None' },
-                    { key: 'complete', label: '✅ Complete' },
-                    { key: 'needs tweaking', label: '🔧 Needs Tweaking' },
-                    { key: 'to try', label: '🔖 To Try' },
-                    { key: 'incomplete', label: '🚧 Incomplete' },
+                    { key: 'complete', label: 'Complete' },
+                    { key: 'needs tweaking', label: 'Needs Tweaking' },
+                    { key: 'to try', label: 'To Try' },
+                    { key: 'incomplete', label: 'Incomplete' },
                   ].map(({ key, label }) => (
                     <button key={key}
                       className={`chip ${details.status === key ? 'chip--selected' : ''}`}
@@ -6177,7 +6186,6 @@ function AppInner() {
                     {allCuisinesPool.map(c => (
                       <button key={c} className={`cuisine-icon-btn ${activeCuisines.includes(c) ? 'cuisine-icon-btn--active' : ''}`}
                         onClick={() => toggleCuisine(c)}>
-                        <span className="cuisine-icon-btn__emoji"><Icon name={CUISINE_ICON[c] || 'mapPin'} size={18} strokeWidth={1.75} /></span>
                         <span className="cuisine-icon-btn__label">{c}</span>
                       </button>
                     ))}
@@ -6200,10 +6208,10 @@ function AppInner() {
                 <div className="filter-panel__group">
                   <span className="filter-panel__label">Progress</span>
                   <div className="filter-panel__chips">
-                    {PROGRESS_FILTERS.map(({ key, label, icon }) => (
+                    {PROGRESS_FILTERS.map(({ key, label }) => (
                       <button key={key}
                         className={`filter-bar__chip ${activeProgresses.includes(key) ? 'filter-bar__chip--active' : ''}`}
-                        onClick={() => toggleProgress(key)}>{icon && <Icon name={icon} size={12} strokeWidth={2} />} {label}</button>
+                        onClick={() => toggleProgress(key)}>{label}</button>
                     ))}
                   </div>
                 </div>
@@ -6336,7 +6344,7 @@ function AppInner() {
                         const protein  = toNum(r.protein);
                         const match = matchById.get(r.id);
                         const canMakeNow = Boolean(match?.canMake);
-                        const progress = r.recipe_incomplete ? '🚧' : r.status === 'needs tweaking' ? '🔧' : r.status === 'complete' ? '✅' : r.status === 'to try' ? '🔖' : null;
+                        const progress = r.recipe_incomplete ? 'Incomplete' : r.status === 'needs tweaking' ? 'Tweaking' : r.status === 'complete' ? 'Complete' : r.status === 'to try' ? 'To Try' : null;
                         const tags = r.tags || [];
                         return (
                           <div key={r.id} className="recipe-list-table__row" onClick={() => openRecipe(r)}>
@@ -6366,12 +6374,12 @@ function AppInner() {
                                 className={`rlt__heart ${heartedIds.includes(r.id) ? 'rlt__heart--on' : ''}`}
                                 onClick={() => toggleHeart(r.id)}
                                 title={heartedIds.includes(r.id) ? 'Remove from favorites' : 'Add to favorites'}
-                              >{heartedIds.includes(r.id) ? '♥' : '♡'}</button>
+                              ><Icon name="heart" size={13} strokeWidth={2} /></button>
                               <button
                                 className={`rlt__soon ${makeSoonIds.includes(r.id) ? 'rlt__soon--on' : ''}`}
                                 onClick={() => toggleMakeSoon(r.id)}
                                 title={makeSoonIds.includes(r.id) ? 'Remove from Make Soon' : 'Add to Make Soon'}
-                              >⏱</button>
+                              ><Icon name="timer" size={13} strokeWidth={2} /></button>
                             </span>
                           </div>
                         );
