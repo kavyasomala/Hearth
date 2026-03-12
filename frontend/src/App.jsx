@@ -1363,7 +1363,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             onClick={() => setStayAwake(s => !s)}
             title={stayAwake ? 'Screen will stay on — click to disable' : 'Keep screen awake while cooking'}
           >
-            {stayAwake ? '☀️ Awake' : '☀️ Stay Awake'}
+            {stayAwake ? '☀️ Awake' : '☀️'}
           </button>
           {isAdmin && <button className="rp2__title-delete-btn" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe">🗑</button>}
         </div>
@@ -2525,7 +2525,7 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
       {/* ── ON HAND area (full width) ── */}
       <div className="kitchen-onhand-area">
         <div className="kitchen-onhand-header">
-          <h2 className="kitchen-split__title">✅ On Hand <span className="kitchen-split__count">{haveList.length}</span></h2>
+          <h2 className="kitchen-split__title">On Hand <span className="kitchen-split__count">{haveList.length}</span></h2>
         </div>
         <div className="fridge-groups kitchen-onhand-groups">
           {ALL_TYPES.filter(t => haveGrouped[t]?.length > 0).map(t => renderGroup(t, haveGrouped[t], 'have'))}
@@ -2538,7 +2538,7 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
       {/* ── MISSING — full width bar ── */}
       <div className="kitchen-missing-section">
         <button className="kitchen-missing-header" onClick={() => setMissingCollapsed(p => !p)}>
-          <h2 className="kitchen-split__title">❌ Missing <span className="kitchen-split__count">{missingList.length}</span></h2>
+          <h2 className="kitchen-split__title">Missing <span className="kitchen-split__count">{missingList.length}</span></h2>
           <span className={`fridge-group__arrow ${missingCollapsed ? '' : 'fridge-group__arrow--open'}`}>▾</span>
         </button>
         {!missingCollapsed && (
@@ -2701,7 +2701,6 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const [historyOpen, setHistoryOpen] = useState(true);
   const [sharingOpen, setSharingOpen] = useState(false);
   const [adminToolsOpen, setAdminToolsOpen] = useState(false);
-  const [roadmapOpen, setRoadmapOpen] = useState(false);
   const [recalcRunning, setRecalcRunning] = useState(false);
   const [recalcResult, setRecalcResult] = useState(null);
   const [historyView, setHistoryView] = useState('timeline');
@@ -3117,7 +3116,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       )}
 
       {isAdmin && (
-        <section className="profile-section profile-section--collapsible">
+        <section className="profile-section profile-section--collapsible" style={{ marginBottom: 40 }}>
           <button className="profile-settings-toggle" onClick={() => setAdminToolsOpen(o => !o)}>
             <span className="profile-settings-toggle__title">🔧 Admin Tools</span>
             <span className={`profile-settings-toggle__arrow ${adminToolsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
@@ -3230,97 +3229,6 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
           </div>
         )}
       </section>
-
-      {/* ── Coming Soon ──────────────────────────────────────────────────── */}
-      <section className="profile-section profile-section--collapsible">
-        <button className="profile-settings-toggle" onClick={() => setRoadmapOpen(o => !o)}>
-          <span className="profile-settings-toggle__title">🚀 Coming Soon</span>
-          <span className={`profile-settings-toggle__arrow ${roadmapOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
-        </button>
-
-        {roadmapOpen && (
-          <div className="profile-settings-body">
-
-            {/* ── Recipe Proportions ── */}
-            <div className="settings-section">
-              <h4 className="settings-section__title">⚖️ Smart Recipe Scaling</h4>
-              <p className="settings-section__hint">
-                Adjust any one ingredient's amount and the rest of the recipe scales automatically —
-                while keeping whole-unit ingredients (like eggs) sensibly rounded.
-                Calorie and nutrition totals will recalculate in real time as amounts change.
-              </p>
-              {/* DEV NOTE: Two parts to build —
-                  1) Proportion engine: when any ingredient `amount` changes, compute a scale factor
-                     (newAmount / originalAmount) and apply it to all other ingredient amounts.
-                     Whole-count ingredients (eggs, cloves, etc. — no weight/volume unit) should
-                     round to nearest whole number, minimum 1.
-                  2) Live nutrition: wire the same scale factor into calcNutrition() so calories/
-                     protein/fiber shown in the recipe header update without a save/reload. */}
-              <span className="roadmap-badge">Planned</span>
-            </div>
-
-            {/* ── Ingredient Reasoning Tooltips ── */}
-            <div className="settings-section">
-              <h4 className="settings-section__title">💬 Ingredient Reasoning on Hover</h4>
-              <p className="settings-section__hint">
-                Hover over any ingredient in a recipe to see a short cooking note explaining why
-                that quantity or ratio was chosen — things like "balances acidity" or "adds depth
-                without overpowering." Purely culinary context, no dietary or allergy info.
-              </p>
-              {/* DEV NOTE: Store a `hover_note` string alongside each ingredient row (new DB column
-                  or JSON field). On the recipe view, wrap each ingredient in a tooltip that shows
-                  hover_note when present. The add/edit form gets an optional "Cooking note" input
-                  per ingredient. Keep it cooking-context only (ratios, technique, flavour balance)
-                  — not warnings or substitutions. */}
-              <span className="roadmap-badge">Planned</span>
-            </div>
-
-            {/* ── Accurate Calorie Tracking ── */}
-            <div className="settings-section">
-              <h4 className="settings-section__title">🔢 Accurate Calorie Tracking</h4>
-              <p className="settings-section__hint">
-                After cooking, log exactly how much of each high-calorie ingredient you actually
-                used and get an adjusted nutrition breakdown for the batch — useful when you deviate
-                from the recipe (e.g. used less oil, added extra cheese).
-              </p>
-              {/* DEV NOTE: Add a "Log actual amounts" button on the recipe page (visible after
-                  marking as cooked, or as a standalone action). Opens a modal listing only the
-                  high-calorie ingredients (calories > threshold per 100g, e.g. oils, cheese, nuts).
-                  User enters real amounts used; a one-off recalc runs via calcNutrition() with the
-                  overridden values and displays adjusted totals — does NOT overwrite the saved recipe. */}
-              <span className="roadmap-badge">Planned</span>
-            </div>
-
-            {/* ── Image Upload as Embedded String ── */}
-            <div className="settings-section">
-              <h4 className="settings-section__title">🖼️ Local Image Upload</h4>
-              <p className="settings-section__hint">
-                Upload a photo directly from your device to use as a recipe cover image, stored as
-                a base-64 string in the database — no external hosting or URL required.
-              </p>
-              {/* DEV NOTE: Add a file <input accept="image/*"> alongside the existing cover_image_url
-                  field in the recipe editor. On change, read the file with FileReader.readAsDataURL(),
-                  compress/resize client-side (e.g. canvas drawImage → toDataURL at ~800px wide,
-                  quality 0.75), then store the resulting data-URI string in cover_image_url just like
-                  a normal URL — no schema changes needed. Warn the user if the result exceeds ~300 KB. */}
-              <span className="roadmap-badge">Planned</span>
-            </div>
-
-            {/* ── Better Text Import ── */}
-            <div className="settings-section" style={{ marginBottom: 20 }}>
-              <h4 className="settings-section__title">📋 Smarter Add from Text</h4>
-              <p className="settings-section__hint">
-                Improve text paste parsing to handle messier formats — Instagram captions, informal
-                recipe notes, TikTok descriptions, and more. Might require an AI integration to
-                reliably extract structure from freeform text.
-              </p>
-              <span className="roadmap-badge" style={{ marginBottom: 8, display: 'inline-block' }}>Planned</span>
-            </div>
-
-          </div>
-        )}
-      </section>
-
     </main>
   );
 };
@@ -3416,15 +3324,12 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
   const toggleChecked = (key, itemName) => {
     setChecked(prev => {
       const next = new Set(prev);
-      const lower = itemName.toLowerCase().trim();
       if (next.has(key)) {
         next.delete(key);
-        // Remove from kitchen when unchecked
-        setFridgeIngredients(prev2 => prev2.filter(x => x.toLowerCase().trim() !== lower));
-        setPantryStaples(prev2 => prev2.filter(x => x.toLowerCase().trim() !== lower));
       } else {
         next.add(key);
-        // Add to kitchen when checked
+        // Auto-add to kitchen
+        const lower = itemName.toLowerCase().trim();
         const known = allIngredients?.find(i => (typeof i === 'string' ? i : i.name).toLowerCase() === lower);
         const isFridgeType = known && typeof known === 'object' && ['produce','meat & fish','dairy'].includes(known.type);
         if (isFridgeType) {
@@ -3453,16 +3358,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
         if (!cancelled) {
           setCategories(data.categories || []);
           setRecipeNames(data.recipeNames || []);
-          // Pre-check items already in the kitchen
-          const preChecked = new Set();
-          (data.categories || []).forEach(cat => {
-            consolidateItems(cat.items).forEach(item => {
-              if (allMyIngredients.has(item.name.toLowerCase().trim())) {
-                preChecked.add(`${cat.name}-${item.name}`);
-              }
-            });
-          });
-          setChecked(preChecked);
+          setChecked(new Set());
         }
       } catch (e) { if (!cancelled) setError(e.message); }
       finally { if (!cancelled) setLoading(false); }
@@ -3475,12 +3371,13 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
     const lines = [`Grocery List — ${recipeNames.join(', ')}\n`];
     consolidatedCategories.forEach(cat => {
       const items = hideInKitchen
-        ? cat.items.filter(item => !checked.has(`${cat.name}-${item.name}`))
+        ? cat.items.filter(item => !allMyIngredients.has(item.name.toLowerCase().trim()))
         : cat.items;
       if (!items.length) return;
       lines.push(`\n${cat.emoji} ${cat.name}`);
       items.forEach(item => {
-        const tick = checked.has(`${cat.name}-${item.name}`) ? '✓' : '○';
+        const inKitchen = allMyIngredients.has(item.name.toLowerCase().trim());
+        const tick = checked.has(`${cat.name}-${item.name}`) || inKitchen ? '✓' : '○';
         const amount = [item.amount, item.unit].filter(Boolean).join(' ');
         const extra = item._extra ? ` + ${item._extra}` : '';
         lines.push(`  ${tick} ${amount}${extra} ${item.name}${item.prep_note ? ` (${item.prep_note})` : ''}`);
@@ -3491,7 +3388,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
 
   const totalItems = consolidatedCategories.reduce((sum, cat) => sum + cat.items.length, 0);
   const inKitchenCount = consolidatedCategories.reduce((sum, cat) =>
-    sum + cat.items.filter(item => checked.has(`${cat.name}-${item.name}`)).length, 0);
+    sum + cat.items.filter(item => allMyIngredients.has(item.name.toLowerCase().trim())).length, 0);
   const checkedCount = checked.size;
 
   return (
@@ -3547,7 +3444,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
             {consolidatedCategories.map(cat => {
               const allItems = cat.items;
               const visibleItems = hideInKitchen
-                ? allItems.filter(item => !checked.has(`${cat.name}-${item.name}`))
+                ? allItems.filter(item => !allMyIngredients.has(item.name.toLowerCase().trim()))
                 : allItems;
               if (!visibleItems.length) return null;
               return (
@@ -3556,14 +3453,14 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
                   <div className="grocery-items">
                     {visibleItems.map(item => {
                       const key = `${cat.name}-${item.name}`;
-                      const isChecked = checked.has(key);
-                      const wasInKitchen = allMyIngredients.has(item.name.toLowerCase().trim()) && !checked.has(key) === false;
+                      const inKitchen = allMyIngredients.has(item.name.toLowerCase().trim());
+                      const isChecked = checked.has(key) || inKitchen;
                       const amountStr = [item.amount, item.unit].filter(Boolean).join(' ');
                       return (
                         <div
                           key={key}
-                          className={`grocery-item ${isChecked ? 'grocery-item--checked' : ''}`}
-                          onClick={() => toggleChecked(key, item.name)}
+                          className={`grocery-item ${isChecked ? 'grocery-item--checked' : ''} ${inKitchen ? 'grocery-item--in-kitchen' : ''}`}
+                          onClick={() => !inKitchen && toggleChecked(key, item.name)}
                         >
                           <div className={`grocery-item__checkbox ${isChecked ? 'grocery-item__checkbox--checked' : ''}`}>
                             {isChecked && '✓'}
@@ -3575,10 +3472,9 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
                               {' '}{item.name}
                             </span>
                             {item.prep_note && <span className="grocery-item__note">{item.prep_note}</span>}
-                            {isChecked
-                              ? <span className="grocery-item__tap-hint">tap to uncheck → removes from kitchen</span>
-                              : <span className="grocery-item__tap-hint">tap to check off → adds to kitchen</span>}
-                            {item.recipes?.length > 1 && (
+                            {inKitchen && <span className="grocery-item__kitchen-tag">in kitchen</span>}
+                            {!inKitchen && !isChecked && <span className="grocery-item__tap-hint">tap to check off → adds to kitchen</span>}
+                            {item.recipes?.length > 1 && !inKitchen && (
                               <span className="grocery-item__recipes">for {item.recipes.join(', ')}</span>
                             )}
                           </div>
@@ -3600,9 +3496,9 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
 // ─── Cooking Notes Tab ──────────────────────────────────────────────────────
 const NOTE_TYPES = ['rule', 'theory', 'shortcut'];
 const NOTE_TYPE_META = {
-  rule:     { label: 'Rule / Ratio',   emoji: '📐', color: '#e8f5e9', border: '#a5d6a7' },
-  theory:   { label: 'Theory',         emoji: '🧠', color: '#e3f2fd', border: '#90caf9' },
-  shortcut: { label: 'Shortcut',       emoji: '⚡', color: '#fff8e1', border: '#ffe082' },
+  rule:     { label: 'Rule / Ratio',   emoji: '📐', color: '#f5ece0', border: '#d9c4a8' },
+  theory:   { label: 'Theory',         emoji: '💡', color: '#f5ece0', border: '#d9c4a8' },
+  shortcut: { label: 'Shortcut',       emoji: '→', color: '#f0ebe3', border: '#d9c4a8' },
 };
 const NOTE_CATEGORIES = ['General Technique', 'Pasta', 'Baking', 'Meat & Fish', 'Sauces', 'Eggs', 'Vegetables', 'Bread', 'Desserts', 'Equipment'];
 
@@ -4428,13 +4324,13 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
 };
 
 // ─── CookbookEditModal ────────────────────────────────────────────────────────
-const CookbookEditModal = ({ cookbook, onSave, onClose, saving }) => {
+const CookbookEditModal = ({ cookbook, onSave, onClose }) => {
   const isNew = !cookbook;
   const [form, setForm] = useState({ title:cookbook?.title||'', author:cookbook?.author||'', coverImage:cookbook?.coverImage||'', spineColor:cookbook?.spineColor||'#C65D3B', notes:cookbook?.notes||'' });
   const [imgError, setImgError] = useState(false);
   const SPINE_COLORS = ['#C65D3B','#2E2A27','#7a9e7e','#4a6fa5','#8B4513','#6B3FA0','#B5451B','#2C5F2E'];
   const set = (k,v) => setForm(p => ({...p,[k]:v}));
-  const save = () => { if (!form.title.trim() || saving) return; onSave({...form, title:form.title.trim()}); };
+  const save = () => { if (!form.title.trim()) return; onSave({...form, title:form.title.trim()}); };
   return (
     <div className="create-modal-overlay" onClick={onClose}>
       <div className="create-modal" style={{ maxWidth:520 }} onClick={e => e.stopPropagation()}>
@@ -4473,8 +4369,8 @@ const CookbookEditModal = ({ cookbook, onSave, onClose, saving }) => {
           </div>
         </div>
         <div className="create-modal__footer">
-          <button className="btn btn--ghost" onClick={onClose} disabled={saving}>Cancel</button>
-          <button className="btn btn--primary" onClick={save} disabled={!form.title.trim() || saving}>{saving ? 'Saving…' : isNew ? '+ Add Cookbook' : '✓ Save Changes'}</button>
+          <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn--primary" onClick={save} disabled={!form.title.trim()}>{isNew ? '+ Add Cookbook' : '✓ Save Changes'}</button>
         </div>
       </div>
     </div>
@@ -4719,69 +4615,20 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
 
 // ─── CookbooksTab ─────────────────────────────────────────────────────────────
 const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags, allIngredients, setCookingRecipe, cookLog, onRecipeConverted, isAdmin, authFetch }) => {
-  const apiFetch = authFetch || fetch;
   const [selectedCookbook, setSelectedCookbook] = useState(null);
   const [showAddModal,     setShowAddModal]     = useState(false);
   const [editingCookbook,  setEditingCookbook]  = useState(null);
   const [globalSearch,     setGlobalSearch]     = useState('');
-  const [saving,           setSaving]           = useState(false);
 
-  const handleSaveCookbook = async (data) => {
-    setSaving(true);
-    try {
-      if (editingCookbook) {
-        const res = await apiFetch(`${API}/api/cookbooks/${editingCookbook.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Save failed');
-        setCookbooks(prev => prev.map(c => c.id === editingCookbook.id ? json.cookbook : c));
-      } else {
-        const res = await apiFetch(`${API}/api/cookbooks`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Save failed');
-        setCookbooks(prev => [...prev, json.cookbook]);
-      }
-      setShowAddModal(false); setEditingCookbook(null);
-    } catch (e) { alert(`Failed to save cookbook: ${e.message}`); }
-    finally { setSaving(false); }
+  const handleSaveCookbook = (data) => {
+    if (editingCookbook) setCookbooks(prev => prev.map(c => c.id===editingCookbook.id ? {...c,...data} : c));
+    else setCookbooks(prev => [...prev, { id:`cb-${Date.now()}`, recipes:[], ...data }]);
+    setShowAddModal(false); setEditingCookbook(null);
   };
 
-  const handleDeleteCookbook = async (id) => {
-    try {
-      const res = await apiFetch(`${API}/api/cookbooks/${id}`, { method: 'DELETE' });
-      if (!res.ok) { const j = await res.json(); throw new Error(j.error || 'Delete failed'); }
-      setCookbooks(prev => prev.filter(c => c.id !== id));
-      if (selectedCookbook?.id === id) setSelectedCookbook(null);
-    } catch (e) { alert(`Failed to delete cookbook: ${e.message}`); }
-  };
-
-  // Called when a cookbook's recipe entries change (add/remove/edit/reorder)
-  const handleUpdateRecipes = async (cookbookId, newRecipes) => {
-    // Optimistic update
-    setCookbooks(prev => prev.map(c => c.id === cookbookId ? { ...c, recipes: newRecipes } : c));
-    try {
-      const res = await apiFetch(`${API}/api/cookbooks/${cookbookId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipes: newRecipes }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Save failed');
-      // Reconcile with server response
-      setCookbooks(prev => prev.map(c => c.id === cookbookId ? json.cookbook : c));
-    } catch (e) {
-      alert(`Failed to save cookbook entries: ${e.message}`);
-      // Reload from server to recover
-      const res2 = await fetch(`${API}/api/cookbooks`);
-      if (res2.ok) { const d = await res2.json(); setCookbooks(d.cookbooks || []); }
-    }
+  const handleDeleteCookbook = (id) => {
+    setCookbooks(prev => prev.filter(c => c.id !== id));
+    if (selectedCookbook?.id === id) setSelectedCookbook(null);
   };
 
   const enrichedCookbooks = useMemo(() => cookbooks.map(cb => {
@@ -4826,7 +4673,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags,
       onOpenRecipe={onOpenRecipe}
       recipes={recipes}
       allIngredients={allIngredients}
-      onUpdateRecipes={(newRecipes) => handleUpdateRecipes(currentCb.id, newRecipes)}
+      onUpdateRecipes={(newRecipes) => setCookbooks(prev => prev.map(c => c.id===currentCb.id ? {...c, recipes:newRecipes} : c))}
       allTags={allTags}
       setCookingRecipe={setCookingRecipe}
       cookLog={cookLog}
@@ -4838,7 +4685,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags,
   return (
     <main className="view cookbooks-tab">
       {(showAddModal||editingCookbook) && (
-        <CookbookEditModal cookbook={editingCookbook} onSave={handleSaveCookbook} onClose={() => { setShowAddModal(false); setEditingCookbook(null); }} saving={saving} />
+        <CookbookEditModal cookbook={editingCookbook} onSave={handleSaveCookbook} onClose={() => { setShowAddModal(false); setEditingCookbook(null); }} />
       )}
 
       <div className="cookbooks-header">
@@ -4945,135 +4792,55 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
   const openTextModal = () => { setPastedText(''); setTextError(null); setShowTextModal(true); };
   const closeTextModal = () => { setShowTextModal(false); setTextParsing(false); };
 
-  const parseTextAndOpen = () => {
+  const parseTextAndOpen = async () => {
     if (!pastedText.trim()) { setTextError('Please paste some recipe text'); return; }
-    setTextError(null);
+    setTextParsing(true); setTextError(null);
+    try {
+      const res = await apiFetch(`${API}/api/parse-recipe-text`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: pastedText.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Parse failed');
 
-    const text = pastedText.trim();
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
-    const UNITS_RE = new RegExp(
-      `^(\\d[\\d\\s\\/\\.]*)?\\s*(${COMMON_UNITS.join('|')})\\.?\\s+(.+)$`, 'i'
-    );
-    const FRAC_MAP = { '½': '1/2', '⅓': '1/3', '⅔': '2/3', '¼': '1/4', '¾': '3/4',
-      '⅛': '1/8', '⅜': '3/8', '⅝': '5/8', '⅞': '7/8' };
-    const normFrac = s => s.replace(/[½⅓⅔¼¾⅛⅜⅝⅞]/g, m => FRAC_MAP[m] || m);
-
-    const parseIngLine = (raw) => {
-      const s = normFrac(raw.replace(/^[-•*]\s*/, '').trim());
-      // Try "amount unit name"
-      const m = s.match(UNITS_RE);
-      if (m) {
-        return { amount: (m[1] || '').trim(), unit: m[2].toLowerCase(), name: m[3].trim() };
-      }
-      // Try leading number/fraction then rest
-      const numMatch = s.match(/^([\d\s\/\.]+)\s+(.+)$/);
-      if (numMatch) {
-        const words = numMatch[2].split(/\s+/);
-        const maybeUnit = words[0].toLowerCase().replace(/\.$/, '');
-        if (COMMON_UNITS.includes(maybeUnit)) {
-          return { amount: numMatch[1].trim(), unit: maybeUnit, name: words.slice(1).join(' ') };
-        }
-        return { amount: numMatch[1].trim(), unit: '', name: numMatch[2].trim() };
-      }
-      return { amount: '', unit: '', name: s };
-    };
-
-    const isSectionHeader = (line) =>
-      /^(ingredients|instructions|directions|method|steps|notes?|description|for the|to make|prep|cook):?$/i.test(line)
-      || /^(ingredients|instructions|directions|method|steps)[\s:]/i.test(line);
-
-    const isIngredientLine = (line) => {
-      const s = normFrac(line.replace(/^[-•*\d\.]+\s*/, '').trim());
-      return (
-        /^[\d½⅓⅔¼¾⅛⅜⅝⅞]/.test(s) ||
-        new RegExp(`^(${COMMON_UNITS.join('|')})\\b`, 'i').test(s) ||
-        /^[-•*]/.test(line)
+      setDetails({
+        name: data.name || '',
+        cuisine: normaliseCuisine(data.cuisine),
+        time: data.time || '',
+        servings: data.servings || '',
+        cover_image_url: data.image || '',
+        cookbook: '', reference: '', status: 'to try', tags: [],
+      });
+      setIngs(
+        data.ingredients?.length
+          ? data.ingredients.map((i, idx) => ({
+              _id: `ing-txt-${idx}-${Date.now()}`,
+              name: i.name || '', amount: i.amount || '', unit: i.unit || '',
+              prep_note: '', optional: false, group_label: '',
+            }))
+          : [{ _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]
       );
-    };
-
-    const isStepLine = (line) =>
-      /^\d+[\.\)]\s/.test(line) || line.length > 60;
-
-    // ── Section detection ─────────────────────────────────────────────────────
-    let name = '';
-    let timeStr = '';
-    let servingsStr = '';
-    const ingLines = [];
-    const stepLines = [];
-
-    // Extract name from first non-empty line (skip URLs)
-    const firstReal = lines.find(l => l.length > 1 && !/^https?:\/\//i.test(l));
-    if (firstReal) name = firstReal.replace(/^#+\s*/, '').trim();
-
-    // Extract time/servings from anywhere
-    for (const line of lines) {
-      const tm = line.match(/(?:total\s+)?(?:time|cook(?:ing)?\s+time|prep(?:\s+time)?)[:\s]+([^\n,|]+)/i);
-      if (tm && !timeStr) timeStr = tm[1].trim();
-      const sv = line.match(/(?:serves?|servings?|yield)[:\s]+([^\n,|]+)/i);
-      if (sv && !servingsStr) servingsStr = sv[1].trim().split(/\s/)[0];
+      setSteps(
+        data.steps?.length
+          ? data.steps.map((s, idx) => ({
+              _id: `step-txt-${idx}-${Date.now()}`,
+              step_number: idx + 1, body_text: s, timer_seconds: null,
+            }))
+          : [{ _id: `step-${Date.now()}`, step_number: 1, body_text: '' }]
+      );
+      setNotesList(
+        data.description ? [{ _id: `note-txt-${Date.now()}`, text: data.description }] : []
+      );
+      setImgPreviewError(false);
+      setSaveError(null);
+      setShowTextModal(false);
+      setShowModal(true);
+    } catch (e) {
+      setTextError(e.message);
+    } finally {
+      setTextParsing(false);
     }
-
-    // Split into sections
-    let section = 'preamble';
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (isSectionHeader(line)) {
-        if (/ingred/i.test(line)) { section = 'ingredients'; continue; }
-        if (/instruct|direct|method|steps|cook|prep/i.test(line)) { section = 'steps'; continue; }
-        if (/notes?/i.test(line)) { section = 'notes'; continue; }
-        continue;
-      }
-      if (section === 'ingredients' || (section === 'preamble' && isIngredientLine(line))) {
-        if (section === 'preamble') section = 'ingredients';
-        ingLines.push(line);
-      } else if (section === 'steps' || (section === 'preamble' && isStepLine(line))) {
-        if (section === 'preamble') section = 'steps';
-        const cleaned = line.replace(/^\d+[\.\)]\s*/, '').trim();
-        if (cleaned) stepLines.push(cleaned);
-      }
-    }
-
-    // Fallback: if nothing parsed, treat all non-name lines as steps
-    if (!ingLines.length && !stepLines.length) {
-      for (let i = 1; i < lines.length; i++) stepLines.push(lines[i]);
-    }
-
-    const parsedIngs = ingLines.map(parseIngLine).filter(i => i.name);
-    const parsedSteps = stepLines.filter(s => s.length > 2);
-
-    // ── Populate form ─────────────────────────────────────────────────────────
-    setDetails({
-      name,
-      cuisine: '',
-      time: timeStr,
-      servings: servingsStr,
-      cover_image_url: '',
-      cookbook: '', reference: '', status: 'to try', tags: [],
-    });
-    setIngs(
-      parsedIngs.length
-        ? parsedIngs.map((i, idx) => ({
-            _id: `ing-txt-${idx}-${Date.now()}`,
-            name: i.name, amount: i.amount, unit: i.unit,
-            prep_note: '', optional: false, group_label: '',
-          }))
-        : [{ _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]
-    );
-    setSteps(
-      parsedSteps.length
-        ? parsedSteps.map((s, idx) => ({
-            _id: `step-txt-${idx}-${Date.now()}`,
-            step_number: idx + 1, body_text: s, timer_seconds: null,
-          }))
-        : [{ _id: `step-${Date.now()}`, step_number: 1, body_text: '' }]
-    );
-    setNotesList([]);
-    setImgPreviewError(false);
-    setSaveError(null);
-    setShowTextModal(false);
-    setShowModal(true);
   };
 
   const emptyForm = () => ({
@@ -5297,11 +5064,17 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                 />
               </div>
               {textError && <p className="editor-error">⚠️ {textError}</p>}
+              {textParsing && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--warm-gray)', fontSize: '0.88rem' }}>
+                  <span className="link-import__spinner" />
+                  Parsing recipe…
+                </div>
+              )}
             </div>
             <div className="create-modal__footer">
               <button className="btn btn--ghost" onClick={closeTextModal}>Cancel</button>
-              <button className="btn btn--primary" onClick={parseTextAndOpen} disabled={!pastedText.trim()}>
-                Next →
+              <button className="btn btn--primary" onClick={parseTextAndOpen} disabled={textParsing || !pastedText.trim()}>
+                {textParsing ? 'Parsing…' : 'Next →'}
               </button>
             </div>
           </div>
@@ -5794,7 +5567,7 @@ function AppInner() {
   const [dietaryFilters, setDietaryFiltersRaw] = useState(() => LS.get('dietaryFilters', []));
   const [hideIncompatible, setHideIncompatibleRaw] = useState(() => LS.get('hideIncompatible', false));
   const setHideIncompatible = (v) => { setHideIncompatibleRaw(v); LS.set('hideIncompatible', v); };
-  const [cookbooks, setCookbooks] = useState([]);
+  const [cookbooks, setCookbooks] = useState(() => LS.get('cookbooks', []));
   const [cookLog, setCookLog] = useState([]);
   const [cookingNotes, setCookingNotes] = useState([]);
   const setUnits = (v) => { setUnitsRaw(v); LS.set('units', v); };
@@ -5802,20 +5575,19 @@ function AppInner() {
 
   useEffect(() => { LS.set('fridgeIngredients', fridgeIngredients); }, [fridgeIngredients]);
   useEffect(() => { LS.set('pantryStaples', pantryStaples); }, [pantryStaples]);
+  useEffect(() => { LS.set('cookbooks', cookbooks); }, [cookbooks]);
 
   const loadData = useCallback(async () => {
     try {
-      const [ingRes, recipeRes, notesRes, cookbooksRes] = await Promise.all([
+      const [ingRes, recipeRes, notesRes] = await Promise.all([
         fetch(`${API}/api/ingredients`),
         fetch(`${API}/api/recipes`),
         fetch(`${API}/api/cooking-notes`),
-        fetch(`${API}/api/cookbooks`),
       ]);
       if (!ingRes.ok || !recipeRes.ok) throw new Error('Failed to load data');
       const { ingredients } = await ingRes.json();
       const { recipes: recipeData } = await recipeRes.json();
       if (notesRes.ok) { const d = await notesRes.json(); setCookingNotes(d.notes || []); }
-      if (cookbooksRes.ok) { const d = await cookbooksRes.json(); setCookbooks(d.cookbooks || []); }
       setAllIngredients(ingredients.sort((a, b) => a.name.localeCompare(b.name)));
       setRecipes(recipeData);
 
@@ -6101,14 +5873,14 @@ function AppInner() {
               return (
                 <div className="home-section">
                   <div className="home-section__header">
-                    <h2 className="home-section__title">⏱ Make Soon</h2>
+                    <h2 className="home-section__title">Make Soon</h2>
                     {makeSoonIds.length > 0 && (
                       <button className="btn btn--ghost btn--sm" onClick={() => setMakeSoonIds([])}>Clear all</button>
                     )}
                   </div>
                   {makeSoonIds.length === 0 ? (
                     <div className="home-empty-cta" onClick={() => setView('recipes')}>
-                      <span className="home-empty-cta__icon">⏱</span>
+                      <span className="home-empty-cta__icon">📋</span>
                       <div>
                         <p className="home-empty-cta__title">Plan your week</p>
                         <p className="home-empty-cta__sub">Tap ⏱ on any recipe to add it here</p>
@@ -6145,7 +5917,7 @@ function AppInner() {
                   </div>
                   {allMyIngredients.size === 0 ? (
                     <div className="home-empty-cta" onClick={() => setView('kitchen')}>
-                      <span className="home-empty-cta__icon">🧊</span>
+                      <span className="home-empty-cta__icon">🥘</span>
                       <div>
                         <p className="home-empty-cta__title">Add your kitchen &amp; pantry ingredients</p>
                         <p className="home-empty-cta__sub">We'll show you what you can cook right now</p>
@@ -6233,7 +6005,7 @@ function AppInner() {
                   <span className="quick-action__arrow">→</span>
                 </button>
                 <button className="quick-action" onClick={() => setView('kitchen')}>
-                  <span className="quick-action__icon">🧊</span>
+                  <span className="quick-action__icon">🫙</span>
                   <div className="quick-action__text">
                     <span className="quick-action__label">Update my kitchen</span>
                     <span className="quick-action__sub">{fridgeIngredients.length + pantryStaples.length} ingredients tracked</span>
