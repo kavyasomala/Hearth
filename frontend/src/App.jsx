@@ -1,5 +1,51 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
+// ─── Inline SVG Icons (no external package) ───────────────────────────────
+const Ic = ({ d, size = 16, color = 'currentColor', strokeWidth = 2, ...rest }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
+    style={{ display: 'block', flexShrink: 0 }} {...rest}>
+    {Array.isArray(d) ? d.map((p, i) => <path key={i} d={p} />) : <path d={d} />}
+  </svg>
+);
+const IcCircle = ({ cx, cy, r, ...rest }) => (
+  <svg width={rest.size||16} height={rest.size||16} viewBox="0 0 24 24" fill="none"
+    stroke={rest.color||'currentColor'} strokeWidth={rest.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round"
+    style={{ display: 'block', flexShrink: 0 }}>
+    <circle cx={cx} cy={cy} r={r} />
+    <path d={rest.d} />
+  </svg>
+);
+
+// Icon paths
+const ICONS = {
+  checkCircle: ['M22 11.08V12a10 10 0 1 1-5.93-9.14', 'M22 4 12 14.01l-3-3'],
+  flame: ['M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z'],
+  clock: ['M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z', 'M12 6v6l4 2'],
+  heart: ['M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'],
+  chefHat: ['M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6z', 'M6 17h12'],
+  bookMarked: ['M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20', 'M9 2v8l3-1.5L15 10V2'],
+  bookOpen: ['M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z', 'M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'],
+  package: ['M16.5 9.4 7.55 4.24', 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z', 'M3.27 6.96 12 12.01l8.73-5.05', 'M12 22.08V12'],
+  cart: ['M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z', 'M3 6h18', 'M16 10a4 4 0 0 1-8 0'],
+  utensils: ['M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2', 'M7 2v20', 'M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7'],
+  shuffle: ['M16 3h5v5', 'M4 20 21 3', 'M21 16v5h-5', 'M15 15l6 6', 'M4 4l5 5'],
+  arrowRight: ['M5 12h14', 'M12 5l7 7-7 7'],
+  sun: ['M12 17A5 5 0 1 0 12 7a5 5 0 0 0 0 10z', 'M12 1v2', 'M12 21v2', 'M4.22 4.22l1.42 1.42', 'M18.36 18.36l1.42 1.42', 'M1 12h2', 'M21 12h2', 'M4.22 19.78l1.42-1.42', 'M18.36 5.64l1.42-1.42'],
+};
+
+const Icon = ({ name, size = 16, color = 'currentColor', strokeWidth = 2 }) => {
+  const d = ICONS[name];
+  if (!d) return null;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
+      style={{ display: 'block', flexShrink: 0 }}>
+      {(Array.isArray(d) ? d : [d]).map((p, i) => <path key={i} d={p} />)}
+    </svg>
+  );
+};
+
 // ─── Horizontal Scroll Row ─────────────────────────────────────────────────
 const HScrollRow = ({ children, count }) => {
   const rowRef = useRef(null);
@@ -57,11 +103,6 @@ import {
   useSortable, verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  CheckCircle2, Flame, Clock, Heart, ChefHat, BookOpen,
-  ShoppingCart, Utensils, Shuffle, Package, ArrowRight,
-  Sun, BookMarked,
-} from 'lucide-react';
 import './App.css';
 
 // ─── Error Boundary ────────────────────────────────────────────────────────
@@ -1368,7 +1409,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             onClick={() => setStayAwake(s => !s)}
             title={stayAwake ? 'Screen will stay on — click to disable' : 'Keep screen awake while cooking'}
           >
-            {stayAwake ? <><Sun size={14} strokeWidth={2} /> Awake</> : <Sun size={14} strokeWidth={2} />}
+            {stayAwake ? <><Icon name="sun" size={14} strokeWidth={2} /> Awake</> : <Icon name="sun" size={14} strokeWidth={2} />}
           </button>
           {isAdmin && <button className="rp2__title-delete-btn" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe">🗑</button>}
         </div>
@@ -5957,13 +5998,13 @@ function AppInner() {
                   onClick={() => { setActiveProgresses(['__readytocook']); setView('recipes'); }}>
                   <span className="insight-item__number">{matches.filter(m => m.canMake).length}</span>
                   <span className="insight-item__label">Ready to cook</span>
-                  <span className="insight-item__icon"><CheckCircle2 color="var(--insight-green-ic)" /></span>
+                  <span className="insight-item__icon"><Icon name="checkCircle" size={16} color="var(--insight-green-ic)" /></span>
                 </button>
                 <button className="insight-item insight-item--amber insight-item--btn"
                   onClick={() => { setActiveProgresses(['__almostready']); setView('recipes'); }}>
                   <span className="insight-item__number">{matches.filter(m => m.matchScore >= 0.7 && !m.canMake).length}</span>
                   <span className="insight-item__label">Almost ready</span>
-                  <span className="insight-item__icon"><Flame color="var(--insight-amber-ic)" /></span>
+                  <span className="insight-item__icon"><Icon name="flame" size={16} color="var(--insight-amber-ic)" /></span>
                 </button>
                 <button className="insight-item insight-item--purple insight-item--btn"
                   onClick={() => { setMaxMinutes(30); setView('recipes'); }}>
@@ -5971,13 +6012,13 @@ function AppInner() {
                     {recipes.filter(r => { const t = (r.time || '').toLowerCase(); const m = t.match(/(\d+)/); return m && parseInt(m[1]) <= 30; }).length}
                   </span>
                   <span className="insight-item__label">Under 30 min</span>
-                  <span className="insight-item__icon"><Clock color="var(--insight-rust-ic)" /></span>
+                  <span className="insight-item__icon"><Icon name="clock" size={16} color="var(--insight-rust-ic)" /></span>
                 </button>
                 <button className="insight-item insight-item--orange insight-item--btn"
                   onClick={() => { setActiveProgresses(['__favorite']); setView('recipes'); }}>
                   <span className="insight-item__number">{heartedIds.filter(id => recipes.some(r => r.id === id)).length}</span>
                   <span className="insight-item__label">Favorites</span>
-                  <span className="insight-item__icon"><Heart color="var(--insight-gold-ic)" /></span>
+                  <span className="insight-item__icon"><Icon name="heart" size={16} color="var(--insight-gold-ic)" /></span>
                 </button>
                 <button className="insight-item insight-item--sage insight-item--btn" style={{ cursor: 'default' }}>
                   <span className="insight-item__number">
@@ -5987,13 +6028,13 @@ function AppInner() {
                     })()}
                   </span>
                   <span className="insight-item__label">Cooked this week</span>
-                  <span className="insight-item__icon"><ChefHat color="var(--insight-sage-ic)" /></span>
+                  <span className="insight-item__icon"><Icon name="chefHat" size={16} color="var(--insight-sage-ic)" /></span>
                 </button>
                 <button className="insight-item insight-item--blue insight-item--btn"
                   onClick={() => { clearAllFilters(); setView('recipes'); }}>
                   <span className="insight-item__number">{recipes.length}</span>
                   <span className="insight-item__label">Total recipes</span>
-                  <span className="insight-item__icon"><BookMarked color="var(--insight-brown-ic)" /></span>
+                  <span className="insight-item__icon"><Icon name="bookMarked" size={16} color="var(--insight-brown-ic)" /></span>
                 </button>
               </div>
             </div>
@@ -6002,37 +6043,37 @@ function AppInner() {
               <h3 className="insights-title">Quick Actions</h3>
               <div className="quick-actions-list">
                 <button className="quick-action" onClick={() => setView('recipes')}>
-                  <span className="quick-action__icon"><BookOpen size={18} strokeWidth={1.75} /></span>
+                  <span className="quick-action__icon"><Icon name="bookOpen" size={18} strokeWidth={1.75} /></span>
                   <div className="quick-action__text">
                     <span className="quick-action__label">Browse all recipes</span>
                     <span className="quick-action__sub">{recipes.length} in your library</span>
                   </div>
-                  <span className="quick-action__arrow"><ArrowRight size={14} strokeWidth={1.75} /></span>
+                  <span className="quick-action__arrow"><Icon name="arrowRight" size={14} strokeWidth={1.75} /></span>
                 </button>
                 <button className="quick-action" onClick={() => setView('kitchen')}>
-                  <span className="quick-action__icon"><Package size={18} strokeWidth={1.75} /></span>
+                  <span className="quick-action__icon"><Icon name="package" size={18} strokeWidth={1.75} /></span>
                   <div className="quick-action__text">
                     <span className="quick-action__label">Update my kitchen</span>
                     <span className="quick-action__sub">{fridgeIngredients.length + pantryStaples.length} ingredients tracked</span>
                   </div>
-                  <span className="quick-action__arrow"><ArrowRight size={14} strokeWidth={1.75} /></span>
+                  <span className="quick-action__arrow"><Icon name="arrowRight" size={14} strokeWidth={1.75} /></span>
                 </button>
                 <button className="quick-action" onClick={() => setView('grocery')}>
-                  <span className="quick-action__icon"><ShoppingCart size={18} strokeWidth={1.75} /></span>
+                  <span className="quick-action__icon"><Icon name="cart" size={18} strokeWidth={1.75} /></span>
                   <div className="quick-action__text">
                     <span className="quick-action__label">Build grocery list</span>
                     <span className="quick-action__sub">Plan your weekly shop</span>
                   </div>
-                  <span className="quick-action__arrow"><ArrowRight size={14} strokeWidth={1.75} /></span>
+                  <span className="quick-action__arrow"><Icon name="arrowRight" size={14} strokeWidth={1.75} /></span>
                 </button>
                 {matches.filter(m => m.canMake).length > 0 && (
                   <button className="quick-action quick-action--highlight" onClick={() => { setActiveTag(null); setActiveCuisine(''); setLibrarySearch(''); setView('recipes'); }}>
-                    <span className="quick-action__icon"><Utensils size={18} strokeWidth={1.75} /></span>
+                    <span className="quick-action__icon"><Icon name="utensils" size={18} strokeWidth={1.75} /></span>
                     <div className="quick-action__text">
                       <span className="quick-action__label">Cook something now</span>
                       <span className="quick-action__sub">{matches.filter(m => m.canMake).length} recipes you can make</span>
                     </div>
-                    <span className="quick-action__arrow"><ArrowRight size={14} strokeWidth={1.75} /></span>
+                    <span className="quick-action__arrow"><Icon name="arrowRight" size={14} strokeWidth={1.75} /></span>
                   </button>
                 )}
                 <button className="quick-action quick-action--surprise" onClick={() => {
@@ -6040,12 +6081,12 @@ function AppInner() {
                   const r = recipes[Math.floor(Math.random() * recipes.length)];
                   openRecipe(r);
                 }}>
-                  <span className="quick-action__icon"><Shuffle size={18} strokeWidth={1.75} /></span>
+                  <span className="quick-action__icon"><Icon name="shuffle" size={18} strokeWidth={1.75} /></span>
                   <div className="quick-action__text">
                     <span className="quick-action__label">Surprise me!</span>
                     <span className="quick-action__sub">Open a random recipe</span>
                   </div>
-                  <span className="quick-action__arrow"><ArrowRight size={14} strokeWidth={1.75} /></span>
+                  <span className="quick-action__arrow"><Icon name="arrowRight" size={14} strokeWidth={1.75} /></span>
                 </button>
               </div>
             </div>
