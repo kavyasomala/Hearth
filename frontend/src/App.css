@@ -1326,7 +1326,7 @@ body {
 
 /* ─── Hero soon button ───────────────────────────────────────────────────── */
 .rp2__hero-soon { font-size: 15px; padding: 7px 9px; }
-.rp2__hero-soon--on { color: #60a5fa; }
+.rp2__hero-soon--on { color: #fff; background: var(--terracotta); box-shadow: 0 2px 8px rgba(184,92,56,0.4); }
 
 /* ─── Section Pencil ─────────────────────────────────────────────────────── */
 .rp2__section-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
@@ -1782,7 +1782,11 @@ body {
   box-shadow: 0 1px 6px rgba(0,0,0,0.15);
 }
 .recipe-card__soon:hover { transform: scale(1.15); }
-.recipe-card__soon--on { color: var(--charcoal); background: rgba(255,255,255,0.95); }
+.recipe-card__soon--on {
+  color: #fff;
+  background: var(--terracotta);
+  box-shadow: 0 2px 8px rgba(184,92,56,0.45);
+}
 
 /* ─── Surprise Me quick action ──────────────────────────────────────────── */
 .quick-action--surprise { background: var(--parchment); }

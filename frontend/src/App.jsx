@@ -1,37 +1,58 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
-// ─── Inline SVG Icons (no external package) ───────────────────────────────
-const Ic = ({ d, size = 16, color = 'currentColor', strokeWidth = 2, ...rest }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
-    style={{ display: 'block', flexShrink: 0 }} {...rest}>
-    {Array.isArray(d) ? d.map((p, i) => <path key={i} d={p} />) : <path d={d} />}
-  </svg>
-);
-const IcCircle = ({ cx, cy, r, ...rest }) => (
-  <svg width={rest.size||16} height={rest.size||16} viewBox="0 0 24 24" fill="none"
-    stroke={rest.color||'currentColor'} strokeWidth={rest.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round"
-    style={{ display: 'block', flexShrink: 0 }}>
-    <circle cx={cx} cy={cy} r={r} />
-    <path d={rest.d} />
-  </svg>
-);
-
-// Icon paths
+// ─── Inline SVG Icons ─────────────────────────────────────────────────────
 const ICONS = {
+  // insights + quick actions (existing)
   checkCircle: ['M22 11.08V12a10 10 0 1 1-5.93-9.14', 'M22 4 12 14.01l-3-3'],
-  flame: ['M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z'],
-  clock: ['M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z', 'M12 6v6l4 2'],
-  heart: ['M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'],
-  chefHat: ['M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6z', 'M6 17h12'],
-  bookMarked: ['M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20', 'M9 2v8l3-1.5L15 10V2'],
-  bookOpen: ['M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z', 'M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'],
-  package: ['M16.5 9.4 7.55 4.24', 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z', 'M3.27 6.96 12 12.01l8.73-5.05', 'M12 22.08V12'],
-  cart: ['M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z', 'M3 6h18', 'M16 10a4 4 0 0 1-8 0'],
-  utensils: ['M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2', 'M7 2v20', 'M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7'],
-  shuffle: ['M16 3h5v5', 'M4 20 21 3', 'M21 16v5h-5', 'M15 15l6 6', 'M4 4l5 5'],
-  arrowRight: ['M5 12h14', 'M12 5l7 7-7 7'],
-  sun: ['M12 17A5 5 0 1 0 12 7a5 5 0 0 0 0 10z', 'M12 1v2', 'M12 21v2', 'M4.22 4.22l1.42 1.42', 'M18.36 18.36l1.42 1.42', 'M1 12h2', 'M21 12h2', 'M4.22 19.78l1.42-1.42', 'M18.36 5.64l1.42-1.42'],
+  flame:       ['M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z'],
+  clock:       ['M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z', 'M12 6v6l4 2'],
+  heart:       ['M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'],
+  chefHat:     ['M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6z', 'M6 17h12'],
+  bookMarked:  ['M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20', 'M9 2v8l3-1.5L15 10V2'],
+  bookOpen:    ['M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z', 'M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'],
+  package:     ['M16.5 9.4 7.55 4.24', 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z', 'M3.27 6.96 12 12.01l8.73-5.05', 'M12 22.08V12'],
+  cart:        ['M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z', 'M3 6h18', 'M16 10a4 4 0 0 1-8 0'],
+  utensils:    ['M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2', 'M7 2v20', 'M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7'],
+  shuffle:     ['M16 3h5v5', 'M4 20 21 3', 'M21 16v5h-5', 'M15 15l6 6', 'M4 4l5 5'],
+  arrowRight:  ['M5 12h14', 'M12 5l7 7-7 7'],
+  sun:         ['M12 17A5 5 0 1 0 12 7a5 5 0 0 0 0 10z', 'M12 1v2', 'M12 21v2', 'M4.22 4.22l1.42 1.42', 'M18.36 18.36l1.42 1.42', 'M1 12h2', 'M21 12h2', 'M4.22 19.78l1.42-1.42', 'M18.36 5.64l1.42-1.42'],
+  // nutrition / recipe meta
+  zap:         ['M13 2 3 14h9l-1 8 10-12h-9l1-8z'],
+  dumbbell:    ['M6 4v16', 'M18 4v16', 'M6 8H2', 'M22 8h-4', 'M6 16H2', 'M22 16h-4', 'M6 4h12', 'M6 20h12'],
+  leaf:        ['M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z', 'M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12'],
+  // make soon / timer
+  timer:       ['M10 2h4', 'M12 14l4-4', 'M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16z'],
+  // search
+  search:      ['M21 21l-4.35-4.35M17 11A6 6 0 1 0 5 11a6 6 0 0 0 12 0z'],
+  // filters
+  tag:         ['M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z', 'M7 7h.01'],
+  sliders:     ['M4 21v-7', 'M4 10V3', 'M12 21v-9', 'M12 8V3', 'M20 21v-5', 'M20 12V3', 'M1 14h6', 'M9 8h6', 'M17 16h6'],
+  folder:      ['M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'],
+  // cooking notes
+  lightbulb:   ['M9 18h6', 'M10 22h4', 'M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8a6 6 0 0 0-6-6 6 6 0 0 0-6 6 4.65 4.65 0 0 0 1.5 3.5c.76.76 1.23 1.52 1.41 2.5'],
+  ruler:       ['M2 12h20', 'M12 2v20'],
+  brain:       ['M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.07-4.73A3 3 0 0 1 4.46 8.1a2.5 2.5 0 0 1 .49-3.56A2.5 2.5 0 0 1 9.5 2z', 'M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.07-4.73 3 3 0 0 0 1.01-5.37 2.5 2.5 0 0 0-.49-3.56A2.5 2.5 0 0 0 14.5 2z'],
+  flashlight:  ['M18 6 7 17l-5-5 11-11 5 5z', 'M8 12l-5 5 5-5z'],
+  // add recipe sections
+  imageIcon:   ['M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2z', 'M8.5 13.5l2.5-3 2 2.5 2.5-3 3 4H6z'],
+  list:        ['M8 6h13', 'M8 12h13', 'M8 18h13', 'M3 6h.01', 'M3 12h.01', 'M3 18h.01'],
+  note:        ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6', 'M16 13H8', 'M16 17H8', 'M10 9H8'],
+  mapPin:      ['M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z', 'M12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'],
+  // profile sections
+  calendar:    ['M3 4h18v18H3z', 'M16 2v4', 'M8 2v4', 'M3 10h18'],
+  repeat:      ['M17 1l4 4-4 4', 'M3 11V9a4 4 0 0 1 4-4h14', 'M7 23l-4-4 4-4', 'M21 13v2a4 4 0 0 1-4 4H3'],
+  share2:      ['M18 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', 'M6 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', 'M18 16a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', 'M8.59 13.51l6.83 3.98', 'M15.41 6.51l-6.82 3.98'],
+  settings:    ['M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z', 'M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z', 'M12 2v2', 'M12 20v2', 'M4.93 4.93l1.41 1.41', 'M17.66 17.66l1.41 1.41', 'M2 12h2', 'M20 12h2', 'M6.34 17.66l-1.41 1.41', 'M19.07 4.93l-1.41 1.41'],
+  userCircle:  ['M18.39 14.56C16.71 13.7 14.53 13 12 13s-4.71.7-6.39 1.56A2.97 2.97 0 0 0 4 17v1h16v-1c0-1.16-.62-2.2-1.61-2.44z', 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  tool:        ['M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'],
+  barChart:    ['M18 20V10', 'M12 20V4', 'M6 20v-6'],
+  award:       ['M12 15a7 7 0 1 0 0-14 7 7 0 0 0 0 14z', 'M8.21 13.89 7 23l5-3 5 3-1.21-9.12'],
+  person:      ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  users:       ['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2', 'M23 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  // grocery empty
+  shoppingBag: ['M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z', 'M3 6h18', 'M16 10a4 4 0 0 1-8 0'],
+  // header flame
+  campfire:    ['M12 2c0 0-4 4-4 8a4 4 0 0 0 8 0c0-4-4-8-4-8z', 'M8 20h8', 'M12 14v6'],
 };
 
 const Icon = ({ name, size = 16, color = 'currentColor', strokeWidth = 2 }) => {
@@ -312,7 +333,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
           className={`recipe-card__soon ${isMakeSoon ? 'recipe-card__soon--on' : ''}`}
           onClick={e => { e.stopPropagation(); onToggleMakeSoon && onToggleMakeSoon(); }}
           title={isMakeSoon ? 'Remove from Make Soon' : 'Add to Make Soon'}
-        >⏱</button>
+        ><Icon name="timer" size={14} strokeWidth={2} /></button>
         {isMakeSoon && onMarkCooked && (
           <button
             className="recipe-card__cooked-btn"
@@ -327,9 +348,9 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
           {cuisine && <span className="recipe-card__cuisine-tag">{cuisine}</span>}
         </div>
         <div className="recipe-card__stats">
-          {time && <span className="recipe-card__stat"><span className="recipe-card__stat-icon">⏱</span>{time}</span>}
-          {calories !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon">🔥</span>{Math.round(calories)} kcal</span>}
-          {protein !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon">💪</span>{Math.round(protein)}g</span>}
+          {time && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="clock" size={12} strokeWidth={2} /></span>{time}</span>}
+          {calories !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="zap" size={12} strokeWidth={2} /></span>{Math.round(calories)} kcal</span>}
+          {protein !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="dumbbell" size={12} strokeWidth={2} /></span>{Math.round(protein)}g</span>}
           {canMakeNow && <span className="recipe-card__can-make">✓ Ready</span>}
           {progress && <span className="recipe-card__progress">{progress}</span>}
         </div>
@@ -516,7 +537,7 @@ const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpda
 
         {step === 1 && (<>
           <div className="create-modal__header">
-            <h2 className="create-modal__title">🍳 Cooked it!</h2>
+            <h2 className="create-modal__title"><Icon name="chefHat" size={18} strokeWidth={2} /> Cooked it!</h2>
           </div>
           <div className="create-modal__body cooked-modal__body">
             {recipe?.coverImage && (
@@ -559,7 +580,7 @@ const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpda
 
         {step === 2 && (<>
           <div className="create-modal__header">
-            <h2 className="create-modal__title">🧹 Update Your Kitchen</h2>
+            <h2 className="create-modal__title"><Icon name="package" size={18} strokeWidth={2} /> Update Your Kitchen</h2>
           </div>
           <div className="create-modal__body cooked-modal__body">
             <p className="cooked-modal__cleanup-intro">
@@ -675,7 +696,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
     <div className="create-modal-overlay" onClick={() => setShowModal(false)}>
       <div className="create-modal" onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
-          <h2 className="create-modal__title">✨ Convert to Full Recipe</h2>
+          <h2 className="create-modal__title"><Icon name="shuffle" size={18} strokeWidth={2} /> Convert to Full Recipe</h2>
           <button className="ing-modal__close" onClick={() => setShowModal(false)}>✕</button>
         </div>
         <div className="create-modal__body">
@@ -686,19 +707,19 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
           </div>
           {/* Time + Servings */}
           <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-            <div className="create-modal__field"><label className="create-modal__field-label">⏱ Time</label><input className="editor-input" value={details.time} onChange={e => setDetail('time', e.target.value)} placeholder="45 mins" /></div>
-            <div className="create-modal__field"><label className="create-modal__field-label">🍽 Servings</label><input className="editor-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" /></div>
+            <div className="create-modal__field"><label className="create-modal__field-label"><Icon name="clock" size={13} strokeWidth={2} /> Time</label><input className="editor-input" value={details.time} onChange={e => setDetail('time', e.target.value)} placeholder="45 mins" /></div>
+            <div className="create-modal__field"><label className="create-modal__field-label"><Icon name="utensils" size={13} strokeWidth={2} /> Servings</label><input className="editor-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" /></div>
           </div>
           {/* Cuisine */}
           <div className="create-modal__field">
-            <label className="create-modal__field-label">🌍 Cuisine</label>
+            <label className="create-modal__field-label"><Icon name="mapPin" size={13} strokeWidth={2} /> Cuisine</label>
             <div className="picker__chips" style={{ marginTop:6 }}>
               {ALL_CUISINES.map(c => <button key={c} className={`chip ${details.cuisine===c?'chip--selected':''}`} onClick={() => setDetail('cuisine', details.cuisine===c?'':c)} type="button">{details.cuisine===c&&<span className="chip__check">✓</span>}{CUISINE_EMOJI[c]||''} {c}</button>)}
             </div>
           </div>
           {/* Tags */}
           <div className="create-modal__field">
-            <label className="create-modal__field-label">🏷 Tags</label>
+            <label className="create-modal__field-label"><Icon name="tag" size={13} strokeWidth={2} /> Tags</label>
             <div className="picker__chips" style={{ marginTop:6 }}>
               {TAG_FILTERS.map(({ key, label }) => <button key={key} className={`chip ${details.tags.includes(key)?'chip--selected':''}`} onClick={() => toggleTag(key)} type="button">{details.tags.includes(key)&&<span className="chip__check">✓</span>}{label}</button>)}
             </div>
@@ -770,7 +791,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
         </div>
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={() => setShowModal(false)}>Cancel</button>
-          <button className="btn btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : '✨ Convert Recipe'}</button>
+          <button className="btn btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Convert Recipe'}</button>
         </div>
       </div>
     </div>
@@ -1203,7 +1224,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 className={`rp2__hero-btn rp2__hero-soon ${isMakeSoon ? 'rp2__hero-soon--on' : ''}`}
                 onClick={e => { e.stopPropagation(); onToggleMakeSoon && onToggleMakeSoon(); }}
                 title={isMakeSoon ? 'Remove from Make Soon' : 'Add to Make Soon'}
-              >⏱</button>
+              ><Icon name="timer" size={16} strokeWidth={2} /></button>
               {/* Change photo — admin only */}
               {isAdmin && <div className="rp2__photo-btn-wrap">
                 <button className="rp2__hero-btn rp2__hero-soon rp2__hero-btn--photo" onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Change photo link">
@@ -1246,7 +1267,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   </button>
                   {isEdit('meta-cuisine') && (
                     <div className="rp2__hero-dark-popover">
-                      <p className="rp2__dark-pop-label">🌍 Cuisine</p>
+                      <p className="rp2__dark-pop-label"><Icon name="mapPin" size={13} strokeWidth={2} /> Cuisine</p>
                       <div className="rp2__dark-pop-chips">
                         <button className={`rp2__dark-chip ${draftMeta.cuisine === '' ? 'rp2__dark-chip--on' : ''}`}
                           onClick={() => setDraftMeta(p => ({...p, cuisine: ''}))}>None</button>
@@ -1281,7 +1302,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               {isEdit('meta-tags') && (
                 <div className="rp2__hero-tag-wrap">
                   <div className="rp2__hero-dark-popover">
-                    <p className="rp2__dark-pop-label">🏷 Tags</p>
+                    <p className="rp2__dark-pop-label"><Icon name="tag" size={13} strokeWidth={2} /> Tags</p>
                     <div className="rp2__dark-pop-chips">
                       {TAG_FILTERS.map(({ key, label }) => (
                         <button key={key} className={`rp2__dark-chip ${(draftMeta.tags || []).includes(key) ? 'rp2__dark-chip--on' : ''}`}
@@ -1340,12 +1361,12 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               {(isAdmin || recipe.time) && <div className="rp2__hero-tag-wrap rp2__hero-tag-wrap--right">
                 <button className={`rp2__pill rp2__pill--clickable ${isEdit('meta-time') ? 'rp2__pill--editing' : ''}`}
                   onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-time') ? null : 'meta-time'); }}>
-                  <span className="rp2__pill-icon">⏱</span>
+                  <span className="rp2__pill-icon"><Icon name="clock" size={13} strokeWidth={2} /></span>
                   {recipe.time || <span style={{opacity:0.6}}>+ Time</span>}
                 </button>
                 {isEdit('meta-time') && (
                   <div className="rp2__hero-dark-popover rp2__hero-dark-popover--right">
-                    <p className="rp2__dark-pop-label">⏱ Cook Time</p>
+                    <p className="rp2__dark-pop-label"><Icon name="clock" size={13} strokeWidth={2} /> Cook Time</p>
                     <input className="rp2__dark-input" autoFocus value={draftMeta.time}
                       onChange={e => setDraftMeta(p => ({...p, time: e.target.value}))}
                       placeholder="e.g. 45 mins"
@@ -1362,12 +1383,12 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               {(isAdmin || recipe.servings) && <div className="rp2__hero-tag-wrap rp2__hero-tag-wrap--right">
                 <button className={`rp2__pill rp2__pill--clickable ${isEdit('meta-servings') ? 'rp2__pill--editing' : ''}`}
                   onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-servings') ? null : 'meta-servings'); }}>
-                  <span className="rp2__pill-icon">🍽</span>
+                  <span className="rp2__pill-icon"><Icon name="utensils" size={13} strokeWidth={2} /></span>
                   {recipe.servings ? `${recipe.servings} srv` : <span style={{opacity:0.6}}>+ Servings</span>}
                 </button>
                 {isEdit('meta-servings') && (
                   <div className="rp2__hero-dark-popover rp2__hero-dark-popover--right">
-                    <p className="rp2__dark-pop-label">🍽 Servings</p>
+                    <p className="rp2__dark-pop-label"><Icon name="utensils" size={13} strokeWidth={2} /> Servings</p>
                     <input className="rp2__dark-input" autoFocus value={draftMeta.servings}
                       onChange={e => setDraftMeta(p => ({...p, servings: e.target.value}))}
                       placeholder="e.g. 4"
@@ -1381,9 +1402,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               </div>}
 
               {/* Display-only nutrition pills */}
-              {displayCalories !== null && <span className="rp2__pill" title={nutritionIsEstimate ? 'Estimated — save ingredients to lock in' : 'Auto-calculated from ingredients'}><span className="rp2__pill-icon">🔥</span>{displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}</span>}
-              {displayProtein  !== null && <span className="rp2__pill"><span className="rp2__pill-icon">💪</span>{displayProtein}g prot{nutritionIsEstimate ? ' ~' : ''}</span>}
-              {displayFiber    !== null && <span className="rp2__pill"><span className="rp2__pill-icon">🌿</span>{displayFiber}g fiber{nutritionIsEstimate ? ' ~' : ''}</span>}
+              {displayCalories !== null && <span className="rp2__pill" title={nutritionIsEstimate ? 'Estimated — save ingredients to lock in' : 'Auto-calculated from ingredients'}><span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>{displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}</span>}
+              {displayProtein  !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="dumbbell" size={13} strokeWidth={2} /></span>{displayProtein}g prot{nutritionIsEstimate ? ' ~' : ''}</span>}
+              {displayFiber    !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="leaf" size={13} strokeWidth={2} /></span>{displayFiber}g fiber{nutritionIsEstimate ? ' ~' : ''}</span>}
             </div>
           </div>
         </div>
@@ -1697,7 +1718,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             {/* Cookbook Reference — editable */}
             <div className="rp2__cookbook">
               <div className="rp2__section-title-row">
-                <h2 className="rp2__section-title rp2__cookbook-title">📖 Cookbook</h2>
+                <h2 className="rp2__section-title rp2__cookbook-title"><Icon name="bookMarked" size={16} strokeWidth={2} /> Cookbook</h2>
                 {isAdmin && <SectionPencil isEditing={isEdit('cookbook')} onEdit={() => startEdit('cookbook')} onSave={() => saveSection('cookbook')} onCancel={cancelEdit} saving={saving} />}
               </div>
               {isEdit('cookbook') ? (
@@ -1956,10 +1977,10 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
           <div className="rp2__hero-bottom">
             <div className="rp2__hero-tags">{details.cuisine && <span className="rp2__tag">{details.cuisine}</span>}</div>
             <div className="rp2__hero-pills">
-              {details.time && <span className="rp2__pill"><span className="rp2__pill-icon">⏱</span>{details.time}</span>}
-              {details.servings && <span className="rp2__pill"><span className="rp2__pill-icon">🍽</span>{details.servings} srv</span>}
-              {details.calories !== '' && toNum(details.calories) !== null && <span className="rp2__pill"><span className="rp2__pill-icon">🔥</span>{Math.round(toNum(details.calories))} kcal</span>}
-              {details.protein !== '' && toNum(details.protein) !== null && <span className="rp2__pill"><span className="rp2__pill-icon">💪</span>{Math.round(toNum(details.protein))}g prot</span>}
+              {details.time && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="clock" size={13} strokeWidth={2} /></span>{details.time}</span>}
+              {details.servings && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="utensils" size={13} strokeWidth={2} /></span>{details.servings} srv</span>}
+              {details.calories !== '' && toNum(details.calories) !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>{Math.round(toNum(details.calories))} kcal</span>}
+              {details.protein !== '' && toNum(details.protein) !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="dumbbell" size={13} strokeWidth={2} /></span>{Math.round(toNum(details.protein))}g prot</span>}
             </div>
           </div>
         </div>
@@ -1974,7 +1995,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
 
       <div className="ed-meta-row">
         <label className="ed-meta-field">
-          <span className="ed-meta-label">🌍 Cuisine</span>
+          <span className="ed-meta-label"><Icon name="mapPin" size={13} strokeWidth={2} /> Cuisine</span>
           <select className="editor-input editor-select ed-meta-input" value={details.cuisine} onChange={e => setDetail('cuisine', e.target.value)}>
             <option value="">— none —</option>
             {ALL_CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -1982,19 +2003,19 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
           </select>
         </label>
         <label className="ed-meta-field">
-          <span className="ed-meta-label">⏱ Time</span>
+          <span className="ed-meta-label"><Icon name="clock" size={13} strokeWidth={2} /> Time</span>
           <input className="editor-input ed-meta-input" value={details.time} onChange={e => setDetail('time', e.target.value)} placeholder="45 mins" />
         </label>
         <label className="ed-meta-field">
-          <span className="ed-meta-label">🍽 Servings</span>
+          <span className="ed-meta-label"><Icon name="utensils" size={13} strokeWidth={2} /> Servings</span>
           <input className="editor-input ed-meta-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" />
         </label>
         <label className="ed-meta-field">
-          <span className="ed-meta-label">🔥 Calories</span>
+          <span className="ed-meta-label"><Icon name="zap" size={13} strokeWidth={2} /> Calories</span>
           <input className="editor-input ed-meta-input" type="number" value={details.calories} onChange={e => setDetail('calories', e.target.value)} placeholder="kcal" />
         </label>
         <label className="ed-meta-field">
-          <span className="ed-meta-label">💪 Protein</span>
+          <span className="ed-meta-label"><Icon name="dumbbell" size={13} strokeWidth={2} /> Protein</span>
           <input className="editor-input ed-meta-input" type="number" value={details.protein} onChange={e => setDetail('protein', e.target.value)} placeholder="g" />
         </label>
       </div>
@@ -2298,15 +2319,15 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
             {fetchMsg && <p className={`ing-fetch-msg ing-fetch-msg--${fetchMsg.type}`}>{fetchMsg.text}</p>}
             <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
               <div className="create-modal__field">
-                <label className="create-modal__field-label">🔥 Calories</label>
+                <label className="create-modal__field-label"><Icon name="zap" size={13} strokeWidth={2} /> Calories</label>
                 <input className="editor-input" type="number" value={form.calories} onChange={e => set('calories', e.target.value)} placeholder="kcal" />
               </div>
               <div className="create-modal__field">
-                <label className="create-modal__field-label">💪 Protein</label>
+                <label className="create-modal__field-label"><Icon name="dumbbell" size={13} strokeWidth={2} /> Protein</label>
                 <input className="editor-input" type="number" value={form.protein} onChange={e => set('protein', e.target.value)} placeholder="g" />
               </div>
               <div className="create-modal__field">
-                <label className="create-modal__field-label">🌿 Fiber</label>
+                <label className="create-modal__field-label"><Icon name="leaf" size={13} strokeWidth={2} /> Fiber</label>
                 <input className="editor-input" type="number" value={form.fiber} onChange={e => set('fiber', e.target.value)} placeholder="g" />
               </div>
             </div>
@@ -2698,7 +2719,7 @@ const AddFriendModal = ({ onClose, onCreated, authFetch }) => {
       <div onClick={e => e.stopPropagation()}
         style={{ background: 'var(--warm-white)', borderRadius: 16, padding: '24px 22px', width: '100%', maxWidth: 320, boxShadow: '0 8px 40px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-          <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700, color: 'var(--charcoal)' }}>👥 Add a Friend</h3>
+          <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700, color: 'var(--charcoal)' }}><Icon name="users" size={18} strokeWidth={2} /> Add a Friend</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--warm-gray)', lineHeight: 1, padding: '2px 4px' }}>×</button>
         </div>
         {error && <div style={{ background: '#fff0ee', border: '1px solid #f5c2b8', borderRadius: 8, padding: '7px 10px', fontSize: '0.8rem', color: 'var(--terracotta-dark, #b84a2e)' }}>{error}</div>}
@@ -2931,7 +2952,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       {/* ── 1. Cooking History ── */}
       <section className="profile-section profile-section--collapsible">
         <button className="profile-settings-toggle" onClick={() => setHistoryOpen(o => !o)}>
-          <span className="profile-settings-toggle__title">📅 Cooking History</span>
+          <span className="profile-settings-toggle__title"><Icon name="calendar" size={15} strokeWidth={2} /> Cooking History</span>
           <div className="profile-settings-toggle__right">
             {cookHistory.length > 0 && historyOpen && (
               <div className="history-view-toggle" onClick={e => e.stopPropagation()}>
@@ -2949,7 +2970,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
               <div className="grocery-loading"><div className="loading-spinner" /><p>Loading history…</p></div>
             ) : cookHistory.length === 0 ? (
               <div className="profile-empty">
-                <span className="profile-empty__icon">🍳</span>
+                <span className="profile-empty__icon"><Icon name="chefHat" size={36} strokeWidth={1.5} color="var(--ash)" /></span>
                 <p className="profile-empty__text">No cooking history yet. Mark a recipe as cooked to start your log!</p>
               </div>
             ) : historyView === 'timeline' ? (
@@ -3029,7 +3050,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       {/* ── 2. Recipe Attempts ── */}
       <section className="profile-section profile-section--collapsible">
         <button className="profile-settings-toggle" onClick={() => setAttemptsOpen(o => !o)}>
-          <span className="profile-settings-toggle__title">🔁 Recipe Attempts</span>
+          <span className="profile-settings-toggle__title"><Icon name="repeat" size={15} strokeWidth={2} /> Recipe Attempts</span>
           <span className={`profile-settings-toggle__arrow ${attemptsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
         </button>
         {attemptsOpen && (
@@ -3037,7 +3058,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
             {recipeCounts.length === 0 ? (
               <div className="profile-settings-body">
                 <div className="profile-empty">
-                  <span className="profile-empty__icon">🔄</span>
+                  <span className="profile-empty__icon"><Icon name="repeat" size={36} strokeWidth={1.5} color="var(--ash)" /></span>
                   <p className="profile-empty__text">No recipe attempts yet. Start cooking to track how often you make each dish!</p>
                 </div>
               </div>
@@ -3069,7 +3090,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       {isAdmin && (
         <section className="profile-section profile-section--collapsible">
           <button className="profile-settings-toggle" onClick={() => setSharingOpen(o => !o)}>
-            <span className="profile-settings-toggle__title">👥 Sharing Options</span>
+            <span className="profile-settings-toggle__title"><Icon name="users" size={15} strokeWidth={2} /> Sharing Options</span>
             <span className={`profile-settings-toggle__arrow ${sharingOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
           </button>
           {sharingOpen && (
@@ -3078,7 +3099,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
               {/* Header row: title + Add Friend button */}
               <div className="settings-section" style={{ marginBottom: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <h4 className="settings-section__title" style={{ margin: 0 }}>👤 Current Users</h4>
+                  <h4 className="settings-section__title" style={{ margin: 0 }}><Icon name="userCircle" size={15} strokeWidth={2} /> Current Users</h4>
                   <button
                     onClick={() => { setAddFriendSuccess(''); setShowAddFriend(true); }}
                     style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 999, background: 'var(--terracotta)', color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}
@@ -3164,14 +3185,14 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       {isAdmin && (
         <section className="profile-section profile-section--collapsible" style={{ marginBottom: 40 }}>
           <button className="profile-settings-toggle" onClick={() => setAdminToolsOpen(o => !o)}>
-            <span className="profile-settings-toggle__title">🔧 Admin Tools</span>
+            <span className="profile-settings-toggle__title"><Icon name="tool" size={15} strokeWidth={2} /> Admin Tools</span>
             <span className={`profile-settings-toggle__arrow ${adminToolsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
           </button>
           {adminToolsOpen && (
             <div className="profile-settings-body">
 
               <div className="settings-section">
-                <h4 className="settings-section__title">🔄 Recalculate Nutrition</h4>
+                <h4 className="settings-section__title"><Icon name="repeat" size={15} strokeWidth={2} /> Recalculate Nutrition</h4>
                 <p className="settings-section__hint">Clears all pre-populated calories/protein/fiber and recalculates from each recipe's ingredients. Run this once to clear old data — only recipes whose ingredients have nutrition info will get values.</p>
                 <button
                   className="btn btn--primary btn--sm"
@@ -3200,7 +3221,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       {/* ── 4. Settings ── */}
       <section className="profile-section profile-section--settings">
         <button className="profile-settings-toggle" onClick={() => setSettingsOpen(o => !o)}>
-          <span className="profile-settings-toggle__title">⚙️ Settings</span>
+          <span className="profile-settings-toggle__title"><Icon name="settings" size={15} strokeWidth={2} /> Settings</span>
           <span className={`profile-settings-toggle__arrow ${settingsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
         </button>
 
@@ -3208,7 +3229,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
           <div className="profile-settings-body">
 
             <div className="settings-section">
-              <h4 className="settings-section__title">🥗 Dietary Restrictions</h4>
+              <h4 className="settings-section__title"><Icon name="leaf" size={15} strokeWidth={2} /> Dietary Restrictions</h4>
               <p className="settings-section__hint">Active filters warn you about conflicting ingredients on recipe pages</p>
               <div className="picker__chips" style={{ marginTop: 10, flexWrap: 'wrap' }}>
                 {DIETARY_OPTIONS.map(d => (
@@ -3226,31 +3247,31 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
             </div>
 
             <div className="settings-section settings-section--about">
-              <h4 className="settings-section__title">ℹ️ About Hearth</h4>
+              <h4 className="settings-section__title"><Icon name="lightbulb" size={15} strokeWidth={2} /> About Hearth</h4>
               <div className="about-cards">
                 <div className="about-card">
-                  <span className="about-card__icon">📊</span>
+                  <span className="about-card__icon"><Icon name="barChart" size={22} strokeWidth={2} color="var(--terracotta)" /></span>
                   <div>
                     <div className="about-card__value">{totalRecipes}</div>
                     <div className="about-card__label">Recipes</div>
                   </div>
                 </div>
                 <div className="about-card">
-                  <span className="about-card__icon">🍳</span>
+                  <span className="about-card__icon"><Icon name="chefHat" size={22} strokeWidth={2} color="var(--terracotta)" /></span>
                   <div>
                     <div className="about-card__value">{cookHistory.length}</div>
                     <div className="about-card__label">Times Cooked</div>
                   </div>
                 </div>
                 <div className="about-card">
-                  <span className="about-card__icon">⚡</span>
+                  <span className="about-card__icon"><Icon name="zap" size={22} strokeWidth={2} color="var(--terracotta)" /></span>
                   <div>
                     <div className="about-card__value">v1.0</div>
                     <div className="about-card__label">Version</div>
                   </div>
                 </div>
                 <div className="about-card">
-                  <span className="about-card__icon">🗄️</span>
+                  <span className="about-card__icon"><Icon name="barChart" size={22} strokeWidth={2} color="var(--terracotta)" /></span>
                   <div>
                     <div className="about-card__value">Supabase</div>
                     <div className="about-card__label">Database</div>
@@ -3464,7 +3485,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
 
       {makeSoonRecipes.length === 0 && (
         <div className="grocery-empty">
-          <div className="grocery-empty__icon">🛒</div>
+          <div className="grocery-empty__icon"><Icon name="timer" size={40} color="var(--warm-gray)" strokeWidth={1.5} /></div>
           <h3 className="grocery-empty__title">No recipes in Make Soon</h3>
           <p className="grocery-empty__sub">Tap ⏱ on any recipe to add it to Make Soon — your grocery list will build automatically.</p>
         </div>
@@ -3542,9 +3563,9 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
 // ─── Cooking Notes Tab ──────────────────────────────────────────────────────
 const NOTE_TYPES = ['rule', 'theory', 'shortcut'];
 const NOTE_TYPE_META = {
-  rule:     { label: 'Rule / Ratio',   emoji: '📐', color: '#f5ece0', border: '#d9c4a8' },
-  theory:   { label: 'Theory',         emoji: '💡', color: '#f5ece0', border: '#d9c4a8' },
-  shortcut: { label: 'Shortcut',       emoji: '→', color: '#f0ebe3', border: '#d9c4a8' },
+  rule:     { label: 'Rule / Ratio',   emoji: 'ruler',   color: '#f5ece0', border: '#d9c4a8' },
+  theory:   { label: 'Theory',         emoji: 'lightbulb', color: '#f5ece0', border: '#d9c4a8' },
+  shortcut: { label: 'Shortcut',       emoji: 'zap',     color: '#f0ebe3', border: '#d9c4a8' },
 };
 const NOTE_CATEGORIES = ['General Technique', 'Pasta', 'Baking', 'Meat & Fish', 'Sauces', 'Eggs', 'Vegetables', 'Bread', 'Desserts', 'Equipment'];
 
@@ -3632,7 +3653,7 @@ const NoteFormModal = ({ note, onSave, onClose, authFetch }) => {
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
               {NOTE_TYPES.map(t => (
                 <button key={t} className={`chip ${form.type === t ? 'chip--selected' : ''}`} onClick={() => set('type', t)}>
-                  {form.type === t && <span className="chip__check">✓</span>}{NOTE_TYPE_META[t].emoji} {NOTE_TYPE_META[t].label}
+                  {form.type === t && <span className="chip__check">✓</span>}<Icon name={NOTE_TYPE_META[t].emoji} size={13} strokeWidth={2} /> {NOTE_TYPE_META[t].label}
                 </button>
               ))}
             </div>
@@ -3667,7 +3688,7 @@ const NoteCard = ({ note, isAdmin, onEdit, onDelete }) => {
   return (
     <div className="cn-card" style={{ '--cn-bg': meta.color, '--cn-border': meta.border }}>
       <div className="cn-card__header" onClick={() => setExpanded(e => !e)}>
-        <span className="cn-card__type-badge">{meta.emoji}</span>
+        <span className="cn-card__type-badge"><Icon name={meta.emoji} size={13} strokeWidth={2} /></span>
         <span className="cn-card__title">{note.title}</span>
         <span className="cn-card__chevron">{expanded ? '▴' : '▾'}</span>
         {isAdmin && (
@@ -3770,7 +3791,7 @@ const CookingNotesTab = ({ notes, setNotes, authFetch, isAdmin }) => {
 
       <div className="cn-tab__header">
         <div className="cn-tab__title-row">
-          <h1 className="cn-tab__title">💡 Cooking Notes</h1>
+          <h1 className="cn-tab__title"><Icon name="lightbulb" size={22} strokeWidth={2} /> Cooking Notes</h1>
           {isAdmin && (
             <button className="btn btn--primary btn--sm" onClick={() => setEditingNote(false)}>+ Add Note</button>
           )}
@@ -3833,7 +3854,7 @@ const SiteFooter = ({ onNav }) => {
       <div className="site-footer__inner">
         {/* Brand + tagline */}
         <div className="site-footer__brand">
-          <div className="site-footer__logo">🔥 Hearth</div>
+          <div className="site-footer__logo"><Icon name="flame" size={16} color="var(--terracotta)" strokeWidth={1.75} /> Hearth</div>
           <p className="site-footer__tagline">A cozy corner for every recipe<br/>you love, tweak, and return to.</p>
         </div>
 
@@ -3933,7 +3954,7 @@ const AddReferenceModal = ({ onSave, onClose, allTags, cookbookTitle = '', authF
     <div className="create-modal-overlay" onClick={onClose}>
       <div className="create-modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
-          <h2 className="create-modal__title">📌 Add Reference</h2>
+          <h2 className="create-modal__title"><Icon name="bookMarked" size={18} strokeWidth={2} /> Add Reference</h2>
           <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
         <div className="create-modal__body" style={{ gap: 14 }}>
@@ -3948,11 +3969,11 @@ const AddReferenceModal = ({ onSave, onClose, allTags, cookbookTitle = '', authF
               <input className="editor-input" value={page} onChange={e => setPage(e.target.value)} placeholder="e.g. 142" />
             </div>
             <div className="create-modal__field" style={{ flex:1 }}>
-              <label className="create-modal__field-label">⏱ Time</label>
+              <label className="create-modal__field-label"><Icon name="clock" size={13} strokeWidth={2} /> Time</label>
               <input className="editor-input" value={time} onChange={e => setTime(e.target.value)} placeholder="e.g. 45 mins" />
             </div>
             <div className="create-modal__field" style={{ flex:1 }}>
-              <label className="create-modal__field-label">🍽 Servings</label>
+              <label className="create-modal__field-label"><Icon name="utensils" size={13} strokeWidth={2} /> Servings</label>
               <input className="editor-input" value={servings} onChange={e => setServings(e.target.value)} placeholder="e.g. 4" />
             </div>
           </div>
@@ -3960,15 +3981,15 @@ const AddReferenceModal = ({ onSave, onClose, allTags, cookbookTitle = '', authF
           {/* Nutrition row */}
           <div style={{ display:'flex', gap:12 }}>
             <div className="create-modal__field" style={{ flex:1 }}>
-              <label className="create-modal__field-label">🔥 Calories</label>
+              <label className="create-modal__field-label"><Icon name="zap" size={13} strokeWidth={2} /> Calories</label>
               <input className="editor-input" type="number" value={calories} onChange={e => setCalories(e.target.value)} placeholder="kcal" />
             </div>
             <div className="create-modal__field" style={{ flex:1 }}>
-              <label className="create-modal__field-label">💪 Protein (g)</label>
+              <label className="create-modal__field-label"><Icon name="dumbbell" size={13} strokeWidth={2} /> Protein (g)</label>
               <input className="editor-input" type="number" value={protein} onChange={e => setProtein(e.target.value)} placeholder="g" />
             </div>
             <div className="create-modal__field" style={{ flex:1 }}>
-              <label className="create-modal__field-label">🌿 Fiber (g)</label>
+              <label className="create-modal__field-label"><Icon name="leaf" size={13} strokeWidth={2} /> Fiber (g)</label>
               <input className="editor-input" type="number" value={fiber} onChange={e => setFiber(e.target.value)} placeholder="g" />
             </div>
           </div>
@@ -3982,7 +4003,7 @@ const AddReferenceModal = ({ onSave, onClose, allTags, cookbookTitle = '', authF
 
           {/* Cuisine chips */}
           <div className="create-modal__field">
-            <label className="create-modal__field-label">🌍 Cuisine</label>
+            <label className="create-modal__field-label"><Icon name="mapPin" size={13} strokeWidth={2} /> Cuisine</label>
             <div className="picker__chips" style={{ marginTop:6 }}>
               {ALL_CUISINES.map(c => (
                 <button key={c} className={`chip ${cuisine === c ? 'chip--selected' : ''}`} onClick={() => setCuisine(p => p === c ? '' : c)} type="button">
@@ -4047,7 +4068,7 @@ const QuickAddModal = ({ onSave, onClose }) => {
     <div className="create-modal-overlay" onClick={onClose}>
       <div className="create-modal" style={{ maxWidth:560 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
-          <h2 className="create-modal__title">⚡ Quick Add</h2>
+          <h2 className="create-modal__title"><Icon name="zap" size={18} strokeWidth={2} /> Quick Add</h2>
           <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
         <div className="create-modal__body" style={{ gap:8 }}>
@@ -4172,7 +4193,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
     <div className="create-modal-overlay" onClick={onClose}>
       <div className="create-modal" onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
-          <h2 className="create-modal__title">✨ Convert to Recipe</h2>
+          <h2 className="create-modal__title"><Icon name="shuffle" size={18} strokeWidth={2} /> Convert to Recipe</h2>
           <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
 
@@ -4203,18 +4224,18 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
           {/* Time + Servings */}
           <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <div className="create-modal__field">
-              <label className="create-modal__field-label">⏱ Time</label>
+              <label className="create-modal__field-label"><Icon name="clock" size={13} strokeWidth={2} /> Time</label>
               <input className="editor-input" value={details.time} onChange={e => setDetail('time', e.target.value)} placeholder="45 mins" />
             </div>
             <div className="create-modal__field">
-              <label className="create-modal__field-label">🍽 Servings</label>
+              <label className="create-modal__field-label"><Icon name="utensils" size={13} strokeWidth={2} /> Servings</label>
               <input className="editor-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" />
             </div>
           </div>
 
           {/* Cuisine chips */}
           <div className="create-modal__field">
-            <label className="create-modal__field-label">🌍 Cuisine</label>
+            <label className="create-modal__field-label"><Icon name="mapPin" size={13} strokeWidth={2} /> Cuisine</label>
             <div className="picker__chips" style={{ marginTop: 6 }}>
               {ALL_CUISINES.map(c => (
                 <button key={c} className={`chip ${details.cuisine === c ? 'chip--selected' : ''}`}
@@ -4227,7 +4248,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
 
           {/* Tags */}
           <div className="create-modal__field">
-            <label className="create-modal__field-label">🏷 Tags</label>
+            <label className="create-modal__field-label"><Icon name="tag" size={13} strokeWidth={2} /> Tags</label>
             <div className="picker__chips" style={{ marginTop: 6 }}>
               {TAG_FILTERS.map(({ key, label }) => (
                 <button key={key} className={`chip ${details.tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggleTag(key)}>
@@ -4239,7 +4260,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
 
           {/* Progress */}
           <div className="create-modal__field">
-            <label className="create-modal__field-label">📋 Progress</label>
+            <label className="create-modal__field-label"><Icon name="list" size={13} strokeWidth={2} /> Progress</label>
             <div className="picker__chips" style={{ marginTop: 6 }}>
               {[
                 { key: 'to try', label: '🔖 To Try' },
@@ -4346,7 +4367,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
           {/* Cookbook reference — pre-filled, editable */}
           <div className="create-modal__meta-grid">
             <div className="create-modal__field">
-              <label className="create-modal__field-label">📖 Cookbook</label>
+              <label className="create-modal__field-label"><Icon name="bookMarked" size={13} strokeWidth={2} /> Cookbook</label>
               <input className="editor-input" value={details.cookbook} onChange={e => setDetail('cookbook', e.target.value)} placeholder="Cookbook title" />
             </div>
             <div className="create-modal__field">
@@ -5062,7 +5083,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
       <div className="add-tab__cards">
         {/* Manual card */}
         <button className="add-tab__card" onClick={openModal}>
-          <span className="add-tab__card-icon">✍️</span>
+          <span className="add-tab__card-icon"><Icon name="note" size={28} strokeWidth={1.5} /></span>
           <h3 className="add-tab__card-title">Add Manually</h3>
           <p className="add-tab__card-desc">Type in the name, ingredients, steps, and notes yourself</p>
           <span className="add-tab__card-cta">Get started →</span>
@@ -5070,7 +5091,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
 
         {/* From link card */}
         <button className="add-tab__card" onClick={openLinkModal}>
-          <span className="add-tab__card-icon">🔗</span>
+          <span className="add-tab__card-icon"><Icon name="arrowRight" size={28} strokeWidth={1.5} /></span>
           <h3 className="add-tab__card-title">Add from Link</h3>
           <p className="add-tab__card-desc">Paste any recipe URL and we'll pull in the name, ingredients, and steps automatically</p>
           <span className="add-tab__card-cta">Import →</span>
@@ -5078,7 +5099,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
 
         {/* From text card */}
         <button className="add-tab__card" onClick={openTextModal}>
-          <span className="add-tab__card-icon">📋</span>
+          <span className="add-tab__card-icon"><Icon name="list" size={28} strokeWidth={1.5} /></span>
           <h3 className="add-tab__card-title">Add from Text</h3>
           <p className="add-tab__card-desc">Paste copied text — we'll parse it automatically</p>
           <span className="add-tab__card-cta">Paste &amp; import →</span>
@@ -5090,7 +5111,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
         <div className="create-modal-overlay" onClick={closeTextModal}>
           <div className="create-modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
             <div className="create-modal__header">
-              <h2 className="create-modal__title">📋 Import from Text</h2>
+              <h2 className="create-modal__title"><Icon name="list" size={18} strokeWidth={2} /> Import from Text</h2>
               <button className="ing-modal__close" onClick={closeTextModal}>✕</button>
             </div>
             <div className="create-modal__body" style={{ gap: 14 }}>
@@ -5132,7 +5153,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
         <div className="create-modal-overlay" onClick={closeLinkModal}>
           <div className="create-modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
             <div className="create-modal__header">
-              <h2 className="create-modal__title">🔗 Import from Link</h2>
+              <h2 className="create-modal__title"><Icon name="arrowRight" size={18} strokeWidth={2} /> Import from Link</h2>
               <button className="ing-modal__close" onClick={closeLinkModal}>✕</button>
             </div>
             <div className="create-modal__body" style={{ gap: 14 }}>
@@ -5210,18 +5231,18 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
               {/* Time + Servings */}
               <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
                 <div className="create-modal__field">
-                  <label className="create-modal__field-label">⏱ Time</label>
+                  <label className="create-modal__field-label"><Icon name="clock" size={13} strokeWidth={2} /> Time</label>
                   <input className="editor-input" value={details.time} onChange={e => setDetail('time', e.target.value)} placeholder="45 mins" />
                 </div>
                 <div className="create-modal__field">
-                  <label className="create-modal__field-label">🍽 Servings</label>
+                  <label className="create-modal__field-label"><Icon name="utensils" size={13} strokeWidth={2} /> Servings</label>
                   <input className="editor-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" />
                 </div>
               </div>
 
               {/* Cuisine chips */}
               <div className="create-modal__field">
-                <label className="create-modal__field-label">🌍 Cuisine</label>
+                <label className="create-modal__field-label"><Icon name="mapPin" size={13} strokeWidth={2} /> Cuisine</label>
                 <div className="picker__chips" style={{ marginTop: 6 }}>
                   {ALL_CUISINES.map(c => (
                     <button key={c} className={`chip ${details.cuisine === c ? 'chip--selected' : ''}`}
@@ -5234,7 +5255,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
 
               {/* Tags */}
               <div className="create-modal__field">
-                <label className="create-modal__field-label">🏷 Tags</label>
+                <label className="create-modal__field-label"><Icon name="tag" size={13} strokeWidth={2} /> Tags</label>
                 <div className="picker__chips" style={{ marginTop: 6 }}>
                   {TAG_FILTERS.map(({ key, label }) => (
                     <button key={key} className={`chip ${details.tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggleTag(key)} type="button">
@@ -5246,7 +5267,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
 
               {/* Progress */}
               <div className="create-modal__field">
-                <label className="create-modal__field-label">📋 Progress</label>
+                <label className="create-modal__field-label"><Icon name="list" size={13} strokeWidth={2} /> Progress</label>
                 <div className="picker__chips" style={{ marginTop: 6 }}>
                   {[
                     { key: '', label: '— None' },
@@ -5371,7 +5392,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
               {/* Cookbook reference */}
               <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
                 <div className="create-modal__field">
-                  <label className="create-modal__field-label">📖 Cookbook</label>
+                  <label className="create-modal__field-label"><Icon name="bookMarked" size={13} strokeWidth={2} /> Cookbook</label>
                   <CookbookAutocomplete value={details.cookbook} onChange={v => setDetail('cookbook', v)} cookbooks={cookbooks} />
                 </div>
                 <div className="create-modal__field">
@@ -5423,7 +5444,7 @@ const LoginModal = ({ onLogin }) => {
     <div className="login-overlay">
       <div className="login-modal">
         <div className="login-modal__header">
-          <span className="login-modal__flame">🔥</span>
+          <span className="login-modal__flame"><Icon name="flame" size={40} color="var(--terracotta)" strokeWidth={1.5} /></span>
           <div className="login-modal__title">Hearth</div>
           <div className="login-modal__subtitle">Sign in to continue</div>
         </div>
@@ -5490,7 +5511,7 @@ const CreateUserModal = ({ onClose, authFetch }) => {
     <div className="login-overlay" onClick={onClose}>
       <div className="create-user-modal" onClick={e => e.stopPropagation()}>
         <div className="create-user-modal__header">
-          <span className="create-user-modal__title">👤 Create Account</span>
+          <span className="create-user-modal__title"><Icon name="userCircle" size={18} strokeWidth={2} /> Create Account</span>
           <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
         <div className="login-modal__body">
@@ -5761,7 +5782,7 @@ function AppInner() {
       <header className="app-header">
         <div className="app-header__bar">
           <button className="app-header__brand" onClick={() => setView('home')}>
-            <span className="app-header__logo">🔥</span>
+            <span className="app-header__logo"><Icon name="flame" size={20} color="var(--terracotta)" strokeWidth={1.75} /></span>
             <span className="app-header__title">Hearth</span>
           </button>
           {/* Desktop nav */}
@@ -5926,7 +5947,7 @@ function AppInner() {
                   </div>
                   {makeSoonIds.length === 0 ? (
                     <div className="home-empty-cta" onClick={() => setView('recipes')}>
-                      <span className="home-empty-cta__icon">📋</span>
+                      <span className="home-empty-cta__icon"><Icon name="list" size={32} strokeWidth={1.5} /></span>
                       <div>
                         <p className="home-empty-cta__title">Plan your week</p>
                         <p className="home-empty-cta__sub">Tap ⏱ on any recipe to add it here</p>
@@ -5963,7 +5984,7 @@ function AppInner() {
                   </div>
                   {allMyIngredients.size === 0 ? (
                     <div className="home-empty-cta" onClick={() => setView('kitchen')}>
-                      <span className="home-empty-cta__icon">🥘</span>
+                      <span className="home-empty-cta__icon"><Icon name="chefHat" size={32} strokeWidth={1.5} /></span>
                       <div>
                         <p className="home-empty-cta__title">Add your kitchen &amp; pantry ingredients</p>
                         <p className="home-empty-cta__sub">We'll show you what you can cook right now</p>
@@ -6112,7 +6133,7 @@ function AppInner() {
             {/* ── Search + Filter Toggle ── */}
             <div className="recipes-search-row">
               <div className="filter-bar__search-wrap filter-bar__search-wrap--standalone">
-                <span className="filter-bar__search-icon">🔍</span>
+                <span className="filter-bar__search-icon"><Icon name="search" size={15} strokeWidth={2} /></span>
                 <input
                   className="filter-bar__search"
                   type="search"
@@ -6128,7 +6149,7 @@ function AppInner() {
                 className={`filters-toggle-btn ${filtersOpen ? 'filters-toggle-btn--open' : ''} ${hasActiveFilters ? 'filters-toggle-btn--active' : ''}`}
                 onClick={() => setFiltersOpen(o => !o)}
               >
-                🔧 Filters{activeCount > 0 ? ` · ${activeCount}` : ''}
+                <><Icon name="sliders" size={14} strokeWidth={2} /> Filters{activeCount > 0 ? ` · ${activeCount}` : ''}</>
                 <span className="filters-toggle-btn__arrow">{filtersOpen ? '▴' : '▾'}</span>
               </button>
               {hasActiveFilters && (
@@ -6192,12 +6213,12 @@ function AppInner() {
                     <button
                       className={`filter-bar__chip ${activeCookbooks.includes('__uncategorized') ? 'filter-bar__chip--active' : ''}`}
                       onClick={() => toggleCookbook('__uncategorized')}
-                    >📂 No cookbook</button>
+                    ><Icon name="folder" size={13} strokeWidth={2} /> No cookbook</button>
                     {cookbooks.map(cb => (
                       <button key={cb.title}
                         className={`filter-bar__chip ${activeCookbooks.includes(cb.title) ? 'filter-bar__chip--active' : ''}`}
                         onClick={() => toggleCookbook(cb.title)}
-                      >📖 {cb.title}</button>
+                      ><Icon name="bookMarked" size={13} strokeWidth={2} /> {cb.title}</button>
                     ))}
                   </div>
                 </div>
