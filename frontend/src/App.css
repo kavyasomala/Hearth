@@ -6,8 +6,8 @@
   --cream: #FDF6EC;
   --warm-white: #FBF3E8;
   --parchment: #F2E6D0;
-  --tan: #E8D5B4;          /* toasty tan — header/footer */
-  --tan-dark: #DEC99F;     /* slightly darker tan for borders on tan bg */
+  --tan: #EDE3D2;          /* muted beige — header/footer */
+  --tan-dark: #DDD0BA;     /* slightly darker tan for borders on tan bg */
   --terracotta: #B85C38;
   --terracotta-dark: #9A4A2C;
   --terracotta-light: #D4714A;
@@ -42,7 +42,7 @@
 html { font-size: 16px; }
 body {
   font-family: var(--font-body);
-  background: var(--parchment);
+  background: var(--tan);
   color: var(--charcoal);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -55,7 +55,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--warm-white);
+  background: var(--parchment);
   border-radius: 0;
   overflow: hidden;
 }
@@ -1232,9 +1232,8 @@ body {
   display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;
   color: var(--warm-gray); box-shadow: 0 1px 6px rgba(0,0,0,0.15);
 }
-.recipe-card__heart:hover { transform: scale(1.15); color: #e03e5c; }
+.recipe-card__heart:hover { transform: scale(1.15); }
 .recipe-card__heart--on { color: #e03e5c; background: rgba(255,255,255,0.95); }
-.recipe-card__heart--on svg { fill: #e03e5c; }
 
 /* ─── Hero topbar ────────────────────────────────────────────────────────── */
 .rp2__hero-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: auto; padding-bottom: 8px; }
@@ -1248,9 +1247,8 @@ body {
 .rp2__hero-btn:hover { background: rgba(0,0,0,0.65); }
 .rp2__hero-btn--primary { background: var(--terracotta); border-color: var(--terracotta-dark); }
 .rp2__hero-btn--primary:hover { background: var(--terracotta-dark); }
-.rp2__hero-heart { padding: 7px 10px; }
+.rp2__hero-heart { font-size: 18px; padding: 7px 10px; }
 .rp2__hero-heart--on { color: #ff6b8a; }
-.rp2__hero-heart--on svg { fill: #ff6b8a; }
 
 /* ─── Hero tag/pill wrappers with popovers ───────────────────────────────── */
 .rp2__hero-tags { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; align-items: flex-end; }
@@ -1328,12 +1326,16 @@ body {
 
 /* ─── Hero soon button ───────────────────────────────────────────────────── */
 .rp2__hero-soon { font-size: 15px; padding: 7px 9px; }
-.rp2__hero-soon--on { color: #fff; background: var(--terracotta); box-shadow: 0 2px 8px rgba(184,92,56,0.4); }
+.rp2__hero-soon--on { color: var(--terracotta); background: rgba(255,255,255,0.15); box-shadow: none; }
 
 /* ─── Section Pencil ─────────────────────────────────────────────────────── */
 .rp2__section-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
 .rp2__section-title-row .rp2__section-title { margin-bottom: 0; flex: 1; }
 .rp2__title-row { display: flex; align-items: baseline; gap: 10px; }
+.rp2__title-row .rp2__cooking-mode-btn,
+.rp2__title-row .rp2__title-delete-btn { margin-left: 0; flex-shrink: 0; }
+.rp2__title-row .rp2__title { flex: 1; }
+.rp2__title-row-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }
 .section-pencil-wrap { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
 .section-pencil {
   width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid transparent; background: transparent;
@@ -1545,6 +1547,8 @@ body {
 }
 .recipe-list-table__row:last-child { border-bottom: none; }
 .recipe-list-table__row:hover { background: var(--cream); }
+.recipe-list-table__row--make-soon { background: #fdf4ed !important; }
+.recipe-list-table__row--make-soon:hover { background: #faeee3 !important; }
 .rlt__col {
   display: flex;
   align-items: center;
@@ -1612,8 +1616,8 @@ body {
 }
 .rlt__heart:hover { transform: scale(1.2); color: #e03e5c; }
 .rlt__heart--on { color: #e03e5c; }
-.rlt__soon:hover { transform: scale(1.2); color: #2563eb; }
-.rlt__soon--on { color: #2563eb; }
+.rlt__soon:hover { transform: scale(1.2); color: var(--terracotta); }
+.rlt__soon--on { color: var(--terracotta); }
 
 @media (max-width: 700px) {
   .recipe-list-table__header { grid-template-columns: 1fr auto auto; }
@@ -1709,7 +1713,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--charcoal);
+  color: var(--ash);
   margin-bottom: 14px;
 }
 .site-footer__links {
@@ -1753,6 +1757,7 @@ body {
   color: var(--ash);
 }
 .site-footer__credit { color: var(--warm-gray); }
+.site-footer__updated { color: var(--warm-gray); }
 
 @media (max-width: 640px) {
   .site-footer__inner {
@@ -1785,9 +1790,9 @@ body {
 }
 .recipe-card__soon:hover { transform: scale(1.15); }
 .recipe-card__soon--on {
-  color: #fff;
-  background: var(--terracotta);
-  box-shadow: 0 2px 8px rgba(184,92,56,0.45);
+  color: var(--terracotta);
+  background: rgba(255,255,255,0.88);
+  box-shadow: 0 2px 8px rgba(184,92,56,0.2);
 }
 
 /* ─── Surprise Me quick action ──────────────────────────────────────────── */
@@ -1798,13 +1803,14 @@ body {
 .filter-panel__cuisine-icons { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; }
 .cuisine-icon-btn {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
-  width: 64px; padding: 10px 6px 8px; border-radius: 12px;
+  width: 84px; padding: 10px 8px 8px; border-radius: 12px;
   border: 1.5px solid var(--border); background: var(--cream);
   cursor: pointer; transition: all 0.15s ease; font-family: var(--font-body);
 }
 .cuisine-icon-btn:hover { border-color: var(--terracotta-light); background: var(--parchment); }
 .cuisine-icon-btn--active { border-color: var(--terracotta); background: #fdf0eb; }
-.cuisine-icon-btn__label { font-size: 11px; font-weight: 600; color: var(--warm-gray); text-align: center; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70px; padding: 4px 6px; }
+.cuisine-icon-btn__emoji { font-size: 24px; line-height: 1; }
+.cuisine-icon-btn__label { font-size: 10px; font-weight: 600; color: var(--warm-gray); text-align: center; line-height: 1.2; white-space: normal; overflow: visible; text-overflow: unset; max-width: 80px; word-break: break-word; }
 .cuisine-icon-btn--active .cuisine-icon-btn__label { color: var(--terracotta); }
 
 /* ─── Filter sliders ─────────────────────────────────────────────────────── */
@@ -1825,11 +1831,10 @@ body {
 }
 .filter-panel__dir-btn:hover { border-color: var(--terracotta-light); }
 .filter-panel__dir-btn--active { background: var(--charcoal); border-color: var(--charcoal); color: white; }
-.filter-panel__slider-wrap { display: flex; align-items: flex-end; gap: 10px; width: 100%; }
+.filter-panel__slider-wrap { display: flex; align-items: center; gap: 10px; width: 100%; }
 .filter-panel__slider-edge {
   font-size: 11px; color: var(--warm-gray); font-weight: 600;
   flex-shrink: 0; white-space: nowrap; min-width: 30px; text-align: center;
-  padding-bottom: 2px;
 }
 .filter-panel__slider-track { position: relative; flex: 1; padding-top: 28px; }
 .filter-panel__slider-bubble {
@@ -2073,9 +2078,6 @@ body {
   font-size: 2.4rem;
   margin-bottom: 4px;
 }
-.add-tab__card-header {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 2px; color: var(--terracotta);
-}
 .add-tab__card-title {
   font-family: var(--font-display);
   font-size: 1.2rem;
@@ -2289,12 +2291,21 @@ body {
 /* ─── Title row delete button ────────────────────────────────────────────── */
 .rp2__title-delete-btn {
   flex-shrink: 0;
-  margin-left: 4px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0.12;
+  transition: opacity 0.2s ease, color 0.2s ease;
+  padding: 4px 6px;
+  border-radius: 6px;
+  color: var(--charcoal);
+  line-height: 1;
 }
+.rp2__title-delete-btn:hover { opacity: 1; color: #c0392b; }
 
 /* ─── Cooking Mode Button ───────────────────────────────────────────────── */
 .rp2__cooking-mode-btn {
-  margin-left: auto;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -2966,7 +2977,6 @@ body {
 .cookbook-card--add:hover { background: var(--cream); border-color: var(--terracotta); }
 .cookbook-card__add-icon { font-size: 32px; color: var(--ash); }
 .cookbook-card__add-label { font-size: 13px; font-weight: 600; color: var(--warm-gray); }
-.cookbook-card__add-content { display: flex; align-items: center; gap: 8px; }
 
 /* Spine color picker */
 .cookbook-spine-picker { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
@@ -3120,6 +3130,9 @@ body {
   font-weight: 600;
   color: var(--charcoal);
   line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .rp2__cookbook-text__page {
   font-size: 13px;
@@ -3139,13 +3152,13 @@ body {
 .grocery-header__actions {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
 }
-.grocery-copy-btn { width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; }
 .grocery-toggle {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 13px; color: var(--warm-gray); cursor: pointer;
-  user-select: none;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; color: var(--warm-gray); cursor: pointer;
+  user-select: none; text-transform: uppercase; letter-spacing: 0.04em;
 }
 .grocery-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.grocery-toggle__label { font-size: 11px; }
 .grocery-toggle__switch {
   position: relative; display: inline-block;
   width: 36px; height: 20px; flex-shrink: 0;
@@ -3494,7 +3507,7 @@ body {
 
 .cbentry__thumb-wrap { flex-shrink: 0; }
 .cbentry__thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1.5px solid var(--border); }
-.cbentry__thumb--empty { display:flex; align-items:center; justify-content:center; background: var(--bg-muted, #f5f0eb); width: 48px; height: 48px; border-radius: 8px; border: 1.5px solid var(--border); }
+.cbentry__thumb--empty { display:flex; align-items:center; justify-content:center; background: var(--bg-muted, #f5f0eb); font-size: 20px; width: 48px; height: 48px; border-radius: 8px; }
 
 .cbentry__name-col { min-width: 0; }
 .cbentry__name { font-weight: 600; font-size: 14px; color: var(--charcoal); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -3528,7 +3541,7 @@ body {
   position: absolute; top: calc(100% + 4px); right: 0;
   background: var(--warm-white); border: 1.5px solid var(--border);
   border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
-  z-index: 9999; min-width: 140px; overflow: hidden;
+  z-index: 300; min-width: 140px; overflow: hidden;
 }
 .cbentry__menu-item {
   display: flex; align-items: center; gap: 8px; width: 100%;
@@ -3784,7 +3797,6 @@ body {
   margin-bottom: 18px;
 }
 .cooked-cleanup__group-label {
-  display: flex; align-items: center; gap: 6px;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
@@ -4264,7 +4276,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #4A3728;
+  background: #24292e;
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -4275,7 +4287,7 @@ body {
   cursor: pointer;
   transition: background 0.15s;
 }
-.about-github-btn:hover { background: #5c4535; }
+.about-github-btn:hover { background: #3a3a3a; }
 .about-github-btn__icon {
   width: 18px;
   height: 18px;
@@ -4312,13 +4324,14 @@ body {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   vertical-align: top;
-  background: #fff;
+  background: var(--warm-white);
   transition: background 0.1s;
 }
 .cook-calendar__gcal-cell:nth-child(7n) { border-right: none; }
-.cook-calendar__gcal-cell--empty { background: var(--surface, #faf9f7); }
-.cook-calendar__gcal-cell--cooked { background: #fffaf3; }
-.cook-calendar__gcal-cell--today { background: #f0f7ff; }
+.cook-calendar__gcal-cell { background: var(--warm-white); }
+.cook-calendar__gcal-cell--empty { background: var(--cream); }
+.cook-calendar__gcal-cell--cooked { background: #fdf5ea; }
+.cook-calendar__gcal-cell--today { background: #fdf0eb; }
 .cook-calendar__gcal-date {
   display: inline-flex;
   align-items: center;
@@ -4332,7 +4345,7 @@ body {
   margin-bottom: 2px;
 }
 .cook-calendar__gcal-date--today {
-  background: var(--flame, #e05a2b);
+  background: var(--terracotta);
   color: #fff;
   font-weight: 700;
 }
@@ -4340,18 +4353,17 @@ body {
   display: flex;
   align-items: center;
   gap: 3px;
-  background: #fff3e0;
-  border-left: 3px solid #e05a2b;
+  background: #fdf0eb;
+  border-left: 3px solid var(--terracotta);
   border-radius: 4px;
   padding: 2px 5px;
   margin-top: 3px;
   overflow: hidden;
 }
-.cook-calendar__gcal-event-dot { font-size: 10px; flex-shrink: 0; }
 .cook-calendar__gcal-event-name {
   font-size: 11px;
   font-weight: 500;
-  color: #8B3A0F;
+  color: var(--terracotta-dark);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
