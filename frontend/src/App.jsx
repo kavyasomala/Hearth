@@ -3215,7 +3215,7 @@ Sign out
                               const isAdminNow = u.role === 'admin';
                               const msg = isAdminNow
                                 ? `Remove admin from ${u.display_name || u.username}?`
-                                : `Make ${u.display_name || u.username} an admin? They’ll be able to add/edit recipes.`;
+                                : `Make ${u.display_name || u.username} an admin? They'll be able to add/edit recipes.`;
                               if (!window.confirm(msg)) return;
                               await apiFetch(`${API}/api/admin/users/${u.id}`, {
                                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
