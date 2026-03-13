@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from ‘react’;
 
-// ─── Inline SVG Icons ─────────────────────────────────────────────────────
+// — Inline SVG Icons —————————————————–
 const ICONS = {
 // insights + quick actions (existing)
 checkCircle: [‘M22 11.08V12a10 10 0 1 1-5.93-9.14’, ‘M22 4 12 14.01l-3-3’],
@@ -80,7 +80,7 @@ style={{ display: ‘block’, flexShrink: 0 }}>
 );
 };
 
-// ─── Horizontal Scroll Row ─────────────────────────────────────────────────
+// — Horizontal Scroll Row ———————————————––
 const HScrollRow = ({ children, count }) => {
 const rowRef = useRef(null);
 const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -139,7 +139,7 @@ useSortable, verticalListSortingStrategy,
 import { CSS } from ‘@dnd-kit/utilities’;
 import ‘./App.css’;
 
-// ─── Error Boundary ────────────────────────────────────────────────────────
+// — Error Boundary ––––––––––––––––––––––––––––
 class ErrorBoundary extends React.Component {
 constructor(props) { super(props); this.state = { error: null, info: null }; }
 componentDidCatch(error, info) { this.setState({ error, info }); }
@@ -160,7 +160,7 @@ return this.props.children;
 }
 }
 
-// ─── localStorage helpers ──────────────────────────────────────────────────
+// — localStorage helpers –––––––––––––––––––––––––
 const LS = {
 get: (key, fallback) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; } },
 set: (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} },
@@ -175,7 +175,7 @@ const COMMON_UNITS = [
 ‘rasher’, ‘fillet’, ‘fillets’, ‘sheet’, ‘sheets’,
 ];
 
-// ── Tag filters — match against recipe’s tags array only (not cuisine column)
+// – Tag filters – match against recipe’s tags array only (not cuisine column)
 const TAG_FILTERS = [
 { key: ‘Meals’,      label: ‘Meals’      },
 { key: ‘Desserts’,   label: ‘Desserts’   },
@@ -192,7 +192,7 @@ const TAG_FILTERS = [
 { key: ‘Sides’,      label: ‘Sides’      },
 ];
 
-// ── Progress filters — based on DB columns (recipe_incomplete, status)
+// – Progress filters – based on DB columns (recipe_incomplete, status)
 const PROGRESS_FILTERS = [
 { key: ‘__readytocook’,   label: ‘Ready to Cook’,   icon: ‘checkCircle’ },
 { key: ‘__almostready’,   label: ‘Almost Ready’,    icon: ‘flame’       },
@@ -225,7 +225,7 @@ const UNIT_GRAMS = {
 
 // Calculate nutrition totals from a recipe ingredient list.
 // allIngredients = full objects from the DB (with .calories/.protein/.fiber per 100g, optional .grams_per_unit)
-// Recipe ingredients have .name, .amount, .unit — we look up nutrition from allIngredients by name match.
+// Recipe ingredients have .name, .amount, .unit – we look up nutrition from allIngredients by name match.
 const calcNutrition = (ings, allIngredients = []) => {
 let totalCal = 0, totalProt = 0, totalFiber = 0, matched = 0;
 for (const ing of (ings || [])) {
@@ -245,13 +245,13 @@ const amount = parseFloat(ing.amount) || 1;
 const unit = (ing.unit || ‘’).toLowerCase().trim();
 let gramsTotal;
 if (UNIT_GRAMS[unit]) {
-// Known weight/volume unit — straightforward
+// Known weight/volume unit – straightforward
 gramsTotal = amount * UNIT_GRAMS[unit];
 } else if (dbIng.grams_per_unit) {
-// Unitless (e.g. “3 eggs”) or unrecognised unit (e.g. “cloves”) — use grams_per_unit
+// Unitless (e.g. “3 eggs”) or unrecognised unit (e.g. “cloves”) – use grams_per_unit
 gramsTotal = amount * dbIng.grams_per_unit;
 } else {
-// No unit info at all — skip rather than guess
+// No unit info at all – skip rather than guess
 continue;
 }
 const factor = gramsTotal / 100;
@@ -263,9 +263,9 @@ matched++;
 return matched > 0 ? { calories: Math.round(totalCal), protein: Math.round(totalProt), fiber: Math.round(totalFiber) } : null;
 };
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
+// — Helpers —————————————————————
 const pct = (score) => Math.round(score * 100);
-// Auto-pluralize ingredient names — only for clearly countable nouns
+// Auto-pluralize ingredient names – only for clearly countable nouns
 const pluralizeIng = (name, amount) => {
 if (!name) return name;
 const n = parseFloat(amount);
@@ -294,7 +294,7 @@ const NO_PLURALIZE = [
 ];
 if (NO_PLURALIZE.some(w => lower === w || lower.endsWith(’ ’ + w))) return name;
 
-// Already ends in s, es, ies — don’t double-pluralize
+// Already ends in s, es, ies – don’t double-pluralize
 if (lower.endsWith(‘s’)) return name;
 
 // Standard English pluralization for countable nouns
@@ -308,7 +308,7 @@ const Badge = ({ children, variant = ‘default’ }) => (
 <span className={`badge badge--${variant}`}>{children}</span>
 );
 
-// ─── Recipe Summary Card ───────────────────────────────────────────────────
+// — Recipe Summary Card —————————————————
 const toNum = (v) => { const n = Number(v); return (!isNaN(n) && v !== ‘’ && v !== null && v !== undefined) ? n : null; };
 
 const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked, showScore, onConvertRef }) => {
@@ -372,7 +372,7 @@ title=“Mark as Cooked”
 );
 };
 
-// ─── Section Pencil (inline edit trigger / confirm / cancel) ───────────────
+// — Section Pencil (inline edit trigger / confirm / cancel) —————
 const SectionPencil = ({ isEditing, onEdit, onSave, onCancel, saving }) => (
 <span className="section-pencil-wrap">
 {isEditing ? (
@@ -388,7 +388,7 @@ const SectionPencil = ({ isEditing, onEdit, onSave, onCancel, saving }) => (
 </span>
 );
 
-// ─── Hero Image (no reposition) ────────────────────────────────────────────
+// — Hero Image (no reposition) ––––––––––––––––––––––
 const HeroImage = ({ src, alt }) => (
 
   <div className="rp2__hero-img-wrap">
@@ -396,7 +396,7 @@ const HeroImage = ({ src, alt }) => (
   </div>
 );
 
-// ─── Ingredient Flat Row (sortable) ────────────────────────────────────────
+// — Ingredient Flat Row (sortable) ––––––––––––––––––––
 const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
 const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ing._id });
 const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1, zIndex: isDragging ? 10 : undefined };
@@ -431,7 +431,7 @@ type=“button”
 );
 };
 
-// ─── Ingredient Group Row (sortable separator) ──────────────────────────────
+// — Ingredient Group Row (sortable separator) ——————————
 const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
 const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ing._id });
 const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
@@ -445,7 +445,7 @@ return (
 );
 };
 
-// ─── Mark As Cooked Modal ──────────────────────────────────────────────────
+// — Mark As Cooked Modal –––––––––––––––––––––––––
 // PERISHABLE_TYPES: categories where “use up / remove” makes sense after cooking
 const PERISHABLE_TYPES = new Set([‘produce’, ‘meat & fish’, ‘dairy’]);
 
@@ -580,7 +580,7 @@ return (
           <p className="cooked-modal__label">Notes <span className="cooked-modal__optional">(optional)</span></p>
           <textarea className="editor-textarea cooked-modal__notes-input" value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder="e.g. Added more garlic, served with salad, would do again…" rows={3} />
+            placeholder="e.g. Added more garlic, served with salad, would do again..." rows={3} />
         </div>
 
         {error && <p className="editor-error"><Icon name="alertTriangle" size={14} strokeWidth={2} /> {error}</p>}
@@ -588,7 +588,7 @@ return (
       <div className="create-modal__footer">
         <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
         <button className="btn btn--primary cooked-modal__save-btn" onClick={saveLog} disabled={saving}>
-          {saving ? 'Saving…' : perishableIngs.length > 0 ? 'Next →' : '✓ Save'}
+          {saving ? 'Saving...' : perishableIngs.length > 0 ? 'Next →' : '✓ Save'}
         </button>
       </div>
     </>)}
@@ -599,7 +599,7 @@ return (
       </div>
       <div className="create-modal__body cooked-modal__body">
         <p className="cooked-modal__cleanup-intro">
-          You used these perishables — what do you still have left?
+          You used these perishables -- what do you still have left?
         </p>
         {Object.entries(grouped).map(([cat, items]) => (
           <div key={cat} className="cooked-cleanup__group">
@@ -646,7 +646,7 @@ return (
 );
 };
 
-// ─── Convert Reference Button (inline on RecipePage for cookbook refs) ────────
+// — Convert Reference Button (inline on RecipePage for cookbook refs) ––––
 const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, authFetch }) => {
 const apiFetch = authFetch || fetch;
 const [showModal, setShowModal] = useState(false);
@@ -815,7 +815,7 @@ return (
 );
 };
 
-// ─── Step Item with integrated timer ──────────────────────────────────────
+// — Step Item with integrated timer –––––––––––––––––––
 const StepItem = ({ step, done, isCurrent, enlarge, onToggle, matchedNotes = [] }) => {
 const [activeNote, setActiveNote] = useState(null);
 const hasTimer = step.timer_seconds && step.timer_seconds > 0;
@@ -926,7 +926,7 @@ title={n.title}
 );
 };
 
-// ─── Recipe Page ─────────────────────────────────────────────────────────────
+// — Recipe Page ———————————————————––
 const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [] }) => {
 const apiFetch = authFetch || fetch;
 const [checkedIngredients, setCheckedIngredients] = useState(new Set());
@@ -940,7 +940,7 @@ const [stayAwake, setStayAwake] = useState(false);
 const wakeLockRef = useRef(null);
 const ingDndSensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
-// ── Wake Lock ──
+// – Wake Lock –
 useEffect(() => {
 if (stayAwake) {
 if (‘wakeLock’ in navigator) {
@@ -952,12 +952,12 @@ if (wakeLockRef.current) { wakeLockRef.current.release().catch(() => {}); wakeLo
 return () => { if (wakeLockRef.current) { wakeLockRef.current.release().catch(() => {}); wakeLockRef.current = null; } };
 }, [stayAwake]);
 
-// ── Per-section edit state ──
+// – Per-section edit state –
 const [editingSection, setEditingSection] = useState(null);
 const [saving, setSaving] = useState(false);
 const [saveError, setSaveError] = useState(null);
 
-// ── Draft state ──
+// – Draft state –
 const [draftName, setDraftName] = useState(’’);
 const [draftImageInput, setDraftImageInput] = useState(’’);
 const [draftIngs, setDraftIngs] = useState([]);
@@ -1090,18 +1090,18 @@ finally { setSaving(false); }
 
 };
 
-// ── Meta draft helpers ──
+// – Meta draft helpers –
 const toggleDraftTag = (tag) => setDraftMeta(prev => ({
 …prev,
 tags: prev.tags.includes(tag) ? prev.tags.filter(t => t !== tag) : […prev.tags, tag],
 }));
 
-// ── Ingredient draft helpers ──
+// – Ingredient draft helpers –
 const addDraftIng  = () => setDraftIngs(prev => […prev, { _id: `ing-new-${Date.now()}`, name: ‘’, amount: ‘’, unit: ‘’, prep_note: ‘’, optional: false, group_label: ‘’ }]);
 const updateDraftIng = (id, k, v) => setDraftIngs(prev => prev.map(i => i._id === id ? { …i, [k]: v } : i));
 const removeDraftIng = (id) => setDraftIngs(prev => prev.filter(i => i._id !== id));
 
-// ── Step draft helpers ──
+// – Step draft helpers –
 const addDraftStep    = () => setDraftSteps(prev => […prev, { _id: `step-new-${Date.now()}`, step_number: prev.length + 1, body_text: ‘’, timer_seconds: null }]);
 const onDraftStepDragEnd = ({ active, over }) => {
 if (over && active.id !== over.id) {
@@ -1122,7 +1122,7 @@ return next;
 const updateDraftStep = (id, v) => setDraftSteps(prev => prev.map(s => s._id === id ? { …s, body_text: v } : s));
 const removeDraftStep = (id) => setDraftSteps(prev => prev.filter(s => s._id !== id));
 
-// ── Note draft helpers ──
+// – Note draft helpers –
 const addDraftNote    = () => setDraftNotes(prev => […prev, { _id: `note-new-${Date.now()}`, text: ‘’ }]);
 const updateDraftNote = (id, v) => setDraftNotes(prev => prev.map(n => n._id === id ? { …n, text: v } : n));
 const removeDraftNote = (id) => setDraftNotes(prev => prev.filter(n => n._id !== id));
@@ -1146,7 +1146,7 @@ const toggleStep = (num) => setDoneSteps(prev => {
 const next = new Set(prev); next.has(num) ? next.delete(num) : next.add(num); return next;
 });
 
-// ── Auto-calculate nutrition — must be before any early returns (Rules of Hooks) ──
+// – Auto-calculate nutrition – must be before any early returns (Rules of Hooks) –
 const autoNutrition = useMemo(() => {
 if (!bodyIngredients?.length) return { calories: null, protein: null, fiber: null };
 const r = calcNutrition(bodyIngredients, allIngredients);
@@ -1176,7 +1176,7 @@ return (
 {saveError && <p className=“editor-error” style={{ margin: ‘8px 20px 0’ }}><Icon name="alertTriangle" size={14} strokeWidth={2} /> {saveError}</p>}
 
 ```
-  {/* ── Delete Confirmation Modal ── */}
+  {/* -- Delete Confirmation Modal -- */}
   {showDeleteConfirm && (
     <div className="create-modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
       <div className="delete-confirm-modal" onClick={e => e.stopPropagation()}>
@@ -1198,7 +1198,7 @@ return (
               if (onDelete) onDelete(recipe.id);
             } catch (e) { setDeleteError(e.message); setDeleting(false); }
           }} disabled={deleting}>
-            {deleting ? 'Deleting…' : <><Icon name="trash2" size={14} strokeWidth={2} /> Delete forever</>}
+            {deleting ? 'Deleting...' : <><Icon name="trash2" size={14} strokeWidth={2} /> Delete forever</>}
           </button>
         </div>
       </div>
@@ -1223,7 +1223,7 @@ return (
       : <div className="rp2__hero-placeholder"><Icon name="image" size={40} color="var(--ash)" strokeWidth={1.5} /></div>}
 
     <div className="rp2__hero-overlay">
-      {/* ══ DESKTOP: original top-bar layout ══ */}
+      {/* == DESKTOP: original top-bar layout == */}
       <div className="rp2__hero-desktop-layout">
         <div className="rp2__hero-topbar">
           <button className="rp2__hero-btn" onClick={e => { e.stopPropagation(); onBack(); }}>← Back</button>
@@ -1251,10 +1251,10 @@ return (
                 <div className="rp2__img-popover-down">
                   <p className="rp2__dark-pop-label">Cover image URL</p>
                   <input className="editor-input" autoFocus value={draftImageInput}
-                    onChange={e => setDraftImageInput(e.target.value)} placeholder="https://…"
+                    onChange={e => setDraftImageInput(e.target.value)} placeholder="https://..."
                     onKeyDown={e => { if (e.key === 'Enter') saveSection('image'); if (e.key === 'Escape') cancelEdit(); }} />
                   <div className="rp2__dark-pop-actions">
-                    <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                    <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
                     <button className="rp2__dark-cancel" onClick={cancelEdit}>✕ Cancel</button>
                   </div>
                 </div>
@@ -1264,7 +1264,7 @@ return (
         </div>
       </div>
 
-      {/* ══ MOBILE: four-corner layout ══ */}
+      {/* == MOBILE: four-corner layout == */}
       {/* Top-left: Back */}
       <div className="rp2__hero-corner rp2__hero-corner--tl rp2__hero-mobile-only">
         <button className="rp2__hero-btn" onClick={e => { e.stopPropagation(); onBack(); }}>← Back</button>
@@ -1279,10 +1279,10 @@ return (
             <div className="rp2__img-popover-down">
               <p className="rp2__dark-pop-label">Cover image URL</p>
               <input className="editor-input" autoFocus value={draftImageInput}
-                onChange={e => setDraftImageInput(e.target.value)} placeholder="https://…"
+                onChange={e => setDraftImageInput(e.target.value)} placeholder="https://..."
                 onKeyDown={e => { if (e.key === 'Enter') saveSection('image'); if (e.key === 'Escape') cancelEdit(); }} />
               <div className="rp2__dark-pop-actions">
-                <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
                 <button className="rp2__dark-cancel" onClick={cancelEdit}>✕ Cancel</button>
               </div>
             </div>
@@ -1311,13 +1311,13 @@ return (
         )}
       </div>
 
-      {/* ── Desktop-only tags+pills row at bottom ── */}
+      {/* -- Desktop-only tags+pills row at bottom -- */}
       <div className="rp2__hero-bottom rp2__hero-bottom--desktop-only">
 
-        {/* Tags area — only show fields that have values; add button for adding more */}
+        {/* Tags area -- only show fields that have values; add button for adding more */}
         <div className="rp2__hero-tags">
 
-          {/* Cuisine chip — only shown when set */}
+          {/* Cuisine chip -- only shown when set */}
           {recipe.cuisine && (
             <div className="rp2__hero-tag-wrap">
               <button className={`rp2__tag rp2__tag--clickable ${isEdit('meta-cuisine') ? 'rp2__tag--editing' : ''}`}
@@ -1336,7 +1336,7 @@ return (
                     ))}
                   </div>
                   <div className="rp2__dark-pop-actions">
-                    <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                    <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
                     <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
                   </div>
                 </div>
@@ -1344,7 +1344,7 @@ return (
             </div>
           )}
 
-          {/* Individual tag chips — one per tag, each clickable to edit */}
+          {/* Individual tag chips -- one per tag, each clickable to edit */}
           {(recipe.tags || []).map(tag => {
             const tagDef = TAG_FILTERS.find(f => f.key === tag);
             return (
@@ -1357,7 +1357,7 @@ return (
             );
           })}
 
-          {/* Tags popover — rendered once, attached to last chip or add button */}
+          {/* Tags popover -- rendered once, attached to last chip or add button */}
           {isEdit('meta-tags') && (
             <div className="rp2__hero-tag-wrap">
               <div className="rp2__hero-dark-popover rp2__hero-dark-popover--wide">
@@ -1370,20 +1370,20 @@ return (
                 </div>
                 <p className="rp2__dark-pop-label" style={{marginTop:10}}><Icon name="list" size={13} strokeWidth={2} /> Progress</p>
                 <div className="rp2__dark-pop-chips">
-                  {[{key:'',label:'— None'},{key:'complete',label:'Complete'},{key:'needs tweaking',label:'Needs Tweaking'},{key:'to try',label:'To Try'},{key:'incomplete',label:'Incomplete'}].map(({key,label}) => (
+                  {[{key:'',label:'-- None'},{key:'complete',label:'Complete'},{key:'needs tweaking',label:'Needs Tweaking'},{key:'to try',label:'To Try'},{key:'incomplete',label:'Incomplete'}].map(({key,label}) => (
                     <button key={key} className={`rp2__dark-chip ${draftMeta.status === key ? 'rp2__dark-chip--on' : ''}`}
                       onClick={() => setDraftMeta(p => ({...p, status: key}))}>{label}</button>
                   ))}
                 </div>
                 <div className="rp2__dark-pop-actions">
-                  <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                  <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
                   <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Progress chip — only shown when set */}
+          {/* Progress chip -- only shown when set */}
           {(recipe.status && recipe.status !== '') && (
             <div className="rp2__hero-tag-wrap">
               <button className={`rp2__tag rp2__tag--clickable ${recipe.status === 'incomplete' ? 'rp2__tag--warning' : recipe.status === 'needs tweaking' ? 'rp2__tag--warning' : recipe.status === 'complete' ? 'rp2__tag--success' : 'rp2__tag--light'} ${isEdit('meta-progress') ? 'rp2__tag--editing' : ''}`}
@@ -1394,13 +1394,13 @@ return (
                 <div className="rp2__hero-dark-popover">
                   <p className="rp2__dark-pop-label"><Icon name="list" size={13} strokeWidth={2} /> Progress</p>
                   <div className="rp2__dark-pop-chips">
-                    {[{key:'',label:'— None'},{key:'complete',label:'Complete'},{key:'needs tweaking',label:'Needs Tweaking'},{key:'to try',label:'To Try'},{key:'incomplete',label:'Incomplete'}].map(({key,label}) => (
+                    {[{key:'',label:'-- None'},{key:'complete',label:'Complete'},{key:'needs tweaking',label:'Needs Tweaking'},{key:'to try',label:'To Try'},{key:'incomplete',label:'Incomplete'}].map(({key,label}) => (
                       <button key={key} className={`rp2__dark-chip ${draftMeta.status === key ? 'rp2__dark-chip--on' : ''}`}
                         onClick={() => setDraftMeta(p => ({...p, status: key}))}>{label}</button>
                     ))}
                   </div>
                   <div className="rp2__dark-pop-actions">
-                    <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                    <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
                     <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
                   </div>
                 </div>
@@ -1408,7 +1408,7 @@ return (
             </div>
           )}
 
-          {/* + Add tag button — admin only */}
+          {/* + Add tag button -- admin only */}
           {isAdmin && !isEdit('meta-tags') && (
             <div className="rp2__hero-tag-wrap">
               <button className="rp2__tag rp2__tag--add"
@@ -1420,10 +1420,10 @@ return (
           )}
         </div>
 
-        {/* Pills — time and servings are clickable, nutrition is display-only */}
+        {/* Pills -- time and servings are clickable, nutrition is display-only */}
         <div className="rp2__hero-pills">
 
-          {/* Time pill — hide if empty for guests */}
+          {/* Time pill -- hide if empty for guests */}
           {(isAdmin || recipe.time) && <div className="rp2__hero-tag-wrap rp2__hero-tag-wrap--right">
             <button className={`rp2__pill rp2__pill--clickable ${isEdit('meta-time') ? 'rp2__pill--editing' : ''}`}
               onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-time') ? null : 'meta-time'); }}>
@@ -1438,14 +1438,14 @@ return (
                   placeholder="e.g. 45 mins"
                   onKeyDown={e => { if (e.key === 'Enter') saveSection('meta'); if (e.key === 'Escape') cancelEdit(); }} />
                 <div className="rp2__dark-pop-actions">
-                  <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                  <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
                   <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
                 </div>
               </div>
             )}
           </div>}
 
-          {/* Servings pill — hide if empty for guests */}
+          {/* Servings pill -- hide if empty for guests */}
           {(isAdmin || recipe.servings) && <div className="rp2__hero-tag-wrap rp2__hero-tag-wrap--right">
             <button className={`rp2__pill rp2__pill--clickable ${isEdit('meta-servings') ? 'rp2__pill--editing' : ''}`}
               onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-servings') ? null : 'meta-servings'); }}>
@@ -1460,7 +1460,7 @@ return (
                   placeholder="e.g. 4"
                   onKeyDown={e => { if (e.key === 'Enter') saveSection('meta'); if (e.key === 'Escape') cancelEdit(); }} />
                 <div className="rp2__dark-pop-actions">
-                  <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                  <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
                   <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
                 </div>
               </div>
@@ -1468,7 +1468,7 @@ return (
           </div>}
 
           {/* Display-only nutrition pills */}
-          {displayCalories !== null && <span className="rp2__pill" title={nutritionIsEstimate ? 'Estimated — save ingredients to lock in' : 'Auto-calculated from ingredients'}><span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>{displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}</span>}
+          {displayCalories !== null && <span className="rp2__pill" title={nutritionIsEstimate ? 'Estimated -- save ingredients to lock in' : 'Auto-calculated from ingredients'}><span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>{displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}</span>}
           {displayProtein  !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="dumbbell" size={13} strokeWidth={2} /></span>{displayProtein}g prot{nutritionIsEstimate ? ' ~' : ''}</span>}
           {displayFiber    !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="leaf" size={13} strokeWidth={2} /></span>{displayFiber}g fiber{nutritionIsEstimate ? ' ~' : ''}</span>}
         </div>
@@ -1476,7 +1476,7 @@ return (
     </div>
   </div>
 
-  {/* ── Title ── */}
+  {/* -- Title -- */}
   <div className="rp2__header">
     <div className="rp2__title-row">
       {isEdit('title') ? (
@@ -1495,7 +1495,7 @@ return (
         <button
           className={`rp2__cooking-mode-btn ${stayAwake ? 'rp2__cooking-mode-btn--on' : ''}`}
           onClick={() => setStayAwake(s => !s)}
-          title={stayAwake ? 'Screen will stay on — click to disable' : 'Keep screen awake while cooking'}
+          title={stayAwake ? 'Screen will stay on -- click to disable' : 'Keep screen awake while cooking'}
         >
           {stayAwake ? <><Icon name="sun" size={14} strokeWidth={2} /> Awake</> : <Icon name="sun" size={14} strokeWidth={2} />}
         </button>
@@ -1503,7 +1503,7 @@ return (
       </div>
     </div>
 
-    {/* ── Dietary Conflict Warnings ── */}
+    {/* -- Dietary Conflict Warnings -- */}
     {dietaryWarnings.length > 0 && (
       <div className="dietary-warnings">
         {dietaryWarnings.map((w, i) => (
@@ -1516,7 +1516,7 @@ return (
                   {w.conflicts.map((c, j) => <li key={j}>{c}</li>)}
                 </ul>
               ) : (
-                <span className="dietary-warning__detail"> — {w.conflicts[0]}</span>
+                <span className="dietary-warning__detail"> -- {w.conflicts[0]}</span>
               )}
             </div>
           </div>
@@ -1525,7 +1525,7 @@ return (
     )}
   </div>
 
-  {/* ── Cookbook Reference Card — shown INSTEAD of the two-column body for refs ── */}
+  {/* -- Cookbook Reference Card -- shown INSTEAD of the two-column body for refs -- */}
   {recipe.cookbook && (!bodyIngredients?.length) && (!instructions?.length) && (
     <div className="rp2__body">
       <div className="rp2__cb-ref-view">
@@ -1547,7 +1547,7 @@ return (
     </div>
   )}
 
-  {/* ── Two-column body (only shown for full recipes) ── */}
+  {/* -- Two-column body (only shown for full recipes) -- */}
   {!(recipe.cookbook && (!bodyIngredients?.length) && (!instructions?.length)) && (
   <div className="rp2__body">
     {showIngredientsModal && (
@@ -1558,7 +1558,7 @@ return (
             <div className="ing-modal__header-actions">
               {isEdit('ingredients') ? (
                 <>
-                  <button className="ing-modal__save-btn" onClick={async () => { await saveSection('ingredients'); setShowIngredientsModal(false); }} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                  <button className="ing-modal__save-btn" onClick={async () => { await saveSection('ingredients'); setShowIngredientsModal(false); }} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
                   <button className="ing-modal__close" onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}>✕</button>
                 </>
               ) : (
@@ -1577,7 +1577,7 @@ return (
             >
               <SortableContext items={draftIngs.map(i => i._id)} strategy={verticalListSortingStrategy}>
                 <div className="ing-flat-list">
-                  {/* Column headers — desktop only */}
+                  {/* Column headers -- desktop only */}
                   <div className="ing-flat-header ing-flat-header--desktop">
                     <span className="ing-flat-header__drag" />
                     <div className="ing-flat-header__cols">
@@ -1632,7 +1632,7 @@ return (
       </div>
     )}
 
-    {/* ── Ingredients ── */}
+    {/* -- Ingredients -- */}
     <div className="rp2__ingredients">
       <div className="rp2__section-title-row">
         <h2 className="rp2__section-title rp2__section-title--sm">Ingredients</h2>
@@ -1673,7 +1673,7 @@ return (
       }
     </div>
 
-    {/* ── Instructions ── */}
+    {/* -- Instructions -- */}
     <div className="rp2__instructions">
       <div className="rp2__section-title-row">
         <h2 className="rp2__section-title rp2__section-title--sm">Instructions</h2>
@@ -1722,7 +1722,7 @@ return (
                 const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer).length + 1;
                 return (
                   <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
-                    <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                    <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
                     <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step"><Icon name="timer" size={13} strokeWidth={2} /></button>
                     <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
                   </StepSortableItem>
@@ -1760,7 +1760,7 @@ return (
           : <p className="rp2__empty-hint">No instructions yet.</p>
       )}
 
-      {/* ── Notes + Cookbook — side by side (desktop), stacked (mobile) ── */}
+      {/* -- Notes + Cookbook -- side by side (desktop), stacked (mobile) -- */}
       <div className="rp2__notes-row">
         <div className="rp2__notes">
           <div className="rp2__section-title-row">
@@ -1772,7 +1772,7 @@ return (
             <div className="rp2__inline-editor">
               {draftNotes.map(n => (
                 <div key={n._id} className="rp2__ed-note-row">
-                  <input className="editor-input" style={{flex:1}} value={n.text} onChange={e => updateDraftNote(n._id, e.target.value)} placeholder="Add a tip or note…" />
+                  <input className="editor-input" style={{flex:1}} value={n.text} onChange={e => updateDraftNote(n._id, e.target.value)} placeholder="Add a tip or note..." />
                   <button className="editor-remove-btn" onClick={() => removeDraftNote(n._id)}>✕</button>
                 </div>
               ))}
@@ -1789,7 +1789,7 @@ return (
           )}
         </div>
 
-        {/* Cookbook Reference — editable */}
+        {/* Cookbook Reference -- editable */}
         <div className="rp2__cookbook">
           <div className="rp2__section-title-row">
             <h2 className="rp2__section-title rp2__cookbook-title">Cookbook</h2>
@@ -1819,7 +1819,7 @@ return (
 );
 };
 
-// ─── Ingredient Autocomplete Input ─────────────────────────────────────────
+// — Ingredient Autocomplete Input —————————————–
 const IngredientAutocomplete = ({ value, onChange, allIngredients }) => {
 const [open, setOpen] = useState(false);
 const [highlighted, setHighlighted] = useState(0);
@@ -1939,7 +1939,7 @@ return (
 );
 };
 
-// Step sortable item — the step number bubble IS the drag handle
+// Step sortable item – the step number bubble IS the drag handle
 const StepSortableItem = ({ id, stepNum, children }) => {
 const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1, zIndex: isDragging ? 10 : undefined };
@@ -1951,7 +1951,7 @@ return (
 );
 };
 
-// ─── Recipe Editor ──────────────────────────────────────────────────────────
+// — Recipe Editor –––––––––––––––––––––––––––––
 const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredients, onBack, onSaved, authFetch }) => {
 const apiFetch = authFetch || fetch;
 const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
@@ -2067,14 +2067,14 @@ return (
   {saveSuccess && <p className="editor-success" style={{margin:'8px 24px 0'}}>✓ Saved successfully</p>}
 
   <div className="rp2__header ed-name-row">
-    <input className="ed-title-input" value={details.name} onChange={e => setDetail('name', e.target.value)} placeholder="Recipe name…" />
+    <input className="ed-title-input" value={details.name} onChange={e => setDetail('name', e.target.value)} placeholder="Recipe name..." />
   </div>
 
   <div className="ed-meta-row">
     <label className="ed-meta-field">
       <span className="ed-meta-label"><Icon name="mapPin" size={13} strokeWidth={2} /> Cuisine</span>
       <select className="editor-input editor-select ed-meta-input" value={details.cuisine} onChange={e => setDetail('cuisine', e.target.value)}>
-        <option value="">— none —</option>
+        <option value="">-- none --</option>
         {ALL_CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
         {[...QUICK_CHIP_KEYS].filter(k => !ALL_CUISINES.includes(k)).map(c => <option key={c} value={c}>{c}</option>)}
       </select>
@@ -2145,7 +2145,7 @@ return (
           const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
           return (
             <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
-              <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+              <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
               <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
               <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
             </StepSortableItem>
@@ -2170,7 +2170,7 @@ return (
   <div className="editor-save-bar">
     {saveError && <p className="editor-error"><Icon name="alertTriangle" size={14} strokeWidth={2} /> {saveError}</p>}
     {saveSuccess && <p className="editor-success">✓ Saved successfully</p>}
-    <button className="btn btn--primary btn--large" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</button>
+    <button className="btn btn--primary btn--large" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
   </div>
 </main>
 ```
@@ -2230,7 +2230,7 @@ return (
 );
 };
 
-// ─── Cookbook Autocomplete Input ──────────────────────────────────────────
+// — Cookbook Autocomplete Input ——————————————
 const CookbookAutocomplete = ({ value, onChange, cookbooks = [] }) => {
 const [open, setOpen] = useState(false);
 const [highlighted, setHighlighted] = useState(0);
@@ -2282,7 +2282,7 @@ return (
 );
 };
 
-// ─── Fridge Tab ─────────────────────────────────────────────────────────────
+// — Fridge Tab ———————————————————––
 const ALL_TYPES = [‘produce’, ‘meat’, ‘dairy’, ‘sauce’, ‘spice’, ‘alcohol’, ‘staple’];
 const TYPE_META = {
 produce:  { label: ‘Produce’,     icon: ‘leaf’,     group: ‘fridge’  },
@@ -2324,7 +2324,7 @@ const products = (data.products || []).filter(p =>
 p.nutriments && p.nutriments[‘energy-kcal_100g’] != null
 );
 if (!products.length) {
-setFetchMsg({ type: ‘err’, text: ‘No nutrition data found — try a simpler name’ });
+setFetchMsg({ type: ‘err’, text: ‘No nutrition data found – try a simpler name’ });
 setFetching(false); return;
 }
 const p = products[0];
@@ -2340,7 +2340,7 @@ setForm(prev => ({ …prev, …updates }));
 const gpuNote = updates.grams_per_unit ? ` · ${updates.grams_per_unit}g/unit` : ‘’;
 setFetchMsg({ type: ‘ok’, text: `Fetched from Open Food Facts${p.product_name ? ` · “${p.product_name}”` : ''}${gpuNote}` });
 } catch {
-setFetchMsg({ type: ‘err’, text: ‘Fetch failed — check your connection’ });
+setFetchMsg({ type: ‘err’, text: ‘Fetch failed – check your connection’ });
 }
 setFetching(false);
 };
@@ -2424,7 +2424,7 @@ onChange={e => set(‘grams_per_unit’, e.target.value)}
 placeholder=“e.g. 50 for eggs, 5 for garlic cloves”
 />
 <p className=“create-modal__field-hint” style={{ marginTop: 4 }}>
-Used when a recipe says “3 eggs” or “2 cloves” — no weight unit. Leave blank for ingredients always measured by weight or volume.
+Used when a recipe says “3 eggs” or “2 cloves” – no weight unit. Leave blank for ingredients always measured by weight or volume.
 </p>
 </div>
 {error && <p className="editor-error"><Icon name="alertTriangle" size={14} strokeWidth={2} /> {error}</p>}
@@ -2438,7 +2438,7 @@ Used when a recipe says “3 eggs” or “2 cloves” — no weight unit. Leave
 );
 };
 
-// ─── Always-expanded types ───────────────────────────────────────────────────
+// — Always-expanded types —————————————————
 const ALWAYS_OPEN_TYPES = new Set([‘produce’, ‘meat’]);
 
 const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, authFetch }) => {
@@ -2446,7 +2446,7 @@ const apiFetch = authFetch || fetch;
 const [typeOverrides, setTypeOverrides] = useState(() => LS.get(‘ingredientTypeOverrides’, {}));
 const [editingIng, setEditingIng] = useState(null);
 const [deleteTarget, setDeleteTarget] = useState(null);
-// Collapsible state for sections — all collapsed except produce/meat by default
+// Collapsible state for sections – all collapsed except produce/meat by default
 const [collapsedTypes, setCollapsedTypes] = useState(() => {
 const init = {};
 ALL_TYPES.forEach(t => { if (!ALWAYS_OPEN_TYPES.has(t)) init[t] = true; });
@@ -2497,7 +2497,7 @@ if (isOn) {
 setFridgeIngredients(prev => prev.filter(i => i !== lower));
 setPantryStaples(prev => prev.filter(i => i !== lower));
 } else {
-// Add to have — also track in recently used
+// Add to have – also track in recently used
 setRecentlyUsed(prev => {
 const next = [lower, …prev.filter(x => x !== lower)].slice(0, 12);
 return next;
@@ -2652,7 +2652,7 @@ authFetch={apiFetch}
       <span className="kitchen-quickadd-icon">＋</span>
       <input
         className="kitchen-quickadd-input"
-        placeholder="Quick-add an ingredient to your kitchen…"
+        placeholder="Quick-add an ingredient to your kitchen..."
         value={quickAddValue}
         onChange={e => { setQuickAddValue(e.target.value); setQuickAddOpen(true); }}
         onFocus={() => setQuickAddOpen(true)}
@@ -2671,7 +2671,7 @@ authFetch={apiFetch}
     )}
   </div>
 
-  {/* ── ON HAND area (full width) ── */}
+  {/* -- ON HAND area (full width) -- */}
   <div className="kitchen-onhand-area">
     <div className="kitchen-onhand-header">
       <h2 className="kitchen-split__title">On Hand <span className="kitchen-split__count">{haveList.length}</span></h2>
@@ -2684,7 +2684,7 @@ authFetch={apiFetch}
     </div>
   </div>
 
-  {/* ── MISSING — full width bar ── */}
+  {/* -- MISSING -- full width bar -- */}
   <div className="kitchen-missing-section">
     <button className="kitchen-missing-header" onClick={() => setMissingCollapsed(p => !p)}>
       <h2 className="kitchen-split__title">Missing <span className="kitchen-split__count">{missingList.length}</span></h2>
@@ -2702,10 +2702,10 @@ authFetch={apiFetch}
 );
 };
 
-// ─── Profile Tab ─────────────────────────────────────────────────────────────
+// — Profile Tab ———————————————————––
 const DIETARY_OPTIONS = [‘Vegetarian’, ‘Vegan’, ‘Dairy-Free’, ‘Nut-Free’, ‘Gluten-Free’];
 
-// ─── Dietary Conflict Detection ────────────────────────────────────────────
+// — Dietary Conflict Detection ––––––––––––––––––––––
 // Comprehensive ingredient classification for dietary conflict detection
 const DIETARY_CONFLICTS = {
 ‘Vegetarian’: {
@@ -2768,7 +2768,7 @@ const THEME_OPTIONS = [
 ];
 const STAR_LABELS = [’’, “Didn’t love it”, ‘It was okay’, ‘Pretty good!’, ‘Really good!’, ‘Perfect!’];
 
-// ── Calendar helpers
+// – Calendar helpers
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
 const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
@@ -2992,7 +2992,7 @@ onClose={() => setShowAddFriend(false)}
 onCreated={(uname) => { setAddFriendSuccess(`Account created for ${uname} ✓`); loadUsers(); setTimeout(() => setAddFriendSuccess(’’), 4000); }}
 />
 )}
-{/* ── User header ── */}
+{/* – User header – */}
 <div className="profile-header">
 <div style={{ flex: 1 }}>
 {editingDisplayName ? (
@@ -3031,7 +3031,7 @@ Sign out
 </div>
 
 ```
-  {/* ── 1. Cooking History ── */}
+  {/* -- 1. Cooking History -- */}
   <section className="profile-section profile-section--collapsible">
     <button className="profile-settings-toggle" onClick={() => setHistoryOpen(o => !o)}>
       <span className="profile-settings-toggle__title"><Icon name="calendar" size={15} strokeWidth={2} /> Cooking History</span>
@@ -3049,7 +3049,7 @@ Sign out
     {historyOpen && (
       <div className="profile-settings-body">
         {historyLoading ? (
-          <div className="grocery-loading"><div className="loading-spinner" /><p>Loading history…</p></div>
+          <div className="grocery-loading"><div className="loading-spinner" /><p>Loading history...</p></div>
         ) : cookHistory.length === 0 ? (
           <div className="profile-empty">
             <span className="profile-empty__icon"><Icon name="chefHat" size={36} strokeWidth={1.5} color="var(--ash)" /></span>
@@ -3129,7 +3129,7 @@ Sign out
     )}
   </section>
 
-  {/* ── 2. Recipe Attempts ── */}
+  {/* -- 2. Recipe Attempts -- */}
   <section className="profile-section profile-section--collapsible">
     <button className="profile-settings-toggle" onClick={() => setAttemptsOpen(o => !o)}>
       <span className="profile-settings-toggle__title"><Icon name="repeat" size={15} strokeWidth={2} /> Recipe Attempts</span>
@@ -3168,7 +3168,7 @@ Sign out
     )}
   </section>
 
-  {/* ── 3. Sharing Options (admin only) ── */}
+  {/* -- 3. Sharing Options (admin only) -- */}
   {isAdmin && (
     <section className="profile-section profile-section--collapsible">
       <button className="profile-settings-toggle" onClick={() => setSharingOpen(o => !o)}>
@@ -3195,7 +3195,7 @@ Sign out
               </div>
             )}
             {usersLoading ? (
-              <p style={{ fontSize: 13, color: 'var(--warm-gray)' }}>Loading…</p>
+              <p style={{ fontSize: 13, color: 'var(--warm-gray)' }}>Loading...</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 6 }}>
                 {users.map(u => (
@@ -3247,7 +3247,7 @@ Sign out
                     <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--warm-white)', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--warm-gray)', flexShrink: 0 }}>Password:</span>
                       <span style={{ fontSize: '0.82rem', fontFamily: 'monospace', flex: 1, minWidth: 60, color: revealedPasswords[u.id] ? 'var(--charcoal)' : 'transparent', textShadow: revealedPasswords[u.id] ? 'none' : '0 0 6px rgba(0,0,0,0.35)', userSelect: revealedPasswords[u.id] ? 'text' : 'none', transition: 'all 0.2s' }}>
-                        {u.password || '—'}
+                        {u.password || '--'}
                       </span>
                       <button onClick={() => toggleReveal(u.id)} style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: 999, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', color: 'var(--warm-gray)', flexShrink: 0 }}>
                         {revealedPasswords[u.id] ? 'Hide' : 'Reveal'}
@@ -3275,7 +3275,7 @@ Sign out
 
           <div className="settings-section">
             <h4 className="settings-section__title"><Icon name="repeat" size={15} strokeWidth={2} /> Recalculate Nutrition</h4>
-            <p className="settings-section__hint">Clears all pre-populated calories/protein/fiber and recalculates from each recipe's ingredients. Run this once to clear old data — only recipes whose ingredients have nutrition info will get values.</p>
+            <p className="settings-section__hint">Clears all pre-populated calories/protein/fiber and recalculates from each recipe's ingredients. Run this once to clear old data -- only recipes whose ingredients have nutrition info will get values.</p>
             <button
               className="btn btn--primary btn--sm"
               style={{ marginTop: 10, marginBottom: 16 }}
@@ -3287,11 +3287,11 @@ Sign out
                   const res = await apiFetch(`${API}/api/admin/recalculate-nutrition`, { method: 'POST' });
                   const data = await res.json();
                   if (!res.ok) throw new Error(data.error || 'Failed');
-                  setRecalcResult(`✓ Done — updated ${data.updated} of ${data.total} recipes`);
+                  setRecalcResult(`✓ Done -- updated ${data.updated} of ${data.total} recipes`);
                 } catch (e) { setRecalcResult(`⚠️ ${e.message}`); }
                 setRecalcRunning(false);
               }}
-            >{recalcRunning ? 'Running…' : 'Recalculate All Nutrition'}</button>
+            >{recalcRunning ? 'Running...' : 'Recalculate All Nutrition'}</button>
             {recalcResult && <p style={{ marginTop: 10, fontSize: '0.85rem', color: recalcResult.startsWith('✓') ? 'var(--sage)' : 'var(--terracotta)' }}>{recalcResult}</p>}
           </div>
 
@@ -3300,7 +3300,7 @@ Sign out
     </section>
   )}
 
-  {/* ── 4. Settings ── */}
+  {/* -- 4. Settings -- */}
   <section className="profile-section profile-section--settings">
     <button className="profile-settings-toggle" onClick={() => setSettingsOpen(o => !o)}>
       <span className="profile-settings-toggle__title"><Icon name="settings" size={15} strokeWidth={2} /> Settings</span>
@@ -3403,7 +3403,7 @@ Sign out
 );
 };
 
-// ─── Grocery List Tab ────────────────────────────────────────────────────────
+// — Grocery List Tab ––––––––––––––––––––––––––––
 
 // Unit conversion to a common base (grams for weight, ml for volume)
 const UNIT_CONVERSIONS = {
@@ -3467,7 +3467,7 @@ existing._sources.push(item);
 existing.amount = String(amt1 + amt2);
 existing._sources.push(item);
 } else {
-// Can’t merge — append note
+// Can’t merge – append note
 const extra = [item.amount, item.unit].filter(Boolean).join(’ ’);
 existing._extra = existing._extra ? `${existing._extra} + ${extra}` : extra;
 existing._sources.push(item);
@@ -3538,7 +3538,7 @@ return () => { cancelled = true; };
 }, [makeSoonIds]);
 
 const copyList = () => {
-const lines = [`Grocery List — ${recipeNames.join(', ')}\n`];
+const lines = [`Grocery List -- ${recipeNames.join(', ')}\n`];
 consolidatedCategories.forEach(cat => {
 const items = hideInKitchen
 ? cat.items.filter(item => !allMyIngredients.has(item.name.toLowerCase().trim()))
@@ -3591,12 +3591,12 @@ Shopping for: <span className="grocery-subtitle__meals">{makeSoonRecipes.map(r =
     <div className="grocery-empty">
       <div className="grocery-empty__icon"><Icon name="timer" size={40} color="var(--warm-gray)" strokeWidth={1.5} /></div>
       <h3 className="grocery-empty__title">No recipes in Make Soon</h3>
-      <p className="grocery-empty__sub">Tap ⏱ on any recipe to add it to Make Soon — your grocery list will build automatically.</p>
+      <p className="grocery-empty__sub">Tap ⏱ on any recipe to add it to Make Soon -- your grocery list will build automatically.</p>
     </div>
   )}
 
   {error && <p className="grocery-error"><Icon name="alertTriangle" size={14} strokeWidth={2} /> {error}</p>}
-  {loading && <div className="grocery-loading"><div className="loading-spinner" /><p>Building your list…</p></div>}
+  {loading && <div className="grocery-loading"><div className="loading-spinner" /><p>Building your list...</p></div>}
 
   {!loading && consolidatedCategories.length > 0 && (
     <>
@@ -3665,7 +3665,7 @@ Shopping for: <span className="grocery-subtitle__meals">{makeSoonRecipes.map(r =
 );
 };
 
-// ─── Cooking Notes Tab ──────────────────────────────────────────────────────
+// — Cooking Notes Tab ——————————————————
 const NOTE_TYPES = [‘rule’, ‘theory’, ‘shortcut’];
 const NOTE_TYPE_META = {
 rule:     { label: ‘Rule / Ratio’,   emoji: ‘ruler’,   color: ‘#f5ece0’, border: ‘#d9c4a8’ },
@@ -3902,8 +3902,8 @@ authFetch={authFetch}
         <button className="btn btn--primary btn--sm" onClick={() => setEditingNote(false)}>+ Add Note</button>
       )}
     </div>
-    <p className="cn-tab__subtitle">Rules, ratios, and theory — the things that make cooking click.</p>
-    <input className="editor-input cn-tab__search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search notes…" />
+    <p className="cn-tab__subtitle">Rules, ratios, and theory -- the things that make cooking click.</p>
+    <input className="editor-input cn-tab__search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search notes..." />
   </div>
 
   {notes.length === 0 ? (
@@ -3938,7 +3938,7 @@ authFetch={authFetch}
 );
 };
 
-// ─── Site Footer ────────────────────────────────────────────────────────────
+// — Site Footer ————————————————————
 const GITHUB_REPO = ‘kavyasomala/RecipeApp’; // update with actual repo path
 
 const SiteFooter = ({ onNav }) => {
@@ -3991,7 +3991,7 @@ return (
   <div className="site-footer__bottom">
     <span className="site-footer__credit">Built by Kavya <Icon name="heart" size={13} color="var(--terracotta)" strokeWidth={2} /></span>
     <span className="site-footer__updated">
-      {lastUpdated ? `Last updated ${fmt(lastUpdated)}` : 'Last updated —'}
+      {lastUpdated ? `Last updated ${fmt(lastUpdated)}` : 'Last updated --'}
     </span>
   </div>
 </footer>
@@ -4000,15 +4000,15 @@ return (
 );
 };
 
-// ─── Cookbooks Tab ─────────────────────────────────────────────────────────
-// ─── Cookbook helpers ────────────────────────────────────────────────────────
+// — Cookbooks Tab ———————————————————
+// — Cookbook helpers ––––––––––––––––––––––––––––
 const COOKBOOK_SORTS = [
 { key: ‘page’,   label: ‘Page #’ },
-{ key: ‘alpha’,  label: ‘A–Z’ },
+{ key: ‘alpha’,  label: ‘A-Z’ },
 { key: ‘recent’, label: ‘Recently Added’ },
 ];
 
-// ─── Add Reference Modal ─────────────────────────────────────────────────────
+// — Add Reference Modal —————————————————–
 const AddReferenceModal = ({ onSave, onClose, allTags, cookbookTitle = ‘’, authFetch }) => {
 const apiFetch = authFetch || fetch;
 const [name, setName]       = useState(’’);
@@ -4109,7 +4109,7 @@ return (
       {/* Image */}
       <div className="create-modal__field">
         <label className="create-modal__field-label">Image URL <span style={{opacity:.5,fontWeight:400}}>(optional)</span></label>
-        <input className="editor-input" value={image} onChange={e => { setImage(e.target.value); setImgErr(false); }} placeholder="https://…" />
+        <input className="editor-input" value={image} onChange={e => { setImage(e.target.value); setImgErr(false); }} placeholder="https://..." />
         {image && !imgErr && <img src={image} alt="" onError={() => setImgErr(true)} style={{ width:72, height:72, objectFit:'cover', borderRadius:8, marginTop:6, border:'1.5px solid var(--border)' }} />}
       </div>
 
@@ -4159,7 +4159,7 @@ return (
     <div className="create-modal__footer">
       <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
       <button className="btn btn--primary" onClick={save} disabled={!name.trim() || saving}>
-        {saving ? 'Adding…' : 'Add Reference'}
+        {saving ? 'Adding...' : 'Add Reference'}
       </button>
     </div>
   </div>
@@ -4169,7 +4169,7 @@ return (
 );
 };
 
-// ─── Quick Add Modal ──────────────────────────────────────────────────────────
+// — Quick Add Modal –––––––––––––––––––––––––––––
 const QuickAddModal = ({ onSave, onClose }) => {
 const [rows, setRows] = useState([{id:1,name:’’,page:’’},{id:2,name:’’,page:’’},{id:3,name:’’,page:’’}]);
 const nextId = useRef(4);
@@ -4186,7 +4186,7 @@ return (
 <button className="ing-modal__close" onClick={onClose}>✕</button>
 </div>
 <div className=“create-modal__body” style={{ gap:8 }}>
-<p style={{ fontSize:13, color:‘var(–warm-gray)’, marginBottom:4 }}>Add multiple recipes at once — leave rows blank to skip.</p>
+<p style={{ fontSize:13, color:‘var(–warm-gray)’, marginBottom:4 }}>Add multiple recipes at once – leave rows blank to skip.</p>
 <div style={{ display:‘flex’, gap:8, padding:‘0 0 4px’, fontWeight:600, fontSize:12, color:‘var(–warm-gray)’ }}>
 <span style={{ flex:3 }}>Recipe name</span><span style={{ width:90 }}>Page #</span><span style={{ width:28 }} />
 </div>
@@ -4208,8 +4208,8 @@ return (
 );
 };
 
-// ─── Convert to Full Recipe Modal ─────────────────────────────────────────────
-// ─── Convert to Full Recipe Modal ─────────────────────────────────────────────
+// — Convert to Full Recipe Modal ———————————————
+// — Convert to Full Recipe Modal ———————————————
 // Identical form to AddRecipeTab’s create modal, pre-filled with cookbook entry data
 const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConverted, onClose, authFetch }) => {
 const apiFetch = authFetch || fetch;
@@ -4327,7 +4327,7 @@ return (
           <input className="editor-input" value={details.cover_image_url}
             onChange={e => { setDetail('cover_image_url', e.target.value); setImgPreviewError(false); }}
             placeholder="https://example.com/photo.jpg" />
-          <p className="create-modal__field-hint">Paste any image URL — see it previewed instantly</p>
+          <p className="create-modal__field-hint">Paste any image URL -- see it previewed instantly</p>
         </div>
       </div>
 
@@ -4394,7 +4394,7 @@ return (
 
       <p className="create-modal__field-hint">Calories, protein &amp; fiber will be auto-calculated from your ingredients</p>
 
-      {/* Ingredients — group style */}
+      {/* Ingredients -- group style */}
       <div className="create-modal__field">
         <label className="create-modal__field-label">Ingredients</label>
         <datalist id="cv-group-labels">{groupLabels.map(l => <option key={l} value={l} />)}</datalist>
@@ -4458,7 +4458,7 @@ return (
               const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
               return (
                 <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
-                  <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                  <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
                   <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                   <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                 </StepSortableItem>
@@ -4481,7 +4481,7 @@ return (
         <button className="btn btn--ghost editor-add-btn" onClick={addNote}>+ Add Note</button>
       </div>
 
-      {/* Cookbook reference — pre-filled, editable */}
+      {/* Cookbook reference -- pre-filled, editable */}
       <div className="create-modal__meta-grid">
         <div className="create-modal__field">
           <label className="create-modal__field-label"><Icon name="bookMarked" size={13} strokeWidth={2} /> Cookbook</label>
@@ -4499,7 +4499,7 @@ return (
     <div className="create-modal__footer">
       <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
       <button className="btn btn--primary" onClick={save} disabled={saving}>
-        {saving ? 'Creating…' : <><Icon name="zap" size={13} strokeWidth={2} /> Create Recipe</>}
+        {saving ? 'Creating...' : <><Icon name="zap" size={13} strokeWidth={2} /> Create Recipe</>}
       </button>
     </div>
   </div>
@@ -4509,7 +4509,7 @@ return (
 );
 };
 
-// ─── CookbookEditModal ────────────────────────────────────────────────────────
+// — CookbookEditModal ––––––––––––––––––––––––––––
 const CookbookEditModal = ({ cookbook, onSave, onClose }) => {
 const isNew = !cookbook;
 const [form, setForm] = useState({ title:cookbook?.title||’’, author:cookbook?.author||’’, coverImage:cookbook?.coverImage||’’, spineColor:cookbook?.spineColor||’#C65D3B’, notes:cookbook?.notes||’’ });
@@ -4563,8 +4563,8 @@ return (
 );
 };
 
-// ─── CookbookDetail ───────────────────────────────────────────────────────────
-// ─── CbEntry Row ─────────────────────────────────────────────────────────────
+// — CookbookDetail ———————————————————–
+// — CbEntry Row ———————————————————––
 const CbEntry = ({ entry, linked, entryTags, idx, onOpenRecipe, onMarkCooked, onConvert, onEdit, onRemove }) => {
 const [menuOpen, setMenuOpen] = useState(false);
 const menuRef = React.useRef(null);
@@ -4585,7 +4585,7 @@ return (
 </div>
 
 ```
-  {/* Name col — plain text, never a link */}
+  {/* Name col -- plain text, never a link */}
   <div className="cbentry__name-col">
     <span className="cbentry__name">{entry.name}</span>
     {linked && <span className="cookbook-recipe-entry__saved-badge">✓ Saved</span>}
@@ -4603,19 +4603,19 @@ return (
 
   {/* Actions col */}
   <div className="cbentry__actions">
-    {/* Cook button — always visible */}
+    {/* Cook button -- always visible */}
     <button className="cbentry__action cbentry__action--cook" title="Mark as Cooked" onClick={onMarkCooked}>
       <Icon name="chefHat" size={14} strokeWidth={2} />
     </button>
 
-    {/* View button — for linked recipes */}
+    {/* View button -- for linked recipes */}
     {linked && (
       <button className="cbentry__action cbentry__action--view" onClick={() => onOpenRecipe(linked)} title="Open in Hearth">
         View →
       </button>
     )}
 
-    {/* Actions menu — for unlinked recipes (edit / convert / remove) */}
+    {/* Actions menu -- for unlinked recipes (edit / convert / remove) */}
     {!linked && (
       <div className="cbentry__menu-wrap" ref={menuRef}>
         <button
@@ -4761,7 +4761,7 @@ onClose={() => setConvertEntry(null)}
     </div>
 
     <div className="cookbook-search-wrap">
-      <input className="editor-input cookbook-search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search recipes in this book…" />
+      <input className="editor-input cookbook-search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search recipes in this book..." />
       {search && <button className="cookbook-search-clear" onClick={() => setSearch('')}>✕</button>}
     </div>
 
@@ -4805,7 +4805,7 @@ onClose={() => setConvertEntry(null)}
 );
 };
 
-// ─── CookbooksTab ─────────────────────────────────────────────────────────────
+// — CookbooksTab ———————————————————––
 const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags, allIngredients, setCookingRecipe, cookLog, onRecipeConverted, isAdmin, authFetch }) => {
 const [selectedCookbook, setSelectedCookbook] = useState(null);
 const [showAddModal,     setShowAddModal]     = useState(false);
@@ -4856,7 +4856,7 @@ const entries = […(cb.recipes||[])];
 for (const lr of linked) {
 const existingIdx = entries.findIndex(e => e.name.toLowerCase() === lr.name.toLowerCase());
 if (existingIdx < 0) {
-// New linked recipe not in list yet — add it
+// New linked recipe not in list yet – add it
 entries.push({ name: lr.name, page: lr.reference || ‘’, image: lr.coverImage || ‘’, tags: lr.tags || [], recipeId: lr.id, addedAt: Date.now() });
 } else {
 // Sync recipeId and page number from the live recipe record
@@ -4925,7 +4925,7 @@ return (
 
   {cookbooks.length > 0 && (
     <div className="cookbooks-global-search">
-      <input className="editor-input" value={globalSearch} onChange={e => setGlobalSearch(e.target.value)} placeholder="Search recipes across all cookbooks…" />
+      <input className="editor-input" value={globalSearch} onChange={e => setGlobalSearch(e.target.value)} placeholder="Search recipes across all cookbooks..." />
       {globalSearch && <button className="cookbook-search-clear" onClick={() => setGlobalSearch('')}>✕</button>}
     </div>
   )}
@@ -5000,19 +5000,19 @@ return (
 );
 };
 
-// ─── Add Recipe Tab ─────────────────────────────────────────────────────────
+// — Add Recipe Tab ———————————————————
 const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) => {
 const apiFetch = authFetch || fetch;
 const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 const [showModal, setShowModal] = useState(false);
 
-// ── Link import state ──
+// – Link import state –
 const [showLinkModal, setShowLinkModal] = useState(false);
 const [linkUrl, setLinkUrl] = useState(’’);
 const [linkScraping, setLinkScraping] = useState(false);
 const [linkError, setLinkError] = useState(null);
 
-// ── Text import state ──
+// – Text import state –
 const [showTextModal, setShowTextModal] = useState(false);
 const [pastedText, setPastedText] = useState(’’);
 const [textParsing, setTextParsing] = useState(false);
@@ -5248,7 +5248,7 @@ return (
 <main className="view add-tab">
 <div className="add-tab__header">
 <h2 className="add-tab__title">Add a Recipe</h2>
-<p className="add-tab__sub">Grow your collection — add a recipe by hand or from a link</p>
+<p className="add-tab__sub">Grow your collection – add a recipe by hand or from a link</p>
 </div>
 
 ```
@@ -5273,12 +5273,12 @@ return (
     <button className="add-tab__card" onClick={openTextModal}>
       <span className="add-tab__card-icon"><Icon name="list" size={28} strokeWidth={1.5} /></span>
       <h3 className="add-tab__card-title">Add from Text</h3>
-      <p className="add-tab__card-desc">Paste copied text — we'll parse it automatically</p>
+      <p className="add-tab__card-desc">Paste copied text -- we'll parse it automatically</p>
       <span className="add-tab__card-cta">Paste &amp; import →</span>
     </button>
   </div>
 
-  {/* ── Text Import Modal ── */}
+  {/* -- Text Import Modal -- */}
   {showTextModal && (
     <div className="create-modal-overlay" onClick={closeTextModal}>
       <div className="create-modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
@@ -5288,7 +5288,7 @@ return (
         </div>
         <div className="create-modal__body" style={{ gap: 14 }}>
           <p style={{ fontSize: '0.9rem', color: 'var(--warm-gray)', margin: 0 }}>
-            Paste copied recipe text below — we'll extract the title, ingredients, and steps automatically.
+            Paste copied recipe text below -- we'll extract the title, ingredients, and steps automatically.
           </p>
           <div className="create-modal__field">
             <label className="create-modal__field-label">Paste recipe text</label>
@@ -5306,21 +5306,21 @@ return (
           {textParsing && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--warm-gray)', fontSize: '0.88rem' }}>
               <span className="link-import__spinner" />
-              Parsing recipe…
+              Parsing recipe...
             </div>
           )}
         </div>
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={closeTextModal}>Cancel</button>
           <button className="btn btn--primary" onClick={parseTextAndOpen} disabled={textParsing || !pastedText.trim()}>
-            {textParsing ? 'Parsing…' : 'Next →'}
+            {textParsing ? 'Parsing...' : 'Next →'}
           </button>
         </div>
       </div>
     </div>
   )}
 
-  {/* ── Link Import Modal ── */}
+  {/* -- Link Import Modal -- */}
   {showLinkModal && (
     <div className="create-modal-overlay" onClick={closeLinkModal}>
       <div className="create-modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
@@ -5330,7 +5330,7 @@ return (
         </div>
         <div className="create-modal__body" style={{ gap: 14 }}>
           <p style={{ fontSize: '0.9rem', color: 'var(--warm-gray)', margin: 0 }}>
-            Paste the URL of any recipe page — we'll extract the name, ingredients, steps, and image automatically using the page's structured data.
+            Paste the URL of any recipe page -- we'll extract the name, ingredients, steps, and image automatically using the page's structured data.
           </p>
           <div className="create-modal__field">
             <label className="create-modal__field-label">Recipe URL</label>
@@ -5347,7 +5347,7 @@ return (
           {linkScraping && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--warm-gray)', fontSize: '0.88rem' }}>
               <span className="link-import__spinner" />
-              Fetching recipe data…
+              Fetching recipe data...
             </div>
           )}
           <p style={{ fontSize: '0.8rem', color: 'var(--warm-gray)', margin: 0 }}>
@@ -5357,14 +5357,14 @@ return (
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={closeLinkModal}>Cancel</button>
           <button className="btn btn--primary" onClick={scrapeAndOpen} disabled={linkScraping || !linkUrl.trim()}>
-            {linkScraping ? 'Importing…' : 'Next →'}
+            {linkScraping ? 'Importing...' : 'Next →'}
           </button>
         </div>
       </div>
     </div>
   )}
 
-  {/* ── Create Recipe Modal ── */}
+  {/* -- Create Recipe Modal -- */}
   {showModal && (
     <div className="create-modal-overlay" onClick={closeModal}>
       <div className="create-modal" onClick={e => e.stopPropagation()}>
@@ -5389,7 +5389,7 @@ return (
               <input className="editor-input" value={details.cover_image_url}
                 onChange={e => { setDetail('cover_image_url', e.target.value); setImgPreviewError(false); }}
                 placeholder="https://example.com/photo.jpg" />
-              <p className="create-modal__field-hint">Paste any image URL — see it previewed instantly</p>
+              <p className="create-modal__field-hint">Paste any image URL -- see it previewed instantly</p>
             </div>
           </div>
 
@@ -5442,7 +5442,7 @@ return (
             <label className="create-modal__field-label"><Icon name="list" size={13} strokeWidth={2} /> Progress</label>
             <div className="picker__chips" style={{ marginTop: 6 }}>
               {[
-                { key: '', label: '— None' },
+                { key: '', label: '-- None' },
                 { key: 'complete', label: 'Complete' },
                 { key: 'needs tweaking', label: 'Needs Tweaking' },
                 { key: 'to try', label: 'To Try' },
@@ -5462,7 +5462,7 @@ return (
             Calories, protein &amp; fiber will be auto-calculated from your ingredients
           </p>
 
-          {/* Ingredients — group-style like edit modal */}
+          {/* Ingredients -- group-style like edit modal */}
           <div className="create-modal__field">
             <label className="create-modal__field-label">Ingredients</label>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onIngDragEnd}>
@@ -5538,7 +5538,7 @@ return (
                   const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
                   return (
                     <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
-                      <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step…" rows={2} />
+                      <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
                       <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                       <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                     </StepSortableItem>
@@ -5580,7 +5580,7 @@ return (
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={closeModal}>Cancel</button>
           <button className="btn btn--primary" onClick={save} disabled={saving}>
-            {saving ? 'Creating…' : '✓ Create Recipe'}
+            {saving ? 'Creating...' : '✓ Create Recipe'}
           </button>
         </div>
       </div>
@@ -5592,7 +5592,7 @@ return (
 );
 };
 
-// ─── Login Modal ─────────────────────────────────────────────────────────────
+// — Login Modal ———————————————————––
 const LoginModal = ({ onLogin }) => {
 const [username, setUsername] = useState(’’);
 const [password, setPassword] = useState(’’);
@@ -5657,7 +5657,7 @@ onKeyDown={e => e.key === ‘Enter’ && handleSubmit()}
 );
 };
 
-// ─── Create User Modal (admin only) ──────────────────────────────────────────
+// — Create User Modal (admin only) ——————————————
 const CreateUserModal = ({ onClose, authFetch }) => {
 const [username, setUsername] = useState(’’);
 const [password, setPassword] = useState(’’);
@@ -5708,9 +5708,9 @@ return (
 );
 };
 
-// ─── Main App ────────────────────────────────────────────────────────────────
+// — Main App ––––––––––––––––––––––––––––––––
 function AppInner() {
-// ─── Auth ──────────────────────────────────────────────────────────────────
+// — Auth ——————————————————————
 const [authToken, setAuthToken] = useState(() => LS.get(‘authToken’, null));
 const [authUser, setAuthUser]   = useState(() => LS.get(‘authUser’, null));
 const [showLogin, setShowLogin] = useState(false);
@@ -5738,7 +5738,7 @@ setAuthUser(null);
 setShowLogin(true);
 };
 
-// Authenticated fetch wrapper — adds Bearer token automatically
+// Authenticated fetch wrapper – adds Bearer token automatically
 const authFetch = useCallback((url, opts = {}) => {
 return fetch(url, {
 …opts,
@@ -6115,7 +6115,7 @@ if (e.key === ‘Escape’) { setMobileSearchOpen(false); }
 </button>
 ))}
 </nav>
-{/* User avatar — desktop only */}
+{/* User avatar – desktop only */}
 {authUser && (
 <button className=“header-user-btn header-user-btn–desktop-only” onClick={() => setView(‘profile’)} title=“Go to profile”>
 <span className="header-user-btn__name">{authUser.display_name || authUser.username}</span>
@@ -6175,7 +6175,7 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
         position:'fixed', inset:0, zIndex:1, overflow:'hidden', pointerEvents:'none',
         background: 'var(--parchment)',
       }}>
-        {/* Dim overlay — lightens as page slides away */}
+        {/* Dim overlay -- lightens as page slides away */}
         <div style={{
           position:'absolute', inset:0, zIndex:2,
           background:'rgba(0,0,0,0.18)',
@@ -6194,7 +6194,7 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
           Back
         </div>
       </div>
-      {/* Current recipe page — slides right on swipe */}
+      {/* Current recipe page -- slides right on swipe */}
       <div
         onTouchStart={handleSwipeTouchStart}
         onTouchMove={handleSwipeTouchMove}
@@ -6279,16 +6279,16 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
     <FridgeTab allIngredients={allIngredients} setAllIngredients={setAllIngredients} fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} authFetch={authFetch} />
   )}
 
-  {/* ══════════════════════════════════════════════════════
+  {/* ======================================================
       HOME VIEW
-  ══════════════════════════════════════════════════════ */}
+  ====================================================== */}
   {view === 'home' && (
     <main className="view home-view">
 
-      {/* ── Left column ── */}
+      {/* -- Left column -- */}
       <div className="home-main">
 
-        {/* ── ⏱ Make Soon ── */}
+        {/* -- ⏱ Make Soon -- */}
         {(() => {
           const makeSoonRecipes = recipes.filter(r => makeSoonIds.includes(r.id));
           const visibleSoon = showAllSoon ? makeSoonRecipes : makeSoonRecipes.slice(0, 4);
@@ -6323,7 +6323,7 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
           );
         })()}
 
-        {/* ── What can I make? ── */}
+        {/* -- What can I make? -- */}
         {(() => {
           const goodMatches = matches.filter(m => m.matchScore > 0);
           const visibleMatch = showAllMatch ? goodMatches : goodMatches.slice(0, 4);
@@ -6357,14 +6357,14 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
                         showScore={true} />;
                     })}
                 </HScrollRow>
-              ) : <p className="home-no-matches">No matches yet — try adding more ingredients in the Kitchen tab.</p>}
+              ) : <p className="home-no-matches">No matches yet -- try adding more ingredients in the Kitchen tab.</p>}
             </div>
           );
         })()}
 
                 </div>{/* end home-main */}
 
-      {/* ── Right sidebar: Quick Actions FIRST, then Insights ── */}
+      {/* -- Right sidebar: Quick Actions FIRST, then Insights -- */}
       <aside className="home-sidebar">
 
       <div className="insights-card">
@@ -6472,7 +6472,7 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
   )}
 
   {view === 'recipes' && (() => {
-    const allCuisinesPool = GEO_CUISINES; // strictly geo only — DB cuisine values are not shown as filters
+    const allCuisinesPool = GEO_CUISINES; // strictly geo only -- DB cuisine values are not shown as filters
     const PAGE_SIZE = window.innerWidth <= 640 ? 12 : 24;
     const totalPages = Math.max(1, Math.ceil(libraryRecipes.length / PAGE_SIZE));
     const safePage = Math.min(libraryPage, totalPages);
@@ -6484,7 +6484,7 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
     const activeCount = activeTags.length + activeCuisines.length + activeProgresses.length + (maxCalories !== null ? 1 : 0) + (maxMinutes !== null ? 1 : 0) + activeCookbooks.length;
     return (
       <main className="view">
-        {/* ── Page header ── */}
+        {/* -- Page header -- */}
         <div className="recipes-page-header">
           {mobileSearchSubmitted && mobileSearchQuery ? (
             <div className="recipes-page-header__search-results">
@@ -6496,7 +6496,7 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
           )}
         </div>
 
-        {/* ── Search + Filter Toggle ── */}
+        {/* -- Search + Filter Toggle -- */}
         <div className="recipes-search-row">
           <div className="recipes-search-row__top">
             <div className="filter-bar__search-wrap filter-bar__search-wrap--standalone">
@@ -6504,7 +6504,7 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
               <input
                 className="filter-bar__search"
                 type="search"
-                placeholder="Search recipes…"
+                placeholder="Search recipes..."
                 value={librarySearch}
                 onChange={e => setLibrarySearch(e.target.value)}
               />
@@ -6534,11 +6534,11 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
           </div>
         </div>
 
-        {/* ── Filter Panel ── */}
+        {/* -- Filter Panel -- */}
         {filtersOpen && (
           <div className="filter-panel">
 
-            {/* Cuisine — rounded icon chips */}
+            {/* Cuisine -- rounded icon chips */}
             <div className="filter-panel__group">
               <span className="filter-panel__label">Cuisine</span>
               <div className="filter-panel__chips">
@@ -6715,20 +6715,20 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
                           <span className="rlt__name">{r.name}</span>
                           {canMakeNow && <span className="rlt__ready">✓</span>}
                         </span>
-                        <span className="rlt__col rlt__col--cuisine">{r.cuisine || <span className="rlt__empty">—</span>}</span>
+                        <span className="rlt__col rlt__col--cuisine">{r.cuisine || <span className="rlt__empty">--</span>}</span>
                         <span className="rlt__col rlt__col--tags">
                           {tags.length > 0
                             ? tags.slice(0, 3).map(t => {
                                 const def = TAG_FILTERS.find(f => f.key === t);
                                 return <span key={t} className="rlt__tag">{def ? def.label.split(' ')[0] : t}</span>;
                               })
-                            : <span className="rlt__empty">—</span>}
+                            : <span className="rlt__empty">--</span>}
                           {tags.length > 3 && <span className="rlt__tag rlt__tag--more">+{tags.length - 3}</span>}
                         </span>
-                        <span className="rlt__col rlt__col--time">{r.time || <span className="rlt__empty">—</span>}</span>
-                        <span className="rlt__col rlt__col--cal">{calories !== null ? `${Math.round(calories)} kcal` : <span className="rlt__empty">—</span>}</span>
-                        <span className="rlt__col rlt__col--protein">{protein !== null ? `${Math.round(protein)}g` : <span className="rlt__empty">—</span>}</span>
-                        <span className="rlt__col rlt__col--status">{progress || <span className="rlt__empty">—</span>}</span>
+                        <span className="rlt__col rlt__col--time">{r.time || <span className="rlt__empty">--</span>}</span>
+                        <span className="rlt__col rlt__col--cal">{calories !== null ? `${Math.round(calories)} kcal` : <span className="rlt__empty">--</span>}</span>
+                        <span className="rlt__col rlt__col--protein">{protein !== null ? `${Math.round(protein)}g` : <span className="rlt__empty">--</span>}</span>
+                        <span className="rlt__col rlt__col--status">{progress || <span className="rlt__empty">--</span>}</span>
                         <span className="rlt__col rlt__col--actions" onClick={e => e.stopPropagation()}>
                           <button
                             className={`rlt__heart ${heartedIds.includes(r.id) ? 'rlt__heart--on' : ''}`}
@@ -6763,7 +6763,7 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
                           const pp = p - 1;
                           return totalPages <= 7 || pp <= 2 || pp >= totalPages - 1 || Math.abs(pp - safePage) <= 1;
                         })();
-                        if (!prevWasShown) pages.push(<span key={`ellipsis-${p}`} className="pager__ellipsis">…</span>);
+                        if (!prevWasShown) pages.push(<span key={`ellipsis-${p}`} className="pager__ellipsis">...</span>);
                         pages.push(<button key={p} className={`pager__num ${p === safePage ? 'pager__num--active' : ''}`} onClick={() => setLibraryPage(p)}>{p}</button>);
                       }
                       return pages;
@@ -6853,7 +6853,7 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
     />
   )}
 
-  {/* ── Mobile bottom tab bar ── */}
+  {/* -- Mobile bottom tab bar -- */}
   <nav className="mobile-tab-bar">
     {[
       { key: 'kitchen',  icon: 'chefHat', label: 'Kitchen' },
@@ -6872,7 +6872,7 @@ onClick={() => { setView(‘profile’); setMobileNavOpen(false); }}
     ))}
   </nav>
 
-  {/* ── Scroll-to-top button ── */}
+  {/* -- Scroll-to-top button -- */}
   {showScrollTop && (
     <button className="scroll-top-btn" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Scroll to top">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
