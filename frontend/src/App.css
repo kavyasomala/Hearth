@@ -6531,3 +6531,275 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     padding-bottom: 80px !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   MOBILE UI v7 — tab bar, search, swipe, cookbooks, scroll-top
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── MOBILE BOTTOM TAB BAR (Gmail style) ── */
+.mobile-tab-bar {
+  display: none; /* hidden on desktop */
+}
+@media (max-width: 640px) {
+  .mobile-tab-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 200;
+    background: var(--warm-white);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mobile-tab-bar__btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 8px 4px 6px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--warm-gray);
+    transition: color 0.15s;
+    min-width: 0;
+  }
+  .mobile-tab-bar__btn--active {
+    color: var(--terracotta);
+  }
+  .mobile-tab-bar__icon { line-height: 1; flex-shrink: 0; }
+  .mobile-tab-bar__label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  /* Dark mode */
+  [data-theme="dark"] .mobile-tab-bar {
+    background: var(--warm-white);
+    border-top-color: var(--border);
+  }
+  /* Give all views extra bottom padding so tab bar doesn't obscure content */
+  .view, .home-view, .grocery-view, .profile-view, .cn-tab, .cookbooks-tab {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  /* Also add space before footer */
+  .site-footer { margin-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ── HEADER: mobile left area (back btn + search) ── */
+.app-header__mobile-left {
+  display: none; /* hidden on desktop */
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+/* Desktop brand shown always on desktop, hidden on mobile */
+.app-header__brand--desktop {
+  display: inline-flex; /* default visible */
+}
+@media (max-width: 640px) {
+  .app-header__mobile-left { display: flex; }
+  .app-header__brand--desktop { display: none !important; }
+  /* Hide the original brand that's always in the bar */
+  .app-header__bar > .app-header__brand:not(.app-header__brand--desktop) {
+    display: none;
+  }
+}
+.app-header__back-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--charcoal); flex-shrink: 0;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+.app-header__back-btn:hover { background: var(--parchment); }
+.app-header__mobile-search-pill {
+  display: flex; align-items: center; gap: 8px;
+  flex: 1; min-width: 0;
+  height: 36px;
+  background: var(--parchment);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 0 14px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--warm-gray);
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: border-color 0.15s, background 0.15s;
+}
+.app-header__mobile-search-pill:hover { border-color: var(--terracotta-light); }
+.app-header__mobile-search-bar {
+  display: flex; align-items: center; gap: 8px;
+  flex: 1; min-width: 0;
+  height: 36px;
+  background: var(--parchment);
+  border: 1.5px solid var(--terracotta-light);
+  border-radius: 999px;
+  padding: 0 12px;
+}
+.app-header__mobile-search-input {
+  flex: 1; border: none; background: transparent;
+  font-family: var(--font-body); font-size: 14px;
+  color: var(--charcoal); outline: none;
+}
+.app-header__mobile-search-input::placeholder { color: var(--warm-gray); }
+.app-header__mobile-search-clear {
+  border: none; background: transparent; cursor: pointer;
+  color: var(--warm-gray); font-size: 13px; padding: 0; line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ── RECIPES PAGE HEADER ── */
+.recipes-page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.recipes-page-header__title {
+  font-family: var(--font-display);
+  font-size: 22px; font-weight: 700; color: var(--charcoal);
+}
+.recipes-page-header__title em { font-style: normal; color: var(--terracotta); }
+.recipes-page-header__search-results {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  justify-content: space-between;
+}
+.recipes-page-header__clear {
+  border: 1.5px solid var(--border); background: transparent;
+  border-radius: 999px; padding: 4px 12px;
+  font-size: 12px; font-weight: 600; color: var(--warm-gray);
+  cursor: pointer; flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+.recipes-page-header__clear:hover { border-color: var(--terracotta); color: var(--terracotta); }
+@media (max-width: 640px) {
+  .recipes-page-header__title { font-size: 18px; }
+}
+
+/* ── iOS-STYLE SWIPE: true slide with shadow ── */
+/* The ghost layer behind sits at z-index 0 in fixed position */
+/* Current page slides right on top of it with left shadow */
+/* No changes to JS needed beyond what's already there — just make sure */
+/* the page truly covers the full viewport */
+@media (max-width: 640px) {
+  /* Ensure swipe container fills full viewport height */
+  .app { overflow-x: hidden; }
+}
+
+/* ── SCROLL-TO-TOP BUTTON ── */
+.scroll-top-btn {
+  display: none;
+}
+@media (max-width: 640px) {
+  .scroll-top-btn {
+    display: flex;
+    position: fixed;
+    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    right: 16px;
+    z-index: 190;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: var(--charcoal);
+    color: white;
+    align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.15s;
+    opacity: 0.88;
+  }
+  .scroll-top-btn:active { transform: scale(0.93); opacity: 1; }
+  [data-theme="dark"] .scroll-top-btn {
+    background: var(--terracotta);
+  }
+}
+
+/* ── COOKBOOKS: small iOS book-style on mobile ── */
+@media (max-width: 640px) {
+  .cookbooks-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+  }
+  .cookbook-card {
+    border-radius: 8px !important;
+  }
+  .cookbook-card__cover {
+    aspect-ratio: 2/3 !important;
+  }
+  .cookbook-card__placeholder-icon { font-size: 28px !important; }
+  .cookbook-card__info {
+    padding: 8px 8px 10px !important;
+  }
+  .cookbook-card__title {
+    font-size: 11px !important;
+    -webkit-line-clamp: 2 !important;
+    margin-bottom: 0 !important;
+  }
+  .cookbook-card__author { display: none !important; }
+  .cookbook-card__stats { display: none !important; }
+  .cookbook-card__spine { height: 4px !important; }
+  .cookbook-card--add {
+    min-height: 120px !important;
+    gap: 4px !important;
+  }
+  .cookbook-card__add-icon { font-size: 20px !important; }
+  .cookbook-card__add-label { font-size: 10px !important; }
+}
+
+/* ── FOOTER: hide Recipes/Kitchen columns on mobile ── */
+@media (max-width: 640px) {
+  .site-footer__col { display: none !important; }
+  .site-footer__inner {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+    padding: 20px 20px 16px !important;
+  }
+  .site-footer__bottom {
+    padding: 12px 20px !important;
+  }
+}
+
+/* ── GROCERY: fix large gap between header and page top on mobile ── */
+@media (max-width: 640px) {
+  /* Remove extra top padding that was causing the space */
+  .grocery-view { padding-top: 0 !important; }
+  .view.grocery-view { padding-top: 0 !important; }
+  /* Remove sticky positioning that was adding margin */
+  .grocery-header {
+    position: static !important;
+    margin: 0 !important;
+    width: 100% !important;
+    top: unset !important;
+  }
+}
+
+/* ── HOME: view-all button style ── */
+.home-section__view-all {
+  color: var(--terracotta) !important;
+  font-weight: 600 !important;
+}
+
+/* ── DARK MODE: tab bar ── */
+[data-theme="dark"] .mobile-tab-bar {
+  background: var(--warm-white) !important;
+  border-top-color: var(--border) !important;
+}
+[data-theme="dark"] .mobile-tab-bar__btn { color: var(--warm-gray); }
+[data-theme="dark"] .mobile-tab-bar__btn--active { color: var(--terracotta); }
+[data-theme="dark"] .app-header__mobile-search-pill {
+  background: var(--parchment);
+  border-color: var(--border);
+}
+[data-theme="dark"] .app-header__mobile-search-bar {
+  background: var(--parchment);
+}
+[data-theme="dark"] .app-header__mobile-search-input { color: var(--charcoal); }
