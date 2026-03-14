@@ -66,6 +66,8 @@ const ICONS = {
   moon:        ['M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z'],
   image:       ['M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2z', 'M8.5 13.5l2.5-3 2 2.5 2.5-3 3 4H6z'],
   share2:      ['M18 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', 'M6 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', 'M18 16a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', 'M8.59 13.51l6.83 3.98', 'M15.41 6.51l-6.82 3.98'],
+  plus:        ['M12 5v14', 'M5 12h14'],
+  home:        ['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 22V12h6v10'],
 };
 
 const Icon = ({ name, size = 16, color = 'currentColor', strokeWidth = 2 }) => {
@@ -196,6 +198,7 @@ const TAG_FILTERS = [
 const PROGRESS_FILTERS = [
   { key: '__readytocook',   label: 'Ready to Cook',   icon: 'checkCircle' },
   { key: '__almostready',   label: 'Almost Ready',    icon: 'flame'       },
+  { key: '__makesoon',      label: 'Make Soon',       icon: 'timer'       },
   { key: '__favorite',      label: 'Favorites',       icon: 'heart'       },
   { key: '__incomplete',    label: 'Incomplete',      icon: 'note'        },
   { key: '__needstweaking', label: 'Needs Tweaking',  icon: 'tool'        },
@@ -1380,7 +1383,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 <div className="rp2__hero-tag-wrap">
                   <button className={`rp2__tag rp2__tag--clickable ${recipe.status === 'incomplete' ? 'rp2__tag--warning' : recipe.status === 'needs tweaking' ? 'rp2__tag--warning' : recipe.status === 'complete' ? 'rp2__tag--success' : 'rp2__tag--light'} ${isEdit('meta-progress') ? 'rp2__tag--editing' : ''}`}
                     onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-progress') ? null : 'meta-progress'); }}>
-                    {recipe.status === 'incomplete' ? <><Icon name="alertTriangle" size={12} strokeWidth={2} /> Incomplete</> : recipe.status === 'needs tweaking' ? <><Icon name="tool" size={12} strokeWidth={2} /> Tweaking</> : recipe.status === 'complete' ? <><Icon name="checkCircle" size={12} strokeWidth={2} /> Complete</> : recipe.status === 'to try' ? <><Icon name="bookMarked" size={12} strokeWidth={2} /> To Try</> : null}
+                    {recipe.status === 'incomplete' ? 'Incomplete' : recipe.status === 'needs tweaking' ? 'Tweaking' : recipe.status === 'complete' ? 'Complete' : recipe.status === 'to try' ? 'To Try' : null}
                   </button>
                   {isEdit('meta-progress') && (
                     <div className="rp2__hero-dark-popover">
@@ -5926,6 +5929,7 @@ function AppInner() {
       list = list.filter(r => activeProgresses.some(p => {
         if (p === '__readytocook')  return matchById.get(r.id)?.canMake;
         if (p === '__almostready')  { const m = matchById.get(r.id); return m && m.matchScore >= 0.7 && !m.canMake; }
+        if (p === '__makesoon') return makeSoonIds.includes(r.id);
         if (p === '__incomplete') return r.status === 'incomplete';
         if (p === '__needstweaking') return r.status === 'needs tweaking';
         if (p === '__favorite') return heartedIds.includes(r.id);
@@ -5968,7 +5972,7 @@ function AppInner() {
       });
     }
     return list;
-  }, [recipes, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById, hideIncompatible, dietaryFilters, activeCookbooks]);
+  }, [recipes, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById, hideIncompatible, dietaryFilters, activeCookbooks, makeSoonIds]);
 
   const hasActiveFilters = !!(librarySearch || activeTags.length || activeCuisines.length || activeProgresses.length || maxCalories !== null || maxMinutes !== null || activeCookbooks.length);
   const clearAllFilters = () => { setLibrarySearch(''); setActiveTags([]); setActiveCuisines([]); setActiveProgresses([]); setMaxCalories(null); setMaxMinutes(null); setActiveCookbooks([]); };
@@ -6014,7 +6018,7 @@ function AppInner() {
                 </button>
               </>
             ) : view === 'recipes' && mobileSearchOpen ? (
-              <div className="app-header__mobile-search-bar">
+              <div className="app-header__mobile-search-bar" style={{position:'relative'}}>
                 <Icon name="search" size={14} strokeWidth={2} color="var(--warm-gray)" />
                 <input
                   className="app-header__mobile-search-input"
@@ -6030,6 +6034,21 @@ function AppInner() {
                 {mobileSearchQuery && (
                   <button className="app-header__mobile-search-clear" onClick={() => { setMobileSearchQuery(''); setMobileSearchSubmitted(false); setLibrarySearch(''); }}>✕</button>
                 )}
+                {/* Autocomplete dropdown */}
+                {mobileSearchQuery && !mobileSearchSubmitted && (() => {
+                  const q = mobileSearchQuery.toLowerCase().trim();
+                  const suggestions = recipes.filter(r => r.name.toLowerCase().includes(q)).slice(0, 6);
+                  return suggestions.length > 0 ? (
+                    <div className="mobile-search-dropdown">
+                      {suggestions.map(r => (
+                        <button key={r.id} className="mobile-search-dropdown__item" onMouseDown={e => { e.preventDefault(); setMobileSearchQuery(r.name); setMobileSearchSubmitted(true); setMobileSearchOpen(false); setLibrarySearch(r.name); }}>
+                          <Icon name="search" size={12} strokeWidth={2} color="var(--warm-gray)" />
+                          <span>{r.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
               </div>
             ) : (
               <button className="app-header__brand" onClick={() => setView('home')}>
@@ -6240,7 +6259,7 @@ function AppInner() {
                   <div className="home-section__header">
                     <h2 className="home-section__title">Make Soon</h2>
                     {makeSoonIds.length > 0 && (
-                      <button className="btn btn--ghost btn--sm home-section__view-all" onClick={() => { setActiveTags([]); setActiveCuisines([]); setActiveProgresses([]); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>View all →</button>
+                      <button className="btn btn--ghost btn--sm home-section__view-all" onClick={() => { setActiveTags([]); setActiveCuisines([]); setActiveProgresses(['__makesoon']); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>View all →</button>
                     )}
                   </div>
                   {makeSoonIds.length === 0 ? (
@@ -6275,7 +6294,7 @@ function AppInner() {
                   <div className="home-section__header">
                     <h2 className="home-section__title">What can I make?</h2>
                     {allMyIngredients.size > 0 ? (
-                      <button className="btn btn--ghost btn--sm home-section__view-all" onClick={() => { setActiveProgresses(['__readytocook']); setView('recipes'); }}>View all →</button>
+                      <button className="btn btn--ghost btn--sm home-section__view-all" onClick={() => { setActiveProgresses(['__makesoon']); setActiveTags([]); setActiveCuisines([]); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>View all →</button>
                     ) : (
                       <button className="btn btn--ghost btn--sm" onClick={() => setView('kitchen')}>Set ingredients →</button>
                     )}
@@ -6441,7 +6460,7 @@ function AppInner() {
 
             {/* -- Search + Filter Toggle -- */}
             <div className="recipes-search-row">
-              <div className="recipes-search-row__top">
+              <div className="recipes-search-row__top recipes-search-row__top--desktop-search">
                 <div className="filter-bar__search-wrap filter-bar__search-wrap--standalone">
                   <span className="filter-bar__search-icon"><Icon name="search" size={15} strokeWidth={2} /></span>
                   <input
@@ -6463,7 +6482,29 @@ function AppInner() {
                   {libraryLayout === 'grid' ? <Icon name="list" size={16} strokeWidth={2} /> : <Icon name="grid" size={16} strokeWidth={2} />}
                 </button>
               </div>
-              <div className="recipes-search-row__bottom">
+              {/* Mobile: filters + layout toggle row (no search bar since it's in the header) */}
+              <div className="recipes-search-row__top recipes-search-row__top--mobile-filters">
+                <div className="recipes-search-row__bottom recipes-search-row__bottom--mobile-inline">
+                  <button
+                    className={`filters-toggle-btn ${filtersOpen ? 'filters-toggle-btn--open' : ''} ${hasActiveFilters ? 'filters-toggle-btn--active' : ''}`}
+                    onClick={() => setFiltersOpen(o => !o)}
+                  >
+                    <><Icon name="sliders" size={14} strokeWidth={2} /> Filters{activeCount > 0 ? ` · ${activeCount}` : ''}</>
+                    <span className="filters-toggle-btn__arrow">{filtersOpen ? '▴' : '▾'}</span>
+                  </button>
+                  {hasActiveFilters && (
+                    <button className="filter-bar__reset" onClick={clearAllFilters}>✕ Clear</button>
+                  )}
+                </div>
+                <button
+                  className={`layout-toggle-btn ${libraryLayout === 'list' ? 'layout-toggle-btn--active' : ''}`}
+                  onClick={() => { setLibraryLayout(l => l === 'grid' ? 'list' : 'grid'); setLibraryPage(1); }}
+                  title={libraryLayout === 'grid' ? 'Switch to list view' : 'Switch to gallery view'}
+                >
+                  {libraryLayout === 'grid' ? <Icon name="list" size={16} strokeWidth={2} /> : <Icon name="grid" size={16} strokeWidth={2} />}
+                </button>
+              </div>
+              <div className="recipes-search-row__bottom recipes-search-row__bottom--desktop-only">
                 <button
                   className={`filters-toggle-btn ${filtersOpen ? 'filters-toggle-btn--open' : ''} ${hasActiveFilters ? 'filters-toggle-btn--active' : ''}`}
                   onClick={() => setFiltersOpen(o => !o)}
@@ -6799,17 +6840,17 @@ function AppInner() {
       {/* -- Mobile bottom tab bar -- */}
       <nav className="mobile-tab-bar">
         {[
-          { key: 'kitchen',  icon: 'chefHat', label: 'Kitchen' },
-          { key: 'grocery',  icon: 'list',    label: 'Grocery' },
-          { key: 'notes',    icon: 'note',    label: 'Notes'   },
+          { key: 'home',     icon: 'home',     label: 'Home'     },
+          { key: 'recipes',  icon: 'bookOpen', label: 'Recipes'  },
+          { key: 'grocery',  icon: 'cart',     label: 'Groceries'},
           ...(isAdmin ? [{ key: 'add', icon: 'plus', label: 'Add' }] : []),
-          { key: 'profile',  icon: 'user',    label: 'Profile' },
+          { key: 'profile',  icon: 'user',     label: 'Profile'  },
         ].map(({ key, icon, label }) => (
           <button key={key}
             className={`mobile-tab-bar__btn ${view === key ? 'mobile-tab-bar__btn--active' : ''}`}
             onClick={() => { setView(key); setMobileNavOpen(false); }}
           >
-            <span className="mobile-tab-bar__icon"><Icon name={icon} size={21} strokeWidth={1.75} /></span>
+            <span className="mobile-tab-bar__icon"><Icon name={icon} size={22} strokeWidth={1.75} /></span>
             <span className="mobile-tab-bar__label">{label}</span>
           </button>
         ))}
