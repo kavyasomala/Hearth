@@ -6548,6 +6548,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     border-top: 1px solid var(--border);
     box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
     padding-bottom: env(safe-area-inset-bottom, 0px);
+    min-height: 83px; /* iOS standard tab bar height */
   }
   .mobile-tab-bar__btn {
     flex: 1;
@@ -6555,21 +6556,25 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    padding: 10px 4px 8px;
+    gap: 5px;
+    padding: 12px 4px 10px;
     border: none;
     background: transparent;
     cursor: pointer;
     color: var(--warm-gray);
     transition: color 0.15s;
     min-width: 0;
+    min-height: 83px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   .mobile-tab-bar__btn--active {
     color: var(--terracotta);
   }
+  .mobile-tab-bar__btn:active { opacity: 0.7; }
   .mobile-tab-bar__icon { line-height: 1; flex-shrink: 0; }
   .mobile-tab-bar__label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.02em;
     white-space: nowrap;
@@ -6584,10 +6589,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   }
   /* Give all views extra bottom padding so tab bar doesn't obscure content */
   .view, .home-view, .grocery-view, .profile-view, .cn-tab, .cookbooks-tab {
-    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
   }
   /* Also add space before footer */
-  .site-footer { margin-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+  .site-footer { margin-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ── HEADER: mobile left area (back btn + search) ── */
@@ -6647,8 +6652,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 }
 .app-header__mobile-search-input {
   flex: 1; border: none; background: transparent;
-  font-family: var(--font-body); font-size: 14px;
+  font-family: var(--font-body); font-size: 16px; /* ≥16px prevents iOS zoom */
   color: var(--charcoal); outline: none;
+  touch-action: manipulation;
 }
 .app-header__mobile-search-input::placeholder { color: var(--warm-gray); }
 .app-header__mobile-search-clear {
@@ -6873,3 +6879,242 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 .recipe-list-table__row--make-soon:hover { background: #e8cdb5 !important; }
 [data-theme="dark"] .recipe-list-table__row--make-soon { background: #4a2e1a !important; }
 [data-theme="dark"] .recipe-list-table__row--make-soon:hover { background: #5a3820 !important; }
+
+/* ══════════════════════════════════════════════════════════════════
+   UI/UX PRO MAX FIXES — iOS Mobile Navigation Polish
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── FIX 3: Dark mode recipe step highlight — improve contrast ── */
+[data-theme="dark"] .rp2__step--current {
+  background: rgba(180, 90, 50, 0.22) !important;
+  border-left-color: var(--terracotta) !important;
+}
+[data-theme="dark"] .rp2__step--current .rp2__step-body {
+  color: #f5e8d8 !important;
+}
+[data-theme="dark"] .rp2__step--current .rp2__step-num {
+  background: var(--terracotta) !important;
+  color: #fff !important;
+}
+
+/* ── FIX 4: Prevent iOS zoom — all search/text inputs ≥16px on mobile ── */
+@media (max-width: 640px) {
+  input[type="text"],
+  input[type="search"],
+  input[type="email"],
+  input[type="number"],
+  input[type="password"],
+  input[type="url"],
+  textarea,
+  select,
+  .editor-input,
+  .filter-bar__search,
+  .kitchen-quickadd-input,
+  .cn-tab__search,
+  .cookbook-search-input,
+  .cookbooks-global-search input,
+  .login-modal__input {
+    font-size: 16px !important; /* Prevents iOS Safari auto-zoom */
+    touch-action: manipulation;
+  }
+}
+
+/* ── FIX 6: Reduce excess bottom padding on mobile sections ── */
+@media (max-width: 640px) {
+  .home-section { margin-bottom: 20px !important; }
+  .home-section:last-child { margin-bottom: 0 !important; }
+  .fridge-groups { padding-bottom: 8px !important; }
+  .kitchen-missing-section { margin-bottom: 0 !important; }
+  .grocery-list { padding-bottom: 0 !important; }
+  .cn-tab__groups { padding-bottom: 0 !important; }
+  .cookbooks-grid { margin-bottom: 0 !important; }
+  .profile-section:last-child { margin-bottom: 0 !important; }
+  /* Reduce excess gap above footer */
+  .site-footer { margin-top: 0 !important; }
+}
+
+/* ── FIX 7: Profile — reduce top space on mobile ── */
+@media (max-width: 640px) {
+  .profile-view {
+    padding-top: 12px !important;
+  }
+  .profile-header {
+    padding-top: 4px !important;
+    padding-bottom: 16px !important;
+    margin-bottom: 12px !important;
+  }
+}
+
+/* ── FIX 8: Consistent header size/location across all tabs on mobile ── */
+@media (max-width: 640px) {
+  /* Unified page title styling for all tab pages */
+  .fridge-title,
+  .fridge-title,
+  .cookbooks-title,
+  .add-tab__title,
+  .cn-tab__title,
+  .recipes-page-header__title,
+  .grocery-view .fridge-title {
+    font-family: var(--font-display) !important;
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    color: var(--charcoal) !important;
+    margin: 0 0 2px !important;
+    line-height: 1.2 !important;
+  }
+  /* Consistent header block padding */
+  .fridge-header,
+  .grocery-header,
+  .cookbooks-header,
+  .add-tab__header,
+  .cn-tab__header {
+    padding-top: 0 !important;
+    margin-bottom: 16px !important;
+  }
+}
+
+/* ── FIX 9: Footer — persistent on all pages, fix desktop empty footer ── */
+/* Desktop: ensure footer has content */
+@media (min-width: 641px) {
+  .site-footer {
+    display: block !important;
+  }
+  .site-footer__inner {
+    display: grid !important;
+  }
+  .site-footer__col {
+    display: block !important;
+  }
+}
+/* Recipe summary page: show footer */
+.view.rp2 ~ .site-footer,
+.rp2 + .site-footer {
+  display: block !important;
+}
+
+/* ── FIX 11: Recipe summary page — match background to all other pages ── */
+.view.rp2 {
+  background: var(--parchment) !important;
+}
+.rp2__header {
+  background: var(--parchment) !important;
+}
+.rp2__body {
+  background: var(--parchment) !important;
+}
+/* Recipe page header bar should match app header */
+.view.rp2 .app-header,
+.rp2 .rp2__hero-topbar {
+  background: transparent !important;
+}
+/* Dark mode recipe page */
+[data-theme="dark"] .view.rp2 {
+  background: var(--cream) !important;
+}
+[data-theme="dark"] .rp2__header {
+  background: var(--cream) !important;
+}
+[data-theme="dark"] .rp2__body {
+  background: var(--cream) !important;
+}
+[data-theme="dark"] .rp2__ingredients,
+[data-theme="dark"] .rp2__instructions {
+  background: var(--cream) !important;
+}
+
+/* ── MOBILE: app-header back button sizing ── */
+@media (max-width: 640px) {
+  .app-header__back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--terracotta);
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    padding: 0 8px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .app-header__back-btn:active { opacity: 0.6; }
+
+  /* Search bar: prevent zoom, full expand */
+  .app-header__mobile-search-bar {
+    flex: 1 !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    font-size: 16px !important;
+  }
+  .app-header__mobile-search-pill {
+    flex: 1 !important;
+    min-width: 0 !important;
+    font-size: 16px !important;
+  }
+
+  /* Mobile left area fills space */
+  .app-header__mobile-left {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+}
+
+/* ── DESKTOP: footer columns always shown ── */
+.site-footer__col { display: block; }
+
+/* ── MOBILE SEARCH DROPDOWN: show recipe images ── */
+.mobile-search-dropdown__item-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.mobile-search-dropdown__item-img-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--parchment);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mobile-search-dropdown__item {
+  gap: 10px;
+  padding: 9px 14px;
+}
+.mobile-search-dropdown__item-name {
+  flex: 1;
+  font-size: 14px;
+  color: var(--charcoal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.mobile-search-dropdown__item-meta {
+  font-size: 11px;
+  color: var(--warm-gray);
+  white-space: nowrap;
+}
+
+/* ── SEARCH RESULTS PAGE HEADER ── */
+.search-results-header {
+  padding: 4px 0 16px;
+}
+.search-results-header__title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--charcoal);
+}
+.search-results-header__title em {
+  font-style: normal;
+  color: var(--terracotta);
+}
