@@ -1648,8 +1648,6 @@ body {
 }
 .recipe-list-table__row:last-child { border-bottom: none; }
 .recipe-list-table__row:hover { background: var(--cream); }
-.recipe-list-table__row--make-soon { background: #fdf4ed !important; }
-.recipe-list-table__row--make-soon:hover { background: #faeee3 !important; }
 .rlt__col {
   display: flex;
   align-items: center;
@@ -6557,8 +6555,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    padding: 8px 4px 6px;
+    gap: 4px;
+    padding: 10px 4px 8px;
     border: none;
     background: transparent;
     cursor: pointer;
@@ -6586,10 +6584,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   }
   /* Give all views extra bottom padding so tab bar doesn't obscure content */
   .view, .home-view, .grocery-view, .profile-view, .cn-tab, .cookbooks-tab {
-    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
   }
   /* Also add space before footer */
-  .site-footer { margin-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+  .site-footer { margin-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ── HEADER: mobile left area (back btn + search) ── */
@@ -6703,7 +6701,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .scroll-top-btn {
     display: flex;
     position: fixed;
-    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(82px + env(safe-area-inset-bottom, 0px));
     right: 16px;
     z-index: 190;
     width: 42px; height: 42px;
@@ -6762,9 +6760,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     grid-template-columns: 1fr !important;
     gap: 0 !important;
     padding: 20px 20px 16px !important;
+    border-bottom: none !important;
   }
   .site-footer__bottom {
     padding: 12px 20px !important;
+    border-top: none !important;
   }
 }
 
@@ -6804,3 +6804,72 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 }
 [data-theme="dark"] .app-header__mobile-search-input { color: var(--charcoal); }
 
+
+/* ── MOBILE SEARCH DROPDOWN ── */
+.mobile-search-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  background: var(--warm-white);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.13);
+  overflow: hidden;
+  z-index: 999;
+}
+.mobile-search-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--charcoal);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid var(--border);
+}
+.mobile-search-dropdown__item:last-child { border-bottom: none; }
+.mobile-search-dropdown__item:active { background: var(--parchment); }
+[data-theme="dark"] .mobile-search-dropdown {
+  background: var(--warm-white);
+  border-color: var(--border);
+}
+[data-theme="dark"] .mobile-search-dropdown__item {
+  color: var(--charcoal);
+  border-bottom-color: var(--border);
+}
+[data-theme="dark"] .mobile-search-dropdown__item:active { background: var(--parchment); }
+
+/* ── RECIPES PAGE: hide search bar on mobile, show mobile-only filters row ── */
+@media (max-width: 640px) {
+  .recipes-search-row__top--desktop-search { display: none !important; }
+  .recipes-search-row__bottom--desktop-only { display: none !important; }
+  .recipes-search-row__top--mobile-filters {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .recipes-search-row__bottom--mobile-inline {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+}
+@media (min-width: 641px) {
+  .recipes-search-row__top--mobile-filters { display: none !important; }
+}
+
+/* ── LIST VIEW: Make Soon highlight — darker in light mode, readable in dark mode ── */
+.recipe-list-table__row--make-soon { background: #f0d9c4 !important; }
+.recipe-list-table__row--make-soon:hover { background: #e8cdb5 !important; }
+[data-theme="dark"] .recipe-list-table__row--make-soon { background: #4a2e1a !important; }
+[data-theme="dark"] .recipe-list-table__row--make-soon:hover { background: #5a3820 !important; }
