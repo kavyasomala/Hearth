@@ -3372,6 +3372,31 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                   </svg>
                   View on GitHub
                 </a>
+                <button
+                  className="about-github-btn"
+                  style={{ background: 'var(--terracotta)', color: '#fff', border: 'none', cursor: 'pointer' }}
+                  title="Download app icon to use on your phone's home screen"
+                  onClick={() => {
+                    // Generate a 512x512 SVG app icon matching the favicon flame design
+                    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="110" fill="#B8522A"/>
+  <path d="M256 80C256 80 176 170 176 290a80 80 0 0 0 160 0c0-40-20-76-40-100
+    c0 0 0 52-28 72c-14 10-36 4-36-28 0-52 24-100 24-100S256 80 256 80Z"
+    fill="white" stroke="white" stroke-width="4" stroke-linejoin="round"/>
+</svg>`;
+                    const blob = new Blob([svg], { type: 'image/svg+xml' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'hearth-icon.svg';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  <Icon name="heart" size={14} strokeWidth={2} color="white" /> Download App Icon
+                </button>
                 <div className="about-stack">
                   <span className="about-stack__badge">React</span>
                   <span className="about-stack__badge">Node.js</span>
@@ -6025,25 +6050,48 @@ function AppInner() {
                   autoFocus
                   placeholder="Search recipes..."
                   value={mobileSearchQuery}
+                  style={{ fontSize: '16px', touchAction: 'manipulation' }}
                   onChange={e => { setMobileSearchQuery(e.target.value); setMobileSearchSubmitted(false); setLibrarySearch(e.target.value); }}
                   onKeyDown={e => {
-                    if (e.key === 'Enter') { setMobileSearchSubmitted(true); setMobileSearchOpen(false); setLibrarySearch(mobileSearchQuery); }
+                    if (e.key === 'Enter') {
+                      // If exactly one match, open that recipe directly
+                      const q = mobileSearchQuery.toLowerCase().trim();
+                      const matches = recipes.filter(r => r.name.toLowerCase().includes(q));
+                      if (matches.length === 1) {
+                        setMobileSearchOpen(false);
+                        openRecipe(matches[0]);
+                      } else {
+                        setMobileSearchSubmitted(true); setMobileSearchOpen(false); setLibrarySearch(mobileSearchQuery);
+                      }
+                    }
                     if (e.key === 'Escape') { setMobileSearchOpen(false); }
                   }}
                 />
                 {mobileSearchQuery && (
                   <button className="app-header__mobile-search-clear" onClick={() => { setMobileSearchQuery(''); setMobileSearchSubmitted(false); setLibrarySearch(''); }}>✕</button>
                 )}
-                {/* Autocomplete dropdown */}
+                {/* Autocomplete dropdown with images */}
                 {mobileSearchQuery && !mobileSearchSubmitted && (() => {
                   const q = mobileSearchQuery.toLowerCase().trim();
                   const suggestions = recipes.filter(r => r.name.toLowerCase().includes(q)).slice(0, 6);
                   return suggestions.length > 0 ? (
                     <div className="mobile-search-dropdown">
                       {suggestions.map(r => (
-                        <button key={r.id} className="mobile-search-dropdown__item" onMouseDown={e => { e.preventDefault(); setMobileSearchQuery(r.name); setMobileSearchSubmitted(true); setMobileSearchOpen(false); setLibrarySearch(r.name); }}>
-                          <Icon name="search" size={12} strokeWidth={2} color="var(--warm-gray)" />
-                          <span>{r.name}</span>
+                        <button key={r.id} className="mobile-search-dropdown__item" onMouseDown={e => {
+                          e.preventDefault();
+                          // Tap on suggestion → go directly to that recipe's summary page
+                          setMobileSearchOpen(false);
+                          setMobileSearchQuery(r.name);
+                          setMobileSearchSubmitted(true);
+                          openRecipe(r);
+                        }}>
+                          {r.coverImage
+                            ? <img src={r.coverImage} alt={r.name} className="mobile-search-dropdown__item-img" />
+                            : <div className="mobile-search-dropdown__item-img-placeholder"><Icon name="image" size={16} color="var(--ash)" strokeWidth={1.5} /></div>}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="mobile-search-dropdown__item-name">{r.name}</div>
+                            {(r.cuisine || r.time) && <div className="mobile-search-dropdown__item-meta">{[r.cuisine, r.time].filter(Boolean).join(' · ')}</div>}
+                          </div>
                         </button>
                       ))}
                     </div>
