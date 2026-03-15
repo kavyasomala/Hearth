@@ -2,11 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/hearth-logo.png" />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/hearth-logo.png" />
+    <!-- Browser favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/hearth-logo.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="%PUBLIC_URL%/hearth-logo.png" />
+    <!-- iOS home screen icon (180×180 PNG recommended) -->
     <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/hearth-logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#2d2d2d" />
+    <!-- Android / PWA -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- Terracotta brand color for browser chrome / Android task switcher -->
+    <meta name="theme-color" content="#B8522A" />
+    <!-- iOS PWA settings -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Hearth" />

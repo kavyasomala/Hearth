@@ -7138,3 +7138,218 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     min-width: 0;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   POLISH PASS 2 — Overlay nav, tab bar, spacing
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── MOBILE NAV OVERLAY (floating, not push-down) ── */
+.mobile-nav-backdrop {
+  display: none;
+}
+@media (max-width: 640px) {
+  /* Remove old push-down drawer */
+  .mobile-nav-drawer { display: none !important; }
+
+  /* Backdrop */
+  .mobile-nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 299;
+    background: rgba(42, 32, 16, 0.35);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    animation: fadeInBackdrop 0.18s ease;
+  }
+  @keyframes fadeInBackdrop {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Overlay panel — top-right corner, compact width */
+  .mobile-nav-overlay {
+    position: fixed;
+    top: 56px; /* just below header */
+    right: 12px;
+    z-index: 300;
+    background: var(--warm-white);
+    border-radius: 18px;
+    box-shadow: 0 8px 40px rgba(42,32,16,0.22), 0 2px 8px rgba(42,32,16,0.1);
+    border: 1px solid var(--border);
+    min-width: 220px;
+    max-width: 280px;
+    overflow: hidden;
+    animation: slideInOverlay 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: top right;
+  }
+  @keyframes slideInOverlay {
+    from { opacity: 0; transform: scale(0.88) translateY(-8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* Brand header inside overlay */
+  .mobile-nav-overlay__brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 14px 18px 12px;
+  }
+  .mobile-nav-overlay__flame { display: flex; align-items: center; }
+  .mobile-nav-overlay__title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--charcoal);
+    letter-spacing: -0.01em;
+  }
+
+  /* Divider */
+  .mobile-nav-overlay__divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0 12px;
+  }
+
+  /* Nav items in overlay */
+  .mobile-nav-overlay .mobile-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--warm-gray);
+    border: none;
+    background: none;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: background 0.12s, color 0.12s;
+    min-height: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: 0;
+  }
+  .mobile-nav-overlay .mobile-nav-item:active { background: var(--parchment); }
+  .mobile-nav-overlay .mobile-nav-item--active {
+    color: var(--terracotta);
+    font-weight: 600;
+    background: rgba(184, 74, 40, 0.06);
+  }
+  .mobile-nav-overlay .mobile-nav-item--signout {
+    color: var(--warm-gray);
+    opacity: 0.75;
+    font-size: 13px;
+    padding-bottom: 14px;
+  }
+  .mobile-nav-overlay .mobile-nav-item:disabled { opacity: 0.35; cursor: default; }
+
+  /* Hamburger → X animation */
+  .mobile-menu-btn__bar--open-1 {
+    transform: translateY(7px) rotate(45deg);
+  }
+  .mobile-menu-btn__bar--open-2 {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  .mobile-menu-btn__bar--open-3 {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+
+  /* Dark mode overlay */
+  [data-theme="dark"] .mobile-nav-overlay {
+    background: var(--warm-white);
+    border-color: var(--border);
+  }
+}
+
+/* ── HOME: compact flame-only brand on mobile ── */
+@media (max-width: 640px) {
+  .app-header__brand--mobile-compact {
+    padding: 6px 4px !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+    min-width: 36px;
+  }
+  .app-header__brand--mobile-compact .app-header__title {
+    display: none; /* hide text, keep just the flame */
+  }
+}
+
+/* ── TAB BAR: perfectly centered icons — equal space above and below ── */
+@media (max-width: 640px) {
+  .mobile-tab-bar__btn {
+    padding: 0 4px !important;         /* remove asymmetric padding */
+    justify-content: center !important;
+    align-items: center !important;
+  }
+  /* Use safe-area padding on the bar itself, not the buttons */
+  .mobile-tab-bar {
+    padding-bottom: 0 !important;
+    padding-top: 0 !important;
+    align-items: stretch;
+  }
+  /* The icon+label group centers itself with equal breathing room */
+  .mobile-tab-bar__btn-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 4px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ── SECTION BOTTOM SPACING: reduce gap before footer on mobile ── */
+@media (max-width: 640px) {
+  /* All views: tighter bottom padding (tab bar height + small gap) */
+  .view,
+  .home-view,
+  .grocery-view,
+  .profile-view,
+  .cn-tab,
+  .cookbooks-tab {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  /* Individual section last-child gaps */
+  .home-section:last-of-type { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+  .fridge-groups:last-child  { padding-bottom: 4px !important; }
+  .kitchen-missing-section   { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+  .grocery-list              { padding-bottom: 4px !important; }
+  .cn-tab__groups            { padding-bottom: 4px !important; }
+  .profile-section:last-child { margin-bottom: 0 !important; }
+  .cookbooks-grid, .cookbook-detail { padding-bottom: 4px !important; }
+  /* Footer: flush under last section, above tab bar */
+  .site-footer {
+    margin-bottom: 0 !important;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ── FOOTER: always shown on non-recipe pages, never on recipe page ── */
+/* (visibility controlled via JS: view !== 'recipe') */
+@media (max-width: 640px) {
+  .site-footer__inner {
+    padding-bottom: 8px !important;
+  }
+}
+
+/* ── TAB BAR inner wrapper: safe-area padding lives here, icons stay centered ── */
+@media (max-width: 640px) {
+  .mobile-tab-bar__btn-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    /* Top padding = bottom padding + safe area, so icons appear visually centered */
+    padding-top: 10px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    width: 100%;
+  }
+  /* The outer button just fills height, no extra padding */
+  .mobile-tab-bar__btn {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+}

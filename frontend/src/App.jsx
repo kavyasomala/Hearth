@@ -3372,31 +3372,6 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                   </svg>
                   View on GitHub
                 </a>
-                <button
-                  className="about-github-btn"
-                  style={{ background: 'var(--terracotta)', color: '#fff', border: 'none', cursor: 'pointer' }}
-                  title="Download app icon to use on your phone's home screen"
-                  onClick={() => {
-                    // Generate a 512x512 SVG app icon matching the favicon flame design
-                    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="110" fill="#B8522A"/>
-  <path d="M256 80C256 80 176 170 176 290a80 80 0 0 0 160 0c0-40-20-76-40-100
-    c0 0 0 52-28 72c-14 10-36 4-36-28 0-52 24-100 24-100S256 80 256 80Z"
-    fill="white" stroke="white" stroke-width="4" stroke-linejoin="round"/>
-</svg>`;
-                    const blob = new Blob([svg], { type: 'image/svg+xml' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'hearth-icon.svg';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                  }}
-                >
-                  <Icon name="heart" size={14} strokeWidth={2} color="white" /> Download App Icon
-                </button>
                 <div className="about-stack">
                   <span className="about-stack__badge">React</span>
                   <span className="about-stack__badge">Node.js</span>
@@ -6032,7 +6007,7 @@ function AppInner() {
         <div className="app-header__bar">
           {/* Mobile: back/search bar (recipes view) or logo */}
           <div className="app-header__mobile-left">
-            {/* Non-home pages: show back button + search bar on ALL pages */}
+            {/* All pages: back button (non-home) + search pill always visible */}
             {!mobileSearchOpen ? (
               <>
                 {view !== 'home' && (
@@ -6041,17 +6016,15 @@ function AppInner() {
                   </button>
                 )}
                 {view === 'home' && (
-                  <button className="app-header__brand" onClick={() => setView('home')}>
+                  <button className="app-header__brand app-header__brand--mobile-compact" onClick={() => setView('home')}>
                     <span className="app-header__logo"><Icon name="flame" size={20} color="var(--terracotta)" strokeWidth={1.75} /></span>
-                    <span className="app-header__title">Hearth</span>
                   </button>
                 )}
-                {view !== 'home' && (
-                  <button className="app-header__mobile-search-pill" onClick={() => setMobileSearchOpen(true)}>
-                    <Icon name="search" size={14} strokeWidth={2} />
-                    <span>{mobileSearchSubmitted && mobileSearchQuery ? mobileSearchQuery : 'Search recipes...'}</span>
-                  </button>
-                )}
+                {/* Search pill on ALL pages including Home */}
+                <button className="app-header__mobile-search-pill" onClick={() => setMobileSearchOpen(true)}>
+                  <Icon name="search" size={14} strokeWidth={2} />
+                  <span>{mobileSearchSubmitted && mobileSearchQuery ? mobileSearchQuery : 'Search recipes...'}</span>
+                </button>
               </>
             ) : (
               /* Search bar open — shown from any page */
@@ -6059,7 +6032,6 @@ function AppInner() {
                 <Icon name="search" size={14} strokeWidth={2} color="var(--warm-gray)" />
                 <input
                   className="app-header__mobile-search-input"
-                  autoFocus
                   placeholder="Search recipes..."
                   value={mobileSearchQuery}
                   style={{ fontSize: '16px', touchAction: 'manipulation' }}
@@ -6145,47 +6117,57 @@ function AppInner() {
           )}
           {/* Mobile hamburger */}
           <button className="mobile-menu-btn" onClick={() => setMobileNavOpen(o => !o)} aria-label="Menu">
-            <span className="mobile-menu-btn__bar" />
-            <span className="mobile-menu-btn__bar" />
-            <span className="mobile-menu-btn__bar" />
+            <span className={`mobile-menu-btn__bar ${mobileNavOpen ? 'mobile-menu-btn__bar--open-1' : ''}`} />
+            <span className={`mobile-menu-btn__bar ${mobileNavOpen ? 'mobile-menu-btn__bar--open-2' : ''}`} />
+            <span className={`mobile-menu-btn__bar ${mobileNavOpen ? 'mobile-menu-btn__bar--open-3' : ''}`} />
           </button>
         </div>
-        {/* Mobile nav drawer */}
+        {/* Mobile nav overlay — floats over content, does not push page down */}
         {mobileNavOpen && (
-          <nav className="mobile-nav-drawer">
-            {[
-              { key: 'home',      label: 'Home'           },
-              { key: 'recipes',   label: 'Recipes'        },
-              { key: 'kitchen',   label: 'Kitchen'        },
-              { key: 'grocery',   label: 'Grocery'        },
-              { key: 'cookbooks', label: 'Cookbooks'   },
-              { key: 'notes',     label: 'Notes'          },
-              ...(isAdmin ? [{ key: 'add', label: 'Add' }] : []),
-            ].map(({ key, label }) => (
-              <button key={key}
-                className={`mobile-nav-item ${view === key ? 'mobile-nav-item--active' : ''}`}
-                onClick={() => { setView(key); setMobileNavOpen(false); }}
-                disabled={key === 'recipes' && recipes.length === 0}>
-                {label}
-              </button>
-            ))}
-            {authUser && (
-              <div className="mobile-nav-divider" />
-            )}
-            {authUser && (
-              <button
-                className={`mobile-nav-item ${view === 'profile' ? 'mobile-nav-item--active' : ''}`}
-                onClick={() => { setView('profile'); setMobileNavOpen(false); }}
-              >
-                <Icon name="user" size={15} strokeWidth={2} /> Profile
-              </button>
-            )}
-            {authUser && (
-              <button className="mobile-nav-item mobile-nav-item--signout" onClick={() => { handleLogout(); setMobileNavOpen(false); }}>
-                <Icon name="arrowRight" size={15} strokeWidth={2} /> Sign out
-              </button>
-            )}
-          </nav>
+          <>
+            {/* Backdrop to close on tap-outside */}
+            <div className="mobile-nav-backdrop" onClick={() => setMobileNavOpen(false)} />
+            <nav className="mobile-nav-overlay">
+              {/* Brand header */}
+              <div className="mobile-nav-overlay__brand">
+                <span className="mobile-nav-overlay__flame"><Icon name="flame" size={22} color="var(--terracotta)" strokeWidth={1.75} /></span>
+                <span className="mobile-nav-overlay__title">Hearth</span>
+              </div>
+              <div className="mobile-nav-overlay__divider" />
+              {/* Nav items */}
+              {[
+                { key: 'home',      label: 'Home',      icon: 'home'      },
+                { key: 'recipes',   label: 'Recipes',   icon: 'bookOpen'  },
+                { key: 'kitchen',   label: 'Kitchen',   icon: 'package'   },
+                { key: 'grocery',   label: 'Grocery',   icon: 'cart'      },
+                { key: 'cookbooks', label: 'Cookbooks', icon: 'bookMarked'},
+                { key: 'notes',     label: 'Notes',     icon: 'lightbulb' },
+                ...(isAdmin ? [{ key: 'add', label: 'Add Recipe', icon: 'plus' }] : []),
+              ].map(({ key, label, icon }) => (
+                <button key={key}
+                  className={`mobile-nav-item ${view === key ? 'mobile-nav-item--active' : ''}`}
+                  onClick={() => { setView(key); setMobileNavOpen(false); }}
+                  disabled={key === 'recipes' && recipes.length === 0}>
+                  <Icon name={icon} size={16} strokeWidth={1.75} />
+                  {label}
+                </button>
+              ))}
+              <div className="mobile-nav-overlay__divider" />
+              {authUser && (
+                <button
+                  className={`mobile-nav-item ${view === 'profile' ? 'mobile-nav-item--active' : ''}`}
+                  onClick={() => { setView('profile'); setMobileNavOpen(false); }}
+                >
+                  <Icon name="user" size={16} strokeWidth={1.75} /> Profile
+                </button>
+              )}
+              {authUser && (
+                <button className="mobile-nav-item mobile-nav-item--signout" onClick={() => { handleLogout(); setMobileNavOpen(false); }}>
+                  <Icon name="arrowRight" size={16} strokeWidth={1.75} /> Sign out
+                </button>
+              )}
+            </nav>
+          </>
         )}
       </header>
 
@@ -6909,8 +6891,10 @@ function AppInner() {
             className={`mobile-tab-bar__btn ${view === key ? 'mobile-tab-bar__btn--active' : ''}`}
             onClick={() => { setView(key); setMobileNavOpen(false); }}
           >
-            <span className="mobile-tab-bar__icon"><Icon name={icon} size={22} strokeWidth={1.75} /></span>
-            <span className="mobile-tab-bar__label">{label}</span>
+            <span className="mobile-tab-bar__btn-inner">
+              <span className="mobile-tab-bar__icon"><Icon name={icon} size={22} strokeWidth={1.75} /></span>
+              <span className="mobile-tab-bar__label">{label}</span>
+            </span>
           </button>
         ))}
       </nav>
@@ -6922,7 +6906,8 @@ function AppInner() {
         </button>
       )}
 
-      <SiteFooter onNav={setView} />
+      {/* Footer: show on all pages except the recipe summary/editor */}
+      {view !== 'recipe' && <SiteFooter onNav={setView} />}
     </div>
   );
 }
