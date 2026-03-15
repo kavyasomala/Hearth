@@ -7362,3 +7362,70 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     top: calc(56px + env(safe-area-inset-top, 0px)) !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   POLISH PASS 3 — Sticky header, pull-to-refresh, filters
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── STICKY HEADER: always visible when scrolling on mobile ── */
+@media (max-width: 640px) {
+  .app-header {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 200 !important;
+    /* Height = bar (60px) + safe area */
+    padding-top: env(safe-area-inset-top, 0px) !important;
+  }
+  /* Push page content below the fixed header */
+  .app {
+    padding-top: calc(60px + env(safe-area-inset-top, 0px));
+  }
+  /* Overlay nav needs to account for fixed header height */
+  .mobile-nav-overlay {
+    top: calc(60px + env(safe-area-inset-top, 0px)) !important;
+  }
+}
+
+/* ── DISABLE PULL-TO-REFRESH on mobile (prevents accidental page reload) ── */
+html {
+  /* Blocks the browser's native pull-to-refresh gesture */
+  overscroll-behavior-y: none;
+}
+/* Allow normal scrolling inside the app */
+body, .app, .view {
+  overscroll-behavior-y: auto;
+}
+
+/* ── FILTER BUTTON: only highlight when filter chips are active (not search) ── */
+/* hasActiveFilterChips drives this class now — no CSS change needed */
+/* But ensure the active style is clear */
+.filters-toggle-btn--active {
+  background: var(--terracotta) !important;
+  color: white !important;
+  border-color: var(--terracotta) !important;
+}
+.filters-toggle-btn--active svg { stroke: white !important; }
+
+/* ── SEARCH X BUTTON: always visible, not just when there's text ── */
+.app-header__mobile-search-clear {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--warm-gray);
+  font-size: 15px;
+  padding: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+  min-width: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+.app-header__mobile-search-clear:active { background: var(--parchment); }

@@ -5696,8 +5696,14 @@ function AppInner() {
     });
   }, [authToken]);
 
-  const [view, setView] = useState('home');
+  const [view, setViewRaw] = useState('home');
   const [lastView, setLastView] = useState('home');
+
+  // Always scroll to top when switching tabs
+  const setView = useCallback((newView) => {
+    setViewRaw(newView);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
 
   // Swipe-right to go back (mobile) with visual feedback
   const swipeTouchStart = useRef(null);
@@ -5841,13 +5847,20 @@ function AppInner() {
   const setUnits = (v) => { setUnitsRaw(v); LS.set('units', v); };
   const setDietaryFilters = (fn) => setDietaryFiltersRaw(prev => { const next = typeof fn === 'function' ? fn(prev) : fn; LS.set('dietaryFilters', next); return next; });
 
+  const kitchenLoadedFromAPI = useRef(false);
+
   useEffect(() => {
     LS.set('fridgeIngredients', fridgeIngredients);
-    syncKitchenToAPI(fridgeIngredients, pantryStaples);
+    // Only sync to API after the initial load is done (prevent overwriting server data with stale localStorage)
+    if (kitchenLoadedFromAPI.current) {
+      syncKitchenToAPI(fridgeIngredients, pantryStaples);
+    }
   }, [fridgeIngredients]); // eslint-disable-line
   useEffect(() => {
     LS.set('pantryStaples', pantryStaples);
-    syncKitchenToAPI(fridgeIngredients, pantryStaples);
+    if (kitchenLoadedFromAPI.current) {
+      syncKitchenToAPI(fridgeIngredients, pantryStaples);
+    }
   }, [pantryStaples]); // eslint-disable-line
 
   const loadData = useCallback(async () => {
@@ -5878,17 +5891,19 @@ function AppInner() {
         if (soonRes.ok) { const d = await soonRes.json(); setMakeSoonIds(d.makeSoon || []); }
         // Re-fetch cooking notes with auth
         try { const r = await authFetch(`${API}/api/cooking-notes`); if (r.ok) { const d = await r.json(); setCookingNotes(d.notes || []); } } catch {}
-        // Load kitchen from API (overrides localStorage)
+        // Load kitchen from API — ALWAYS overrides localStorage so devices stay in sync
         try {
           const kitRes = await authFetch(`${API}/api/user/kitchen`);
           if (kitRes.ok) {
             const { kitchen } = await kitRes.json();
             const fridge = kitchen.filter(k => k.storage_type === 'fridge').map(k => k.ingredient_name);
             const pantry = kitchen.filter(k => k.storage_type === 'pantry').map(k => k.ingredient_name);
-            if (fridge.length || pantry.length) {
-              setFridgeIngredients(fridge);
-              setPantryStaples(pantry);
-            }
+            // Temporarily disable sync so loading from API doesn't write stale data back
+            kitchenLoadedFromAPI.current = false;
+            setFridgeIngredients(fridge);
+            setPantryStaples(pantry);
+            // Re-enable sync after state settles
+            setTimeout(() => { kitchenLoadedFromAPI.current = true; }, 200);
           }
         } catch {}
       }
@@ -5975,6 +5990,8 @@ function AppInner() {
   }, [recipes, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById, hideIncompatible, dietaryFilters, activeCookbooks, makeSoonIds]);
 
   const hasActiveFilters = !!(librarySearch || activeTags.length || activeCuisines.length || activeProgresses.length || maxCalories !== null || maxMinutes !== null || activeCookbooks.length);
+  // Filter button highlight: only when filter chips/sliders are active (not search text)
+  const hasActiveFilterChips = !!(activeTags.length || activeCuisines.length || activeProgresses.length || maxCalories !== null || maxMinutes !== null || activeCookbooks.length);
   const clearAllFilters = () => { setLibrarySearch(''); setActiveTags([]); setActiveCuisines([]); setActiveProgresses([]); setMaxCalories(null); setMaxMinutes(null); setActiveCookbooks([]); };
 
   const openRecipe = async (recipe) => {
@@ -6057,7 +6074,7 @@ function AppInner() {
                   <button className="app-header__mobile-search-clear" onClick={() => { setMobileSearchQuery(''); setMobileSearchSubmitted(false); setLibrarySearch(''); }}>✕</button>
                 )}
                 {!mobileSearchQuery && (
-                  <button className="app-header__mobile-search-clear" onClick={() => setMobileSearchOpen(false)}>Cancel</button>
+                  <button className="app-header__mobile-search-clear" onClick={() => { setMobileSearchOpen(false); setMobileSearchQuery(''); setLibrarySearch(''); }}>✕</button>
                 )}
                 {/* Autocomplete dropdown with images */}
                 {mobileSearchQuery && !mobileSearchSubmitted && (() => {
