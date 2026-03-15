@@ -6032,17 +6032,29 @@ function AppInner() {
         <div className="app-header__bar">
           {/* Mobile: back/search bar (recipes view) or logo */}
           <div className="app-header__mobile-left">
-            {view === 'recipes' && !mobileSearchOpen ? (
+            {/* Non-home pages: show back button + search bar on ALL pages */}
+            {!mobileSearchOpen ? (
               <>
-                <button className="app-header__back-btn" onClick={() => setView('home')}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-                </button>
-                <button className="app-header__mobile-search-pill" onClick={() => setMobileSearchOpen(true)}>
-                  <Icon name="search" size={14} strokeWidth={2} />
-                  <span>{mobileSearchSubmitted && mobileSearchQuery ? mobileSearchQuery : 'Search recipes...'}</span>
-                </button>
+                {view !== 'home' && (
+                  <button className="app-header__back-btn" onClick={() => setView('home')} aria-label="Back to Home">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                  </button>
+                )}
+                {view === 'home' && (
+                  <button className="app-header__brand" onClick={() => setView('home')}>
+                    <span className="app-header__logo"><Icon name="flame" size={20} color="var(--terracotta)" strokeWidth={1.75} /></span>
+                    <span className="app-header__title">Hearth</span>
+                  </button>
+                )}
+                {view !== 'home' && (
+                  <button className="app-header__mobile-search-pill" onClick={() => setMobileSearchOpen(true)}>
+                    <Icon name="search" size={14} strokeWidth={2} />
+                    <span>{mobileSearchSubmitted && mobileSearchQuery ? mobileSearchQuery : 'Search recipes...'}</span>
+                  </button>
+                )}
               </>
-            ) : view === 'recipes' && mobileSearchOpen ? (
+            ) : (
+              /* Search bar open — shown from any page */
               <div className="app-header__mobile-search-bar" style={{position:'relative'}}>
                 <Icon name="search" size={14} strokeWidth={2} color="var(--warm-gray)" />
                 <input
@@ -6054,14 +6066,16 @@ function AppInner() {
                   onChange={e => { setMobileSearchQuery(e.target.value); setMobileSearchSubmitted(false); setLibrarySearch(e.target.value); }}
                   onKeyDown={e => {
                     if (e.key === 'Enter') {
-                      // If exactly one match, open that recipe directly
                       const q = mobileSearchQuery.toLowerCase().trim();
-                      const matches = recipes.filter(r => r.name.toLowerCase().includes(q));
-                      if (matches.length === 1) {
+                      const hits = recipes.filter(r => r.name.toLowerCase().includes(q));
+                      if (hits.length === 1) {
                         setMobileSearchOpen(false);
-                        openRecipe(matches[0]);
+                        openRecipe(hits[0]);
                       } else {
-                        setMobileSearchSubmitted(true); setMobileSearchOpen(false); setLibrarySearch(mobileSearchQuery);
+                        setMobileSearchSubmitted(true);
+                        setMobileSearchOpen(false);
+                        setLibrarySearch(mobileSearchQuery);
+                        setView('recipes');
                       }
                     }
                     if (e.key === 'Escape') { setMobileSearchOpen(false); }
@@ -6069,6 +6083,9 @@ function AppInner() {
                 />
                 {mobileSearchQuery && (
                   <button className="app-header__mobile-search-clear" onClick={() => { setMobileSearchQuery(''); setMobileSearchSubmitted(false); setLibrarySearch(''); }}>✕</button>
+                )}
+                {!mobileSearchQuery && (
+                  <button className="app-header__mobile-search-clear" onClick={() => setMobileSearchOpen(false)}>Cancel</button>
                 )}
                 {/* Autocomplete dropdown with images */}
                 {mobileSearchQuery && !mobileSearchSubmitted && (() => {
@@ -6079,7 +6096,6 @@ function AppInner() {
                       {suggestions.map(r => (
                         <button key={r.id} className="mobile-search-dropdown__item" onMouseDown={e => {
                           e.preventDefault();
-                          // Tap on suggestion → go directly to that recipe's summary page
                           setMobileSearchOpen(false);
                           setMobileSearchQuery(r.name);
                           setMobileSearchSubmitted(true);
@@ -6098,11 +6114,6 @@ function AppInner() {
                   ) : null;
                 })()}
               </div>
-            ) : (
-              <button className="app-header__brand" onClick={() => setView('home')}>
-                <span className="app-header__logo"><Icon name="flame" size={20} color="var(--terracotta)" strokeWidth={1.75} /></span>
-                <span className="app-header__title">Hearth</span>
-              </button>
             )}
           </div>
           {/* Desktop brand (always shown on desktop) */}
