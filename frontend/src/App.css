@@ -113,6 +113,8 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
+  /* Push header below Dynamic Island / notch on iOS */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 .app-header__bar {
   display: flex;
@@ -7351,5 +7353,12 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .mobile-tab-bar__btn {
     padding: 0 !important;
     align-items: stretch !important;
+  }
+}
+
+/* ── SAFE AREA: overlay nav drops below header (which includes safe-area-inset-top) ── */
+@media (max-width: 640px) {
+  .mobile-nav-overlay {
+    top: calc(56px + env(safe-area-inset-top, 0px)) !important;
   }
 }

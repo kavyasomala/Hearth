@@ -2,19 +2,28 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <!-- Browser favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/hearth-logo.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="%PUBLIC_URL%/hearth-logo.png" />
-    <!-- iOS home screen icon (180×180 PNG recommended) -->
-    <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/hearth-logo.png" />
+    <!-- SVG favicon for browser tab -->
+    <link rel="icon" type="image/svg+xml" href="%PUBLIC_URL%/hearth-icon.svg" />
+    <!-- iOS home screen icon — SVG works on iOS 15.4+ Safari -->
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/hearth-icon.svg" />
     <!-- Android / PWA -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <!-- Terracotta brand color for browser chrome / Android task switcher -->
+    <!--
+      IMPORTANT: initial-scale=1 (no viewport-fit=cover) keeps the header
+      below the Dynamic Island / notch. The CSS uses env(safe-area-inset-top)
+      in the sticky header to add the correct top padding automatically.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Terracotta brand color for Android chrome / task switcher -->
     <meta name="theme-color" content="#B8522A" />
-    <!-- iOS PWA settings -->
+    <!-- iOS PWA fullscreen settings -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!--
+      default = status bar shows above app (safe, header stays clear of island)
+      black-translucent = full bleed but YOU must handle safe areas yourself
+      Using "default" here because it's simpler and always readable.
+    -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Hearth" />
     <meta name="description" content="Hearth — your personal cookbook" />
     <title>Hearth</title>
