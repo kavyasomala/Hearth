@@ -557,7 +557,7 @@ app.get('/api/recipes/:id', async (req, res) => {
     `, [id]);
 
     const { rows: instrRows } = await query(`
-      SELECT id, step_number, body_text, timer_seconds
+      SELECT id, step_number, body_text, timer_seconds, group_label
       FROM instructions
       WHERE recipe_id = $1
       ORDER BY step_number ASC;
@@ -573,7 +573,7 @@ app.get('/api/recipes/:id', async (req, res) => {
     res.json({
       recipe,
       bodyIngredients: ingRows,
-      instructions: instrRows.map(r => ({ id: r.id, step_number: r.step_number, body_text: r.body_text, timer_seconds: r.timer_seconds ?? null })),
+      instructions: instrRows.map(r => ({ id: r.id, step_number: r.step_number, body_text: r.body_text, timer_seconds: r.timer_seconds ?? null, group_label: r.group_label || null })),
       notes: notesRows,
     });
   } catch (err) {
@@ -637,8 +637,8 @@ app.post('/api/recipes', authenticateToken, requireAdmin, async (req, res) => {
       for (const step of instructions) {
         if (!step.body_text?.trim()) continue;
         await client.query(
-          `INSERT INTO instructions (recipe_id, step_number, body_text, timer_seconds) VALUES ($1,$2,$3,$4)`,
-          [newId, step.step_number, step.body_text.trim(), step.timer_seconds ?? null]
+          `INSERT INTO instructions (recipe_id, step_number, body_text, timer_seconds, group_label) VALUES ($1,$2,$3,$4,$5)`,
+          [newId, step.step_number, step.body_text.trim(), step.timer_seconds ?? null, step.group_label || null]
         );
       }
     }
@@ -783,8 +783,8 @@ app.put('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) =>
       for (const step of instructions) {
         if (!step.body_text?.trim()) continue;
         await client.query(
-          `INSERT INTO instructions (recipe_id, step_number, body_text, timer_seconds) VALUES ($1,$2,$3,$4)`,
-          [id, step.step_number, step.body_text.trim(), step.timer_seconds ?? null]
+          `INSERT INTO instructions (recipe_id, step_number, body_text, timer_seconds, group_label) VALUES ($1,$2,$3,$4,$5)`,
+          [id, step.step_number, step.body_text.trim(), step.timer_seconds ?? null, step.group_label || null]
         );
       }
     }
