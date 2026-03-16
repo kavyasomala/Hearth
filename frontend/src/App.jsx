@@ -2233,6 +2233,9 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
           <button className="btn btn--ghost editor-add-btn" onClick={() => setSteps(prev => [...prev, { _id: `step-grp-${Date.now()}`, _isGroup: true, name: '' }])}>+ Add Group</button>
         </div>
       </section>
+
+      <section className="editor-section">
+        <h3 className="editor-section__title">Notes &amp; Modifications</h3>
         {notesList.map(note => (
           <div key={note._id} className="editor-note-row">
             <input className="editor-input" value={note.text || ''} onChange={e => updateNote(note._id, e.target.value)} placeholder="e.g. Works great with tofu instead of chicken" />
