@@ -447,7 +447,20 @@ const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
   );
 };
 
-// --- Mark As Cooked Modal --------------------------------------------------
+// --- Step Group Row (sortable separator for instruction groups) -------------
+const StepGroupRow = ({ grp, onLabelChange, onRemove }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: grp._id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
+  return (
+    <div className="step-group-row" ref={setNodeRef} style={style}>
+      <span className="ing-flat-row__drag step-group-row__drag" {...attributes} {...listeners}>⠿</span>
+      <input className="step-group-row__label-input" value={grp.name} onChange={e => onLabelChange(e.target.value)} placeholder="Group name (e.g. For the sauce)..." />
+      <button className="editor-remove-btn" onClick={onRemove} title="Remove group">✕</button>
+    </div>
+  );
+};
+
+
 // PERISHABLE_TYPES: categories where "use up / remove" makes sense after cooking
 const PERISHABLE_TYPES = new Set(['produce', 'meat & fish', 'dairy']);
 
@@ -682,13 +695,12 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
         details: { ...details, calories: null, protein: null, fiber: null },
         ingredients: flatIngs.map((i, idx) => ({ ...i, order_index: idx })),
         instructions: (() => {
-          const result = []; let stepNum = 1; let currentGroup = '';
+          const result = []; let stepNum = 1;
           for (const item of steps) {
-            if (item._isGroup) { currentGroup = item.name || ''; }
-            else if (item._isTimer) {
+            if (item._isTimer) {
               const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
               if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
-            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null, group_label: currentGroup }); }
+            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null }); }
           }
           return result;
         })(),
@@ -766,13 +778,6 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
               <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
                 {steps.map((item, idx) => {
-                  if (item._isGroup) return (
-                    <div key={item._id} className="ing-group-row">
-                      <span className="ing-group-row__icon"><Icon name="list" size={13} strokeWidth={2} /></span>
-                      <input className="editor-input ing-group-row__input" value={item.name} onChange={e => setSteps(prev => prev.map(s => s._id===item._id?{...s,name:e.target.value}:s))} placeholder="Group name (e.g. For the sauce)" />
-                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
-                    </div>
-                  );
                   if (item._isTimer) return (
                     <div key={item._id} className="rp2__ed-timer-row">
                       <span className="rp2__ed-timer-row__icon"><Icon name="timer" size={14} strokeWidth={2} /></span>
@@ -787,7 +792,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
                       <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                     </div>
                   );
-                  const stepNum = steps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
+                  const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
                   return (
                     <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
                       <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
@@ -798,10 +803,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
                 })}
               </SortableContext>
             </DndContext>
-            <div className="ing-flat-add-row">
-              <button className="btn btn--ghost editor-add-btn" onClick={() => setSteps(prev => [...prev, { _id:`step-${Date.now()}`,step_number:prev.filter(s=>!s._isTimer&&!s._isGroup).length+1,body_text:'',timer_seconds:null }])}>+ Add Step</button>
-              <button className="btn btn--ghost editor-add-btn" onClick={() => setSteps(prev => [...prev, { _id:`step-grp-${Date.now()}`, _isGroup: true, name: '' }])}>+ Add Group</button>
-            </div>
+            <button className="btn btn--ghost editor-add-btn" onClick={() => setSteps(prev => [...prev, { _id:`step-${Date.now()}`,step_number:prev.filter(s=>!s._isTimer).length+1,body_text:'',timer_seconds:null }])}>+ Add Step</button>
           </div>
           {/* Notes */}
           <div className="create-modal__field">
@@ -1001,14 +1003,14 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
       setDraftIngs(flat);
     }
     if (section === 'instructions') {
-      const flat = [];
       const sorted = [...(instructions || [])].sort((a, b) => a.step_number - b.step_number);
-      let currentGroup = null;
+      const flat = [];
+      let curGroup = null;
       for (const s of sorted) {
-        const grpLabel = s.group_label || '';
-        if (grpLabel !== currentGroup) {
-          currentGroup = grpLabel;
-          if (grpLabel) flat.push({ _id: `step-grp-${grpLabel}-${s.step_number}`, _isGroup: true, name: grpLabel });
+        const lbl = s.group_label || '';
+        if (lbl !== curGroup) {
+          curGroup = lbl;
+          if (lbl) flat.push({ _id: `step-grp-exist-${encodeURIComponent(lbl)}-${s.step_number}`, _isGroup: true, name: lbl });
         }
         flat.push({ ...s, _id: `step-${s.step_number}`, timer_seconds: s.timer_seconds ?? null });
         if (s.timer_seconds && s.timer_seconds > 0) {
@@ -1074,11 +1076,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         instructions: section === 'instructions' ? (() => {
           const result = [];
           let stepNum = 1;
-          let currentGroup = '';
+          let curGroup = '';
           for (let i = 0; i < draftSteps.length; i++) {
             const item = draftSteps[i];
             if (item._isGroup) {
-              currentGroup = item.name || '';
+              curGroup = item.name || '';
             } else if (item._isTimer) {
               const h = parseInt(item.h) || 0;
               const m = parseInt(item.m) || 0;
@@ -1086,7 +1088,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               const secs = h * 3600 + m * 60 + s;
               if (result.length > 0) result[result.length - 1].timer_seconds = secs > 0 ? secs : null;
             } else {
-              result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null, group_label: currentGroup });
+              result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null, group_label: curGroup });
             }
           }
           return result;
@@ -1668,8 +1670,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                           <div className="rp2__ing-text">
                             <span className="rp2__ing-name-row">
                               {amountStr && <span className="rp2__ing-amount">{amountStr}</span>}
-                              <span className="rp2__ing-name">{pluralizeIng(ing.name, ing.amount)}</span>
-                              {ing.prep_note && <span className="rp2__ing-prep rp2__ing-prep--inline">{ing.prep_note}</span>}
+                              <span className="rp2__ing-name">{pluralizeIng(ing.name, ing.amount)}{ing.prep_note ? <span className="rp2__ing-prep">, {ing.prep_note}</span> : null}</span>
                               {ing.optional && <span className="rp2__ing-optional">optional</span>}
                             </span>
                           </div>
@@ -1706,16 +1707,12 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   {draftSteps.map((item, idx) => {
                     if (item._isGroup) {
                       return (
-                        <div key={item._id} className="ing-group-row">
-                          <span className="ing-group-row__icon"><Icon name="list" size={13} strokeWidth={2} /></span>
-                          <input
-                            className="editor-input ing-group-row__input"
-                            value={item.name}
-                            onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, name: e.target.value } : s))}
-                            placeholder="Group name (e.g. For the sauce)"
-                          />
-                          <button className="editor-remove-btn" onClick={() => setDraftSteps(prev => prev.filter(s => s._id !== item._id))}>✕</button>
-                        </div>
+                        <StepGroupRow
+                          key={item._id}
+                          grp={item}
+                          onLabelChange={v => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, name: v } : s))}
+                          onRemove={() => setDraftSteps(prev => prev.filter(s => s._id !== item._id))}
+                        />
                       );
                     }
                     if (item._isTimer) {
@@ -1745,18 +1742,20 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     }
                     const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
                     return (
-                      <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
-                        <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
-                        <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step"><Icon name="timer" size={13} strokeWidth={2} /></button>
-                        <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
-                      </StepSortableItem>
+                      <div key={item._id} className="step-group-indent">
+                        <StepSortableItem id={item._id} stepNum={stepNum}>
+                          <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
+                          <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                          <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
+                        </StepSortableItem>
+                      </div>
                     );
                   })}
                 </SortableContext>
               </DndContext>
               <div className="ing-flat-add-row">
                 <button className="btn btn--ghost editor-add-btn" onClick={addDraftStep}>+ Add Step</button>
-                <button className="btn btn--ghost editor-add-btn" onClick={() => setDraftSteps(prev => [...prev, { _id: `step-grp-${Date.now()}`, _isGroup: true, name: '' }])}>+ Add Group</button>
+                <button className="btn btn--ghost editor-add-btn ing-add-group-btn" onClick={() => setDraftSteps(prev => [...prev, { _id: `step-grp-${Date.now()}`, _isGroup: true, name: '' }])}>+ Add Group</button>
               </div>
             </div>
           ) : (
@@ -1766,43 +1765,44 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   const sortedUndone = sorted.filter(s => !doneSteps.has(s.step_number));
                   // Build groups
                   const groups = [];
-                  let curGroup = null;
+                  let curGrp = null;
                   for (const step of sorted) {
-                    const grpLabel = step.group_label || '';
-                    if (!curGroup || curGroup.label !== grpLabel) {
-                      curGroup = { label: grpLabel, steps: [] };
-                      groups.push(curGroup);
-                    }
-                    curGroup.steps.push(step);
+                    const lbl = step.group_label || '';
+                    if (!curGrp || curGrp.label !== lbl) { curGrp = { label: lbl, steps: [] }; groups.push(curGrp); }
+                    curGrp.steps.push(step);
                   }
+                  const hasGroups = groups.some(g => g.label);
                   return (
-                    <ol className="rp2__steps">
+                    <div className="rp2__steps-wrap">
                       {groups.map(({ label, steps: grpSteps }) => (
-                        <React.Fragment key={label || '__default'}>
-                          {label && <li className="rp2__step-group-label">{label}</li>}
-                          {grpSteps.map((step, listIdx) => {
-                            const done = doneSteps.has(step.step_number);
-                            const isCurrent = !done && sortedUndone[0]?.step_number === step.step_number;
-                            const enlarge = sorted.indexOf(step) === 0 && doneCount === 0 ? true : isCurrent;
-                            const stepText = (step.body_text || '').toLowerCase();
-                            const matchedNotes = cookingNotes.filter(n =>
-                              (n.keywords || []).some(kw => stepText.includes(kw.toLowerCase()))
-                            );
-                            return (
-                              <StepItem
-                                key={step.step_number}
-                                step={step}
-                                done={done}
-                                isCurrent={isCurrent}
-                                enlarge={enlarge}
-                                onToggle={() => toggleStep(step.step_number)}
-                                matchedNotes={matchedNotes}
-                              />
-                            );
-                          })}
-                        </React.Fragment>
+                        <div key={label || '__default'} className={hasGroups ? 'rp2__step-group' : ''}>
+                          {label && <p className="rp2__step-group-label">{label}</p>}
+                          <ol className={`rp2__steps ${label ? 'rp2__steps--indented' : ''}`}>
+                            {grpSteps.map((step, listIdx) => {
+                              const done = doneSteps.has(step.step_number);
+                              const isCurrent = !done && sortedUndone[0]?.step_number === step.step_number;
+                              const isFirstOverall = sorted[0]?.step_number === step.step_number;
+                              const enlarge = isFirstOverall && doneCount === 0 ? true : isCurrent;
+                              const stepText = (step.body_text || '').toLowerCase();
+                              const matchedNotes = cookingNotes.filter(n =>
+                                (n.keywords || []).some(kw => stepText.includes(kw.toLowerCase()))
+                              );
+                              return (
+                                <StepItem
+                                  key={step.step_number}
+                                  step={step}
+                                  done={done}
+                                  isCurrent={isCurrent}
+                                  enlarge={enlarge}
+                                  onToggle={() => toggleStep(step.step_number)}
+                                  matchedNotes={matchedNotes}
+                                />
+                              );
+                            })}
+                          </ol>
+                        </div>
                       ))}
-                    </ol>
+                    </div>
                   );
                 })()
               : <p className="rp2__empty-hint">No instructions yet.</p>
@@ -2013,27 +2013,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
   });
 
   const [ings, setIngs] = useState(() => (bodyIngredients || []).map((i, idx) => ({ ...i, _id: `ing-${idx}` })));
-  const [steps, setSteps] = useState(() => {
-    const sorted = [...(instructions || [])].sort((a, b) => a.step_number - b.step_number);
-    const flat = [];
-    let currentGroup = null;
-    for (let idx = 0; idx < sorted.length; idx++) {
-      const s = sorted[idx];
-      const grpLabel = s.group_label || '';
-      if (grpLabel !== currentGroup) {
-        currentGroup = grpLabel;
-        if (grpLabel) flat.push({ _id: `step-grp-${grpLabel}-${idx}`, _isGroup: true, name: grpLabel });
-      }
-      flat.push({ ...s, _id: `step-${idx}` });
-      if (s.timer_seconds && s.timer_seconds > 0) {
-        const h = Math.floor(s.timer_seconds / 3600);
-        const m = Math.floor((s.timer_seconds % 3600) / 60);
-        const sec = s.timer_seconds % 60;
-        flat.push({ _id: `timer-init-${idx}`, _isTimer: true, h: h || '', m: m || '', s: sec || '' });
-      }
-    }
-    return flat;
-  });
+  const [steps, setSteps] = useState(() => (instructions || []).map((s, idx) => ({ ...s, _id: `step-${idx}` })));
   const [notesList, setNotesList] = useState(() => (notes || []).map((n, idx) => ({ ...n, _id: `note-${idx}` })));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -2076,14 +2056,13 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
         details,
         ingredients: ings.map((i, idx) => ({ ...i, order_index: idx })),
         instructions: (() => {
-          const result = []; let stepNum = 1; let currentGroup = '';
+          const result = []; let stepNum = 1;
           for (let i = 0; i < steps.length; i++) {
             const item = steps[i];
-            if (item._isGroup) { currentGroup = item.name || ''; }
-            else if (item._isTimer) {
+            if (item._isTimer) {
               const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
               if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
-            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null, group_label: currentGroup }); }
+            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null }); }
           }
           return result;
         })(),
@@ -2192,15 +2171,6 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
           <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
             {steps.map((item, idx) => {
-              if (item._isGroup) {
-                return (
-                  <div key={item._id} className="ing-group-row">
-                    <span className="ing-group-row__icon"><Icon name="list" size={13} strokeWidth={2} /></span>
-                    <input className="editor-input ing-group-row__input" value={item.name} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? { ...s, name: e.target.value } : s))} placeholder="Group name (e.g. For the sauce)" />
-                    <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
-                  </div>
-                );
-              }
               if (item._isTimer) {
                 return (
                   <div key={item._id} className="rp2__ed-timer-row">
@@ -2217,7 +2187,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
                   </div>
                 );
               }
-              const stepNum = steps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
+              const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
               return (
                 <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
                   <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
@@ -2228,10 +2198,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
             })}
           </SortableContext>
         </DndContext>
-        <div className="ing-flat-add-row">
-          <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
-          <button className="btn btn--ghost editor-add-btn" onClick={() => setSteps(prev => [...prev, { _id: `step-grp-${Date.now()}`, _isGroup: true, name: '' }])}>+ Add Group</button>
-        </div>
+        <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
       </section>
 
       <section className="editor-section">
@@ -4344,13 +4311,12 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
         },
         ingredients: flatIngs.map((i, idx) => ({ ...i, order_index: idx })),
         instructions: (() => {
-          const result = []; let stepNum = 1; let currentGroup = '';
+          const result = []; let stepNum = 1;
           for (const item of steps) {
-            if (item._isGroup) { currentGroup = item.name || ''; }
-            else if (item._isTimer) {
+            if (item._isTimer) {
               const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
               if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
-            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null, group_label: currentGroup }); }
+            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null }); }
           }
           return result;
         })(),
@@ -4512,7 +4478,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
                       <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                     </div>
                   );
-                  const stepNum = steps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
+                  const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
                   return (
                     <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
                       <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
@@ -5260,13 +5226,12 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
         },
         ingredients: flatIngs.map((i, idx) => ({ ...i, order_index: idx })),
         instructions: (() => {
-          const result = []; let stepNum = 1; let currentGroup = '';
+          const result = []; let stepNum = 1;
           for (const item of steps) {
-            if (item._isGroup) { currentGroup = item.name || ''; }
-            else if (item._isTimer) {
+            if (item._isTimer) {
               const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
               if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
-            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null, group_label: currentGroup }); }
+            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null }); }
           }
           return result;
         })(),
@@ -5558,13 +5523,6 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
                   <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
                     {steps.map((item, idx) => {
-                      if (item._isGroup) return (
-                        <div key={item._id} className="ing-group-row">
-                          <span className="ing-group-row__icon"><Icon name="list" size={13} strokeWidth={2} /></span>
-                          <input className="editor-input ing-group-row__input" value={item.name} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? { ...s, name: e.target.value } : s))} placeholder="Group name (e.g. For the sauce)" />
-                          <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
-                        </div>
-                      );
                       if (item._isTimer) return (
                         <div key={item._id} className="rp2__ed-timer-row">
                           <span className="rp2__ed-timer-row__icon"><Icon name="timer" size={14} strokeWidth={2} /></span>
@@ -5579,7 +5537,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                           <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                         </div>
                       );
-                      const stepNum = steps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
+                      const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
                       return (
                         <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
                           <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
@@ -5590,10 +5548,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                     })}
                   </SortableContext>
                 </DndContext>
-                <div className="ing-flat-add-row">
-                  <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
-                  <button className="btn btn--ghost editor-add-btn" onClick={() => setSteps(prev => [...prev, { _id: `step-grp-${Date.now()}`, _isGroup: true, name: '' }])}>+ Add Group</button>
-                </div>
+                <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
               </div>
 
               {/* Notes */}
@@ -5852,23 +5807,45 @@ function AppInner() {
 
   useEffect(() => {
     document.title = 'Hearth';
-    // Set favicon to match the flame icon used in the header
-    const svgFavicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-      <rect width="32" height="32" rx="8" fill="#B8522A"/>
-      <path d="M16 6C16 6 10 12 10 18a6 6 0 0 0 12 0c0-2-1-4-2-5 0 0 0 3-2 4-1 1-3 0-3-2 0-3 1-5 1-5S16 6 16 6Z" fill="white" stroke="white" stroke-width="0.5"/>
-    </svg>`;
-    const blob = new Blob([svgFavicon], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    // Set SVG favicon
+    // Draw the icon onto a canvas and export as PNG — works for both browser favicon and iOS home-screen icon
+    const SIZE = 180;
+    const canvas = document.createElement('canvas');
+    canvas.width = SIZE; canvas.height = SIZE;
+    const ctx = canvas.getContext('2d');
+    // Rounded-rect background
+    const r = SIZE * 0.25;
+    ctx.beginPath();
+    ctx.moveTo(r, 0); ctx.lineTo(SIZE - r, 0); ctx.quadraticCurveTo(SIZE, 0, SIZE, r);
+    ctx.lineTo(SIZE, SIZE - r); ctx.quadraticCurveTo(SIZE, SIZE, SIZE - r, SIZE);
+    ctx.lineTo(r, SIZE); ctx.quadraticCurveTo(0, SIZE, 0, SIZE - r);
+    ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0); ctx.closePath();
+    ctx.fillStyle = '#B8522A'; ctx.fill();
+    // Flame shape
+    ctx.save();
+    ctx.strokeStyle = 'white'; ctx.fillStyle = 'white';
+    ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const s = SIZE / 32; // scale factor (icon designed at 32px)
+    ctx.scale(s, s);
+    ctx.beginPath();
+    ctx.moveTo(16, 6);
+    ctx.bezierCurveTo(16, 6, 10, 12, 10, 18);
+    ctx.arc(16, 18, 6, Math.PI, 0, false);
+    ctx.bezierCurveTo(22, 16, 21, 14, 20, 13);
+    ctx.bezierCurveTo(20, 13, 20, 16, 18, 17);
+    ctx.bezierCurveTo(17, 18, 15, 17, 15, 15);
+    ctx.bezierCurveTo(15, 12, 16, 10, 16, 10);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+    const pngUrl = canvas.toDataURL('image/png');
+    // Set browser tab favicon
     let link = document.querySelector("link[rel~='icon']");
     if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
-    link.type = 'image/svg+xml';
-    link.href = url;
-    // Set apple-touch-icon to same SVG (iOS 15.4+ supports SVG touch icons)
+    link.type = 'image/png'; link.href = pngUrl;
+    // Set iOS home-screen icon (must be PNG, not SVG blob)
     let appleLink = document.querySelector("link[rel='apple-touch-icon']");
     if (!appleLink) { appleLink = document.createElement('link'); appleLink.rel = 'apple-touch-icon'; document.head.appendChild(appleLink); }
-    appleLink.href = url;
-    return () => URL.revokeObjectURL(url);
+    appleLink.href = pngUrl;
   }, []);
   const [allIngredients, setAllIngredients] = useState([]);
   const [recipes, setRecipes] = useState([]);
@@ -5888,7 +5865,7 @@ function AppInner() {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kitchen }),
       }).catch(() => {});
-    }, 200);
+    }, 150);
   }, [authToken, authFetch]);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [recipeBodyIngredients, setRecipeBodyIngredients] = useState([]);
@@ -5969,30 +5946,32 @@ function AppInner() {
 
   const loadData = useCallback(async () => {
     try {
-      const [ingRes, recipeRes, cbRes] = await Promise.all([
+      const [ingRes, recipeRes, notesRes, cbRes] = await Promise.all([
         fetch(`${API}/api/ingredients`),
         fetch(`${API}/api/recipes`),
+        authFetch ? authFetch(`${API}/api/cooking-notes`) : fetch(`${API}/api/cooking-notes`),
         fetch(`${API}/api/cookbooks`),
       ]);
       if (!ingRes.ok || !recipeRes.ok) throw new Error('Failed to load data');
       const { ingredients } = await ingRes.json();
       const { recipes: recipeData } = await recipeRes.json();
+      if (notesRes.ok) { const d = await notesRes.json(); setCookingNotes(d.notes || []); }
       if (cbRes.ok) { const d = await cbRes.json(); setCookbooks(d.cookbooks || d || []); }
       setAllIngredients(ingredients.sort((a, b) => a.name.localeCompare(b.name)));
       setRecipes(recipeData);
 
       // Load user-specific data if logged in
       if (authToken) {
-        const [logRes, favsRes, soonRes, notesRes] = await Promise.all([
+        const [logRes, favsRes, soonRes] = await Promise.all([
           authFetch(`${API}/api/user/cook-log`),
           authFetch(`${API}/api/user/favorites`),
           authFetch(`${API}/api/user/make-soon`),
-          authFetch(`${API}/api/cooking-notes`),
         ]);
-        if (logRes.ok)   { const d = await logRes.json();   setCookLog(d.entries || []); }
-        if (favsRes.ok)  { const d = await favsRes.json();  setHeartedIds(d.favorites || []); }
-        if (soonRes.ok)  { const d = await soonRes.json();  setMakeSoonIds(d.makeSoon || []); }
-        if (notesRes.ok) { const d = await notesRes.json(); setCookingNotes(d.notes || []); }
+        if (logRes.ok)  { const d = await logRes.json();  setCookLog(d.entries || []); }
+        if (favsRes.ok) { const d = await favsRes.json(); setHeartedIds(d.favorites || []); }
+        if (soonRes.ok) { const d = await soonRes.json(); setMakeSoonIds(d.makeSoon || []); }
+        // Re-fetch cooking notes with auth
+        try { const r = await authFetch(`${API}/api/cooking-notes`); if (r.ok) { const d = await r.json(); setCookingNotes(d.notes || []); } } catch {}
         // Load kitchen from API — ALWAYS overrides localStorage so devices stay in sync
         try {
           const kitRes = await authFetch(`${API}/api/user/kitchen`);
@@ -6000,15 +5979,14 @@ function AppInner() {
             const { kitchen } = await kitRes.json();
             const fridge = kitchen.filter(k => k.storage_type === 'fridge').map(k => k.ingredient_name);
             const pantry = kitchen.filter(k => k.storage_type === 'pantry').map(k => k.ingredient_name);
+            // Temporarily disable sync so loading from API doesn't write stale data back
             kitchenLoadedFromAPI.current = false;
             setFridgeIngredients(fridge);
             setPantryStaples(pantry);
-            setTimeout(() => { kitchenLoadedFromAPI.current = true; }, 100);
+            // Re-enable sync after state settles
+            setTimeout(() => { kitchenLoadedFromAPI.current = true; }, 200);
           }
         } catch {}
-      } else {
-        // Unauthenticated: fetch cooking notes without auth
-        try { const r = await fetch(`${API}/api/cooking-notes`); if (r.ok) { const d = await r.json(); setCookingNotes(d.notes || []); } } catch {}
       }
 
       setLastSynced(Date.now());
@@ -6016,33 +5994,6 @@ function AppInner() {
   }, [authToken, authFetch]);
 
   useEffect(() => { loadData(); }, [loadData]);
-
-  // Re-sync notes + kitchen quickly when user returns to the app
-  useEffect(() => {
-    if (!authToken) return;
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') {
-        // Light re-sync: just notes and kitchen (fast, no full page reload)
-        Promise.all([
-          authFetch(`${API}/api/cooking-notes`),
-          authFetch(`${API}/api/user/kitchen`),
-        ]).then(async ([notesRes, kitRes]) => {
-          if (notesRes.ok) { const d = await notesRes.json(); setCookingNotes(d.notes || []); }
-          if (kitRes.ok) {
-            const { kitchen } = await kitRes.json();
-            const fridge = kitchen.filter(k => k.storage_type === 'fridge').map(k => k.ingredient_name);
-            const pantry = kitchen.filter(k => k.storage_type === 'pantry').map(k => k.ingredient_name);
-            kitchenLoadedFromAPI.current = false;
-            setFridgeIngredients(fridge);
-            setPantryStaples(pantry);
-            setTimeout(() => { kitchenLoadedFromAPI.current = true; }, 100);
-          }
-        }).catch(() => {});
-      }
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [authToken, authFetch]); // eslint-disable-line
 
   const allMyIngredients = useMemo(() => new Set([...fridgeIngredients, ...pantryStaples].map(i => i.toLowerCase().trim())), [fridgeIngredients, pantryStaples]);
 
@@ -6119,10 +6070,10 @@ function AppInner() {
     return list;
   }, [recipes, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById, hideIncompatible, dietaryFilters, activeCookbooks, makeSoonIds]);
 
-  const hasActiveFilters = !!(librarySearch || activeTags.length || activeCuisines.length || activeProgresses.length || maxCalories !== null || maxMinutes !== null || activeCookbooks.length || mobileSearchSubmitted);
+  const hasActiveFilters = !!(librarySearch || activeTags.length || activeCuisines.length || activeProgresses.length || maxCalories !== null || maxMinutes !== null || activeCookbooks.length);
   // Filter button highlight: only when filter chips/sliders are active (not search text)
   const hasActiveFilterChips = !!(activeTags.length || activeCuisines.length || activeProgresses.length || maxCalories !== null || maxMinutes !== null || activeCookbooks.length);
-  const clearAllFilters = () => { setLibrarySearch(''); setActiveTags([]); setActiveCuisines([]); setActiveProgresses([]); setMaxCalories(null); setMaxMinutes(null); setActiveCookbooks([]); setMobileSearchQuery(''); setMobileSearchSubmitted(false); };
+  const clearAllFilters = () => { setLibrarySearch(''); setActiveTags([]); setActiveCuisines([]); setActiveProgresses([]); setMaxCalories(null); setMaxMinutes(null); setActiveCookbooks([]); };
 
   const openRecipe = async (recipe) => {
     setLastView(view); setView('recipe'); setRecipeLoading(true);
@@ -6475,8 +6426,12 @@ function AppInner() {
 
             {/* -- What can I make? -- */}
             {(() => {
-              const goodMatches = matches.filter(m => m.matchScore > 0);
-              const visibleMatch = showAllMatch ? goodMatches : goodMatches.slice(0, 4);
+              // Homepage only: almost-ready (≥70% match, not fully ready), exclude Desserts & Sides
+              const EXCLUDE_TAGS = new Set(['Desserts', 'Sides']);
+              const almostReady = matches.filter(m =>
+                m.matchScore >= 0.7 && !m.canMake &&
+                (() => { const r = recipes.find(x => x.id === m.id); return r && !(r.tags || []).some(t => EXCLUDE_TAGS.has(t)); })()
+              );
               return (
                 <div className="home-section">
                   <div className="home-section__header">
@@ -6496,18 +6451,18 @@ function AppInner() {
                       </div>
                       <span className="home-empty-cta__arrow">→</span>
                     </div>
-                  ) : goodMatches.length > 0 ? (
-                    <HScrollRow count={goodMatches.length}>
-                      {goodMatches.map(m => {
-                          const r = recipes.find(x => x.id === m.id);
-                          if (!r) return null;
-                          return <RecipeCard key={r.id} recipe={r} match={m} onClick={openRecipe}
-                            isHearted={heartedIds.includes(r.id)} onToggleHeart={() => toggleHeart(r.id)}
-                            isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)}
-                            showScore={true} />;
-                        })}
+                  ) : almostReady.length > 0 ? (
+                    <HScrollRow count={almostReady.length}>
+                      {almostReady.map(m => {
+                        const r = recipes.find(x => x.id === m.id);
+                        if (!r) return null;
+                        return <RecipeCard key={r.id} recipe={r} match={m} onClick={openRecipe}
+                          isHearted={heartedIds.includes(r.id)} onToggleHeart={() => toggleHeart(r.id)}
+                          isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)}
+                          showScore={true} />;
+                      })}
                     </HScrollRow>
-                  ) : <p className="home-no-matches">No matches yet -- try adding more ingredients in the Kitchen tab.</p>}
+                  ) : <p className="home-no-matches">No close matches yet — try adding more ingredients in the Kitchen tab.</p>}
                 </div>
               );
             })()}
@@ -6638,7 +6593,8 @@ function AppInner() {
             <div className="recipes-page-header">
               {mobileSearchSubmitted && mobileSearchQuery ? (
                 <div className="recipes-page-header__search-results">
-                  <h1 className="recipes-page-header__title">Results for <em>"{mobileSearchQuery}"</em></h1>
+                  <h1 className="recipes-page-header__title">Search results for <em>"{mobileSearchQuery}"</em></h1>
+                  <button className="recipes-page-header__clear" onClick={() => { setMobileSearchQuery(''); setMobileSearchSubmitted(false); setLibrarySearch(''); }}>✕ Clear</button>
                 </div>
               ) : (
                 <h1 className="recipes-page-header__title">All Recipes</h1>
