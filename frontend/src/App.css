@@ -1226,13 +1226,15 @@ body {
 .rp2__back:hover { border-color: var(--charcoal); color: var(--charcoal); background: rgba(59,47,34,0.04); }
 
 /* Hero */
-.rp2__hero { position: relative; width: 100%; height: 360px; overflow: hidden; background: var(--parchment); }
+.rp2__hero { position: relative; width: 100%; height: 360px; overflow: visible; background: var(--parchment); }
+.rp2__hero-img-wrap { position: absolute; inset: 0; overflow: hidden; }
 .rp2__hero-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.rp2__hero-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 64px; background: var(--parchment); }
+.rp2__hero-placeholder { position: absolute; inset: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 64px; background: var(--parchment); overflow: hidden; }
 .rp2__hero-overlay {
   position: absolute; inset: 0; padding: 16px 20px 20px;
   background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 35%, transparent 50%, rgba(0,0,0,0.72) 100%);
   display: flex; flex-direction: column; justify-content: space-between;
+  overflow: visible;
 }
 .rp2__hero-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .rp2__hero-tags { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
@@ -1262,37 +1264,37 @@ body {
 .rp2__ing-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer; transition: background var(--transition); user-select: none; }
 .rp2__ing-item:hover { background: var(--parchment); }
 .rp2__ing-item--checked { opacity: 0.5; }
-.rp2__ing-item--checked .rp2__ing-name { text-decoration: line-through; }
+.rp2__ing-item--checked .rp2__ing-line { text-decoration: line-through; }
 .rp2__ing-check { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; transition: all var(--transition); margin-top: 2px; }
 .rp2__ing-check--done { background: var(--sage); border-color: var(--sage); color: white; }
 .rp2__ing-text { display: flex; flex-direction: column; gap: 2px; font-size: 14px; flex: 1; min-width: 0; }
-.rp2__ing-name-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: baseline; }
-.rp2__ing-meta { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 1px; }
-.rp2__ing-amount { font-weight: 600; color: var(--charcoal); flex-shrink: 0; }
-/* Name + prep note flow as one inline block; prep note wraps under name naturally */
-.rp2__ing-name { color: var(--charcoal); word-break: break-word; }
+/* Single flowing line: amount name, prep note — wraps as one paragraph */
+.rp2__ing-line { display: block; line-height: 1.5; }
+.rp2__ing-amount { font-weight: 600; color: var(--charcoal); }
+.rp2__ing-name { color: var(--charcoal); }
 .rp2__ing-prep { font-size: 0.9em; color: var(--warm-gray); font-style: italic; }
-.rp2__ing-optional { font-size: 11px; background: var(--parchment); border-radius: 999px; padding: 1px 6px; color: var(--warm-gray); flex-shrink: 0; }
+.rp2__ing-optional { font-size: 11px; background: var(--parchment); border-radius: 999px; padding: 1px 6px; color: var(--warm-gray); margin-left: 4px; vertical-align: middle; }
 
 /* Instructions */
 .rp2__instructions { padding-left: 28px; }
 .rp2__instructions-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-
-/* Instruction groups — view mode */
-.rp2__steps-wrap { display: flex; flex-direction: column; gap: 0; }
-.rp2__step-group { margin-top: 8px; }
-.rp2__step-group-label {
-  font-family: var(--font-display);
-  font-size: 12px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.07em; color: var(--terracotta);
-  margin: 12px 0 6px; padding: 0 4px;
-  border-bottom: 1.5px solid var(--parchment);
-  padding-bottom: 4px;
-}
 .rp2__steps { list-style: none; display: flex; flex-direction: column; gap: 10px; padding: 0; margin: 0; }
-.rp2__steps--indented { padding-left: 10px; border-left: 2px solid var(--parchment); margin-left: 4px; }
-
-/* Step group row — editor mode */
+/* Grouped steps — indented with a left accent bar */
+.rp2__steps-outer { display: flex; flex-direction: column; gap: 6px; }
+.rp2__step-section { margin-top: 10px; }
+.rp2__step-section-label {
+  font-family: var(--font-display);
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--terracotta); margin: 0 0 6px 4px;
+  border-bottom: 1.5px solid var(--parchment); padding-bottom: 4px;
+}
+.rp2__steps--grouped {
+  padding-left: 12px;
+  border-left: 2px solid var(--terracotta-light);
+  margin-left: 2px;
+}
+/* Step group row in editor */
 .step-group-row {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 8px; border-radius: var(--radius-sm);
@@ -1311,9 +1313,13 @@ body {
   color: var(--terracotta-dark); outline: none; min-width: 0;
   letter-spacing: 0.02em; text-transform: uppercase;
 }
-.step-group-row__label-input::placeholder { color: rgba(198, 93, 59, 0.4); }
-/* Indented wrapper around step rows inside a group in editor */
-.step-group-indent { padding-left: 12px; border-left: 2px solid var(--parchment); margin-left: 4px; }
+.step-group-row__label-input::placeholder { color: rgba(198, 93, 59, 0.4); font-weight: 400; text-transform: none; }
+/* Grouped step row in editor — indented */
+.step-sortable-row--grouped {
+  margin-left: 14px;
+  border-left: 2px solid var(--terracotta-light);
+  padding-left: 8px;
+}
 .rp2__progress-label { font-size: 12px; color: var(--warm-gray); font-weight: 600; }
 .rp2__progress-bar { height: 4px; background: var(--light-gray); border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
 .rp2__progress-fill { height: 100%; background: var(--sage); border-radius: 2px; transition: width 0.4s ease; }
@@ -1402,14 +1408,14 @@ body {
 .rp2__pill--clickable:hover { opacity: 0.85; outline: 2px solid rgba(255,255,255,0.4); }
 .rp2__pill--editing { outline: 2px solid white !important; }
 
-/* ─── Dark overlay popovers (above element, on hero) ────────────────────── */
+/* ─── Dark overlay popovers (open downward, below hero bottom edge) ───────── */
 .rp2__hero-dark-popover {
   position: absolute; top: calc(100% + 8px); left: 0;
   min-width: 220px; max-width: min(320px, 90vw);
   background: rgba(20,20,20,0.96); backdrop-filter: blur(12px);
   border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
   padding: 14px 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  z-index: 200; display: flex; flex-direction: column; gap: 10px;
+  z-index: 300; display: flex; flex-direction: column; gap: 10px;
 }
 .rp2__hero-dark-popover--right { left: auto; right: 0; }
 .rp2__dark-pop-label {
@@ -7426,9 +7432,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   }
 }
 
-/* ── PULL-TO-REFRESH: enabled everywhere including PWA/standalone mode ── */
-html, body, .app, .view {
+/* ── PULL-TO-REFRESH: allow on html so PWA standalone mode can refresh ── */
+/* Only prevent overscroll on the fixed header to stop rubber-band behind it */
+html, body {
   overscroll-behavior-y: auto;
+}
+.app-header {
+  overscroll-behavior-y: none;
 }
 
 /* ── FILTER BUTTON: only highlight when filter chips are active (not search) ── */
