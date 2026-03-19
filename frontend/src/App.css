@@ -2961,13 +2961,13 @@ body {
 .ing-flat-row__name-wrap .editor-input { font-size: 13px !important; padding: 5px 8px !important; }
 .ing-flat-row__prep { flex: 3; min-width: 100px; font-size: 12px !important; padding: 5px 8px !important; }
 
-/* ─── Mobile: Ingredient modal full-screen + stacked rows ───────────────── */
+/* ─── Mobile: Ingredient modal appears at top of screen ─────────────────── */
 @media (max-width: 640px) {
-  .ing-modal-overlay { padding: 0; align-items: flex-end; }
+  .ing-modal-overlay { padding: 0; align-items: flex-start; padding-top: calc(60px + env(safe-area-inset-top, 0px)); }
   .ing-modal--wide {
     max-width: 100% !important;
-    max-height: 70vh;
-    border-radius: 20px 20px 0 0;
+    max-height: calc(100vh - 60px - env(safe-area-inset-top, 0px));
+    border-radius: 0 0 20px 20px;
     width: 100vw;
   }
   .ing-modal__header { padding: 14px 16px 12px; position: sticky; top: 0; background: var(--warm-white); z-index: 10; border-bottom: 1px solid var(--border); }
@@ -7472,3 +7472,116 @@ html, body {
   transition: background 0.12s;
 }
 .app-header__mobile-search-clear:active { background: var(--parchment); }
+
+/* ══════════════════════════════════════════════════════════════════
+   MOBILE UX v8 — no-hover fixes, drag handles, ingredient usage
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Suppress hover states on touch devices ──────────────────────── */
+/* Hover causes double-tap on mobile: first tap triggers hover, second triggers action */
+@media (hover: none) and (pointer: coarse) {
+  /* Recipe cards — no hover lift */
+  .recipe-card:hover { transform: none; box-shadow: var(--shadow); border-color: var(--border); }
+  .recipe-card:active { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+
+  /* Ingredient items — no hover bg */
+  .rp2__ing-item:hover { background: transparent; }
+  .rp2__ing-item:active { background: var(--parchment); }
+
+  /* Buttons — no hover, only active */
+  .btn--primary:hover { transform: none; box-shadow: none; background: var(--terracotta); }
+  .btn--primary:active { transform: translateY(-1px); }
+  .btn--ghost:hover { background: none; border-color: var(--border); color: var(--warm-gray); }
+  .btn--ghost:active { background: var(--parchment); }
+
+  /* Chips */
+  .chip:hover { border-color: var(--border); background: var(--cream); }
+  .chip:active { border-color: var(--terracotta-light); background: #fdf0eb; }
+
+  /* Steps */
+  .rp2__step:hover { border-color: var(--border); background: var(--warm-white); box-shadow: var(--shadow-xs); }
+  .rp2__step:active { border-color: var(--terracotta-light); background: #fef9f6; }
+
+  /* Quick actions */
+  .quick-action:hover { background: transparent; }
+  .quick-action:active { background: var(--cream); }
+
+  /* Fridge chips */
+  .fridge-group:hover { box-shadow: var(--shadow); }
+
+  /* Nav items in overlay */
+  .mobile-nav-overlay .mobile-nav-item:hover { background: transparent; }
+  .mobile-nav-overlay .mobile-nav-item:active { background: var(--parchment); }
+
+  /* Grocery items */
+  .grocery-item:hover { background: transparent; margin: 0; padding: 11px 0; }
+  .grocery-item:active { background: #fef9f4; }
+
+  /* Search dropdown items */
+  .mobile-search-dropdown__item:hover { background: transparent; }
+  .mobile-search-dropdown__item:active { background: var(--parchment); }
+
+  /* Cookbook cards */
+  .cookbook-card:hover { transform: none; box-shadow: var(--shadow); border-color: var(--border); }
+  .cookbook-card:active { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+  /* Cbentry rows */
+  .cbentry:hover { background: var(--warm-white); border-color: var(--border); border-left-color: transparent; }
+  .cbentry:active { background: var(--parchment); }
+
+  /* Filter chips */
+  .filter-bar__chip:hover { background: var(--cream); color: var(--warm-gray); border-color: var(--border); }
+  .filter-bar__chip:active { background: var(--parchment); }
+
+  /* Hscroll arrows — already hidden on mobile via JS, belt-and-suspenders */
+  .hscroll-arrow { display: none !important; }
+}
+
+/* ── Ingredient drag handle — larger, always visible on mobile ───── */
+@media (max-width: 640px) {
+  .ing-flat-row__drag {
+    font-size: 22px !important;
+    color: var(--ash) !important;
+    opacity: 1 !important;
+    padding: 4px 8px 4px 0 !important;
+    min-width: 28px;
+    display: flex;
+    align-items: center;
+  }
+  /* Make drag handle explicitly touch-action: none so dnd-kit gets the event */
+  .ing-flat-row__drag,
+  .editor-step-num--drag,
+  .step-group-row__drag,
+  .ing-group-row__drag {
+    touch-action: none;
+  }
+}
+
+/* ── Ingredient "used in" collapsible ────────────────────────────── */
+.rp2__ing-usage {
+  margin-top: 4px;
+}
+.rp2__ing-usage-toggle {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; color: var(--warm-gray);
+  background: none; border: none; cursor: pointer; padding: 2px 0;
+  transition: color 0.12s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.rp2__ing-usage-toggle:hover { color: var(--terracotta); }
+.rp2__ing-usage-toggle__arrow { font-size: 9px; transition: transform 0.15s; display: inline-block; }
+.rp2__ing-usage-toggle__arrow--open { transform: rotate(180deg); }
+.rp2__ing-usage-list {
+  margin: 4px 0 2px 0;
+  padding: 6px 10px;
+  background: var(--parchment);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--terracotta-light);
+  list-style: none;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.rp2__ing-usage-item {
+  font-size: 11px; color: var(--warm-gray); line-height: 1.4;
+}
+.rp2__ing-usage-item strong { color: var(--terracotta); font-weight: 700; font-size: 10px; }

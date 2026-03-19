@@ -87,6 +87,7 @@ const HScrollRow = ({ children, count }) => {
   const rowRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 640);
 
   const checkScroll = useCallback(() => {
     const el = rowRef.current;
@@ -100,7 +101,10 @@ const HScrollRow = ({ children, count }) => {
     if (!el) return;
     checkScroll();
     el.addEventListener('scroll', checkScroll, { passive: true });
-    const ro = new ResizeObserver(checkScroll);
+    const ro = new ResizeObserver(() => {
+      setIsMobile(window.innerWidth <= 640);
+      checkScroll();
+    });
     ro.observe(el);
     return () => { el.removeEventListener('scroll', checkScroll); ro.disconnect(); };
   }, [checkScroll, children]);
@@ -109,7 +113,7 @@ const HScrollRow = ({ children, count }) => {
     if (rowRef.current) rowRef.current.scrollBy({ left: dir * 260, behavior: 'smooth' });
   };
 
-  const showArrows = (count ?? React.Children.count(children)) > 4;
+  const showArrows = !isMobile && (count ?? React.Children.count(children)) > 4;
 
   return (
     <div className="hscroll-wrap">
@@ -132,13 +136,20 @@ const HScrollRow = ({ children, count }) => {
   );
 };
 import {
-  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
 import {
   arrayMove, SortableContext, sortableKeyboardCoordinates,
   useSortable, verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+// Sensor config: 8px movement threshold prevents tap-to-select being eaten by drag
+const DRAG_SENSORS = () => useSensors(
+  useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+  useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+);
 import './App.css';
 
 // --- Error Boundary --------------------------------------------------------
@@ -649,7 +660,7 @@ const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpda
 const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, authFetch }) => {
   const apiFetch = authFetch || fetch;
   const [showModal, setShowModal] = useState(false);
-  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const sensors = DRAG_SENSORS();
   const [details, setDetails] = useState({
     name: recipe?.name || '', cuisine: recipe?.cuisine || '', time: recipe?.time || '',
     servings: recipe?.servings || '', cover_image_url: recipe?.coverImage || '',
@@ -925,6 +936,66 @@ const StepItem = ({ step, done, isCurrent, enlarge, onToggle, matchedNotes = [] 
   );
 };
 
+// --- Ingredient Item with "used in steps" collapsible ----------------------
+const IngredientItem = ({ ing, isChecked, amountStr, onToggle, instructions = [] }) => {
+  const [showUsage, setShowUsage] = useState(false);
+
+  // Find steps that mention this ingredient by name
+  const usedInSteps = useMemo(() => {
+    if (!ing.name || !instructions?.length) return [];
+    const name = ing.name.toLowerCase().trim();
+    // Also match common variations: plural, singular
+    const words = name.split(/\s+/);
+    const root = words[words.length - 1]; // e.g. "garlic cloves" → search "clove" too
+    return instructions
+      .filter(s => {
+        const body = (s.body_text || '').toLowerCase();
+        return body.includes(name) || (root.length > 3 && body.includes(root.slice(0, -1)));
+      })
+      .sort((a, b) => a.step_number - b.step_number);
+  }, [ing.name, instructions]);
+
+  const truncate = (text, len = 60) => text.length > len ? text.slice(0, len).trimEnd() + '…' : text;
+
+  return (
+    <li className={`rp2__ing-item ${isChecked ? 'rp2__ing-item--checked' : ''}`} onClick={onToggle}>
+      <div className={`rp2__ing-check ${isChecked ? 'rp2__ing-check--done' : ''}`}>
+        {isChecked && <Icon name="check" size={10} strokeWidth={3} />}
+      </div>
+      <div className="rp2__ing-text">
+        <span className="rp2__ing-line">
+          {amountStr && <span className="rp2__ing-amount">{amountStr} </span>}
+          <span className="rp2__ing-name">
+            {pluralizeIng(ing.name, ing.amount)}
+            {ing.prep_note ? <span className="rp2__ing-prep">, {ing.prep_note}</span> : ''}
+          </span>
+          {ing.optional && <span className="rp2__ing-optional">optional</span>}
+        </span>
+        {usedInSteps.length > 0 && (
+          <div className="rp2__ing-usage" onClick={e => e.stopPropagation()}>
+            <button
+              className="rp2__ing-usage-toggle"
+              onClick={() => setShowUsage(v => !v)}
+            >
+              <span className={`rp2__ing-usage-toggle__arrow ${showUsage ? 'rp2__ing-usage-toggle__arrow--open' : ''}`}>▾</span>
+              used in {usedInSteps.length} step{usedInSteps.length !== 1 ? 's' : ''}
+            </button>
+            {showUsage && (
+              <ul className="rp2__ing-usage-list">
+                {usedInSteps.map(s => (
+                  <li key={s.step_number} className="rp2__ing-usage-item">
+                    <strong>Step {s.step_number}</strong> — {truncate(s.body_text)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+    </li>
+  );
+};
+
 // --- Recipe Page -------------------------------------------------------------
 const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [] }) => {
   const apiFetch = authFetch || fetch;
@@ -937,7 +1008,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [deleteError, setDeleteError] = useState(null);
   const [stayAwake, setStayAwake] = useState(false);
   const wakeLockRef = useRef(null);
-  const ingDndSensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const ingDndSensors = DRAG_SENSORS();
 
   // -- Wake Lock --
   useEffect(() => {
@@ -961,7 +1032,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [draftImageInput, setDraftImageInput] = useState('');
   const [draftIngs, setDraftIngs] = useState([]);
   const [draftSteps, setDraftSteps] = useState([]);
-  const rpSensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const rpSensors = DRAG_SENSORS();
   const [draftNotes, setDraftNotes] = useState([]);
   const [draftMeta, setDraftMeta] = useState({});
   const [draftCookbook, setDraftCookbook] = useState({ cookbook: '', reference: '' });
@@ -1067,6 +1138,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           for (let i = 0; i < draftSteps.length; i++) {
             const item = draftSteps[i];
             if (item._isGroup) {
+              // Group header — next consecutive steps (no gap of ungrouped steps) belong to it
               curGroup = item.name || '';
             } else if (item._isTimer) {
               const h = parseInt(item.h) || 0;
@@ -1075,7 +1147,22 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               const secs = h * 3600 + m * 60 + s;
               if (result.length > 0) result[result.length - 1].timer_seconds = secs > 0 ? secs : null;
             } else {
-              result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null, group_label: curGroup || null });
+              // Determine if this step is directly grouped:
+              // look back, skip timers — if the first non-timer item is a group header, it's grouped
+              let isGrouped = false;
+              for (let j = i - 1; j >= 0; j--) {
+                if (draftSteps[j]._isTimer) continue;
+                if (draftSteps[j]._isGroup) { isGrouped = true; break; }
+                break; // hit another regular step — not directly under a header
+              }
+              result.push({
+                ...item,
+                step_number: stepNum++,
+                timer_seconds: item.timer_seconds ?? null,
+                group_label: isGrouped ? curGroup : null,
+              });
+              // Once we've seen an ungrouped step, reset curGroup so following steps aren't grouped
+              if (!isGrouped) curGroup = '';
             }
           }
           return result;
@@ -1652,14 +1739,14 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       const isChecked = checkedIngredients.has(key);
                       const amountStr = [ing.amount, ing.unit].filter(Boolean).join(' ');
                       return (
-                        <li key={key} className={`rp2__ing-item ${isChecked ? 'rp2__ing-item--checked' : ''}`} onClick={() => toggleIngredient(key)}>
-                          <div className={`rp2__ing-check ${isChecked ? 'rp2__ing-check--done' : ''}`}>{isChecked && <Icon name="check" size={10} strokeWidth={3} />}</div>
-                          <div className="rp2__ing-text">
-                            <span className="rp2__ing-line">
-                              {amountStr && <span className="rp2__ing-amount">{amountStr} </span>}<span className="rp2__ing-name">{pluralizeIng(ing.name, ing.amount)}{ing.prep_note ? <span className="rp2__ing-prep">, {ing.prep_note}</span> : ''}</span>{ing.optional && <span className="rp2__ing-optional">optional</span>}
-                            </span>
-                          </div>
-                        </li>
+                        <IngredientItem
+                          key={key}
+                          ing={ing}
+                          isChecked={isChecked}
+                          amountStr={amountStr}
+                          onToggle={() => toggleIngredient(key)}
+                          instructions={instructions}
+                        />
                       );
                     })}
                   </ul>
@@ -1728,15 +1815,31 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                           </div>
                         );
                       }
-                      // Determine this step's current group from preceding items
+                      // A step is visually grouped if it has a group_label that matches
+                      // the nearest preceding group header in the draft list.
+                      // This prevents "orphaned" indentation after dragging.
                       let stepGroup = '';
                       for (let j = idx - 1; j >= 0; j--) {
                         if (draftSteps[j]._isGroup) { stepGroup = draftSteps[j].name || ''; break; }
-                        if (!draftSteps[j]._isTimer) break;
+                        if (!draftSteps[j]._isTimer && !draftSteps[j]._isGroup) {
+                          // There's a regular step between this step and any group header
+                          // Only indent if that step is also grouped under the same header
+                          break;
+                        }
+                      }
+                      // Only indent if the immediately preceding non-timer item is a group header
+                      // (i.e., this step directly follows the group header or another grouped step)
+                      let isGrouped = false;
+                      for (let j = idx - 1; j >= 0; j--) {
+                        const prev = draftSteps[j];
+                        if (prev._isTimer) continue;
+                        if (prev._isGroup) { isGrouped = true; break; }
+                        // Hit a regular step — only grouped if it was also grouped under same header
+                        isGrouped = false; break;
                       }
                       const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
                       return (
-                        <StepSortableItem key={item._id} id={item._id} stepNum={stepNum} grouped={!!stepGroup}>
+                        <StepSortableItem key={item._id} id={item._id} stepNum={stepNum} grouped={isGrouped}>
                           <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
                           <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step"><Icon name="timer" size={13} strokeWidth={2} /></button>
                           <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
@@ -2010,7 +2113,7 @@ const StepGroupRow = ({ grp, onLabelChange, onRemove }) => {
 // --- Recipe Editor ----------------------------------------------------------
 const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredients, onBack, onSaved, authFetch }) => {
   const apiFetch = authFetch || fetch;
-  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const sensors = DRAG_SENSORS();
 
   const [details, setDetails] = useState({
     name: recipe?.name || '',
@@ -4249,7 +4352,7 @@ const QuickAddModal = ({ onSave, onClose }) => {
 // Identical form to AddRecipeTab's create modal, pre-filled with cookbook entry data
 const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConverted, onClose, authFetch }) => {
   const apiFetch = authFetch || fetch;
-  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const sensors = DRAG_SENSORS();
 
   const [details, setDetails] = useState({
     name: entry.name || '',
@@ -5025,7 +5128,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags,
 // --- Add Recipe Tab ---------------------------------------------------------
 const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) => {
   const apiFetch = authFetch || fetch;
-  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const sensors = DRAG_SENSORS();
   const [showModal, setShowModal] = useState(false);
 
   // -- Link import state --
@@ -6961,8 +7064,8 @@ function AppInner() {
         {[
           { key: 'home',     icon: 'home',     label: 'Home'     },
           { key: 'recipes',  icon: 'bookOpen', label: 'Recipes'  },
-          { key: 'grocery',  icon: 'cart',     label: 'Groceries'},
-          ...(isAdmin ? [{ key: 'add', icon: 'plus', label: 'Add' }] : []),
+          { key: 'kitchen',  icon: 'package',  label: 'Kitchen'  },
+          { key: 'grocery',  icon: 'cart',     label: 'Grocery'  },
           { key: 'profile',  icon: 'user',     label: 'Profile'  },
         ].map(({ key, icon, label }) => (
           <button key={key}
