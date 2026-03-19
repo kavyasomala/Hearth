@@ -322,14 +322,87 @@ const Badge = ({ children, variant = 'default' }) => (
   <span className={`badge badge--${variant}`}>{children}</span>
 );
 
+// --- Nutrition Breakdown Popover -------------------------------------------
+const NutritionPopover = ({ recipe, bodyIngredients = [], allIngredients = [], onClose, openDown = false }) => {
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  // Build per-ingredient breakdown
+  const breakdown = useMemo(() => {
+    const rows = [];
+    for (const ing of (bodyIngredients || [])) {
+      if (ing._isGroup) continue;
+      const name = (ing.name || '').toLowerCase().trim();
+      const dbIng = allIngredients.find(a => (a.name || '').toLowerCase() === name)
+                 || allIngredients.find(a => name.includes((a.name||'').toLowerCase()) || (a.name||'').toLowerCase().includes(name));
+      if (!dbIng || dbIng.calories == null) continue;
+      const amount = parseFloat(ing.amount) || 1;
+      const unit = (ing.unit || '').toLowerCase().trim();
+      let gramsTotal;
+      if (UNIT_GRAMS[unit]) gramsTotal = amount * UNIT_GRAMS[unit];
+      else if (dbIng.grams_per_unit) gramsTotal = amount * dbIng.grams_per_unit;
+      else continue;
+      const cal = Math.round((dbIng.calories || 0) * gramsTotal / 100);
+      if (cal === 0) continue;
+      rows.push({ name: ing.name, amount: `${ing.amount || ''}${ing.unit ? ' ' + ing.unit : ''}`, cal });
+    }
+    return rows.sort((a, b) => b.cal - a.cal);
+  }, [bodyIngredients, allIngredients]);
+
+  const totalCal = toNum(recipe?.calories);
+  const totalProt = toNum(recipe?.protein);
+  const totalFiber = toNum(recipe?.fiber);
+
+  return (
+    <div className={`nutrition-popover ${openDown ? 'nutrition-popover--down' : ''}`} ref={wrapRef} onClick={e => e.stopPropagation()}>
+      <div className="nutrition-popover__header">
+        <span className="nutrition-popover__title">Nutrition</span>
+        {recipe?.servings && <span className="nutrition-popover__servings">per serving · {recipe.servings} servings</span>}
+        <button className="nutrition-popover__close" onClick={onClose}>✕</button>
+      </div>
+      <div className="nutrition-popover__totals">
+        {totalCal !== null && <div className="nutrition-popover__total"><span className="nutrition-popover__total-val">{Math.round(totalCal)}</span><span className="nutrition-popover__total-lbl">kcal</span></div>}
+        {totalProt !== null && <div className="nutrition-popover__total"><span className="nutrition-popover__total-val">{Math.round(totalProt)}g</span><span className="nutrition-popover__total-lbl">protein</span></div>}
+        {totalFiber !== null && <div className="nutrition-popover__total"><span className="nutrition-popover__total-val">{Math.round(totalFiber)}g</span><span className="nutrition-popover__total-lbl">fiber</span></div>}
+      </div>
+      {breakdown.length > 0 && (
+        <div className="nutrition-popover__breakdown">
+          <div className="nutrition-popover__breakdown-label">Calorie breakdown</div>
+          {breakdown.map((row, i) => {
+            const barPct = totalCal ? Math.round((row.cal / totalCal) * 100) : 0;
+            return (
+              <div key={i} className="nutrition-popover__row">
+                <span className="nutrition-popover__row-name">{row.name}</span>
+                <div className="nutrition-popover__bar-wrap">
+                  <div className="nutrition-popover__bar" style={{ width: `${Math.max(barPct, 3)}%` }} />
+                </div>
+                <span className="nutrition-popover__row-cal">{row.cal}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {breakdown.length === 0 && (
+        <p className="nutrition-popover__hint">Add ingredient nutrition data in the Kitchen tab to see a full breakdown.</p>
+      )}
+    </div>
+  );
+};
+
 // --- Recipe Summary Card ---------------------------------------------------
 const toNum = (v) => { const n = Number(v); return (!isNaN(n) && v !== '' && v !== null && v !== undefined) ? n : null; };
 
-const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked, showScore, onConvertRef }) => {
+const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked, showScore, onConvertRef, allIngredients = [] }) => {
   const { name, coverImage, cuisine, time } = recipe;
   const calories = toNum(recipe.calories);
   const protein  = toNum(recipe.protein);
   const matchScore = match?.matchScore ?? null;
+  const [showNutrition, setShowNutrition] = useState(false);
   const canMakeNow = Boolean(match?.canMake);
   const tags = recipe.tags || [];
   const progress = recipe.status === 'incomplete' ? <Icon name="alertTriangle" size={12} strokeWidth={2} /> : recipe.status === 'needs tweaking' ? <Icon name="tool" size={12} strokeWidth={2} /> : recipe.status === 'complete' ? <Icon name="checkCircle" size={12} strokeWidth={2} /> : recipe.status === 'to try' ? <Icon name="bookMarked" size={12} strokeWidth={2} /> : null;
@@ -376,7 +449,21 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
         </div>
         <div className="recipe-card__stats">
           {time && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="clock" size={12} strokeWidth={2} /></span>{time}</span>}
-          {calories !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="zap" size={12} strokeWidth={2} /></span>{Math.round(calories)} kcal</span>}
+          {calories !== null && (
+            <span className="recipe-card__stat recipe-card__stat--clickable" style={{ position: 'relative' }}
+              onClick={e => { e.stopPropagation(); setShowNutrition(v => !v); }}>
+              <span className="recipe-card__stat-icon"><Icon name="zap" size={12} strokeWidth={2} /></span>
+              {Math.round(calories)} kcal
+              {showNutrition && (
+                <NutritionPopover
+                  recipe={recipe}
+                  bodyIngredients={[]}
+                  allIngredients={allIngredients}
+                  onClose={() => setShowNutrition(false)}
+                />
+              )}
+            </span>
+          )}
           {protein !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="dumbbell" size={12} strokeWidth={2} /></span>{Math.round(protein)}g</span>}
           {canMakeNow && <span className="recipe-card__can-make"><Icon name="checkCircle" size={11} strokeWidth={2} /> Ready</span>}
           {progress && <span className="recipe-card__progress">{progress}</span>}
@@ -937,26 +1024,7 @@ const StepItem = ({ step, done, isCurrent, enlarge, onToggle, matchedNotes = [] 
 };
 
 // --- Ingredient Item with "used in steps" collapsible ----------------------
-const IngredientItem = ({ ing, isChecked, amountStr, onToggle, instructions = [] }) => {
-  const [showUsage, setShowUsage] = useState(false);
-
-  // Find steps that mention this ingredient by name
-  const usedInSteps = useMemo(() => {
-    if (!ing.name || !instructions?.length) return [];
-    const name = ing.name.toLowerCase().trim();
-    // Also match common variations: plural, singular
-    const words = name.split(/\s+/);
-    const root = words[words.length - 1]; // e.g. "garlic cloves" → search "clove" too
-    return instructions
-      .filter(s => {
-        const body = (s.body_text || '').toLowerCase();
-        return body.includes(name) || (root.length > 3 && body.includes(root.slice(0, -1)));
-      })
-      .sort((a, b) => a.step_number - b.step_number);
-  }, [ing.name, instructions]);
-
-  const truncate = (text, len = 60) => text.length > len ? text.slice(0, len).trimEnd() + '…' : text;
-
+const IngredientItem = ({ ing, isChecked, amountStr, onToggle }) => {
   return (
     <li className={`rp2__ing-item ${isChecked ? 'rp2__ing-item--checked' : ''}`} onClick={onToggle}>
       <div className={`rp2__ing-check ${isChecked ? 'rp2__ing-check--done' : ''}`}>
@@ -971,26 +1039,6 @@ const IngredientItem = ({ ing, isChecked, amountStr, onToggle, instructions = []
           </span>
           {ing.optional && <span className="rp2__ing-optional">optional</span>}
         </span>
-        {usedInSteps.length > 0 && (
-          <div className="rp2__ing-usage" onClick={e => e.stopPropagation()}>
-            <button
-              className="rp2__ing-usage-toggle"
-              onClick={() => setShowUsage(v => !v)}
-            >
-              <span className={`rp2__ing-usage-toggle__arrow ${showUsage ? 'rp2__ing-usage-toggle__arrow--open' : ''}`}>▾</span>
-              used in {usedInSteps.length} step{usedInSteps.length !== 1 ? 's' : ''}
-            </button>
-            {showUsage && (
-              <ul className="rp2__ing-usage-list">
-                {usedInSteps.map(s => (
-                  <li key={s.step_number} className="rp2__ing-usage-item">
-                    <strong>Step {s.step_number}</strong> — {truncate(s.body_text)}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
       </div>
     </li>
   );
@@ -1036,6 +1084,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [draftNotes, setDraftNotes] = useState([]);
   const [draftMeta, setDraftMeta] = useState({});
   const [draftCookbook, setDraftCookbook] = useState({ cookbook: '', reference: '' });
+  const [showNutritionPopover, setShowNutritionPopover] = useState(false);
 
   const isEdit = (s) => editingSection === s;
 
@@ -1596,7 +1645,23 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               </div>}
 
               {/* Display-only nutrition pills */}
-              {displayCalories !== null && <span className="rp2__pill" title={nutritionIsEstimate ? 'Estimated -- save ingredients to lock in' : 'Auto-calculated from ingredients'}><span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>{displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}</span>}
+              {displayCalories !== null && (
+                <span style={{ position: 'relative' }}>
+                  <button className="rp2__pill rp2__pill--clickable" onClick={e => { e.stopPropagation(); setShowNutritionPopover(v => !v); }} title="Click for breakdown">
+                    <span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>
+                    {displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}
+                  </button>
+                  {showNutritionPopover && (
+                    <NutritionPopover
+                      recipe={recipe}
+                      bodyIngredients={bodyIngredients}
+                      allIngredients={allIngredients}
+                      onClose={() => setShowNutritionPopover(false)}
+                      openDown
+                    />
+                  )}
+                </span>
+              )}
               {displayProtein  !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="dumbbell" size={13} strokeWidth={2} /></span>{displayProtein}g prot{nutritionIsEstimate ? ' ~' : ''}</span>}
               {displayFiber    !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="leaf" size={13} strokeWidth={2} /></span>{displayFiber}g fiber{nutritionIsEstimate ? ' ~' : ''}</span>}
             </div>
@@ -1783,7 +1848,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                           isChecked={isChecked}
                           amountStr={amountStr}
                           onToggle={() => toggleIngredient(key)}
-                          instructions={instructions}
                         />
                       );
                     })}
@@ -2501,7 +2565,7 @@ const TYPE_META = {
   staple:   { label: 'Staples',     icon: 'list',     group: 'pantry'  },
 };
 
-const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
+const IngredientEditModal = ({ ing, onSave, onClose, authFetch, allRecipes = [] }) => {
   const apiFetch = authFetch || fetch;
   const isNew = !ing;
   const [form, setForm] = useState({
@@ -2516,8 +2580,18 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
   const [fetching, setFetching] = useState(false);
   const [fetchMsg, setFetchMsg] = useState(null);
   const [error, setError] = useState(null);
+  const [recipesOpen, setRecipesOpen] = useState(false);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  // Find recipes that use this ingredient
+  const usedInRecipes = useMemo(() => {
+    if (!ing?.name || !allRecipes?.length) return [];
+    const name = ing.name.toLowerCase().trim();
+    return allRecipes.filter(r =>
+      (r.ingredients || []).some(i => (typeof i === 'string' ? i : i.name || '').toLowerCase().trim() === name)
+    ).sort((a, b) => a.name.localeCompare(b.name));
+  }, [ing?.name, allRecipes]);
 
   const fetchNutrition = async () => {
     const query = form.name.trim();
@@ -2574,7 +2648,7 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
   };
 
   return (
-    <div className="create-modal-overlay" onClick={onClose}>
+    <div className="create-modal-overlay ing-edit-modal-overlay" onClick={onClose}>
       <div className="create-modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title">{isNew ? 'Add Ingredient' : `Edit "${ing.name}"`}</h2>
@@ -2634,6 +2708,40 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
               Used when a recipe says "3 eggs" or "2 cloves" -- no weight unit. Leave blank for ingredients always measured by weight or volume.
             </p>
           </div>
+
+          {/* Used in Recipes -- only shown when editing an existing ingredient */}
+          {!isNew && (
+            <div className="create-modal__field">
+              <button
+                className="ing-used-in-toggle"
+                onClick={() => setRecipesOpen(o => !o)}
+                type="button"
+              >
+                <Icon name="bookOpen" size={13} strokeWidth={2} />
+                Used in Recipes
+                <span className="ing-used-in-count">{usedInRecipes.length}</span>
+                <span className="ing-used-in-arrow">{recipesOpen ? '▴' : '▾'}</span>
+              </button>
+              {recipesOpen && (
+                <div className="ing-used-in-list">
+                  {usedInRecipes.length === 0 ? (
+                    <p className="ing-used-in-empty">Not used in any saved recipes yet.</p>
+                  ) : (
+                    usedInRecipes.map(r => (
+                      <div key={r.id} className="ing-used-in-row">
+                        {r.coverImage
+                          ? <img src={r.coverImage} alt="" className="ing-used-in-thumb" />
+                          : <div className="ing-used-in-thumb ing-used-in-thumb--placeholder"><Icon name="image" size={12} color="var(--ash)" strokeWidth={1.5} /></div>}
+                        <span className="ing-used-in-name">{r.name}</span>
+                        {r.cuisine && <span className="ing-used-in-cuisine">{r.cuisine}</span>}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {error && <p className="editor-error"><Icon name="alertTriangle" size={14} strokeWidth={2} /> {error}</p>}
         </div>
         <div className="create-modal__footer">
@@ -2648,7 +2756,7 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
 // --- Always-expanded types ---------------------------------------------------
 const ALWAYS_OPEN_TYPES = new Set(['produce', 'meat']);
 
-const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, authFetch }) => {
+const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, authFetch, allRecipes = [] }) => {
   const apiFetch = authFetch || fetch;
   const [typeOverrides, setTypeOverrides] = useState(() => LS.get('ingredientTypeOverrides', {}));
   const [editingIng, setEditingIng] = useState(null);
@@ -2825,6 +2933,7 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
           onSave={handleSaveIng}
           onClose={() => setEditingIng(null)}
           authFetch={apiFetch}
+          allRecipes={allRecipes}
         />
       )}
       {deleteTarget && (
@@ -6511,7 +6620,7 @@ function AppInner() {
       )}
 
       {view === 'kitchen' && (
-        <FridgeTab allIngredients={allIngredients} setAllIngredients={setAllIngredients} fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} authFetch={authFetch} />
+        <FridgeTab allIngredients={allIngredients} setAllIngredients={setAllIngredients} fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} authFetch={authFetch} allRecipes={recipes} />
       )}
 
       {/* ======================================================
