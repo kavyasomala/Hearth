@@ -1061,16 +1061,37 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
       setDraftIngs(flat);
     }
     if (section === 'instructions') {
+      // Build flat list: group headers interleaved with steps that carry their own group_label.
+      // Steps belonging to a group are placed immediately after the group header row.
       const sorted = [...(instructions || [])].sort((a, b) => a.step_number - b.step_number);
       const flat = [];
-      let seenGroups = new Set();
+      const seenGroups = new Set();
+      // First pass: add all group headers
       for (const s of sorted) {
         const g = s.group_label || '';
         if (g && !seenGroups.has(g)) {
           seenGroups.add(g);
+          // Will be inserted before the first step of this group below
+        }
+      }
+      // Second pass: interleave headers and steps in sorted order, grouped steps follow their header
+      const ungrouped = sorted.filter(s => !s.group_label);
+      const grouped = sorted.filter(s => s.group_label);
+      // Collect unique group labels in the order they first appear
+      const groupOrder = [];
+      for (const s of sorted) {
+        if (s.group_label && !groupOrder.includes(s.group_label)) groupOrder.push(s.group_label);
+      }
+      // Build interleaved list: ungrouped steps and group sections in step_number order
+      // Strategy: walk sorted steps; emit group header before first step of each group
+      const emittedGroups = new Set();
+      for (const s of sorted) {
+        const g = s.group_label || '';
+        if (g && !emittedGroups.has(g)) {
+          emittedGroups.add(g);
           flat.push({ _id: `step-grp-exist-${g}`, _isGroup: true, name: g });
         }
-        flat.push({ ...s, _id: `step-${s.step_number}`, timer_seconds: s.timer_seconds ?? null });
+        flat.push({ ...s, _id: `step-${s.step_number}`, timer_seconds: s.timer_seconds ?? null, group_label: g || null });
         if (s.timer_seconds && s.timer_seconds > 0) {
           const h = Math.floor(s.timer_seconds / 3600);
           const m = Math.floor((s.timer_seconds % 3600) / 60);
@@ -1134,35 +1155,21 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         instructions: section === 'instructions' ? (() => {
           const result = [];
           let stepNum = 1;
-          let curGroup = '';
-          for (let i = 0; i < draftSteps.length; i++) {
-            const item = draftSteps[i];
-            if (item._isGroup) {
-              // Group header — next consecutive steps (no gap of ungrouped steps) belong to it
-              curGroup = item.name || '';
-            } else if (item._isTimer) {
+          for (const item of draftSteps) {
+            if (item._isGroup) continue; // headers are metadata only
+            if (item._isTimer) {
               const h = parseInt(item.h) || 0;
               const m = parseInt(item.m) || 0;
               const s = parseInt(item.s) || 0;
               const secs = h * 3600 + m * 60 + s;
               if (result.length > 0) result[result.length - 1].timer_seconds = secs > 0 ? secs : null;
             } else {
-              // Determine if this step is directly grouped:
-              // look back, skip timers — if the first non-timer item is a group header, it's grouped
-              let isGrouped = false;
-              for (let j = i - 1; j >= 0; j--) {
-                if (draftSteps[j]._isTimer) continue;
-                if (draftSteps[j]._isGroup) { isGrouped = true; break; }
-                break; // hit another regular step — not directly under a header
-              }
               result.push({
                 ...item,
                 step_number: stepNum++,
                 timer_seconds: item.timer_seconds ?? null,
-                group_label: isGrouped ? curGroup : null,
+                group_label: item.group_label || null,
               });
-              // Once we've seen an ungrouped step, reset curGroup so following steps aren't grouped
-              if (!isGrouped) curGroup = '';
             }
           }
           return result;
@@ -1192,16 +1199,47 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const updateDraftIng = (id, k, v) => setDraftIngs(prev => prev.map(i => i._id === id ? { ...i, [k]: v } : i));
   const removeDraftIng = (id) => setDraftIngs(prev => prev.filter(i => i._id !== id));
 
-  // -- Step draft helpers --
-  const addDraftStep    = () => setDraftSteps(prev => [...prev, { _id: `step-new-${Date.now()}`, step_number: prev.length + 1, body_text: '', timer_seconds: null }]);
+  const addDraftStep = () => setDraftSteps(prev => [...prev, { _id: `step-new-${Date.now()}`, step_number: prev.length + 1, body_text: '', timer_seconds: null, group_label: null }]);
   const onDraftStepDragEnd = ({ active, over }) => {
-    if (over && active.id !== over.id) {
-      setDraftSteps(prev => {
-        const o = prev.findIndex(s => s._id === active.id);
-        const n = prev.findIndex(s => s._id === over.id);
-        return arrayMove(prev, o, n);
-      });
-    }
+    if (!over || active.id === over.id) return;
+    setDraftSteps(prev => {
+      const oldIdx = prev.findIndex(s => s._id === active.id);
+      const newIdx = prev.findIndex(s => s._id === over.id);
+      if (oldIdx < 0 || newIdx < 0) return prev;
+
+      const moved = arrayMove(prev, oldIdx, newIdx);
+
+      // After the move, determine the new group_label for the dragged item.
+      // Only regular steps get a group_label; group headers and timers don't.
+      const draggedItem = moved[newIdx];
+      if (draggedItem._isGroup || draggedItem._isTimer) return moved;
+
+      // Walk backwards from newIdx to find the nearest group header.
+      // If a regular ungrouped step sits between the dragged item and any group header,
+      // the dragged item is ungrouped.
+      let newGroupLabel = null;
+      for (let j = newIdx - 1; j >= 0; j--) {
+        const item = moved[j];
+        if (item._isTimer) continue; // skip timers
+        if (item._isGroup) {
+          newGroupLabel = item.name || null;
+          break;
+        }
+        // Hit a regular step — check if IT is grouped under a header
+        if (item.group_label) {
+          // The step above is grouped — the dragged step is also in that group
+          newGroupLabel = item.group_label;
+        }
+        break;
+      }
+
+      // Apply new group_label to the dragged step
+      return moved.map((s, i) =>
+        i === newIdx && !s._isGroup && !s._isTimer
+          ? { ...s, group_label: newGroupLabel }
+          : s
+      );
+    });
   };
   const addTimerAfterStep = (afterId) => setDraftSteps(prev => {
     const idx = prev.findIndex(s => s._id === afterId);
@@ -1776,77 +1814,87 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             <div className="rp2__inline-editor">
               <DndContext sensors={rpSensors} collisionDetection={closestCenter} onDragEnd={onDraftStepDragEnd}>
                 <SortableContext items={draftSteps.map(s => s._id)} strategy={verticalListSortingStrategy}>
-                  {(() => {
-                    let curGroup = '';
-                    return draftSteps.map((item, idx) => {
-                      if (item._isGroup) {
-                        curGroup = item.name || '';
-                        return (
-                          <StepGroupRow
-                            key={item._id}
-                            grp={item}
-                            onLabelChange={v => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, name: v } : s))}
-                            onRemove={() => setDraftSteps(prev => prev.filter(s => s._id !== item._id))}
-                          />
-                        );
-                      }
-                      if (item._isTimer) {
-                        return (
-                          <div key={item._id} className="rp2__ed-timer-row">
-                            <span className="rp2__ed-timer-row__icon"><Icon name="timer" size={14} strokeWidth={2} /></span>
-                            <div className="rp2__ed-timer-row__inputs">
-                              <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" value={item.h} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, h: e.target.value} : s))} placeholder="0" />
-                              <span className="rp2__ed-timer-row__sep">h</span>
-                              <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.m} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, m: e.target.value} : s))} placeholder="0" />
-                              <span className="rp2__ed-timer-row__sep">m</span>
-                              <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
-                              <span className="rp2__ed-timer-row__sep">s</span>
-                            </div>
-                            <button className="editor-remove-btn" onClick={() => {
-                              setDraftSteps(prev => {
-                                const i2 = prev.findIndex(s => s._id === item._id);
-                                const next = prev.filter(s => s._id !== item._id);
-                                if (i2 > 0 && !prev[i2 - 1]._isTimer) {
-                                  return next.map(s => s._id === prev[i2 - 1]._id ? { ...s, timer_seconds: null } : s);
-                                }
-                                return next;
-                              });
-                            }}>✕</button>
-                          </div>
-                        );
-                      }
-                      // A step is visually grouped if it has a group_label that matches
-                      // the nearest preceding group header in the draft list.
-                      // This prevents "orphaned" indentation after dragging.
-                      let stepGroup = '';
-                      for (let j = idx - 1; j >= 0; j--) {
-                        if (draftSteps[j]._isGroup) { stepGroup = draftSteps[j].name || ''; break; }
-                        if (!draftSteps[j]._isTimer && !draftSteps[j]._isGroup) {
-                          // There's a regular step between this step and any group header
-                          // Only indent if that step is also grouped under the same header
-                          break;
+                  {draftSteps.map((item, idx) => {
+                    if (item._isGroup) {
+                      // Add a new step directly at the bottom of this group
+                      const addToGroup = () => {
+                        const grpName = item.name || '';
+                        // Find the last step belonging to this group
+                        let insertIdx = idx;
+                        for (let j = idx + 1; j < draftSteps.length; j++) {
+                          const s = draftSteps[j];
+                          if (s._isGroup) break; // next group header — stop
+                          if (!s._isTimer && s.group_label !== grpName) break; // step not in this group
+                          insertIdx = j;
                         }
-                      }
-                      // Only indent if the immediately preceding non-timer item is a group header
-                      // (i.e., this step directly follows the group header or another grouped step)
-                      let isGrouped = false;
-                      for (let j = idx - 1; j >= 0; j--) {
-                        const prev = draftSteps[j];
-                        if (prev._isTimer) continue;
-                        if (prev._isGroup) { isGrouped = true; break; }
-                        // Hit a regular step — only grouped if it was also grouped under same header
-                        isGrouped = false; break;
-                      }
-                      const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
+                        const newStep = { _id: `step-new-${Date.now()}`, body_text: '', timer_seconds: null, group_label: grpName };
+                        setDraftSteps(prev => {
+                          const next = [...prev];
+                          next.splice(insertIdx + 1, 0, newStep);
+                          return next;
+                        });
+                      };
                       return (
-                        <StepSortableItem key={item._id} id={item._id} stepNum={stepNum} grouped={isGrouped}>
-                          <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
-                          <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step"><Icon name="timer" size={13} strokeWidth={2} /></button>
-                          <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
-                        </StepSortableItem>
+                        <StepGroupRow
+                          key={item._id}
+                          grp={item}
+                          onLabelChange={v => setDraftSteps(prev => {
+                            // Also update group_label on all steps that belong to this group
+                            const oldName = item.name || '';
+                            return prev.map(s =>
+                              s._id === item._id ? { ...s, name: v } :
+                              (!s._isGroup && !s._isTimer && s.group_label === oldName) ? { ...s, group_label: v } : s
+                            );
+                          })}
+                          onRemove={() => setDraftSteps(prev => {
+                            // Remove header but ungroup its steps (don't delete them)
+                            const grpName = item.name || '';
+                            return prev
+                              .filter(s => s._id !== item._id)
+                              .map(s => (!s._isGroup && !s._isTimer && s.group_label === grpName) ? { ...s, group_label: null } : s);
+                          })}
+                          onAddStep={addToGroup}
+                        />
                       );
-                    });
-                  })()}
+                    }
+
+                    if (item._isTimer) {
+                      return (
+                        <div key={item._id} className="rp2__ed-timer-row" style={{ marginLeft: item.group_label ? 20 : 0 }}>
+                          <span className="rp2__ed-timer-row__icon"><Icon name="timer" size={14} strokeWidth={2} /></span>
+                          <div className="rp2__ed-timer-row__inputs">
+                            <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" value={item.h} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, h: e.target.value} : s))} placeholder="0" />
+                            <span className="rp2__ed-timer-row__sep">h</span>
+                            <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.m} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, m: e.target.value} : s))} placeholder="0" />
+                            <span className="rp2__ed-timer-row__sep">m</span>
+                            <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
+                            <span className="rp2__ed-timer-row__sep">s</span>
+                          </div>
+                          <button className="editor-remove-btn" onClick={() => {
+                            setDraftSteps(prev => {
+                              const i2 = prev.findIndex(s => s._id === item._id);
+                              const next = prev.filter(s => s._id !== item._id);
+                              if (i2 > 0 && !prev[i2 - 1]._isTimer) {
+                                return next.map(s => s._id === prev[i2 - 1]._id ? { ...s, timer_seconds: null } : s);
+                              }
+                              return next;
+                            });
+                          }}>✕</button>
+                        </div>
+                      );
+                    }
+
+                    // Regular step — indented if it has a group_label
+                    const isGrouped = !!item.group_label;
+                    const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
+                    return (
+                      <StepSortableItem key={item._id} id={item._id} stepNum={stepNum} grouped={isGrouped}>
+                        <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
+                        <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                        <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
+                      </StepSortableItem>
+                    );
+                  })}
                 </SortableContext>
               </DndContext>
               <div className="ing-flat-add-row">
@@ -2093,7 +2141,7 @@ const StepSortableItem = ({ id, stepNum, grouped, children }) => {
 };
 
 // Step group row -- draggable group header for instruction sections
-const StepGroupRow = ({ grp, onLabelChange, onRemove }) => {
+const StepGroupRow = ({ grp, onLabelChange, onRemove, onAddStep }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: grp._id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
   return (
@@ -2105,6 +2153,9 @@ const StepGroupRow = ({ grp, onLabelChange, onRemove }) => {
         onChange={e => onLabelChange(e.target.value)}
         placeholder="Group name (e.g. For the sauce, Marinade)…"
       />
+      {onAddStep && (
+        <button className="ing-group-row__add-btn" onClick={onAddStep} title="Add step to this group">＋</button>
+      )}
       <button className="editor-remove-btn" onClick={onRemove} title="Remove group">✕</button>
     </div>
   );
