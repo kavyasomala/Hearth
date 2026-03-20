@@ -1132,26 +1132,26 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
 // A hidden "ghost" div with identical text determines the correct height.
 // The textarea reads that height via a CSS custom property on the wrapper.
 // Because value never changes during a dnd-kit drag, height stays locked.
-// --- Rows-based auto-grow textarea — completely immune to drag reflow ---
-// Computes rows from newlines + estimated line wraps at ~60 chars per row.
-// No DOM measurement, no ResizeObserver, no JS during drag — just a number.
-const countRows = (text, minRows, charsPerRow = 60) => {
-  if (!text) return minRows;
-  const lines = text.split('\n');
-  const rows = lines.reduce((sum, line) => sum + Math.max(1, Math.ceil((line.length || 1) / charsPerRow)), 0);
-  return Math.max(minRows, rows);
+const AutoGrowTextarea = ({ value, onChange, placeholder, className, style, minRows = 2 }) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      className={className}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      rows={minRows}
+      style={{ resize: 'none', overflow: 'hidden', width: '100%', display: 'block', ...style }}
+    />
+  );
 };
-
-const AutoGrowTextarea = ({ value, onChange, placeholder, className, style, minRows = 2 }) => (
-  <textarea
-    className={className}
-    value={value}
-    onChange={onChange}
-    placeholder={placeholder}
-    rows={countRows(value, minRows)}
-    style={{ resize: 'none', overflow: 'hidden', width: '100%', display: 'block', ...style }}
-  />
-);
 
 // --- Step Item with integrated timer --------------------------------------
 const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNotes = [] }) => {
