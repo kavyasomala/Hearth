@@ -826,7 +826,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
 };
 
 // --- Step Item with integrated timer --------------------------------------
-const StepItem = ({ step, done, isCurrent, enlarge, onToggle, matchedNotes = [] }) => {
+const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNotes = [] }) => {
   const [activeNote, setActiveNote] = useState(null);
   const hasTimer = step.timer_seconds && step.timer_seconds > 0;
   const [timerState, setTimerState] = useState('idle'); // 'idle' | 'running' | 'paused' | 'done'
@@ -884,7 +884,7 @@ const StepItem = ({ step, done, isCurrent, enlarge, onToggle, matchedNotes = [] 
   const pct = hasTimer ? ((step.timer_seconds - remaining) / step.timer_seconds) * 100 : 0;
 
   return (
-    <li className={`rp2__step ${done ? 'rp2__step--done' : ''} ${isCurrent ? 'rp2__step--current' : ''} ${enlarge ? 'rp2__step--enlarged' : ''}`} onClick={onToggle}>
+    <li className={`rp2__step ${done ? 'rp2__step--done' : ''} ${isCurrent ? 'rp2__step--current' : ''} ${enlarge ? 'rp2__step--enlarged' : ''} ${grouped ? 'rp2__step--grouped' : ''}`} onClick={onToggle}>
       <div className="rp2__step-num">{done ? '✓' : step.step_number}</div>
       <div className="rp2__step-content">
         <div className="rp2__step-body-row">
@@ -1963,6 +1963,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                                   done={done}
                                   isCurrent={isCurrent}
                                   enlarge={enlarge}
+                                  grouped={!!sec.label}
                                   onToggle={() => toggleStep(step.step_number)}
                                   matchedNotes={matchedNotes}
                                 />
