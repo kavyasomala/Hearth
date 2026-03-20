@@ -457,7 +457,19 @@ body {
   padding: 3px 8px;
   border-radius: 999px;
 }
-.recipe-card__stat-icon { font-size: 11px; opacity: 0.6; filter: grayscale(1); }
+.recipe-card__stat--cal-btn {
+  border: none; background: none; padding: 0; cursor: pointer;
+  font-family: inherit; font-size: inherit; color: inherit;
+  display: inline-flex; align-items: center; gap: 4px;
+  border-radius: 999px;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.recipe-card__stat--cal-btn:hover {
+  background: rgba(184,74,40,0.1);
+  color: var(--terracotta);
+}
+.recipe-card__stat--cal-btn:active { opacity: 0.75; }
 
 /* ─── Library View ───────────────────────────────────────────────────────── */
 .library-header { padding: 8px 0 0; }
@@ -7847,19 +7859,13 @@ html, body {
   gap: 4px !important;
 }
 
-/* Desktop: nutrition pill is display-only span (no cursor) */
+/* Nutrition pill — always clickable on all devices */
 .rp2__pill--nutrition {
   cursor: pointer;
   border: none;
+  pointer-events: auto;
 }
-/* On desktop (hover available), show tooltip instead of modal — override cursor */
-@media (hover: hover) {
-  .rp2__pill--nutrition { cursor: default; pointer-events: none; }
-}
-/* On touch devices, keep it tappable */
-@media (hover: none) and (pointer: coarse) {
-  .rp2__pill--nutrition { cursor: pointer !important; pointer-events: auto !important; }
-}
+.rp2__pill--nutrition:hover { opacity: 0.85; }
 
 /* ── Long-press context menu (mobile kitchen) ────────────────────────────── */
 .fridge-context-overlay {

@@ -322,6 +322,52 @@ const Badge = ({ children, variant = 'default' }) => (
   <span className={`badge badge--${variant}`}>{children}</span>
 );
 
+// --- Nutrition Card Popup --------------------------------------------------
+// Lightweight modal used from recipe cards (no ingredient breakdown available)
+const NutritionCardPopup = ({ recipe, onClose }) => {
+  const calories = toNum(recipe.calories);
+  const protein  = toNum(recipe.protein);
+  const fiber    = toNum(recipe.fiber);
+  return (
+    <div className="create-modal-overlay" onClick={onClose}>
+      <div className="nutrition-modal" style={{ maxWidth: 340 }} onClick={e => e.stopPropagation()}>
+        <div className="nutrition-modal__header">
+          <h2 className="nutrition-modal__title"><Icon name="zap" size={18} strokeWidth={2} /> Nutrition</h2>
+          <button className="ing-modal__close" onClick={onClose}>✕</button>
+        </div>
+        <div className="nutrition-modal__body">
+          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--charcoal)', margin: '0 0 12px', textAlign: 'center' }}>{recipe.name}</p>
+          <div className="nutrition-modal__grid">
+            {calories !== null && (
+              <div className="nutrition-modal__item">
+                <span className="nutrition-modal__icon"><Icon name="zap" size={20} strokeWidth={2} color="var(--terracotta)" /></span>
+                <span className="nutrition-modal__value">{Math.round(calories)}</span>
+                <span className="nutrition-modal__label">kcal</span>
+              </div>
+            )}
+            {protein !== null && (
+              <div className="nutrition-modal__item">
+                <span className="nutrition-modal__icon"><Icon name="dumbbell" size={20} strokeWidth={2} color="var(--sage)" /></span>
+                <span className="nutrition-modal__value">{Math.round(protein)}g</span>
+                <span className="nutrition-modal__label">Protein</span>
+              </div>
+            )}
+            {fiber !== null && (
+              <div className="nutrition-modal__item">
+                <span className="nutrition-modal__icon"><Icon name="leaf" size={20} strokeWidth={2} color="var(--sage-light)" /></span>
+                <span className="nutrition-modal__value">{Math.round(fiber)}g</span>
+                <span className="nutrition-modal__label">Fiber</span>
+              </div>
+            )}
+          </div>
+          {recipe.servings && <p className="nutrition-modal__servings">Per serving · {recipe.servings} servings</p>}
+          <p style={{ fontSize: 11, color: 'var(--warm-gray)', textAlign: 'center', marginTop: 4 }}>Open recipe for full ingredient breakdown</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- Recipe Summary Card ---------------------------------------------------
 const toNum = (v) => { const n = Number(v); return (!isNaN(n) && v !== '' && v !== null && v !== undefined) ? n : null; };
 
@@ -334,55 +380,68 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
   const tags = recipe.tags || [];
   const progress = recipe.status === 'incomplete' ? <Icon name="alertTriangle" size={12} strokeWidth={2} /> : recipe.status === 'needs tweaking' ? <Icon name="tool" size={12} strokeWidth={2} /> : recipe.status === 'complete' ? <Icon name="checkCircle" size={12} strokeWidth={2} /> : recipe.status === 'to try' ? <Icon name="bookMarked" size={12} strokeWidth={2} /> : null;
   const isCookbookRef = Boolean(recipe.cookbook && (!recipe.ingredients || recipe.ingredients.length === 0));
+  const [showNutrition, setShowNutrition] = useState(false);
 
   return (
-    <article className={`recipe-card ${isCookbookRef ? 'recipe-card--cb-ref' : ''}`} onClick={() => onClick(recipe)}>
-      <div className="recipe-card__image">
-        {coverImage
-          ? <img src={coverImage} alt={name} loading="lazy" />
-          : <div className="recipe-card__image-placeholder">No photo</div>}
-        {isCookbookRef && (
-          <div className="recipe-card__book-corner"><Icon name="bookOpen" size={12} strokeWidth={1.75} color="white" /></div>
-        )}
-        {showScore && matchScore !== null && (
-          <div className={`recipe-card__score ${canMakeNow ? 'recipe-card__score--ready' : ''}`}>
-            {pct(matchScore)}%
+    <>
+      {showNutrition && <NutritionCardPopup recipe={recipe} onClose={() => setShowNutrition(false)} />}
+      <article className={`recipe-card ${isCookbookRef ? 'recipe-card--cb-ref' : ''}`} onClick={() => onClick(recipe)}>
+        <div className="recipe-card__image">
+          {coverImage
+            ? <img src={coverImage} alt={name} loading="lazy" />
+            : <div className="recipe-card__image-placeholder">No photo</div>}
+          {isCookbookRef && (
+            <div className="recipe-card__book-corner"><Icon name="bookOpen" size={12} strokeWidth={1.75} color="white" /></div>
+          )}
+          {showScore && matchScore !== null && (
+            <div className={`recipe-card__score ${canMakeNow ? 'recipe-card__score--ready' : ''}`}>
+              {pct(matchScore)}%
+            </div>
+          )}
+          {onToggleHeart && (
+            <button
+              className={`recipe-card__heart ${isHearted ? 'recipe-card__heart--on' : ''}`}
+              onClick={e => { e.stopPropagation(); onToggleHeart(); }}
+              title={isHearted ? 'Remove from Favorites' : 'Add to Favorites'}
+            ><Icon name="heart" size={14} strokeWidth={2} /></button>
+          )}
+          <button
+            className={`recipe-card__soon ${isMakeSoon ? 'recipe-card__soon--on' : ''}`}
+            onClick={e => { e.stopPropagation(); onToggleMakeSoon && onToggleMakeSoon(); }}
+            title={isMakeSoon ? 'Remove from Make Soon' : 'Add to Make Soon'}
+          ><Icon name="timer" size={14} strokeWidth={2} /></button>
+          {isMakeSoon && onMarkCooked && (
+            <button
+              className="recipe-card__cooked-btn"
+              onClick={e => { e.stopPropagation(); onMarkCooked(recipe); }}
+              title="Mark as Cooked"
+            ><Icon name="chefHat" size={14} strokeWidth={2} /></button>
+          )}
+        </div>
+        <div className="recipe-card__body">
+          <div className="recipe-card__title-row">
+            <h3 className="recipe-card__title">{name}</h3>
+            {cuisine && <span className="recipe-card__cuisine-tag">{cuisine}</span>}
           </div>
-        )}
-        {onToggleHeart && (
-          <button
-            className={`recipe-card__heart ${isHearted ? 'recipe-card__heart--on' : ''}`}
-            onClick={e => { e.stopPropagation(); onToggleHeart(); }}
-            title={isHearted ? 'Remove from Favorites' : 'Add to Favorites'}
-          ><Icon name="heart" size={14} strokeWidth={2} /></button>
-        )}
-        <button
-          className={`recipe-card__soon ${isMakeSoon ? 'recipe-card__soon--on' : ''}`}
-          onClick={e => { e.stopPropagation(); onToggleMakeSoon && onToggleMakeSoon(); }}
-          title={isMakeSoon ? 'Remove from Make Soon' : 'Add to Make Soon'}
-        ><Icon name="timer" size={14} strokeWidth={2} /></button>
-        {isMakeSoon && onMarkCooked && (
-          <button
-            className="recipe-card__cooked-btn"
-            onClick={e => { e.stopPropagation(); onMarkCooked(recipe); }}
-            title="Mark as Cooked"
-          ><Icon name="chefHat" size={14} strokeWidth={2} /></button>
-        )}
-      </div>
-      <div className="recipe-card__body">
-        <div className="recipe-card__title-row">
-          <h3 className="recipe-card__title">{name}</h3>
-          {cuisine && <span className="recipe-card__cuisine-tag">{cuisine}</span>}
+          <div className="recipe-card__stats">
+            {time && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="clock" size={12} strokeWidth={2} /></span>{time}</span>}
+            {calories !== null && (
+              <button
+                className="recipe-card__stat recipe-card__stat--cal-btn"
+                onClick={e => { e.stopPropagation(); setShowNutrition(true); }}
+                title="View nutrition info"
+              >
+                <span className="recipe-card__stat-icon"><Icon name="zap" size={12} strokeWidth={2} /></span>
+                {Math.round(calories)} kcal
+              </button>
+            )}
+            {protein !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="dumbbell" size={12} strokeWidth={2} /></span>{Math.round(protein)}g</span>}
+            {canMakeNow && <span className="recipe-card__can-make"><Icon name="checkCircle" size={11} strokeWidth={2} /> Ready</span>}
+            {progress && <span className="recipe-card__progress">{progress}</span>}
+          </div>
         </div>
-        <div className="recipe-card__stats">
-          {time && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="clock" size={12} strokeWidth={2} /></span>{time}</span>}
-          {calories !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="zap" size={12} strokeWidth={2} /></span>{Math.round(calories)} kcal</span>}
-          {protein !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="dumbbell" size={12} strokeWidth={2} /></span>{Math.round(protein)}g</span>}
-          {canMakeNow && <span className="recipe-card__can-make"><Icon name="checkCircle" size={11} strokeWidth={2} /> Ready</span>}
-          {progress && <span className="recipe-card__progress">{progress}</span>}
-        </div>
-      </div>
-    </article>
+      </article>
+    </>
   );
 };
 
@@ -1006,6 +1065,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCookedModal, setShowCookedModal] = useState(false);
   const [showNutritionModal, setShowNutritionModal] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [showCookbookModal, setShowCookbookModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [stayAwake, setStayAwake] = useState(false);
@@ -2075,10 +2136,20 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             <div className="rp2__notes">
               <div className="rp2__section-title-row">
                 <h2 className="rp2__section-title rp2__section-title--sm">Notes &amp; Tips</h2>
-                {isAdmin && <SectionPencil isEditing={isEdit('notes')} onEdit={() => startEdit('notes')} onSave={() => saveSection('notes')} onCancel={cancelEdit} saving={saving} />}
+                {isAdmin && <SectionPencil
+                  isEditing={isEdit('notes')}
+                  onEdit={() => {
+                    startEdit('notes');
+                    if (window.innerWidth <= 640) setShowNotesModal(true);
+                  }}
+                  onSave={() => saveSection('notes')}
+                  onCancel={() => { cancelEdit(); setShowNotesModal(false); }}
+                  saving={saving}
+                />}
               </div>
 
-              {isEdit('notes') ? (
+              {/* Desktop inline edit */}
+              {isEdit('notes') && !showNotesModal ? (
                 <div className="rp2__inline-editor">
                   {draftNotes.map(n => (
                     <div key={n._id} className="rp2__ed-note-row">
@@ -2097,15 +2168,51 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     </ul>
                   : <p className="rp2__empty-hint">No notes yet.</p>
               )}
+
+              {/* Mobile notes modal */}
+              {showNotesModal && isEdit('notes') && (
+                <div className="create-modal-overlay" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>
+                  <div className="create-modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+                    <div className="create-modal__header">
+                      <h2 className="create-modal__title"><Icon name="note" size={18} strokeWidth={2} /> Notes &amp; Tips</h2>
+                      <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>✕</button>
+                    </div>
+                    <div className="create-modal__body" style={{ gap: 10 }}>
+                      {draftNotes.map(n => (
+                        <div key={n._id} className="rp2__ed-note-row">
+                          <input className="editor-input" style={{ flex: 1, fontSize: 16 }} value={n.text} onChange={e => updateDraftNote(n._id, e.target.value)} placeholder="Add a tip or note..." autoFocus />
+                          <button className="editor-remove-btn" onClick={() => removeDraftNote(n._id)}>✕</button>
+                        </div>
+                      ))}
+                      <button className="btn btn--ghost editor-add-btn" onClick={addDraftNote}>+ Add Note</button>
+                    </div>
+                    <div className="create-modal__footer">
+                      <button className="btn btn--ghost" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>Cancel</button>
+                      <button className="btn btn--primary" onClick={async () => { await saveSection('notes'); setShowNotesModal(false); }} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Cookbook Reference -- editable */}
             <div className="rp2__cookbook">
               <div className="rp2__section-title-row">
                 <h2 className="rp2__section-title rp2__cookbook-title">Cookbook</h2>
-                {isAdmin && <SectionPencil isEditing={isEdit('cookbook')} onEdit={() => startEdit('cookbook')} onSave={() => saveSection('cookbook')} onCancel={cancelEdit} saving={saving} />}
+                {isAdmin && <SectionPencil
+                  isEditing={isEdit('cookbook')}
+                  onEdit={() => {
+                    startEdit('cookbook');
+                    if (window.innerWidth <= 640) setShowCookbookModal(true);
+                  }}
+                  onSave={() => saveSection('cookbook')}
+                  onCancel={() => { cancelEdit(); setShowCookbookModal(false); }}
+                  saving={saving}
+                />}
               </div>
-              {isEdit('cookbook') ? (
+
+              {/* Desktop inline edit */}
+              {isEdit('cookbook') && !showCookbookModal ? (
                 <div className="rp2__cookbook-editor">
                   <CookbookAutocomplete value={draftCookbook.cookbook} onChange={v => setDraftCookbook(p => ({...p, cookbook: v}))} cookbooks={cookbooks} />
                   <input className="editor-input" value={draftCookbook.reference} onChange={e => setDraftCookbook(p => ({...p, reference: e.target.value}))} placeholder="Page number" style={{marginTop: 6}} />
@@ -2117,6 +2224,32 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 </div>
               ) : (
                 <p className="rp2__empty-hint">No reference yet. Click ✎ to add.</p>
+              )}
+
+              {/* Mobile cookbook modal */}
+              {showCookbookModal && isEdit('cookbook') && (
+                <div className="create-modal-overlay" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>
+                  <div className="create-modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+                    <div className="create-modal__header">
+                      <h2 className="create-modal__title"><Icon name="bookMarked" size={18} strokeWidth={2} /> Cookbook</h2>
+                      <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>✕</button>
+                    </div>
+                    <div className="create-modal__body" style={{ gap: 14 }}>
+                      <div className="create-modal__field">
+                        <label className="create-modal__field-label">Cookbook title</label>
+                        <CookbookAutocomplete value={draftCookbook.cookbook} onChange={v => setDraftCookbook(p => ({...p, cookbook: v}))} cookbooks={cookbooks} />
+                      </div>
+                      <div className="create-modal__field">
+                        <label className="create-modal__field-label">Page number</label>
+                        <input className="editor-input" style={{ fontSize: 16 }} value={draftCookbook.reference} onChange={e => setDraftCookbook(p => ({...p, reference: e.target.value}))} placeholder="e.g. 142" />
+                      </div>
+                    </div>
+                    <div className="create-modal__footer">
+                      <button className="btn btn--ghost" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>Cancel</button>
+                      <button className="btn btn--primary" onClick={async () => { await saveSection('cookbook'); setShowCookbookModal(false); }} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
