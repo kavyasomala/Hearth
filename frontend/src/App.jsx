@@ -1944,9 +1944,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   return (
                     <div className="rp2__steps-outer">
                       {sections.map((sec, si) => (
-                        <div key={si} className={sec.label ? 'rp2__step-section' : ''}>
+                        <div key={si} className={sec.label ? 'rp2__step-section' : 'rp2__step-section rp2__step-section--ungrouped'}>
                           {sec.label && <p className="rp2__step-section-label">{sec.label}</p>}
-                          <ol className={`rp2__steps ${sec.label ? 'rp2__steps--grouped' : ''}`}>
+                          <ol className="rp2__steps">
                             {sec.steps.map((step, listIdx) => {
                               const done = doneSteps.has(step.step_number);
                               const isCurrent = !done && sortedUndone[0]?.step_number === step.step_number;
@@ -6312,6 +6312,7 @@ function AppInner() {
                   className="app-header__mobile-search-input"
                   placeholder="Search recipes..."
                   value={mobileSearchQuery}
+                  autoFocus
                   style={{ fontSize: '16px', touchAction: 'manipulation' }}
                   onChange={e => { setMobileSearchQuery(e.target.value); setMobileSearchSubmitted(false); setLibrarySearch(e.target.value); }}
                   onKeyDown={e => {
