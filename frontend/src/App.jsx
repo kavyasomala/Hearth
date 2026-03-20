@@ -322,13 +322,84 @@ const Badge = ({ children, variant = 'default' }) => (
   <span className={`badge badge--${variant}`}>{children}</span>
 );
 
+// --- Nutrition Breakdown Popover -------------------------------------------
+const NutritionPopover = ({ recipe, bodyIngredients = [], allIngredients = [], onClose, openDown = false }) => {
+  const wrapRef = useRef(null);
+  useEffect(() => {
+    const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  const breakdown = useMemo(() => {
+    const rows = [];
+    for (const ing of (bodyIngredients || [])) {
+      if (ing._isGroup) continue;
+      const name = (ing.name || '').toLowerCase().trim();
+      const dbIng = allIngredients.find(a => (a.name || '').toLowerCase() === name)
+                 || allIngredients.find(a => name.includes((a.name||'').toLowerCase()) || (a.name||'').toLowerCase().includes(name));
+      if (!dbIng || dbIng.calories == null) continue;
+      const amount = parseFloat(ing.amount) || 1;
+      const unit = (ing.unit || '').toLowerCase().trim();
+      let gramsTotal;
+      if (UNIT_GRAMS[unit]) gramsTotal = amount * UNIT_GRAMS[unit];
+      else if (dbIng.grams_per_unit) gramsTotal = amount * dbIng.grams_per_unit;
+      else continue;
+      const cal = Math.round((dbIng.calories || 0) * gramsTotal / 100);
+      if (cal === 0) continue;
+      rows.push({ name: ing.name, cal });
+    }
+    return rows.sort((a, b) => b.cal - a.cal).slice(0, 8);
+  }, [bodyIngredients, allIngredients]);
+
+  const totalCal = toNum(recipe?.calories);
+  const totalProt = toNum(recipe?.protein);
+  const totalFiber = toNum(recipe?.fiber);
+
+  return (
+    <div className={`nutrition-popover ${openDown ? 'nutrition-popover--down' : ''}`} ref={wrapRef} onClick={e => e.stopPropagation()}>
+      <div className="nutrition-popover__header">
+        <span className="nutrition-popover__title"><Icon name="zap" size={13} strokeWidth={2} /> Nutrition</span>
+        {recipe?.servings && <span className="nutrition-popover__servings">{recipe.servings} servings</span>}
+        <button className="nutrition-popover__close" onClick={onClose}>✕</button>
+      </div>
+      <div className="nutrition-popover__totals">
+        {totalCal !== null && <div className="nutrition-popover__total"><span className="nutrition-popover__total-val">{Math.round(totalCal)}</span><span className="nutrition-popover__total-lbl">kcal</span></div>}
+        {totalProt !== null && <div className="nutrition-popover__total"><span className="nutrition-popover__total-val">{Math.round(totalProt)}g</span><span className="nutrition-popover__total-lbl">protein</span></div>}
+        {totalFiber !== null && <div className="nutrition-popover__total"><span className="nutrition-popover__total-val">{Math.round(totalFiber)}g</span><span className="nutrition-popover__total-lbl">fiber</span></div>}
+      </div>
+      {breakdown.length > 0 && (
+        <div className="nutrition-popover__breakdown">
+          <div className="nutrition-popover__breakdown-label">Top contributors</div>
+          {breakdown.map((row, i) => {
+            const barPct = totalCal ? Math.round((row.cal / totalCal) * 100) : 0;
+            return (
+              <div key={i} className="nutrition-popover__row">
+                <span className="nutrition-popover__row-name">{row.name}</span>
+                <div className="nutrition-popover__bar-wrap">
+                  <div className="nutrition-popover__bar" style={{ width: `${Math.max(barPct, 3)}%` }} />
+                </div>
+                <span className="nutrition-popover__row-cal">{row.cal}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {breakdown.length === 0 && (
+        <p className="nutrition-popover__hint">Add ingredient nutrition data in Kitchen to see a breakdown.</p>
+      )}
+    </div>
+  );
+};
+
 // --- Recipe Summary Card ---------------------------------------------------
 const toNum = (v) => { const n = Number(v); return (!isNaN(n) && v !== '' && v !== null && v !== undefined) ? n : null; };
 
-const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked, showScore, onConvertRef }) => {
+const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked, showScore, onConvertRef, allIngredients = [] }) => {
   const { name, coverImage, cuisine, time } = recipe;
   const calories = toNum(recipe.calories);
   const protein  = toNum(recipe.protein);
+  const [showNutrition, setShowNutrition] = useState(false);
   const matchScore = match?.matchScore ?? null;
   const canMakeNow = Boolean(match?.canMake);
   const tags = recipe.tags || [];
@@ -376,7 +447,21 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
         </div>
         <div className="recipe-card__stats">
           {time && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="clock" size={12} strokeWidth={2} /></span>{time}</span>}
-          {calories !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="zap" size={12} strokeWidth={2} /></span>{Math.round(calories)} kcal</span>}
+          {calories !== null && (
+            <span className="recipe-card__stat recipe-card__stat--cal" style={{ position: 'relative' }}
+              onClick={e => { e.stopPropagation(); setShowNutrition(v => !v); }}>
+              <span className="recipe-card__stat-icon"><Icon name="zap" size={12} strokeWidth={2} /></span>
+              {Math.round(calories)} kcal
+              {showNutrition && (
+                <NutritionPopover
+                  recipe={recipe}
+                  bodyIngredients={[]}
+                  allIngredients={allIngredients}
+                  onClose={() => setShowNutrition(false)}
+                />
+              )}
+            </span>
+          )}
           {protein !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="dumbbell" size={12} strokeWidth={2} /></span>{Math.round(protein)}g</span>}
           {canMakeNow && <span className="recipe-card__can-make"><Icon name="checkCircle" size={11} strokeWidth={2} /> Ready</span>}
           {progress && <span className="recipe-card__progress">{progress}</span>}
@@ -826,7 +911,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
 };
 
 // --- Step Item with integrated timer --------------------------------------
-const StepItem = ({ step, done, isCurrent, enlarge, onToggle, matchedNotes = [] }) => {
+const StepItem = ({ step, done, isCurrent, enlarge, onToggle, matchedNotes = [], grouped = false }) => {
   const [activeNote, setActiveNote] = useState(null);
   const hasTimer = step.timer_seconds && step.timer_seconds > 0;
   const [timerState, setTimerState] = useState('idle'); // 'idle' | 'running' | 'paused' | 'done'
@@ -884,7 +969,8 @@ const StepItem = ({ step, done, isCurrent, enlarge, onToggle, matchedNotes = [] 
   const pct = hasTimer ? ((step.timer_seconds - remaining) / step.timer_seconds) * 100 : 0;
 
   return (
-    <li className={`rp2__step ${done ? 'rp2__step--done' : ''} ${isCurrent ? 'rp2__step--current' : ''} ${enlarge ? 'rp2__step--enlarged' : ''}`} onClick={onToggle}>
+    <li className={`rp2__step ${done ? 'rp2__step--done' : ''} ${isCurrent ? 'rp2__step--current' : ''} ${enlarge ? 'rp2__step--enlarged' : ''} ${grouped ? 'rp2__step--sub' : ''}`} onClick={onToggle}>
+      {grouped && <span className="rp2__step-subbar" aria-hidden="true" />}
       <div className="rp2__step-num">{done ? '✓' : step.step_number}</div>
       <div className="rp2__step-content">
         <div className="rp2__step-body-row">
@@ -937,26 +1023,7 @@ const StepItem = ({ step, done, isCurrent, enlarge, onToggle, matchedNotes = [] 
 };
 
 // --- Ingredient Item with "used in steps" collapsible ----------------------
-const IngredientItem = ({ ing, isChecked, amountStr, onToggle, instructions = [] }) => {
-  const [showUsage, setShowUsage] = useState(false);
-
-  // Find steps that mention this ingredient by name
-  const usedInSteps = useMemo(() => {
-    if (!ing.name || !instructions?.length) return [];
-    const name = ing.name.toLowerCase().trim();
-    // Also match common variations: plural, singular
-    const words = name.split(/\s+/);
-    const root = words[words.length - 1]; // e.g. "garlic cloves" → search "clove" too
-    return instructions
-      .filter(s => {
-        const body = (s.body_text || '').toLowerCase();
-        return body.includes(name) || (root.length > 3 && body.includes(root.slice(0, -1)));
-      })
-      .sort((a, b) => a.step_number - b.step_number);
-  }, [ing.name, instructions]);
-
-  const truncate = (text, len = 60) => text.length > len ? text.slice(0, len).trimEnd() + '…' : text;
-
+const IngredientItem = ({ ing, isChecked, amountStr, onToggle }) => {
   return (
     <li className={`rp2__ing-item ${isChecked ? 'rp2__ing-item--checked' : ''}`} onClick={onToggle}>
       <div className={`rp2__ing-check ${isChecked ? 'rp2__ing-check--done' : ''}`}>
@@ -971,26 +1038,6 @@ const IngredientItem = ({ ing, isChecked, amountStr, onToggle, instructions = []
           </span>
           {ing.optional && <span className="rp2__ing-optional">optional</span>}
         </span>
-        {usedInSteps.length > 0 && (
-          <div className="rp2__ing-usage" onClick={e => e.stopPropagation()}>
-            <button
-              className="rp2__ing-usage-toggle"
-              onClick={() => setShowUsage(v => !v)}
-            >
-              <span className={`rp2__ing-usage-toggle__arrow ${showUsage ? 'rp2__ing-usage-toggle__arrow--open' : ''}`}>▾</span>
-              used in {usedInSteps.length} step{usedInSteps.length !== 1 ? 's' : ''}
-            </button>
-            {showUsage && (
-              <ul className="rp2__ing-usage-list">
-                {usedInSteps.map(s => (
-                  <li key={s.step_number} className="rp2__ing-usage-item">
-                    <strong>Step {s.step_number}</strong> — {truncate(s.body_text)}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
       </div>
     </li>
   );
@@ -1036,6 +1083,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [draftNotes, setDraftNotes] = useState([]);
   const [draftMeta, setDraftMeta] = useState({});
   const [draftCookbook, setDraftCookbook] = useState({ cookbook: '', reference: '' });
+  const [showNutritionPopover, setShowNutritionPopover] = useState(false);
 
   const isEdit = (s) => editingSection === s;
 
@@ -1596,7 +1644,17 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               </div>}
 
               {/* Display-only nutrition pills */}
-              {displayCalories !== null && <span className="rp2__pill" title={nutritionIsEstimate ? 'Estimated -- save ingredients to lock in' : 'Auto-calculated from ingredients'}><span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>{displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}</span>}
+              {displayCalories !== null && (
+                <span style={{ position: 'relative' }}>
+                  <button className="rp2__pill rp2__pill--cal" onClick={e => { e.stopPropagation(); setShowNutritionPopover(v => !v); }} title="Click for breakdown">
+                    <span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>
+                    {displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}
+                  </button>
+                  {showNutritionPopover && (
+                    <NutritionPopover recipe={recipe} bodyIngredients={bodyIngredients} allIngredients={allIngredients} onClose={() => setShowNutritionPopover(false)} openDown />
+                  )}
+                </span>
+              )}
               {displayProtein  !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="dumbbell" size={13} strokeWidth={2} /></span>{displayProtein}g prot{nutritionIsEstimate ? ' ~' : ''}</span>}
               {displayFiber    !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="leaf" size={13} strokeWidth={2} /></span>{displayFiber}g fiber{nutritionIsEstimate ? ' ~' : ''}</span>}
             </div>
@@ -1783,7 +1841,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                           isChecked={isChecked}
                           amountStr={amountStr}
                           onToggle={() => toggleIngredient(key)}
-                          instructions={instructions}
                         />
                       );
                     })}
@@ -1814,6 +1871,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             <div className="rp2__inline-editor">
               <DndContext sensors={rpSensors} collisionDetection={closestCenter} onDragEnd={onDraftStepDragEnd}>
                 <SortableContext items={draftSteps.map(s => s._id)} strategy={verticalListSortingStrategy}>
+<<<<<<< HEAD
                   {draftSteps.map((item, idx) => {
                     if (item._isGroup) {
                       // Add a new step directly at the bottom of this group
@@ -1884,43 +1942,100 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       );
                     }
 
-                    // Regular step — snap/unsnap into nearest group above
+                    // Regular step — indented if it has a group_label
                     const isGrouped = !!item.group_label;
                     const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
-
-                    // Find the nearest group header directly above (scanning through timers only)
-                    // Also find any group in the whole list so we know if groups exist at all
-                    let nearestGroupAbove = null;
-                    for (let j = idx - 1; j >= 0; j--) {
-                      if (draftSteps[j]._isGroup) { nearestGroupAbove = draftSteps[j].name || ''; break; }
-                      if (!draftSteps[j]._isTimer) break;
-                    }
-                    // Show snap-in if ungrouped AND any group header exists anywhere above
-                    const anyGroupAbove = !isGrouped && draftSteps.slice(0, idx).some(s => s._isGroup);
-                    // Use nearest group if directly above, otherwise use last group defined above
-                    if (!nearestGroupAbove && anyGroupAbove) {
+                    // Snap: find nearest group header above this step
+                    const anyGroupAbove = draftSteps.slice(0, idx).some(s => s._isGroup);
+                    let nearestGroupLabel = null;
+                    if (anyGroupAbove && !isGrouped) {
                       for (let j = idx - 1; j >= 0; j--) {
-                        if (draftSteps[j]._isGroup) { nearestGroupAbove = draftSteps[j].name || ''; break; }
+                        if (draftSteps[j]._isGroup) { nearestGroupLabel = draftSteps[j].name || ''; break; }
                       }
                     }
-                    const canSnap = !isGrouped && anyGroupAbove;
-
-                    const handleSnap = () => setDraftSteps(prev =>
-                      prev.map(s => s._id === item._id ? { ...s, group_label: nearestGroupAbove } : s)
-                    );
-                    const handleUnsnap = () => setDraftSteps(prev =>
-                      prev.map(s => s._id === item._id ? { ...s, group_label: null } : s)
-                    );
-
                     return (
-                      <StepSortableItem key={item._id} id={item._id} stepNum={stepNum} grouped={isGrouped}
-                        onSnap={handleSnap} onUnsnap={handleUnsnap} canSnap={canSnap}>
+                      <StepSortableItem
+                        key={item._id} id={item._id} stepNum={stepNum} grouped={isGrouped}
+                        canSnap={!isGrouped && anyGroupAbove}
+                        onSnap={() => setDraftSteps(p => p.map(s => s._id === item._id ? { ...s, group_label: nearestGroupLabel } : s))}
+                        onUnsnap={() => setDraftSteps(p => p.map(s => s._id === item._id ? { ...s, group_label: null } : s))}
+                      >
                         <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
                         <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step"><Icon name="timer" size={13} strokeWidth={2} /></button>
                         <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
                       </StepSortableItem>
                     );
                   })}
+=======
+                  {(() => {
+                    // Collect all group names for the dropdown options
+                    const groupNames = draftSteps.filter(s => s._isGroup).map(s => s.name).filter(Boolean);
+                    return draftSteps.map((item, idx) => {
+                      if (item._isGroup) {
+                        return (
+                          <StepGroupRow
+                            key={item._id}
+                            grp={item}
+                            onLabelChange={v => setDraftSteps(prev => {
+                              const oldName = item.name || '';
+                              return prev.map(s =>
+                                s._id === item._id ? { ...s, name: v } :
+                                (!s._isGroup && !s._isTimer && s.group_label === oldName) ? { ...s, group_label: v } : s
+                              );
+                            })}
+                            onRemove={() => setDraftSteps(prev =>
+                              prev
+                                .filter(s => s._id !== item._id)
+                                .map(s => (!s._isGroup && !s._isTimer && s.group_label === (item.name||'')) ? { ...s, group_label: null } : s)
+                            )}
+                          />
+                        );
+                      }
+
+                      if (item._isTimer) {
+                        return (
+                          <div key={item._id} className="rp2__ed-timer-row">
+                            <span className="rp2__ed-timer-row__icon"><Icon name="timer" size={14} strokeWidth={2} /></span>
+                            <div className="rp2__ed-timer-row__inputs">
+                              <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" value={item.h} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, h: e.target.value} : s))} placeholder="0" />
+                              <span className="rp2__ed-timer-row__sep">h</span>
+                              <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.m} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, m: e.target.value} : s))} placeholder="0" />
+                              <span className="rp2__ed-timer-row__sep">m</span>
+                              <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
+                              <span className="rp2__ed-timer-row__sep">s</span>
+                            </div>
+                            <button className="editor-remove-btn" onClick={() => {
+                              setDraftSteps(prev => {
+                                const i2 = prev.findIndex(s => s._id === item._id);
+                                const next = prev.filter(s => s._id !== item._id);
+                                if (i2 > 0 && !prev[i2 - 1]._isTimer) {
+                                  return next.map(s => s._id === prev[i2 - 1]._id ? { ...s, timer_seconds: null } : s);
+                                }
+                                return next;
+                              });
+                            }}>✕</button>
+                          </div>
+                        );
+                      }
+
+                      const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
+                      return (
+                        <StepSortableItem
+                          key={item._id}
+                          id={item._id}
+                          stepNum={stepNum}
+                          groupLabel={item.group_label || ''}
+                          groupOptions={groupNames}
+                          onGroupChange={v => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, group_label: v } : s))}
+                        >
+                          <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
+                          <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                          <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
+                        </StepSortableItem>
+                      );
+                    });
+                  })()}
+>>>>>>> parent of 5db28ef2 (ingredient grouping fixes)
                 </SortableContext>
               </DndContext>
               <div className="ing-flat-add-row">
@@ -1944,10 +2059,26 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   return (
                     <div className="rp2__steps-outer">
                       {sections.map((sec, si) => (
+<<<<<<< HEAD
                         <div key={si} className={sec.label ? 'rp2__step-section' : ''}>
-                          {sec.label && <p className="rp2__step-section-label">{sec.label}</p>}
-                          <ol className={`rp2__steps ${sec.label ? 'rp2__steps--grouped' : ''}`}>
+                          {sec.label && (
+                            <div className="rp2__step-section-divider">
+                              <span className="rp2__step-section-divider__bar" />
+                              <span className="rp2__step-section-divider__text">{sec.label}</span>
+                            </div>
+                          )}
+                          <ol className="rp2__steps">
+                            {sec.steps.map((step) => {
+=======
+                        <div key={si} className={sec.label ? 'rp2__step-section' : 'rp2__step-section--ungrouped'}>
+                          {sec.label && (
+                            <div className="rp2__step-section-label">
+                              <span className="rp2__step-section-label__text">{sec.label}</span>
+                            </div>
+                          )}
+                          <ol className="rp2__steps">
                             {sec.steps.map((step, listIdx) => {
+>>>>>>> parent of 5db28ef2 (ingredient grouping fixes)
                               const done = doneSteps.has(step.step_number);
                               const isCurrent = !done && sortedUndone[0]?.step_number === step.step_number;
                               const isFirst = sorted[0]?.step_number === step.step_number;
@@ -1963,6 +2094,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                                   done={done}
                                   isCurrent={isCurrent}
                                   enlarge={enlarge}
+                                  grouped={!!sec.label}
                                   onToggle={() => toggleStep(step.step_number)}
                                   matchedNotes={matchedNotes}
                                 />
@@ -2154,40 +2286,76 @@ const SortableItem = ({ id, children }) => {
   );
 };
 
-// Step sortable item -- the step number bubble IS the drag handle
-const StepSortableItem = ({ id, stepNum, grouped, children, onSnap, onUnsnap, canSnap }) => {
+// Step sortable item — step number is drag handle, with optional group selector
+const StepSortableItem = ({ id, stepNum, groupLabel, groupOptions = [], onGroupChange, children }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1, zIndex: isDragging ? 10 : undefined };
+
+  // Mobile swipe: right → snap into group, left → unsnap out
+  const swipeOrigin = useRef(null);
+  const [swipeDx, setSwipeDx] = useState(0);
+  const THRESHOLD = 52;
+
+  const handleTouchStart = useCallback((e) => {
+    swipeOrigin.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    setSwipeDx(0);
+  }, []);
+
+  const handleTouchMove = useCallback((e) => {
+    if (!swipeOrigin.current) return;
+    const dx = e.touches[0].clientX - swipeOrigin.current.x;
+    const dy = Math.abs(e.touches[0].clientY - swipeOrigin.current.y);
+    if (dy > 18) { swipeOrigin.current = null; setSwipeDx(0); return; } // vertical scroll, ignore
+    setSwipeDx(Math.max(-THRESHOLD * 1.5, Math.min(THRESHOLD * 1.5, dx)));
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (swipeDx >= THRESHOLD && canSnap && onSnap) onSnap();
+    else if (swipeDx <= -THRESHOLD && grouped && onUnsnap) onUnsnap();
+    setSwipeDx(0);
+    swipeOrigin.current = null;
+  }, [swipeDx, canSnap, grouped, onSnap, onUnsnap]);
+
+  const swipeHint = swipeDx >= 18 && canSnap ? 'step-snap-hint--in'
+                  : swipeDx <= -18 && grouped ? 'step-snap-hint--out'
+                  : '';
+
   return (
-    <div ref={setNodeRef} style={style} className={`step-sortable-row ${grouped ? 'step-sortable-row--grouped' : ''}`}>
-      {/* Snap/unsnap tab — only shown when relevant */}
-      {grouped ? (
-        <button
-          className="step-snap-btn step-snap-btn--out"
-          onClick={onUnsnap}
-          title="Remove from group"
-          type="button"
-        >
-          <Icon name="arrowRight" size={10} strokeWidth={2.5} />
-        </button>
-      ) : canSnap ? (
-        <button
-          className="step-snap-btn step-snap-btn--in"
-          onClick={onSnap}
-          title="Add to group above"
-          type="button"
-        >
-          <Icon name="arrowRight" size={10} strokeWidth={2.5} />
-        </button>
-      ) : null}
+<<<<<<< HEAD
+    <div
+      ref={setNodeRef}
+      style={{ ...style, '--step-swipe-dx': `${swipeDx * 0.22}px` }}
+      className={`step-sortable-row ${grouped ? 'step-sortable-row--grouped' : ''} ${swipeHint}`}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+=======
+    <div ref={setNodeRef} style={style} className="step-sortable-row">
+>>>>>>> parent of 5db28ef2 (ingredient grouping fixes)
       <span className="editor-step-num editor-step-num--drag" title="Drag to reorder" {...attributes} {...listeners}>{stepNum}</span>
-      {children}
+      <div className="step-sortable-row__content">
+        {children}
+        {groupOptions.length > 0 && (
+          <div className="step-group-select-row">
+            <span className="step-group-select-label">Group:</span>
+            <select
+              className="step-group-select"
+              value={groupLabel || ''}
+              onChange={e => onGroupChange(e.target.value || null)}
+            >
+              <option value="">— none —</option>
+              {groupOptions.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
-// Step group row -- draggable group header for instruction sections
-const StepGroupRow = ({ grp, onLabelChange, onRemove, onAddStep }) => {
+// Step group header row — sortable, just name + remove (no add-step button needed)
+const StepGroupRow = ({ grp, onLabelChange, onRemove }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: grp._id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
   return (
@@ -2197,12 +2365,9 @@ const StepGroupRow = ({ grp, onLabelChange, onRemove, onAddStep }) => {
         className="step-group-row__label-input"
         value={grp.name}
         onChange={e => onLabelChange(e.target.value)}
-        placeholder="Group name (e.g. For the sauce, Marinade)…"
+        placeholder="Group name (e.g. Sauce, Marinade)…"
       />
-      {onAddStep && (
-        <button className="ing-group-row__add-btn" onClick={onAddStep} title="Add step to this group">＋</button>
-      )}
-      <button className="editor-remove-btn" onClick={onRemove} title="Remove group">✕</button>
+      <button className="editor-remove-btn" onClick={onRemove} title="Remove group (steps stay, become ungrouped)">✕</button>
     </div>
   );
 };
@@ -2547,9 +2712,10 @@ const TYPE_META = {
   staple:   { label: 'Staples',     icon: 'list',     group: 'pantry'  },
 };
 
-const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
+const IngredientEditModal = ({ ing, onSave, onClose, authFetch, allRecipes = [] }) => {
   const apiFetch = authFetch || fetch;
   const isNew = !ing;
+  const firstInputRef = useRef(null);
   const [form, setForm] = useState({
     name:           ing?.name           || '',
     type:           ing?.type           || 'staple',
@@ -2562,8 +2728,28 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
   const [fetching, setFetching] = useState(false);
   const [fetchMsg, setFetchMsg] = useState(null);
   const [error, setError] = useState(null);
+  const [recipesOpen, setRecipesOpen] = useState(false);
+
+  // Scroll the first input into view smoothly on mount
+  useEffect(() => {
+    if (firstInputRef.current) {
+      setTimeout(() => {
+        firstInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstInputRef.current.focus();
+      }, 80);
+    }
+  }, []);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  // Find recipes that use this ingredient
+  const usedInRecipes = useMemo(() => {
+    if (!ing?.name || !allRecipes?.length) return [];
+    const name = ing.name.toLowerCase().trim();
+    return allRecipes
+      .filter(r => (r.ingredients || []).some(i => (typeof i === 'string' ? i : i.name || '').toLowerCase().trim() === name))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [ing?.name, allRecipes]);
 
   const fetchNutrition = async () => {
     const query = form.name.trim();
@@ -2573,19 +2759,13 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
       const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=5&fields=product_name,nutriments,serving_quantity,serving_size`;
       const res = await fetch(url);
       const data = await res.json();
-      const products = (data.products || []).filter(p =>
-        p.nutriments && p.nutriments['energy-kcal_100g'] != null
-      );
-      if (!products.length) {
-        setFetchMsg({ type: 'err', text: 'No nutrition data found -- try a simpler name' });
-        setFetching(false); return;
-      }
+      const products = (data.products || []).filter(p => p.nutriments && p.nutriments['energy-kcal_100g'] != null);
+      if (!products.length) { setFetchMsg({ type: 'err', text: 'No nutrition data found -- try a simpler name' }); setFetching(false); return; }
       const p = products[0];
       const n = p.nutriments;
       const cal  = Math.round(n['energy-kcal_100g'] ?? n['energy-kcal'] ?? 0);
       const prot = Math.round((n['proteins_100g']   ?? 0) * 10) / 10;
       const fib  = Math.round((n['fiber_100g']       ?? 0) * 10) / 10;
-      // Try to extract a sensible grams-per-unit from serving data
       const servingG = parseFloat(p.serving_quantity) || null;
       const updates = { calories: cal, protein: prot, fiber: fib };
       if (servingG && servingG > 0 && servingG < 1000) updates.grams_per_unit = Math.round(servingG);
@@ -2620,16 +2800,24 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
   };
 
   return (
+<<<<<<< HEAD
+    <div className="ing-edit-overlay" onClick={onClose}>
+      <div className="ing-edit-sheet" onClick={e => e.stopPropagation()}>
+        <div className="ing-edit-sheet__handle" />
+        <div className="ing-edit-sheet__header">
+          <h2 className="ing-edit-sheet__title">{isNew ? 'Add Ingredient' : `Edit: ${ing.name}`}</h2>
+=======
     <div className="create-modal-overlay ing-edit-modal-overlay" onClick={onClose}>
       <div className="create-modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
-        <div className="create-modal__header ing-edit-modal-header">
-          <h2 className="create-modal__title" style={{ fontSize: '1rem', lineHeight: 1.3, wordBreak: 'break-word' }}>{isNew ? 'Add Ingredient' : `Edit: ${ing.name}`}</h2>
+        <div className="create-modal__header">
+          <h2 className="create-modal__title ing-edit-title">{isNew ? 'Add Ingredient' : `Edit: ${ing.name}`}</h2>
+>>>>>>> parent of 5db28ef2 (ingredient grouping fixes)
           <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
-        <div className="create-modal__body" style={{ gap: 16 }}>
+        <div className="ing-edit-sheet__body">
           <div className="create-modal__field">
             <label className="create-modal__field-label">Name <span className="create-modal__required">*</span></label>
-            <input className="editor-input" value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Olive Oil" autoFocus={isNew} />
+            <input ref={firstInputRef} className="editor-input" value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Olive Oil" />
           </div>
           <div className="create-modal__field">
             <label className="create-modal__field-label">Category</label>
@@ -2669,22 +2857,48 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
               <Icon name="dumbbell" size={13} strokeWidth={2} /> Grams per unit
               <span style={{ fontWeight: 400, opacity: 0.6, marginLeft: 6 }}>optional</span>
             </label>
-            <input
-              className="editor-input"
-              type="number"
-              value={form.grams_per_unit}
-              onChange={e => set('grams_per_unit', e.target.value)}
-              placeholder="e.g. 50 for eggs, 5 for garlic cloves"
-            />
+            <input className="editor-input" type="number" value={form.grams_per_unit} onChange={e => set('grams_per_unit', e.target.value)} placeholder="e.g. 50 for eggs, 5 for garlic cloves" />
             <p className="create-modal__field-hint" style={{ marginTop: 4 }}>
-              Used when a recipe says "3 eggs" or "2 cloves" -- no weight unit. Leave blank for ingredients always measured by weight or volume.
+<<<<<<< HEAD
+              Used when a recipe says "3 eggs" or "2 cloves" with no weight unit.
+=======
+              Used when a recipe says "3 eggs" or "2 cloves" -- no weight unit.
+>>>>>>> parent of 5db28ef2 (ingredient grouping fixes)
             </p>
           </div>
+
+          {/* Used in Recipes — only when editing */}
+          {!isNew && (
+            <div className="create-modal__field">
+              <button className="ing-used-in-toggle" onClick={() => setRecipesOpen(o => !o)} type="button">
+                <Icon name="bookOpen" size={13} strokeWidth={2} />
+                <span>Used in Recipes</span>
+                <span className="ing-used-in-count">{usedInRecipes.length}</span>
+                <span className="ing-used-in-arrow">{recipesOpen ? '▴' : '▾'}</span>
+              </button>
+              {recipesOpen && (
+                <div className="ing-used-in-list">
+                  {usedInRecipes.length === 0
+                    ? <p className="ing-used-in-empty">Not used in any saved recipes.</p>
+                    : usedInRecipes.map(r => (
+                        <div key={r.id} className="ing-used-in-row">
+                          {r.coverImage
+                            ? <img src={r.coverImage} alt="" className="ing-used-in-thumb" />
+                            : <div className="ing-used-in-thumb ing-used-in-thumb--placeholder"><Icon name="image" size={12} color="var(--ash)" strokeWidth={1.5} /></div>}
+                          <span className="ing-used-in-name">{r.name}</span>
+                          {r.cuisine && <span className="ing-used-in-cuisine">{r.cuisine}</span>}
+                        </div>
+                      ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {error && <p className="editor-error"><Icon name="alertTriangle" size={14} strokeWidth={2} /> {error}</p>}
         </div>
-        <div className="create-modal__footer">
+        <div className="ing-edit-sheet__footer">
           <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : isNew ? '+ Add Ingredient' : '✓ Save Changes'}</button>
+          <button className="btn btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : isNew ? '+ Add Ingredient' : '✓ Save'}</button>
         </div>
       </div>
     </div>
@@ -2694,7 +2908,7 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
 // --- Always-expanded types ---------------------------------------------------
 const ALWAYS_OPEN_TYPES = new Set(['produce', 'meat']);
 
-const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, authFetch }) => {
+const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, authFetch, allRecipes = [] }) => {
   const apiFetch = authFetch || fetch;
   const [typeOverrides, setTypeOverrides] = useState(() => LS.get('ingredientTypeOverrides', {}));
   const [editingIng, setEditingIng] = useState(null);
@@ -2871,6 +3085,7 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
           onSave={handleSaveIng}
           onClose={() => setEditingIng(null)}
           authFetch={apiFetch}
+          allRecipes={allRecipes}
         />
       )}
       {deleteTarget && (
@@ -6003,8 +6218,21 @@ function AppInner() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileSearchQuery, setMobileSearchQuery] = useState('');
   const [mobileSearchSubmitted, setMobileSearchSubmitted] = useState(false);
+  const mobileSearchInputRef = useRef(null);
   const mainScrollRef = useRef(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // Auto-focus the search input the moment the bar opens — fixes iOS double-tap
+  useEffect(() => {
+    if (mobileSearchOpen && mobileSearchInputRef.current) {
+      // rAF ensures the element is in the DOM and visible before focus
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          mobileSearchInputRef.current?.focus();
+        });
+      });
+    }
+  }, [mobileSearchOpen]);
 
   // Scroll-to-top detection
   useEffect(() => {
@@ -6309,6 +6537,7 @@ function AppInner() {
               <div className="app-header__mobile-search-bar" style={{position:'relative'}}>
                 <Icon name="search" size={14} strokeWidth={2} color="var(--warm-gray)" />
                 <input
+                  ref={mobileSearchInputRef}
                   className="app-header__mobile-search-input"
                   placeholder="Search recipes..."
                   value={mobileSearchQuery}
@@ -6557,7 +6786,7 @@ function AppInner() {
       )}
 
       {view === 'kitchen' && (
-        <FridgeTab allIngredients={allIngredients} setAllIngredients={setAllIngredients} fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} authFetch={authFetch} />
+        <FridgeTab allIngredients={allIngredients} setAllIngredients={setAllIngredients} fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} authFetch={authFetch} allRecipes={recipes} />
       )}
 
       {/* ======================================================
