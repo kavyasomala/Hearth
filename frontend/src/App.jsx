@@ -583,16 +583,12 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ing._id });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'none' : transition,
-    opacity: isDragging ? 0.92 : 1,
+    transition,
     zIndex: isDragging ? 100 : undefined,
-    boxShadow: isDragging ? '0 8px 28px rgba(46,42,39,0.2), 0 2px 6px rgba(46,42,39,0.1)' : undefined,
-    borderRadius: isDragging ? '12px' : undefined,
-    background: isDragging ? 'var(--warm-white)' : undefined,
   };
   return (
     <div className="ing-flat-row" ref={setNodeRef} style={style}>
-      <span className="ing-flat-row__drag" {...attributes} {...listeners}>⠿</span>
+      <span className="ing-flat-row__drag" {...attributes} {...listeners} tabIndex={-1}>⠿</span>
       <div className="ing-flat-row__fields">
         {/* Row 1 (desktop inline / mobile: Name full width) */}
         <div className="ing-flat-row__row1">
@@ -612,10 +608,11 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
             onClick={() => onUpdate('optional', !ing.optional)}
             title={ing.optional ? 'Mark as required' : 'Mark as optional'}
             type="button"
+            tabIndex={-1}
           >
             {ing.optional ? 'optional' : 'required'}
           </button>
-          <button className="editor-remove-btn" onClick={onRemove} title="Remove">✕</button>
+          <button className="editor-remove-btn" onClick={onRemove} title="Remove" tabIndex={-1}>✕</button>
         </div>
       </div>
     </div>
@@ -627,10 +624,8 @@ const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ing._id });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'none' : transition,
-    opacity: isDragging ? 0.92 : 1,
+    transition,
     zIndex: isDragging ? 100 : undefined,
-    boxShadow: isDragging ? '0 8px 28px rgba(46,42,39,0.2)' : undefined,
   };
   return (
     <div className="ing-group-row" ref={setNodeRef} style={style}>
@@ -2480,12 +2475,8 @@ const SortableItem = ({ id, children }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'none' : transition,
-    opacity: isDragging ? 0.92 : 1,
+    transition,
     zIndex: isDragging ? 100 : undefined,
-    boxShadow: isDragging ? '0 8px 32px rgba(46,42,39,0.22), 0 2px 8px rgba(46,42,39,0.12)' : undefined,
-    borderRadius: isDragging ? '10px' : undefined,
-    scale: isDragging ? '1.03' : undefined,
   };
   return (
     <div ref={setNodeRef} style={style} className={`sortable-item ${isDragging ? 'sortable-item--dragging' : ''}`}>
@@ -2500,11 +2491,8 @@ const StepSortableItem = ({ id, stepNum, grouped, children, onSnap, onUnsnap, ca
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'none' : transition,
-    opacity: isDragging ? 0.92 : 1,
+    transition,
     zIndex: isDragging ? 100 : undefined,
-    boxShadow: isDragging ? '0 8px 32px rgba(46,42,39,0.22), 0 2px 8px rgba(46,42,39,0.12)' : undefined,
-    borderRadius: isDragging ? '12px' : undefined,
   };
   return (
     <div ref={setNodeRef} style={style} className={`step-sortable-row ${grouped ? 'step-sortable-row--grouped' : ''} ${isDragging ? 'step-sortable-row--dragging' : ''}`}>
@@ -2539,10 +2527,8 @@ const StepGroupRow = ({ grp, onLabelChange, onRemove, onAddStep }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: grp._id });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'none' : transition,
-    opacity: isDragging ? 0.92 : 1,
+    transition,
     zIndex: isDragging ? 100 : undefined,
-    boxShadow: isDragging ? '0 8px 28px rgba(46,42,39,0.2)' : undefined,
   };
   return (
     <div className="step-group-row" ref={setNodeRef} style={style}>
@@ -4220,14 +4206,17 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
   [categories]);
 
   const toggleChecked = (key, itemName) => {
+    const lower = itemName.toLowerCase().trim();
     setChecked(prev => {
       const next = new Set(prev);
       if (next.has(key)) {
+        // Unchecking: remove from kitchen too
         next.delete(key);
+        setFridgeIngredients(prev2 => prev2.filter(x => x !== lower));
+        setPantryStaples(prev2 => prev2.filter(x => x !== lower));
       } else {
         next.add(key);
         // Auto-add to kitchen
-        const lower = itemName.toLowerCase().trim();
         const known = allIngredients?.find(i => (typeof i === 'string' ? i : i.name).toLowerCase() === lower);
         const isFridgeType = known && typeof known === 'object' && ['produce','meat & fish','dairy'].includes(known.type);
         if (isFridgeType) {
@@ -4238,6 +4227,13 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
       }
       return next;
     });
+  };
+
+  // Remove an ingredient that's in kitchen (came from kitchen, not manually checked)
+  const removeFromKitchen = (itemName) => {
+    const lower = itemName.toLowerCase().trim();
+    setFridgeIngredients(prev => prev.filter(x => x !== lower));
+    setPantryStaples(prev => prev.filter(x => x !== lower));
   };
 
   useEffect(() => {
@@ -4358,7 +4354,10 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
                         <div
                           key={key}
                           className={`grocery-item ${isChecked ? 'grocery-item--checked' : ''} ${inKitchen ? 'grocery-item--in-kitchen' : ''}`}
-                          onClick={() => !inKitchen && toggleChecked(key, item.name)}
+                          onClick={() => {
+                            if (inKitchen) removeFromKitchen(item.name);
+                            else toggleChecked(key, item.name);
+                          }}
                         >
                           <div className={`grocery-item__checkbox ${isChecked ? 'grocery-item__checkbox--checked' : ''}`}>
                             {isChecked && '✓'}
@@ -4370,8 +4369,9 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
                               {' '}{item.name}
                             </span>
                             {item.prep_note && <span className="grocery-item__note">{item.prep_note}</span>}
-                            {inKitchen && <span className="grocery-item__kitchen-tag">in kitchen</span>}
+                            {inKitchen && <span className="grocery-item__kitchen-tag">in kitchen · tap to remove</span>}
                             {!inKitchen && !isChecked && <span className="grocery-item__tap-hint">tap to check off → adds to kitchen</span>}
+                            {isChecked && !inKitchen && <span className="grocery-item__tap-hint">tap to uncheck → removes from kitchen</span>}
                             {item.recipes?.length > 1 && !inKitchen && (
                               <span className="grocery-item__recipes">for {item.recipes.join(', ')}</span>
                             )}

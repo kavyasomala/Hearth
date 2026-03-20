@@ -6564,40 +6564,25 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   iOS-style drag & drop — lift, scale, shadow, haptic-ready
+   Drag & drop — clean, dnd-kit-compatible styles
+   KEY RULE: dnd-kit owns transform via inline style. CSS must NEVER
+   set transform on sortable items — that causes flicker/doubling.
    ══════════════════════════════════════════════════════════════════ */
 
-/* ── Dragged item: lifted, scaled, rotated slightly like iOS ── */
+/* ── Dragged item: visual lift via shadow only (no transform override) ── */
 .sortable-item--dragging,
 .step-sortable-row--dragging {
   cursor: grabbing !important;
-  /* Scale + slight tilt for that iOS "picked up" feel */
-  transform: scale(1.04) rotate(1.2deg) !important;
-  z-index: 999 !important;
-  /* Crisp shadow: close shadow (depth) + far shadow (glow) */
   box-shadow:
-    0 2px 6px rgba(46,42,39,0.10),
-    0 12px 40px rgba(46,42,39,0.22),
-    0 20px 60px rgba(46,42,39,0.10) !important;
-  border-radius: 14px !important;
-  background: var(--warm-white) !important;
-  /* Prevent text selection and input focus during drag */
-  user-select: none !important;
-  -webkit-user-select: none !important;
+    0 4px 14px rgba(46,42,39,0.13),
+    0 10px 30px rgba(46,42,39,0.10);
+  border-radius: 12px;
+  background: var(--warm-white);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-/* ── Ingredient flat row: same lift but no rotation (grid layout) ── */
-.ing-flat-row.sortable-item--dragging,
-.ing-flat-row[data-dragging="true"] {
-  transform: scale(1.03) !important;
-  box-shadow: 0 8px 32px rgba(46,42,39,0.22), 0 2px 8px rgba(46,42,39,0.10) !important;
-  border-radius: 12px !important;
-  background: var(--warm-white) !important;
-  cursor: grabbing !important;
-  z-index: 999 !important;
-}
-
-/* ── Inputs/textareas inside dragged item: no pointer events ── */
+/* ── Inputs/textareas inside dragged item: disable focus during drag ── */
 .step-sortable-row--dragging .editor-textarea,
 .step-sortable-row--dragging .editor-input,
 .sortable-item--dragging .editor-textarea,
@@ -6605,109 +6590,84 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   pointer-events: none;
 }
 
-/* ── Sibling items: smooth spring transition to make room ── */
+/* ── Sibling items: smooth transition as they shift to make room ──
+   NOTE: no !important — dnd-kit sets transition via inline style
+   when drag ends; !important would override that and cause flicker ── */
 .sortable-item:not(.sortable-item--dragging),
-.step-sortable-row:not(.step-sortable-row--dragging),
-.ing-flat-row:not([style*="zIndex: 100"]),
-.ing-group-row:not([style*="zIndex: 100"]),
-.step-group-row:not([style*="zIndex: 100"]) {
-  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+.step-sortable-row:not(.step-sortable-row--dragging) {
+  transition: transform 150ms ease;
 }
 
-/* ── Drag handle: grab cursor + color on hover ── */
+/* ── Drag handle: grab cursor + terracotta on active ── */
 .editor-step-num--drag {
   cursor: grab;
   user-select: none;
   touch-action: none;
-  transition: background 0.15s, transform 0.12s, box-shadow 0.12s, color 0.12s;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
 .editor-step-num--drag:hover {
   background: var(--terracotta);
   color: #fff;
-  transform: scale(1.12);
-  box-shadow: 0 2px 10px rgba(184,74,40,0.3);
+  box-shadow: 0 2px 8px rgba(184,74,40,0.25);
 }
-.editor-step-num--drag:active {
-  cursor: grabbing !important;
-  background: var(--terracotta-dark) !important;
-  transform: scale(1.05) !important;
-}
+.editor-step-num--drag:active { cursor: grabbing !important; }
 
 .sortable-handle {
   cursor: grab;
   user-select: none;
   touch-action: none;
   color: var(--ash);
-  transition: color 0.15s, transform 0.12s;
+  transition: color 0.15s;
 }
-.sortable-handle:hover { color: var(--warm-gray); transform: scale(1.15); }
+.sortable-handle:hover { color: var(--warm-gray); }
 .sortable-handle:active { cursor: grabbing !important; color: var(--terracotta) !important; }
 
 .ing-flat-row__drag,
-.step-group-row__drag,
-.ing-flat-row__drag {
+.step-group-row__drag {
   cursor: grab;
   touch-action: none;
   color: var(--ash);
-  transition: color 0.15s, transform 0.12s;
+  transition: color 0.15s;
 }
 .ing-flat-row__drag:hover,
-.step-group-row__drag:hover { color: var(--warm-gray); transform: scale(1.2); }
+.step-group-row__drag:hover { color: var(--warm-gray); }
 .ing-flat-row__drag:active,
 .step-group-row__drag:active { cursor: grabbing !important; color: var(--terracotta) !important; }
-
-/* ── Drop target indicator: terracotta line above the target position ── */
-@keyframes dropTargetSlideIn {
-  from { opacity: 0; transform: scaleX(0.6); }
-  to   { opacity: 1; transform: scaleX(1); }
-}
-
-/* dnd-kit adds transform to siblings — when an item is displaced upward,
-   show a subtle top border glow on items in the "drop zone" */
-.step-sortable-row[style*="translateY"],
-.ing-flat-row[style*="translateY"] {
-  position: relative;
-}
 
 /* ── Mobile: oversized touch targets for drag handles ── */
 @media (max-width: 640px) {
   .ing-flat-row__drag {
-    min-width: 40px !important;
-    min-height: 44px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 22px !important;
+    min-width: 40px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
   }
   .editor-step-num--drag {
-    min-width: 40px !important;
-    min-height: 40px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 16px !important;
-    border-radius: 50% !important;
+    min-width: 40px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    border-radius: 50%;
   }
   .step-group-row__drag {
-    min-width: 40px !important;
-    min-height: 44px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 22px !important;
+    min-width: 40px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
   }
   .sortable-handle {
-    min-width: 40px !important;
-    min-height: 48px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 22px !important;
-  }
-  /* On mobile: no rotation (prevents layout thrash on small screens) */
-  .sortable-item--dragging,
-  .step-sortable-row--dragging {
-    transform: scale(1.04) !important;
+    min-width: 40px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
   }
 }
 
