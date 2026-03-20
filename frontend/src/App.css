@@ -7810,9 +7810,10 @@ html, body {
   font-size: 11px; color: var(--warm-gray); font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.05em;
 }
-.nutrition-modal__servings {
-  font-size: 13px; color: var(--warm-gray); text-align: center;
-  font-style: italic;
+.nutrition-modal__note {
+  font-size: 12px; color: var(--warm-gray); text-align: center;
+  font-style: italic; margin-bottom: 10px;
+  background: var(--parchment); border-radius: 8px; padding: 6px 10px;
 }
 .rp2__pill--nutrition {
   cursor: pointer; border: none; transition: opacity 0.15s;
@@ -7821,26 +7822,69 @@ html, body {
 [data-theme="dark"] .nutrition-modal { background: var(--warm-white); }
 [data-theme="dark"] .nutrition-modal__item { background: var(--parchment); }
 
-/* Breakdown table */
-.nutrition-modal__breakdown { border-top: 1px solid var(--border); padding-top: 14px; }
-.nutrition-modal__breakdown-title {
-  font-size: 12px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.07em; color: var(--warm-gray); margin-bottom: 10px;
+.nutrition-modal__recipe-name {
+  font-size: 14px; font-weight: 600; color: var(--charcoal);
+  text-align: center; margin: 0 0 14px;
 }
-.nutrition-modal__row {
+.nutrition-modal__servings {
+  font-size: 13px; color: var(--warm-gray); text-align: center;
+  font-style: italic; margin-top: 8px;
+}
+
+/* Breakdown table — 3 metrics side by side */
+.nutrition-modal__breakdown {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin-top: 4px;
+}
+.nutrition-modal__breakdown-header {
   display: grid;
-  grid-template-columns: 1fr 80px 52px 36px;
+  grid-template-columns: 1fr repeat(3, 80px);
+  gap: 6px;
+  padding: 0 0 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.nutrition-modal__breakdown-hcol {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--warm-gray); text-align: right;
+}
+.nutrition-modal__breakdown-hcol--name { text-align: left; }
+.nutrition-modal__breakdown-row {
+  display: grid;
+  grid-template-columns: 1fr repeat(3, 80px);
   align-items: center;
-  gap: 8px;
-  padding: 7px 0;
+  gap: 6px;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(212,196,164,0.3);
 }
-.nutrition-modal__row:last-child { border-bottom: none; }
-.nutrition-modal__row-name { font-size: 13px; color: var(--charcoal); }
-.nutrition-modal__row-bar-wrap { height: 6px; background: var(--parchment); border-radius: 99px; overflow: hidden; }
-.nutrition-modal__row-bar { height: 100%; background: var(--terracotta); border-radius: 99px; transition: width 0.3s ease; }
-.nutrition-modal__row-cal { font-size: 12px; font-weight: 700; color: var(--charcoal); text-align: right; }
-.nutrition-modal__row-prot { font-size: 11px; color: var(--warm-gray); text-align: right; }
+.nutrition-modal__breakdown-row:last-child { border-bottom: none; }
+.nutrition-modal__row-name {
+  font-size: 12px; color: var(--charcoal); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.nutrition-modal__row-cell {
+  display: flex; flex-direction: column; gap: 3px; align-items: flex-end;
+}
+.nutrition-modal__row-num {
+  font-size: 12px; font-weight: 600; color: var(--charcoal);
+}
+.nutrition-modal__row-bar-wrap {
+  width: 100%; height: 4px; background: var(--parchment);
+  border-radius: 99px; overflow: hidden;
+}
+.nutrition-modal__row-bar { height: 100%; border-radius: 99px; transition: width 0.3s ease; }
+.nutrition-modal__row-bar--cal  { background: var(--terracotta); }
+.nutrition-modal__row-bar--prot { background: var(--sage); }
+.nutrition-modal__row-bar--fib  { background: var(--sage-light); }
+
+/* If only 1 or 2 metrics, collapse unused columns */
+.nutrition-modal__breakdown-header:has(.nutrition-modal__breakdown-hcol:nth-child(2):last-child) {
+  grid-template-columns: 1fr 80px;
+}
+.nutrition-modal__breakdown-row:has(.nutrition-modal__row-cell:nth-child(2):last-child) {
+  grid-template-columns: 1fr 80px;
+}
 
 /* Mobile hero bottom-right calories pill */
 .rp2__hero-mobile-cal {

@@ -322,47 +322,152 @@ const Badge = ({ children, variant = 'default' }) => (
   <span className={`badge badge--${variant}`}>{children}</span>
 );
 
+// --- Shared Nutrition Modal Body -------------------------------------------
+// Renders totals grid + per-ingredient breakdown table (calories, protein, fiber)
+const NutritionModalBody = ({ recipe, bodyIngredients, allIngredients, displayCalories, displayProtein, displayFiber, nutritionIsEstimate }) => {
+  const rows = useMemo(() => {
+    if (!bodyIngredients?.length) return [];
+    return bodyIngredients.filter(i => !i._isGroup).map(ing => {
+      const dbIng = allIngredients.find(a => a.name?.toLowerCase() === ing.name?.toLowerCase());
+      if (!dbIng || dbIng.calories == null) return null;
+      const amount = parseFloat(ing.amount) || 1;
+      const unit = (ing.unit || '').toLowerCase().trim();
+      let grams;
+      if (UNIT_GRAMS[unit]) grams = amount * UNIT_GRAMS[unit];
+      else if (dbIng.grams_per_unit) grams = amount * dbIng.grams_per_unit;
+      else return null;
+      const cal  = Math.round((dbIng.calories * grams) / 100);
+      const prot = dbIng.protein != null ? Math.round((dbIng.protein * grams) / 100 * 10) / 10 : null;
+      const fib  = dbIng.fiber   != null ? Math.round((dbIng.fiber   * grams) / 100 * 10) / 10 : null;
+      const calPct  = displayCalories ? Math.round((cal / displayCalories) * 100) : 0;
+      const protPct = displayProtein  && prot != null ? Math.round((prot / displayProtein) * 100) : 0;
+      const fibPct  = displayFiber    && fib  != null ? Math.round((fib  / displayFiber)  * 100) : 0;
+      return { name: `${[ing.amount, ing.unit].filter(Boolean).join(' ')} ${ing.name}`.trim(), cal, prot, fib, calPct, protPct, fibPct };
+    }).filter(Boolean);
+  }, [bodyIngredients, allIngredients, displayCalories, displayProtein, displayFiber]);
+
+  return (
+    <div className="nutrition-modal__body">
+      {nutritionIsEstimate && (
+        <p className="nutrition-modal__note">~ Estimated from ingredients — save to lock in.</p>
+      )}
+      <p className="nutrition-modal__recipe-name">{recipe.name}</p>
+      <div className="nutrition-modal__grid">
+        {displayCalories !== null && (
+          <div className="nutrition-modal__item">
+            <span className="nutrition-modal__icon"><Icon name="zap" size={20} strokeWidth={2} color="var(--terracotta)" /></span>
+            <span className="nutrition-modal__value">{displayCalories}</span>
+            <span className="nutrition-modal__label">Calories</span>
+          </div>
+        )}
+        {displayProtein !== null && (
+          <div className="nutrition-modal__item">
+            <span className="nutrition-modal__icon"><Icon name="dumbbell" size={20} strokeWidth={2} color="var(--sage)" /></span>
+            <span className="nutrition-modal__value">{displayProtein}g</span>
+            <span className="nutrition-modal__label">Protein</span>
+          </div>
+        )}
+        {displayFiber !== null && (
+          <div className="nutrition-modal__item">
+            <span className="nutrition-modal__icon"><Icon name="leaf" size={20} strokeWidth={2} color="var(--sage-light)" /></span>
+            <span className="nutrition-modal__value">{displayFiber}g</span>
+            <span className="nutrition-modal__label">Fiber</span>
+          </div>
+        )}
+      </div>
+      {recipe.servings && <p className="nutrition-modal__servings">Per serving · {recipe.servings} servings total</p>}
+
+      {rows.length > 0 && (
+        <div className="nutrition-modal__breakdown">
+          {/* Header row */}
+          <div className="nutrition-modal__breakdown-header">
+            <span className="nutrition-modal__breakdown-hcol nutrition-modal__breakdown-hcol--name">Ingredient</span>
+            {displayCalories !== null && <span className="nutrition-modal__breakdown-hcol">kcal</span>}
+            {displayProtein  !== null && <span className="nutrition-modal__breakdown-hcol">prot</span>}
+            {displayFiber    !== null && <span className="nutrition-modal__breakdown-hcol">fiber</span>}
+          </div>
+          {rows.map((r, i) => (
+            <div key={i} className="nutrition-modal__breakdown-row">
+              <span className="nutrition-modal__row-name">{r.name}</span>
+              {displayCalories !== null && (
+                <span className="nutrition-modal__row-cell">
+                  <span className="nutrition-modal__row-num">{r.cal}</span>
+                  <span className="nutrition-modal__row-bar-wrap">
+                    <span className="nutrition-modal__row-bar nutrition-modal__row-bar--cal" style={{ width: `${Math.min(r.calPct, 100)}%` }} />
+                  </span>
+                </span>
+              )}
+              {displayProtein !== null && (
+                <span className="nutrition-modal__row-cell">
+                  <span className="nutrition-modal__row-num">{r.prot != null ? `${r.prot}g` : '—'}</span>
+                  {r.prot != null && <span className="nutrition-modal__row-bar-wrap">
+                    <span className="nutrition-modal__row-bar nutrition-modal__row-bar--prot" style={{ width: `${Math.min(r.protPct, 100)}%` }} />
+                  </span>}
+                </span>
+              )}
+              {displayFiber !== null && (
+                <span className="nutrition-modal__row-cell">
+                  <span className="nutrition-modal__row-num">{r.fib != null ? `${r.fib}g` : '—'}</span>
+                  {r.fib != null && <span className="nutrition-modal__row-bar-wrap">
+                    <span className="nutrition-modal__row-bar nutrition-modal__row-bar--fib" style={{ width: `${Math.min(r.fibPct, 100)}%` }} />
+                  </span>}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // --- Nutrition Card Popup --------------------------------------------------
-// Lightweight modal used from recipe cards (no ingredient breakdown available)
-const NutritionCardPopup = ({ recipe, onClose }) => {
+// Shown from recipe cards — fetches ingredient detail on demand
+const NutritionCardPopup = ({ recipe, allIngredients, onClose }) => {
   const calories = toNum(recipe.calories);
   const protein  = toNum(recipe.protein);
   const fiber    = toNum(recipe.fiber);
+  const [bodyIngredients, setBodyIngredients] = useState(null); // null = loading
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/api/recipes/${recipe.id}`);
+        const data = await res.json();
+        if (!cancelled) setBodyIngredients(data.bodyIngredients || []);
+      } catch {
+        if (!cancelled) { setLoadError(true); setBodyIngredients([]); }
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [recipe.id]);
+
   return (
     <div className="create-modal-overlay" onClick={onClose}>
-      <div className="nutrition-modal" style={{ maxWidth: 340 }} onClick={e => e.stopPropagation()}>
+      <div className="nutrition-modal" onClick={e => e.stopPropagation()}>
         <div className="nutrition-modal__header">
-          <h2 className="nutrition-modal__title"><Icon name="zap" size={18} strokeWidth={2} /> Nutrition</h2>
+          <h2 className="nutrition-modal__title"><Icon name="zap" size={18} strokeWidth={2} /> Nutrition Info</h2>
           <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
-        <div className="nutrition-modal__body">
-          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--charcoal)', margin: '0 0 12px', textAlign: 'center' }}>{recipe.name}</p>
-          <div className="nutrition-modal__grid">
-            {calories !== null && (
-              <div className="nutrition-modal__item">
-                <span className="nutrition-modal__icon"><Icon name="zap" size={20} strokeWidth={2} color="var(--terracotta)" /></span>
-                <span className="nutrition-modal__value">{Math.round(calories)}</span>
-                <span className="nutrition-modal__label">kcal</span>
-              </div>
-            )}
-            {protein !== null && (
-              <div className="nutrition-modal__item">
-                <span className="nutrition-modal__icon"><Icon name="dumbbell" size={20} strokeWidth={2} color="var(--sage)" /></span>
-                <span className="nutrition-modal__value">{Math.round(protein)}g</span>
-                <span className="nutrition-modal__label">Protein</span>
-              </div>
-            )}
-            {fiber !== null && (
-              <div className="nutrition-modal__item">
-                <span className="nutrition-modal__icon"><Icon name="leaf" size={20} strokeWidth={2} color="var(--sage-light)" /></span>
-                <span className="nutrition-modal__value">{Math.round(fiber)}g</span>
-                <span className="nutrition-modal__label">Fiber</span>
-              </div>
-            )}
+        {bodyIngredients === null ? (
+          <div className="nutrition-modal__body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '32px 24px', color: 'var(--warm-gray)' }}>
+            <div className="loading-spinner" style={{ width: 24, height: 24 }} />
+            Loading...
           </div>
-          {recipe.servings && <p className="nutrition-modal__servings">Per serving · {recipe.servings} servings</p>}
-          <p style={{ fontSize: 11, color: 'var(--warm-gray)', textAlign: 'center', marginTop: 4 }}>Open recipe for full ingredient breakdown</p>
-        </div>
+        ) : (
+          <NutritionModalBody
+            recipe={recipe}
+            bodyIngredients={bodyIngredients}
+            allIngredients={allIngredients}
+            displayCalories={calories}
+            displayProtein={protein}
+            displayFiber={fiber}
+            nutritionIsEstimate={false}
+          />
+        )}
       </div>
     </div>
   );
@@ -371,7 +476,7 @@ const NutritionCardPopup = ({ recipe, onClose }) => {
 // --- Recipe Summary Card ---------------------------------------------------
 const toNum = (v) => { const n = Number(v); return (!isNaN(n) && v !== '' && v !== null && v !== undefined) ? n : null; };
 
-const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked, showScore, onConvertRef }) => {
+const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked, showScore, onConvertRef, allIngredients = [] }) => {
   const { name, coverImage, cuisine, time } = recipe;
   const calories = toNum(recipe.calories);
   const protein  = toNum(recipe.protein);
@@ -384,7 +489,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
 
   return (
     <>
-      {showNutrition && <NutritionCardPopup recipe={recipe} onClose={() => setShowNutrition(false)} />}
+      {showNutrition && <NutritionCardPopup recipe={recipe} allIngredients={allIngredients} onClose={() => setShowNutrition(false)} />}
       <article className={`recipe-card ${isCookbookRef ? 'recipe-card--cb-ref' : ''}`} onClick={() => onClick(recipe)}>
         <div className="recipe-card__image">
           {coverImage
@@ -1067,6 +1172,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [showNutritionModal, setShowNutritionModal] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showCookbookModal, setShowCookbookModal] = useState(false);
+  const [showInstructionsModal, setShowInstructionsModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [stayAwake, setStayAwake] = useState(false);
@@ -1409,7 +1515,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         />
       )}
 
-      {/* -- Nutrition Modal (mobile full popup) -- */}
+      {/* -- Nutrition Modal -- */}
       {showNutritionModal && (
         <div className="create-modal-overlay" onClick={() => setShowNutritionModal(false)}>
           <div className="nutrition-modal" onClick={e => e.stopPropagation()}>
@@ -1417,66 +1523,15 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               <h2 className="nutrition-modal__title"><Icon name="zap" size={18} strokeWidth={2} /> Nutrition Info</h2>
               <button className="ing-modal__close" onClick={() => setShowNutritionModal(false)}>✕</button>
             </div>
-            <div className="nutrition-modal__body">
-              {nutritionIsEstimate && (
-                <p className="nutrition-modal__note">~ Estimated from ingredients — save to lock in.</p>
-              )}
-              <div className="nutrition-modal__grid">
-                {displayCalories !== null && (
-                  <div className="nutrition-modal__item">
-                    <span className="nutrition-modal__icon"><Icon name="zap" size={20} strokeWidth={2} color="var(--terracotta)" /></span>
-                    <span className="nutrition-modal__value">{displayCalories}</span>
-                    <span className="nutrition-modal__label">Calories (kcal)</span>
-                  </div>
-                )}
-                {displayProtein !== null && (
-                  <div className="nutrition-modal__item">
-                    <span className="nutrition-modal__icon"><Icon name="dumbbell" size={20} strokeWidth={2} color="var(--sage)" /></span>
-                    <span className="nutrition-modal__value">{displayProtein}g</span>
-                    <span className="nutrition-modal__label">Protein</span>
-                  </div>
-                )}
-                {displayFiber !== null && (
-                  <div className="nutrition-modal__item">
-                    <span className="nutrition-modal__icon"><Icon name="leaf" size={20} strokeWidth={2} color="var(--sage-light)" /></span>
-                    <span className="nutrition-modal__value">{displayFiber}g</span>
-                    <span className="nutrition-modal__label">Fiber</span>
-                  </div>
-                )}
-              </div>
-              {recipe.servings && (
-                <p className="nutrition-modal__servings">Per serving · {recipe.servings} servings total</p>
-              )}
-              {/* Per-ingredient calorie breakdown */}
-              {bodyIngredients?.length > 0 && (
-                <div className="nutrition-modal__breakdown">
-                  <h4 className="nutrition-modal__breakdown-title">Calorie breakdown</h4>
-                  {bodyIngredients.filter(i => !i._isGroup).map((ing, idx) => {
-                    const dbIng = allIngredients.find(a => a.name?.toLowerCase() === ing.name?.toLowerCase());
-                    if (!dbIng || dbIng.calories == null) return null;
-                    const amount = parseFloat(ing.amount) || 1;
-                    const unit = (ing.unit || '').toLowerCase().trim();
-                    let grams;
-                    if (UNIT_GRAMS[unit]) grams = amount * UNIT_GRAMS[unit];
-                    else if (dbIng.grams_per_unit) grams = amount * dbIng.grams_per_unit;
-                    else return null;
-                    const cal = Math.round((dbIng.calories * grams) / 100);
-                    const prot = dbIng.protein ? Math.round((dbIng.protein * grams) / 100 * 10) / 10 : null;
-                    const pct = displayCalories ? Math.round((cal / displayCalories) * 100) : 0;
-                    return (
-                      <div key={idx} className="nutrition-modal__row">
-                        <span className="nutrition-modal__row-name">{[ing.amount, ing.unit].filter(Boolean).join(' ')} {ing.name}</span>
-                        <div className="nutrition-modal__row-bar-wrap">
-                          <div className="nutrition-modal__row-bar" style={{ width: `${Math.min(pct, 100)}%` }} />
-                        </div>
-                        <span className="nutrition-modal__row-cal">{cal} kcal</span>
-                        {prot !== null && <span className="nutrition-modal__row-prot">{prot}g</span>}
-                      </div>
-                    );
-                  }).filter(Boolean)}
-                </div>
-              )}
-            </div>
+            <NutritionModalBody
+              recipe={recipe}
+              bodyIngredients={bodyIngredients}
+              allIngredients={allIngredients}
+              displayCalories={displayCalories}
+              displayProtein={displayProtein}
+              displayFiber={displayFiber}
+              nutritionIsEstimate={nutritionIsEstimate}
+            />
           </div>
         </div>
       )}
@@ -1954,7 +2009,16 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             {!isEdit('instructions') && totalSteps > 0 && (
               <span className="rp2__progress-label rp2__progress-label--right">{doneCount}/{totalSteps} steps</span>
             )}
-            {isAdmin && <SectionPencil isEditing={isEdit('instructions')} onEdit={() => startEdit('instructions')} onSave={() => saveSection('instructions')} onCancel={cancelEdit} saving={saving} />}
+            {isAdmin && <SectionPencil
+              isEditing={isEdit('instructions')}
+              onEdit={() => {
+                startEdit('instructions');
+                if (window.innerWidth <= 640) setShowInstructionsModal(true);
+              }}
+              onSave={() => saveSection('instructions')}
+              onCancel={() => { cancelEdit(); setShowInstructionsModal(false); }}
+              saving={saving}
+            />}
           </div>
 
           {!isEdit('instructions') && totalSteps > 0 && (
@@ -1963,7 +2027,97 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             </div>
           )}
 
-          {isEdit('instructions') ? (
+          {/* Mobile instructions modal */}
+          {showInstructionsModal && isEdit('instructions') && (
+            <div className="ing-modal-overlay" onClick={() => { cancelEdit(); setShowInstructionsModal(false); }}>
+              <div className="ing-modal ing-modal--wide" onClick={e => e.stopPropagation()}>
+                <div className="ing-modal__header">
+                  <h2 className="ing-modal__title">Edit Instructions</h2>
+                  <div className="ing-modal__header-actions">
+                    <button className="ing-modal__save-btn" onClick={async () => { await saveSection('instructions'); setShowInstructionsModal(false); }} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
+                    <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowInstructionsModal(false); }}>✕</button>
+                  </div>
+                </div>
+                <div className="ing-modal__body">
+                  <DndContext sensors={rpSensors} collisionDetection={closestCenter} onDragEnd={onDraftStepDragEnd}>
+                    <SortableContext items={draftSteps.map(s => s._id)} strategy={verticalListSortingStrategy}>
+                      {draftSteps.map((item, idx) => {
+                        if (item._isGroup) {
+                          const addToGroup = () => {
+                            const grpName = item.name || '';
+                            let insertIdx = idx;
+                            for (let j = idx + 1; j < draftSteps.length; j++) {
+                              const s = draftSteps[j];
+                              if (s._isGroup) break;
+                              if (!s._isTimer && s.group_label !== grpName) break;
+                              insertIdx = j;
+                            }
+                            const newStep = { _id: `step-new-${Date.now()}`, body_text: '', timer_seconds: null, group_label: grpName };
+                            setDraftSteps(prev => { const next = [...prev]; next.splice(insertIdx + 1, 0, newStep); return next; });
+                          };
+                          return (
+                            <StepGroupRow key={item._id} grp={item}
+                              onLabelChange={v => setDraftSteps(prev => {
+                                const oldName = item.name || '';
+                                return prev.map(s => s._id === item._id ? { ...s, name: v } : (!s._isGroup && !s._isTimer && s.group_label === oldName) ? { ...s, group_label: v } : s);
+                              })}
+                              onRemove={() => setDraftSteps(prev => {
+                                const grpName = item.name || '';
+                                return prev.filter(s => s._id !== item._id).map(s => (!s._isGroup && !s._isTimer && s.group_label === grpName) ? { ...s, group_label: null } : s);
+                              })}
+                              onAddStep={addToGroup}
+                            />
+                          );
+                        }
+                        if (item._isTimer) {
+                          return (
+                            <div key={item._id} className="rp2__ed-timer-row">
+                              <span className="rp2__ed-timer-row__icon"><Icon name="timer" size={14} strokeWidth={2} /></span>
+                              <div className="rp2__ed-timer-row__inputs">
+                                <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" value={item.h} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, h: e.target.value} : s))} placeholder="0" />
+                                <span className="rp2__ed-timer-row__sep">h</span>
+                                <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.m} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, m: e.target.value} : s))} placeholder="0" />
+                                <span className="rp2__ed-timer-row__sep">m</span>
+                                <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
+                                <span className="rp2__ed-timer-row__sep">s</span>
+                              </div>
+                              <button className="editor-remove-btn" onClick={() => setDraftSteps(prev => { const i2 = prev.findIndex(s => s._id === item._id); const next = prev.filter(s => s._id !== item._id); if (i2 > 0 && !prev[i2-1]._isTimer) return next.map(s => s._id === prev[i2-1]._id ? {...s, timer_seconds: null} : s); return next; })}>✕</button>
+                            </div>
+                          );
+                        }
+                        const isGrouped = !!item.group_label;
+                        const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
+                        let nearestGroupAbove = null;
+                        for (let j = idx - 1; j >= 0; j--) {
+                          if (draftSteps[j]._isGroup) { nearestGroupAbove = draftSteps[j].name || ''; break; }
+                          if (!draftSteps[j]._isTimer) break;
+                        }
+                        const anyGroupAbove = !isGrouped && draftSteps.slice(0, idx).some(s => s._isGroup);
+                        if (!nearestGroupAbove && anyGroupAbove) { for (let j = idx - 1; j >= 0; j--) { if (draftSteps[j]._isGroup) { nearestGroupAbove = draftSteps[j].name || ''; break; } } }
+                        const canSnap = !isGrouped && anyGroupAbove;
+                        const handleSnap = () => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, group_label: nearestGroupAbove } : s));
+                        const handleUnsnap = () => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, group_label: null } : s));
+                        return (
+                          <StepSortableItem key={item._id} id={item._id} stepNum={stepNum} grouped={isGrouped} onSnap={handleSnap} onUnsnap={handleUnsnap} canSnap={canSnap}>
+                            <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." rows={3} style={{ fontSize: 16 }} />
+                            <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                            <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
+                          </StepSortableItem>
+                        );
+                      })}
+                    </SortableContext>
+                  </DndContext>
+                  <div className="ing-flat-add-row">
+                    <button className="btn btn--ghost editor-add-btn" onClick={addDraftStep}>+ Add Step</button>
+                    <button className="btn btn--ghost editor-add-btn ing-add-group-btn" onClick={() => setDraftSteps(prev => [...prev, { _id: `step-grp-${Date.now()}`, _isGroup: true, name: '' }])}>+ Add Group</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Desktop inline editor — hidden on mobile when modal is active */}
+          {isEdit('instructions') && !showInstructionsModal ? (
             <div className="rp2__inline-editor">
               <DndContext sensors={rpSensors} collisionDetection={closestCenter} onDragEnd={onDraftStepDragEnd}>
                 <SortableContext items={draftSteps.map(s => s._id)} strategy={verticalListSortingStrategy}>
@@ -2081,7 +2235,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 <button className="btn btn--ghost editor-add-btn ing-add-group-btn" onClick={() => setDraftSteps(prev => [...prev, { _id: `step-grp-${Date.now()}`, _isGroup: true, name: '' }])}>+ Add Group</button>
               </div>
             </div>
-          ) : (
+          ) : null}
+
+          {/* Read-only steps view */}
+          {!isEdit('instructions') && (
             instructions?.length > 0
               ? (() => {
                   const sorted = [...instructions].sort((a, b) => a.step_number - b.step_number);
@@ -6953,7 +7110,7 @@ function AppInner() {
                           <RecipeCard key={r.id} recipe={r} match={matchById.get(r.id)} onClick={openRecipe}
                             isHearted={heartedIds.includes(r.id)} onToggleHeart={() => toggleHeart(r.id)}
                             isMakeSoon={true} onToggleMakeSoon={() => toggleMakeSoon(r.id)}
-                            onMarkCooked={(recipe) => setCookingRecipe(recipe)} />
+                            onMarkCooked={(recipe) => setCookingRecipe(recipe)} allIngredients={allIngredients} />
                         ))}
                     </HScrollRow>
                   )}
@@ -6992,7 +7149,7 @@ function AppInner() {
                           return <RecipeCard key={r.id} recipe={r} match={m} onClick={openRecipe}
                             isHearted={heartedIds.includes(r.id)} onToggleHeart={() => toggleHeart(r.id)}
                             isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)}
-                            showScore={true} />;
+                            showScore={true} allIngredients={allIngredients} />;
                         })}
                     </HScrollRow>
                   ) : <p className="home-no-matches">No matches yet -- try adding more ingredients in the Kitchen tab.</p>}
@@ -7344,6 +7501,7 @@ function AppInner() {
                           isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)}
                           showScore={activeProgresses.some(p => p === '__readytocook' || p === '__almostready')}
                           onConvertRef={(recipe) => setCookingRecipe({ ...recipe, _convertRef: true })}
+                          allIngredients={allIngredients}
                         />
                       ))}
                     </div>
