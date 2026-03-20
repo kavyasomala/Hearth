@@ -1300,8 +1300,8 @@ body {
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 .rp2__step-section-label::before { display: none; }
-/* Ungrouped steps (no label): no section wrapper margin */
-.rp2__step-section--ungrouped { margin-top: 0; }
+/* Ungrouped steps section: same top margin as grouped for consistent spacing */
+.rp2__step-section--ungrouped { margin-top: 10px; }
 
 /* ── View mode: grouped steps — NO automatic indent on the ol, indent is per-step ── */
 
@@ -1341,8 +1341,11 @@ body {
               border-left-color 0.18s ease,
               background 0.18s ease;
 }
-/* Un-grouped step (not indented) */
+/* Un-grouped step — explicitly flush left, no inherited indent */
 .step-sortable-row:not(.step-sortable-row--grouped) {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: none;
   transition: margin-left 0.18s cubic-bezier(0.4,0,0.2,1);
 }
 /* ── View mode: grouped steps — indented with subtle left border ── */
