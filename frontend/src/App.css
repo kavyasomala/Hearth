@@ -458,18 +458,21 @@ body {
   border-radius: 999px;
 }
 .recipe-card__stat--cal-btn {
-  border: none; background: none; padding: 0; cursor: pointer;
-  font-family: inherit; font-size: inherit; color: inherit;
-  display: inline-flex; align-items: center; gap: 4px;
-  border-radius: 999px;
-  transition: background 0.15s, color 0.15s;
+  /* Inherits all .recipe-card__stat styles — just makes it clickable */
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 .recipe-card__stat--cal-btn:hover {
-  background: rgba(184,74,40,0.1);
+  background: #fdf0eb;
   color: var(--terracotta);
+  border-color: var(--terracotta-light);
 }
-.recipe-card__stat--cal-btn:active { opacity: 0.75; }
+.recipe-card__stat--cal-btn:active { opacity: 0.7; }
 
 /* ─── Library View ───────────────────────────────────────────────────────── */
 .library-header { padding: 8px 0 0; }
@@ -1849,8 +1852,11 @@ body {
 .editor-input:focus { border-color: var(--terracotta-light); }
 .editor-input--sm { width: 80px; }
 .editor-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6560' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; cursor: pointer; }
-.editor-textarea { border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-family: var(--font-body); font-size: 14px; color: var(--charcoal); background: var(--warm-white); outline: none; resize: vertical; flex: 1; transition: border-color var(--transition); }
+.editor-textarea { border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-family: var(--font-body); font-size: 14px; color: var(--charcoal); background: var(--warm-white); outline: none; resize: vertical; flex: 1; transition: border-color var(--transition); min-height: 60px; }
 .editor-textarea:focus { border-color: var(--terracotta-light); }
+@media (max-width: 640px) {
+  .editor-textarea { font-size: 16px; min-height: 72px; }
+}
 .editor-ing-header { display: grid; grid-template-columns: 60px 80px 1fr 140px 1fr 36px 28px 28px; gap: 6px; padding: 0 0 6px 32px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--warm-gray); }
 .sortable-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
 .sortable-handle { cursor: grab; font-size: 18px; color: var(--border); padding: 8px 2px; user-select: none; flex-shrink: 0; line-height: 1; }
@@ -6557,8 +6563,153 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   pointer-events: auto;
 }
 
-/* ── iOS-style swipe: make sure the page slides cleanly ── */
-.app-root { overflow: hidden; } /* prevent horizontal scroll during swipe */
+/* ══════════════════════════════════════════════════════════════════
+   iOS-style drag & drop — lift, scale, shadow, haptic-ready
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Dragged item: lifted, scaled, rotated slightly like iOS ── */
+.sortable-item--dragging,
+.step-sortable-row--dragging {
+  cursor: grabbing !important;
+  /* Scale + slight tilt for that iOS "picked up" feel */
+  transform: scale(1.04) rotate(1.2deg) !important;
+  z-index: 999 !important;
+  /* Crisp shadow: close shadow (depth) + far shadow (glow) */
+  box-shadow:
+    0 2px 6px rgba(46,42,39,0.10),
+    0 12px 40px rgba(46,42,39,0.22),
+    0 20px 60px rgba(46,42,39,0.10) !important;
+  border-radius: 14px !important;
+  background: var(--warm-white) !important;
+  /* Prevent text selection and input focus during drag */
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+/* ── Ingredient flat row: same lift but no rotation (grid layout) ── */
+.ing-flat-row.sortable-item--dragging,
+.ing-flat-row[data-dragging="true"] {
+  transform: scale(1.03) !important;
+  box-shadow: 0 8px 32px rgba(46,42,39,0.22), 0 2px 8px rgba(46,42,39,0.10) !important;
+  border-radius: 12px !important;
+  background: var(--warm-white) !important;
+  cursor: grabbing !important;
+  z-index: 999 !important;
+}
+
+/* ── Inputs/textareas inside dragged item: no pointer events ── */
+.step-sortable-row--dragging .editor-textarea,
+.step-sortable-row--dragging .editor-input,
+.sortable-item--dragging .editor-textarea,
+.sortable-item--dragging .editor-input {
+  pointer-events: none;
+}
+
+/* ── Sibling items: smooth spring transition to make room ── */
+.sortable-item:not(.sortable-item--dragging),
+.step-sortable-row:not(.step-sortable-row--dragging),
+.ing-flat-row:not([style*="zIndex: 100"]),
+.ing-group-row:not([style*="zIndex: 100"]),
+.step-group-row:not([style*="zIndex: 100"]) {
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+/* ── Drag handle: grab cursor + color on hover ── */
+.editor-step-num--drag {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition: background 0.15s, transform 0.12s, box-shadow 0.12s, color 0.12s;
+}
+.editor-step-num--drag:hover {
+  background: var(--terracotta);
+  color: #fff;
+  transform: scale(1.12);
+  box-shadow: 0 2px 10px rgba(184,74,40,0.3);
+}
+.editor-step-num--drag:active {
+  cursor: grabbing !important;
+  background: var(--terracotta-dark) !important;
+  transform: scale(1.05) !important;
+}
+
+.sortable-handle {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  color: var(--ash);
+  transition: color 0.15s, transform 0.12s;
+}
+.sortable-handle:hover { color: var(--warm-gray); transform: scale(1.15); }
+.sortable-handle:active { cursor: grabbing !important; color: var(--terracotta) !important; }
+
+.ing-flat-row__drag,
+.step-group-row__drag,
+.ing-flat-row__drag {
+  cursor: grab;
+  touch-action: none;
+  color: var(--ash);
+  transition: color 0.15s, transform 0.12s;
+}
+.ing-flat-row__drag:hover,
+.step-group-row__drag:hover { color: var(--warm-gray); transform: scale(1.2); }
+.ing-flat-row__drag:active,
+.step-group-row__drag:active { cursor: grabbing !important; color: var(--terracotta) !important; }
+
+/* ── Drop target indicator: terracotta line above the target position ── */
+@keyframes dropTargetSlideIn {
+  from { opacity: 0; transform: scaleX(0.6); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+
+/* dnd-kit adds transform to siblings — when an item is displaced upward,
+   show a subtle top border glow on items in the "drop zone" */
+.step-sortable-row[style*="translateY"],
+.ing-flat-row[style*="translateY"] {
+  position: relative;
+}
+
+/* ── Mobile: oversized touch targets for drag handles ── */
+@media (max-width: 640px) {
+  .ing-flat-row__drag {
+    min-width: 40px !important;
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 22px !important;
+  }
+  .editor-step-num--drag {
+    min-width: 40px !important;
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 16px !important;
+    border-radius: 50% !important;
+  }
+  .step-group-row__drag {
+    min-width: 40px !important;
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 22px !important;
+  }
+  .sortable-handle {
+    min-width: 40px !important;
+    min-height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 22px !important;
+  }
+  /* On mobile: no rotation (prevents layout thrash on small screens) */
+  .sortable-item--dragging,
+  .step-sortable-row--dragging {
+    transform: scale(1.04) !important;
+  }
+}
 
 /* ── FOOTER: tagline right-aligned on mobile ── */
 @media (max-width: 640px) {

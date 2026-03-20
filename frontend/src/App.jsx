@@ -144,10 +144,15 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+// --- Haptic feedback utility ------------------------------------------------
+const haptic = (pattern = [10]) => {
+  try { if (navigator.vibrate) navigator.vibrate(pattern); } catch {}
+};
+
 // Sensor config: 8px movement threshold prevents tap-to-select being eaten by drag
 const DRAG_SENSORS = () => useSensors(
   useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-  useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+  useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
   useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
 );
 import './App.css';
@@ -576,7 +581,15 @@ const HeroImage = ({ src, alt }) => (
 // --- Ingredient Flat Row (sortable) ----------------------------------------
 const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ing._id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1, zIndex: isDragging ? 10 : undefined };
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: isDragging ? 'none' : transition,
+    opacity: isDragging ? 0.92 : 1,
+    zIndex: isDragging ? 100 : undefined,
+    boxShadow: isDragging ? '0 8px 28px rgba(46,42,39,0.2), 0 2px 6px rgba(46,42,39,0.1)' : undefined,
+    borderRadius: isDragging ? '12px' : undefined,
+    background: isDragging ? 'var(--warm-white)' : undefined,
+  };
   return (
     <div className="ing-flat-row" ref={setNodeRef} style={style}>
       <span className="ing-flat-row__drag" {...attributes} {...listeners}>⠿</span>
@@ -612,7 +625,13 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
 // --- Ingredient Group Row (sortable separator) ------------------------------
 const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ing._id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: isDragging ? 'none' : transition,
+    opacity: isDragging ? 0.92 : 1,
+    zIndex: isDragging ? 100 : undefined,
+    boxShadow: isDragging ? '0 8px 28px rgba(46,42,39,0.2)' : undefined,
+  };
   return (
     <div className="ing-group-row" ref={setNodeRef} style={style}>
       <span className="ing-flat-row__drag ing-group-row__drag" {...attributes} {...listeners}>⠿</span>
@@ -920,7 +939,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
           {/* Ingredients */}
           <div className="create-modal__field">
             <label className="create-modal__field-label">Ingredients</label>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onIngDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onIngDragEnd}>
               <SortableContext items={ings.map(i => i._id)} strategy={verticalListSortingStrategy}>
                 <div className="ing-flat-list">
                   {ings.map(ing => ing._isGroup
@@ -938,7 +957,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
           {/* Instructions */}
           <div className="create-modal__field">
             <label className="create-modal__field-label">Instructions</label>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onStepDragEnd}>
               <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
                 {steps.map((item, idx) => {
                   if (item._isTimer) return (
@@ -958,7 +977,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
                   const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
                   return (
                     <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
-                      <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
+                      <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
                       <button className="rp2__ed-add-timer-btn" onClick={() => { const i = steps.findIndex(s => s._id===item._id); const t={_id:`timer-${'{'}Date.now(){'}'}`,_isTimer:true,h:'',m:'',s:''}; const n=[...steps]; n.splice(i+1,0,t); setSteps(n); }} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                       <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                     </StepSortableItem>
@@ -987,6 +1006,28 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
         </div>
       </div>
     </div>
+  );
+};
+
+// --- Auto-growing textarea (grows to fit content, no scrollbar) -----------
+const AutoGrowTextarea = ({ value, onChange, placeholder, className, style, minRows = 2 }) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      className={className}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      rows={minRows}
+      style={{ resize: 'none', overflow: 'hidden', ...style }}
+    />
   );
 };
 
@@ -1906,6 +1947,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 <DndContext
                   sensors={ingDndSensors}
                   collisionDetection={closestCenter}
+                  onDragStart={() => haptic([8])}
                   onDragEnd={({ active, over }) => {
                     if (!over || active.id === over.id) return;
                     setDraftIngs(prev => arrayMove(prev, prev.findIndex(i => i._id === active.id), prev.findIndex(i => i._id === over.id)));
@@ -2011,12 +2053,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             )}
             {isAdmin && <SectionPencil
               isEditing={isEdit('instructions')}
-              onEdit={() => {
-                startEdit('instructions');
-                if (window.innerWidth <= 640) setShowInstructionsModal(true);
-              }}
+              onEdit={() => startEdit('instructions')}
               onSave={() => saveSection('instructions')}
-              onCancel={() => { cancelEdit(); setShowInstructionsModal(false); }}
+              onCancel={cancelEdit}
               saving={saving}
             />}
           </div>
@@ -2027,99 +2066,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             </div>
           )}
 
-          {/* Mobile instructions modal */}
-          {showInstructionsModal && isEdit('instructions') && (
-            <div className="ing-modal-overlay" onClick={() => { cancelEdit(); setShowInstructionsModal(false); }}>
-              <div className="ing-modal ing-modal--wide" onClick={e => e.stopPropagation()}>
-                <div className="ing-modal__header">
-                  <h2 className="ing-modal__title">Edit Instructions</h2>
-                  <div className="ing-modal__header-actions">
-                    <button className="ing-modal__save-btn" onClick={async () => { await saveSection('instructions'); setShowInstructionsModal(false); }} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
-                    <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowInstructionsModal(false); }}>✕</button>
-                  </div>
-                </div>
-                <div className="ing-modal__body">
-                  <DndContext sensors={rpSensors} collisionDetection={closestCenter} onDragEnd={onDraftStepDragEnd}>
-                    <SortableContext items={draftSteps.map(s => s._id)} strategy={verticalListSortingStrategy}>
-                      {draftSteps.map((item, idx) => {
-                        if (item._isGroup) {
-                          const addToGroup = () => {
-                            const grpName = item.name || '';
-                            let insertIdx = idx;
-                            for (let j = idx + 1; j < draftSteps.length; j++) {
-                              const s = draftSteps[j];
-                              if (s._isGroup) break;
-                              if (!s._isTimer && s.group_label !== grpName) break;
-                              insertIdx = j;
-                            }
-                            const newStep = { _id: `step-new-${Date.now()}`, body_text: '', timer_seconds: null, group_label: grpName };
-                            setDraftSteps(prev => { const next = [...prev]; next.splice(insertIdx + 1, 0, newStep); return next; });
-                          };
-                          return (
-                            <StepGroupRow key={item._id} grp={item}
-                              onLabelChange={v => setDraftSteps(prev => {
-                                const oldName = item.name || '';
-                                return prev.map(s => s._id === item._id ? { ...s, name: v } : (!s._isGroup && !s._isTimer && s.group_label === oldName) ? { ...s, group_label: v } : s);
-                              })}
-                              onRemove={() => setDraftSteps(prev => {
-                                const grpName = item.name || '';
-                                return prev.filter(s => s._id !== item._id).map(s => (!s._isGroup && !s._isTimer && s.group_label === grpName) ? { ...s, group_label: null } : s);
-                              })}
-                              onAddStep={addToGroup}
-                            />
-                          );
-                        }
-                        if (item._isTimer) {
-                          return (
-                            <div key={item._id} className="rp2__ed-timer-row">
-                              <span className="rp2__ed-timer-row__icon"><Icon name="timer" size={14} strokeWidth={2} /></span>
-                              <div className="rp2__ed-timer-row__inputs">
-                                <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" value={item.h} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, h: e.target.value} : s))} placeholder="0" />
-                                <span className="rp2__ed-timer-row__sep">h</span>
-                                <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.m} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, m: e.target.value} : s))} placeholder="0" />
-                                <span className="rp2__ed-timer-row__sep">m</span>
-                                <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
-                                <span className="rp2__ed-timer-row__sep">s</span>
-                              </div>
-                              <button className="editor-remove-btn" onClick={() => setDraftSteps(prev => { const i2 = prev.findIndex(s => s._id === item._id); const next = prev.filter(s => s._id !== item._id); if (i2 > 0 && !prev[i2-1]._isTimer) return next.map(s => s._id === prev[i2-1]._id ? {...s, timer_seconds: null} : s); return next; })}>✕</button>
-                            </div>
-                          );
-                        }
-                        const isGrouped = !!item.group_label;
-                        const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
-                        let nearestGroupAbove = null;
-                        for (let j = idx - 1; j >= 0; j--) {
-                          if (draftSteps[j]._isGroup) { nearestGroupAbove = draftSteps[j].name || ''; break; }
-                          if (!draftSteps[j]._isTimer) break;
-                        }
-                        const anyGroupAbove = !isGrouped && draftSteps.slice(0, idx).some(s => s._isGroup);
-                        if (!nearestGroupAbove && anyGroupAbove) { for (let j = idx - 1; j >= 0; j--) { if (draftSteps[j]._isGroup) { nearestGroupAbove = draftSteps[j].name || ''; break; } } }
-                        const canSnap = !isGrouped && anyGroupAbove;
-                        const handleSnap = () => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, group_label: nearestGroupAbove } : s));
-                        const handleUnsnap = () => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, group_label: null } : s));
-                        return (
-                          <StepSortableItem key={item._id} id={item._id} stepNum={stepNum} grouped={isGrouped} onSnap={handleSnap} onUnsnap={handleUnsnap} canSnap={canSnap}>
-                            <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." rows={3} style={{ fontSize: 16 }} />
-                            <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
-                            <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
-                          </StepSortableItem>
-                        );
-                      })}
-                    </SortableContext>
-                  </DndContext>
-                  <div className="ing-flat-add-row">
-                    <button className="btn btn--ghost editor-add-btn" onClick={addDraftStep}>+ Add Step</button>
-                    <button className="btn btn--ghost editor-add-btn ing-add-group-btn" onClick={() => setDraftSteps(prev => [...prev, { _id: `step-grp-${Date.now()}`, _isGroup: true, name: '' }])}>+ Add Group</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Desktop inline editor — hidden on mobile when modal is active */}
-          {isEdit('instructions') && !showInstructionsModal ? (
+          {/* Inline editor — desktop and mobile */}
+          {isEdit('instructions') ? (
             <div className="rp2__inline-editor">
-              <DndContext sensors={rpSensors} collisionDetection={closestCenter} onDragEnd={onDraftStepDragEnd}>
+              <DndContext sensors={rpSensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onDraftStepDragEnd}>
                 <SortableContext items={draftSteps.map(s => s._id)} strategy={verticalListSortingStrategy}>
                   {draftSteps.map((item, idx) => {
                     if (item._isGroup) {
@@ -2222,7 +2172,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     return (
                       <StepSortableItem key={item._id} id={item._id} stepNum={stepNum} grouped={isGrouped}
                         onSnap={handleSnap} onUnsnap={handleUnsnap} canSnap={canSnap}>
-                        <textarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
+                        <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
                         <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step"><Icon name="timer" size={13} strokeWidth={2} /></button>
                         <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
                       </StepSortableItem>
@@ -2528,9 +2478,17 @@ const UnitAutocomplete = ({ value, onChange }) => {
 
 const SortableItem = ({ id, children }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 10 : undefined };
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: isDragging ? 'none' : transition,
+    opacity: isDragging ? 0.92 : 1,
+    zIndex: isDragging ? 100 : undefined,
+    boxShadow: isDragging ? '0 8px 32px rgba(46,42,39,0.22), 0 2px 8px rgba(46,42,39,0.12)' : undefined,
+    borderRadius: isDragging ? '10px' : undefined,
+    scale: isDragging ? '1.03' : undefined,
+  };
   return (
-    <div ref={setNodeRef} style={style} className="sortable-item">
+    <div ref={setNodeRef} style={style} className={`sortable-item ${isDragging ? 'sortable-item--dragging' : ''}`}>
       <div className="sortable-handle" {...attributes} {...listeners}>⠿</div>
       {children}
     </div>
@@ -2540,9 +2498,16 @@ const SortableItem = ({ id, children }) => {
 // Step sortable item -- the step number bubble IS the drag handle
 const StepSortableItem = ({ id, stepNum, grouped, children, onSnap, onUnsnap, canSnap }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1, zIndex: isDragging ? 10 : undefined };
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: isDragging ? 'none' : transition,
+    opacity: isDragging ? 0.92 : 1,
+    zIndex: isDragging ? 100 : undefined,
+    boxShadow: isDragging ? '0 8px 32px rgba(46,42,39,0.22), 0 2px 8px rgba(46,42,39,0.12)' : undefined,
+    borderRadius: isDragging ? '12px' : undefined,
+  };
   return (
-    <div ref={setNodeRef} style={style} className={`step-sortable-row ${grouped ? 'step-sortable-row--grouped' : ''}`}>
+    <div ref={setNodeRef} style={style} className={`step-sortable-row ${grouped ? 'step-sortable-row--grouped' : ''} ${isDragging ? 'step-sortable-row--dragging' : ''}`}>
       {/* Snap/unsnap tab — only shown when relevant */}
       {grouped ? (
         <button
@@ -2572,7 +2537,13 @@ const StepSortableItem = ({ id, stepNum, grouped, children, onSnap, onUnsnap, ca
 // Step group row -- draggable group header for instruction sections
 const StepGroupRow = ({ grp, onLabelChange, onRemove, onAddStep }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: grp._id });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: isDragging ? 'none' : transition,
+    opacity: isDragging ? 0.92 : 1,
+    zIndex: isDragging ? 100 : undefined,
+    boxShadow: isDragging ? '0 8px 28px rgba(46,42,39,0.2)' : undefined,
+  };
   return (
     <div className="step-group-row" ref={setNodeRef} style={style}>
       <span className="step-group-row__drag" {...attributes} {...listeners}>⠿</span>
@@ -2739,7 +2710,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
         <h3 className="editor-section__title">Ingredients</h3>
         <datalist id="group-labels">{groupLabels.map(l => <option key={l} value={l} />)}</datalist>
         <div className="editor-ing-header"><span>Amount</span><span>Unit</span><span>Name</span><span>Group</span><span>Prep note</span><span>Opt?</span><span></span></div>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onIngDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onIngDragEnd}>
           <SortableContext items={ings.map(i => i._id)} strategy={verticalListSortingStrategy}>
             {ings.map(ing => (
               <SortableItem key={ing._id} id={ing._id}>
@@ -2761,7 +2732,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
 
       <section className="editor-section">
         <h3 className="editor-section__title">Instructions</h3>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onStepDragEnd}>
           <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
             {steps.map((item, idx) => {
               if (item._isTimer) {
@@ -2783,7 +2754,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
               const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
               return (
                 <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
-                  <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
+                  <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
                   <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                   <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                 </StepSortableItem>
@@ -5141,7 +5112,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
           <div className="create-modal__field">
             <label className="create-modal__field-label">Ingredients</label>
             <datalist id="cv-group-labels">{groupLabels.map(l => <option key={l} value={l} />)}</datalist>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onIngDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onIngDragEnd}>
               <SortableContext items={ings.map(i => i._id)} strategy={verticalListSortingStrategy}>
                 <div className="ing-flat-list">
                   {ings.map(ing => {
@@ -5181,7 +5152,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
           {/* Instructions */}
           <div className="create-modal__field">
             <label className="create-modal__field-label">Instructions</label>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onStepDragEnd}>
               <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
                 {steps.map((item, idx) => {
                   if (item._isTimer) return (
@@ -5201,7 +5172,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
                   const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
                   return (
                     <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
-                      <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
+                      <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
                       <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                       <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                     </StepSortableItem>
@@ -6187,7 +6158,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
               {/* Ingredients -- group-style like edit modal */}
               <div className="create-modal__field">
                 <label className="create-modal__field-label">Ingredients</label>
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onIngDragEnd}>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onIngDragEnd}>
                   <SortableContext items={ings.map(i => i._id)} strategy={verticalListSortingStrategy}>
                     <div className="ing-flat-list">
                       <div className="ing-flat-header ing-flat-header--desktop">
@@ -6240,7 +6211,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
               {/* Instructions */}
               <div className="create-modal__field">
                 <label className="create-modal__field-label">Instructions</label>
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onStepDragEnd}>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onStepDragEnd}>
                   <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
                     {steps.map((item, idx) => {
                       if (item._isTimer) return (
@@ -6260,7 +6231,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                       const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
                       return (
                         <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
-                          <textarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." rows={2} />
+                          <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
                           <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                           <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                         </StepSortableItem>
