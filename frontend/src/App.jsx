@@ -416,8 +416,8 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
   return (
     <div className="ing-flat-row" ref={setNodeRef} style={style}>
       <span className="ing-flat-row__drag" {...attributes} {...listeners}>⠿</span>
-      {/* Desktop: grid row. Mobile: card layout */}
       <div className="ing-flat-row__fields">
+        {/* Row 1 (desktop inline / mobile: Name full width) */}
         <div className="ing-flat-row__row1">
           <input className="editor-input ing-flat-row__qty" value={ing.amount} onChange={e => onUpdate('amount', e.target.value)} placeholder="Qty" />
           <div className="ing-flat-row__unit-wrap">
@@ -427,6 +427,7 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
             <IngredientAutocomplete value={ing.name} onChange={v => onUpdate('name', v)} allIngredients={allIngredients} />
           </div>
         </div>
+        {/* Row 2 (desktop inline / mobile: Prep + optional + remove) */}
         <div className="ing-flat-row__row2">
           <input className="editor-input ing-flat-row__prep" value={ing.prep_note || ''} onChange={e => onUpdate('prep_note', e.target.value)} placeholder="Prep note (e.g. finely chopped)" />
           <button
@@ -1385,6 +1386,35 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               {recipe.servings && (
                 <p className="nutrition-modal__servings">Per serving · {recipe.servings} servings total</p>
               )}
+              {/* Per-ingredient calorie breakdown */}
+              {bodyIngredients?.length > 0 && (
+                <div className="nutrition-modal__breakdown">
+                  <h4 className="nutrition-modal__breakdown-title">Calorie breakdown</h4>
+                  {bodyIngredients.filter(i => !i._isGroup).map((ing, idx) => {
+                    const dbIng = allIngredients.find(a => a.name?.toLowerCase() === ing.name?.toLowerCase());
+                    if (!dbIng || dbIng.calories == null) return null;
+                    const amount = parseFloat(ing.amount) || 1;
+                    const unit = (ing.unit || '').toLowerCase().trim();
+                    let grams;
+                    if (UNIT_GRAMS[unit]) grams = amount * UNIT_GRAMS[unit];
+                    else if (dbIng.grams_per_unit) grams = amount * dbIng.grams_per_unit;
+                    else return null;
+                    const cal = Math.round((dbIng.calories * grams) / 100);
+                    const prot = dbIng.protein ? Math.round((dbIng.protein * grams) / 100 * 10) / 10 : null;
+                    const pct = displayCalories ? Math.round((cal / displayCalories) * 100) : 0;
+                    return (
+                      <div key={idx} className="nutrition-modal__row">
+                        <span className="nutrition-modal__row-name">{[ing.amount, ing.unit].filter(Boolean).join(' ')} {ing.name}</span>
+                        <div className="nutrition-modal__row-bar-wrap">
+                          <div className="nutrition-modal__row-bar" style={{ width: `${Math.min(pct, 100)}%` }} />
+                        </div>
+                        <span className="nutrition-modal__row-cal">{cal} kcal</span>
+                        {prot !== null && <span className="nutrition-modal__row-prot">{prot}g</span>}
+                      </div>
+                    );
+                  }).filter(Boolean)}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1441,8 +1471,13 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           <div className="rp2__hero-corner rp2__hero-corner--tl rp2__hero-mobile-only">
             <button className="rp2__hero-btn" onClick={e => { e.stopPropagation(); onBack(); }}>← Back</button>
           </div>
-          {/* Top-right: Photo edit (admin) */}
+          {/* Top-right: Photo edit (admin) + Cooked */}
           <div className="rp2__hero-corner rp2__hero-corner--tr rp2__hero-mobile-only">
+            {isMakeSoon && onMarkCooked && (
+              <button className="rp2__hero-btn rp2__hero-cooked-btn"
+                onClick={e => { e.stopPropagation(); setShowCookedModal(true); }} title="Mark as Cooked"
+              ><Icon name="chefHat" size={15} strokeWidth={2} /> Cooked</button>
+            )}
             {isAdmin && <div className="rp2__photo-btn-wrap">
               <button className="rp2__hero-btn rp2__hero-soon rp2__hero-btn--photo"
                 onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Change photo link">✎
@@ -1474,12 +1509,16 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               title={isMakeSoon ? 'Remove from Make Soon' : 'Add to Make Soon'}
             ><Icon name="timer" size={16} strokeWidth={2} /></button>
           </div>
-          {/* Bottom-right: Cooked */}
+          {/* Bottom-right: Calories pill (tappable) */}
           <div className="rp2__hero-corner rp2__hero-corner--br rp2__hero-mobile-only">
-            {isMakeSoon && onMarkCooked && (
-              <button className="rp2__hero-btn rp2__hero-cooked-btn"
-                onClick={e => { e.stopPropagation(); setShowCookedModal(true); }} title="Mark as Cooked"
-              ><Icon name="chefHat" size={15} strokeWidth={2} /> Cooked</button>
+            {displayCalories !== null && (
+              <button
+                className="rp2__pill rp2__pill--nutrition rp2__hero-mobile-cal"
+                onClick={e => { e.stopPropagation(); setShowNutritionModal(true); }}
+              >
+                <span className="rp2__pill-icon"><Icon name="zap" size={12} strokeWidth={2} /></span>
+                {displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}
+              </button>
             )}
           </div>
 
@@ -2745,6 +2784,36 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
   );
 };
 
+// --- Long Press Chip (kitchen ingredients on mobile) -------------------------
+const LongPressChip = ({ ing, isOn, hasNutrition, onToggle, onLongPress }) => {
+  const timerRef = useRef(null);
+  const didLongPress = useRef(false);
+
+  const startPress = () => {
+    didLongPress.current = false;
+    timerRef.current = setTimeout(() => {
+      didLongPress.current = true;
+      onLongPress();
+    }, 500);
+  };
+  const endPress = () => clearTimeout(timerRef.current);
+  const handleClick = () => { if (!didLongPress.current) onToggle(); };
+
+  return (
+    <button
+      className={`chip ${isOn ? 'chip--selected' : ''}`}
+      onTouchStart={startPress}
+      onTouchEnd={endPress}
+      onTouchMove={endPress}
+      onClick={handleClick}
+    >
+      {isOn && <span className="chip__check">✓</span>}
+      {ing.name}
+      {hasNutrition && <span className="fridge-chip__nutrition-dot" title="Has nutrition data" />}
+    </button>
+  );
+};
+
 // --- Always-expanded types ---------------------------------------------------
 const ALWAYS_OPEN_TYPES = new Set([]); // all sections are now collapsible
 
@@ -2753,6 +2822,8 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
   const [typeOverrides, setTypeOverrides] = useState(() => LS.get('ingredientTypeOverrides', {}));
   const [editingIng, setEditingIng] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null); // { ing, x, y }
+  const contextMenuRef = useRef(null);
   // Collapsible state for sections -- all collapsed except produce/meat by default
   const [collapsedTypes, setCollapsedTypes] = useState(() => {
     const init = {};
@@ -2770,6 +2841,28 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
 
   useEffect(() => { LS.set('ingredientTypeOverrides', typeOverrides); }, [typeOverrides]);
   useEffect(() => { LS.set('kitchenRecentlyUsed', recentlyUsed); }, [recentlyUsed]);
+
+  // Close context menu on outside tap
+  useEffect(() => {
+    const handler = (e) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) setContextMenu(null);
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => { document.removeEventListener('mousedown', handler); document.removeEventListener('touchstart', handler); };
+  }, []);
+
+  // Long-press handler factory
+  const useLongPress = (ing) => {
+    const timerRef = useRef(null);
+    const onStart = (e) => {
+      timerRef.current = setTimeout(() => {
+        setContextMenu({ ing });
+      }, 500);
+    };
+    const onEnd = () => clearTimeout(timerRef.current);
+    return { onTouchStart: onStart, onTouchEnd: onEnd, onTouchMove: onEnd };
+  };
 
   // Close quick-add dropdown on outside click
   useEffect(() => {
@@ -2892,20 +2985,17 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
               return (
                 <div key={ing.name} className="fridge-ing-wrap">
                   <div className="fridge-chip-group">
-                    <button className={`chip ${isOn ? 'chip--selected' : ''}`} onClick={() => toggle(ing.name, typeOverrides[ing.name] ?? ing.type)}>
-                      {isOn && <span className="chip__check">✓</span>}
-                      {ing.name}
-                      {hasNutrition && <span className="fridge-chip__nutrition-dot" title="Has nutrition data" />}
-                    </button>
+                    <LongPressChip
+                      ing={ing}
+                      isOn={allSelected.has(ing.name.toLowerCase())}
+                      hasNutrition={ing.calories != null || ing.protein != null || ing.fiber != null}
+                      onToggle={() => toggle(ing.name, typeOverrides[ing.name] ?? ing.type)}
+                      onLongPress={() => setContextMenu({ ing })}
+                    />
                     {/* Desktop: hover-reveal actions */}
                     <div className="fridge-chip-actions">
                       <button className="fridge-chip-action fridge-chip-action--edit" title="Edit" onClick={() => setEditingIng({ ...ing, type: typeOverrides[ing.name] ?? ing.type })}>✎</button>
                       <button className="fridge-chip-action fridge-chip-action--del" title="Delete" onClick={() => setDeleteTarget(ing)}>✕</button>
-                    </div>
-                    {/* Mobile: always-visible edit + delete */}
-                    <div className="fridge-chip-mobile-actions">
-                      <button className="fridge-chip-mobile-action fridge-chip-mobile-action--edit" onClick={e => { e.stopPropagation(); setEditingIng({ ...ing, type: typeOverrides[ing.name] ?? ing.type }); }} title="Edit">✎</button>
-                      <button className="fridge-chip-mobile-action fridge-chip-mobile-action--del" onClick={e => { e.stopPropagation(); setDeleteTarget(ing); }} title="Delete">✕</button>
                     </div>
                   </div>
                 </div>
@@ -2941,6 +3031,24 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
               <button className="btn btn--ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
               <button className="btn btn--danger" onClick={() => handleDeleteIng(deleteTarget)}><Icon name="trash2" size={14} strokeWidth={2} /> Delete</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Long-press context menu (mobile) */}
+      {contextMenu && (
+        <div className="fridge-context-overlay" onClick={() => setContextMenu(null)}>
+          <div className="fridge-context-menu" ref={contextMenuRef} onClick={e => e.stopPropagation()}>
+            <div className="fridge-context-menu__title">{contextMenu.ing.name}</div>
+            <button className="fridge-context-menu__item" onClick={() => { setEditingIng({ ...contextMenu.ing, type: typeOverrides[contextMenu.ing.name] ?? contextMenu.ing.type }); setContextMenu(null); }}>
+              <Icon name="pencil" size={16} strokeWidth={2} /> Edit ingredient
+            </button>
+            <button className="fridge-context-menu__item fridge-context-menu__item--danger" onClick={() => { setDeleteTarget(contextMenu.ing); setContextMenu(null); }}>
+              <Icon name="trash2" size={16} strokeWidth={2} /> Delete ingredient
+            </button>
+            <button className="fridge-context-menu__item fridge-context-menu__item--cancel" onClick={() => setContextMenu(null)}>
+              Cancel
+            </button>
           </div>
         </div>
       )}
