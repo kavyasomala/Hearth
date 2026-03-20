@@ -1132,56 +1132,26 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
 // A hidden "ghost" div with identical text determines the correct height.
 // The textarea reads that height via a CSS custom property on the wrapper.
 // Because value never changes during a dnd-kit drag, height stays locked.
-const AutoGrowTextarea = ({ value, onChange, placeholder, className, style, minRows = 2 }) => {
-  const wrapRef = useRef(null);
-  const ghostRef = useRef(null);
-
-  const syncHeight = useCallback(() => {
-    const ghost = ghostRef.current;
-    const wrap  = wrapRef.current;
-    if (!ghost || !wrap) return;
-    const h = ghost.offsetHeight;
-    if (h > 0) wrap.style.setProperty('--ta-h', h + 'px');
-  }, []);
-
-  useEffect(() => { syncHeight(); }, [value, syncHeight]);
-
-  useEffect(() => {
-    if (!ghostRef.current) return;
-    const ro = new ResizeObserver(syncHeight);
-    ro.observe(ghostRef.current);
-    return () => ro.disconnect();
-  }, [syncHeight]);
-
-  return (
-    <div ref={wrapRef} style={{ position: 'relative' }}>
-      <div
-        ref={ghostRef}
-        aria-hidden="true"
-        className={className}
-        style={{
-          position: 'absolute', top: 0, left: 0, right: 0,
-          visibility: 'hidden', pointerEvents: 'none',
-          whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          overflowWrap: 'anywhere', height: 'auto', overflow: 'visible',
-          ...style,
-        }}
-      >{value || placeholder || ' '}{'\n'}</div>
-      <textarea
-        className={className}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        rows={minRows}
-        style={{
-          resize: 'none', overflow: 'hidden', width: '100%', display: 'block',
-          height: 'var(--ta-h)', minHeight: 'var(--ta-h)',
-          ...style,
-        }}
-      />
-    </div>
-  );
+// --- Rows-based auto-grow textarea — completely immune to drag reflow ---
+// Computes rows from newlines + estimated line wraps at ~60 chars per row.
+// No DOM measurement, no ResizeObserver, no JS during drag — just a number.
+const countRows = (text, minRows, charsPerRow = 60) => {
+  if (!text) return minRows;
+  const lines = text.split('\n');
+  const rows = lines.reduce((sum, line) => sum + Math.max(1, Math.ceil((line.length || 1) / charsPerRow)), 0);
+  return Math.max(minRows, rows);
 };
+
+const AutoGrowTextarea = ({ value, onChange, placeholder, className, style, minRows = 2 }) => (
+  <textarea
+    className={className}
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder}
+    rows={countRows(value, minRows)}
+    style={{ resize: 'none', overflow: 'hidden', width: '100%', display: 'block', ...style }}
+  />
+);
 
 // --- Step Item with integrated timer --------------------------------------
 const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNotes = [] }) => {
@@ -1294,65 +1264,23 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
   );
 };
 
-// --- Ingredient Item with "used in steps" collapsible ----------------------
-const IngredientItem = ({ ing, isChecked, amountStr, onToggle, instructions = [] }) => {
-  const [showUsage, setShowUsage] = useState(false);
-
-  // Find steps that mention this ingredient by name
-  const usedInSteps = useMemo(() => {
-    if (!ing.name || !instructions?.length) return [];
-    const name = ing.name.toLowerCase().trim();
-    // Also match common variations: plural, singular
-    const words = name.split(/\s+/);
-    const root = words[words.length - 1]; // e.g. "garlic cloves" → search "clove" too
-    return instructions
-      .filter(s => {
-        const body = (s.body_text || '').toLowerCase();
-        return body.includes(name) || (root.length > 3 && body.includes(root.slice(0, -1)));
-      })
-      .sort((a, b) => a.step_number - b.step_number);
-  }, [ing.name, instructions]);
-
-  const truncate = (text, len = 60) => text.length > len ? text.slice(0, len).trimEnd() + '…' : text;
-
-  return (
-    <li className={`rp2__ing-item ${isChecked ? 'rp2__ing-item--checked' : ''}`} onClick={onToggle}>
-      <div className={`rp2__ing-check ${isChecked ? 'rp2__ing-check--done' : ''}`}>
-        {isChecked && <Icon name="check" size={10} strokeWidth={3} />}
-      </div>
-      <div className="rp2__ing-text">
-        <span className="rp2__ing-line">
-          {amountStr && <span className="rp2__ing-amount">{amountStr} </span>}
-          <span className="rp2__ing-name">
-            {pluralizeIng(ing.name, ing.amount)}
-            {ing.prep_note ? <span className="rp2__ing-prep">, {ing.prep_note}</span> : ''}
-          </span>
-          {ing.optional && <span className="rp2__ing-optional">optional</span>}
+const IngredientItem = ({ ing, isChecked, amountStr, onToggle }) => (
+  <li className={`rp2__ing-item ${isChecked ? 'rp2__ing-item--checked' : ''}`} onClick={onToggle}>
+    <div className={`rp2__ing-check ${isChecked ? 'rp2__ing-check--done' : ''}`}>
+      {isChecked && <Icon name="check" size={10} strokeWidth={3} />}
+    </div>
+    <div className="rp2__ing-text">
+      <span className="rp2__ing-line">
+        {amountStr && <span className="rp2__ing-amount">{amountStr} </span>}
+        <span className="rp2__ing-name">
+          {pluralizeIng(ing.name, ing.amount)}
+          {ing.prep_note ? <span className="rp2__ing-prep">, {ing.prep_note}</span> : ''}
         </span>
-        {usedInSteps.length > 0 && (
-          <div className="rp2__ing-usage" onClick={e => e.stopPropagation()}>
-            <button
-              className="rp2__ing-usage-toggle"
-              onClick={() => setShowUsage(v => !v)}
-            >
-              <span className={`rp2__ing-usage-toggle__arrow ${showUsage ? 'rp2__ing-usage-toggle__arrow--open' : ''}`}>▾</span>
-              used in {usedInSteps.length} step{usedInSteps.length !== 1 ? 's' : ''}
-            </button>
-            {showUsage && (
-              <ul className="rp2__ing-usage-list">
-                {usedInSteps.map(s => (
-                  <li key={s.step_number} className="rp2__ing-usage-item">
-                    <strong>Step {s.step_number}</strong> — {truncate(s.body_text)}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
-    </li>
-  );
-};
+        {ing.optional && <span className="rp2__ing-optional">optional</span>}
+      </span>
+    </div>
+  </li>
+);
 
 // --- Recipe Page -------------------------------------------------------------
 const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [] }) => {
@@ -2243,7 +2171,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                           isChecked={isChecked}
                           amountStr={amountStr}
                           onToggle={() => toggleIngredient(key)}
-                          instructions={instructions}
                         />
                       );
                     })}
