@@ -3699,6 +3699,8 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const [cookHistory, setCookHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [comingSoonOpen, setComingSoonOpen] = useState(false);
+  const [showComingSoon, setShowComingSoon] = useState(() => LS.get('showComingSoon', true));
   const [attemptsOpen, setAttemptsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [sharingOpen, setSharingOpen] = useState(false);
@@ -4150,6 +4152,60 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         </section>
       )}
 
+      {/* -- Coming Soon -- */}
+      {showComingSoon && (
+        <section className="profile-section profile-section--collapsible">
+          <button className="profile-settings-toggle" onClick={() => setComingSoonOpen(o => !o)}>
+            <span className="profile-settings-toggle__title"><Icon name="zap" size={15} strokeWidth={2} /> Coming Soon</span>
+            <span className={`profile-settings-toggle__arrow ${comingSoonOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
+          </button>
+          {comingSoonOpen && (
+            <div className="profile-settings-body">
+
+              <div className="settings-section">
+                <h4 className="settings-section__title">⚖️ Recipe Proportions</h4>
+                <p className="settings-section__hint">
+                  Adjust any one ingredient's amount and the rest of the recipe scales automatically
+                  while keeping whole-unit ingredients (like eggs) sensibly rounded. Calorie and
+                  nutrition totals will recalculate in real time as amounts change.
+                </p>
+                <span className="roadmap-badge">Planned</span>
+              </div>
+
+              <div className="settings-section">
+                <h4 className="settings-section__title">💬 Ingredient Reasoning on Hover</h4>
+                <p className="settings-section__hint">
+                  Hover over any ingredient in a recipe to see a short cooking note explaining why
+                  that quantity or ratio was chosen — things like "balances acidity" or "adds depth
+                  without overpowering." Purely culinary context, no dietary or allergy info.
+                </p>
+                <span className="roadmap-badge">Planned</span>
+              </div>
+
+              <div className="settings-section">
+                <h4 className="settings-section__title">🔢 Accurate Calorie Tracking</h4>
+                <p className="settings-section__hint">
+                  After cooking, log exactly how much of each high-calorie ingredient you actually
+                  used and get an adjusted nutrition breakdown — useful when you deviate from the
+                  recipe (e.g. used less oil, added extra cheese).
+                </p>
+                <span className="roadmap-badge">Planned</span>
+              </div>
+
+              <div className="settings-section">
+                <h4 className="settings-section__title">🖼️ Local Image Upload</h4>
+                <p className="settings-section__hint">
+                  Upload a photo directly from your device to use as a recipe cover image, stored
+                  as a base-64 string in the database — no external hosting or URL required.
+                </p>
+                <span className="roadmap-badge">Planned</span>
+              </div>
+
+            </div>
+          )}
+        </section>
+      )}
+
       {/* -- 4. Settings -- */}
       <section className="profile-section profile-section--settings">
         <button className="profile-settings-toggle" onClick={() => setSettingsOpen(o => !o)}>
@@ -4250,6 +4306,17 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                 </label>
               )}
             </div>
+
+            {isAdmin && (
+              <div className="settings-section">
+                <h4 className="settings-section__title"><Icon name="zap" size={15} strokeWidth={2} /> Coming Soon Section</h4>
+                <p className="settings-section__hint">Show or hide the Coming Soon roadmap section on the profile page.</p>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, cursor: 'pointer', fontSize: 13 }}>
+                  <input type="checkbox" checked={showComingSoon} onChange={e => { setShowComingSoon(e.target.checked); LS.set('showComingSoon', e.target.checked); }} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--terracotta)' }} />
+                  <span>Show Coming Soon on profile</span>
+                </label>
+              </div>
+            )}
 
             <div className="settings-section settings-section--about">
               <h4 className="settings-section__title"><Icon name="lightbulb" size={15} strokeWidth={2} /> About Hearth</h4>
