@@ -458,14 +458,27 @@ body {
   border-radius: 999px;
 }
 .recipe-card__stat--cal-btn {
-  /* Inherits all .recipe-card__stat styles — just makes it clickable */
-  cursor: pointer;
-  font-family: inherit;
-  font-size: inherit;
+  /* Full browser button reset so it looks identical to the span stats */
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  padding: 3px 8px;
+  border: 1px solid rgba(221,208,186,0.7);
+  border-radius: 999px;
+  background: var(--cream);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: inherit;
   line-height: inherit;
+  color: var(--warm-gray);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  vertical-align: middle;
 }
 .recipe-card__stat--cal-btn:hover {
   background: #fdf0eb;
@@ -6561,6 +6574,27 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 }
 .rp2__hero-overlay > * {
   pointer-events: auto;
+}
+
+
+/* ── Anchored popover panel — floats near its trigger ── */
+.anchored-popover {
+  background: var(--warm-white);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  box-shadow:
+    0 4px 16px rgba(46,42,39,0.10),
+    0 12px 40px rgba(46,42,39,0.14);
+  overflow: hidden;
+  animation: popoverIn 0.14s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes popoverIn {
+  from { opacity: 0; transform: scale(0.94) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+[data-theme="dark"] .anchored-popover {
+  background: var(--warm-white);
+  border-color: var(--border);
 }
 
 /* ══════════════════════════════════════════════════════════════════

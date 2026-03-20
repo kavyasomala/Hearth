@@ -144,7 +144,71 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// --- Haptic feedback utility ------------------------------------------------
+// --- Anchored Popover -------------------------------------------------------
+// Positions a floating panel near the element that triggered it.
+// Usage: const { anchorRef, popoverStyle, open, setOpen } = useAnchoredPopover()
+// Put anchorRef on the trigger button, pass popoverStyle to the popover div.
+const useAnchoredPopover = (opts = {}) => {
+  const { preferSide = 'bottom', gap = 8, popoverW = 380, popoverH = 480 } = opts;
+  const anchorRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  const openPopover = useCallback(() => {
+    if (!anchorRef.current) { setOpen(true); return; }
+    const rect = anchorRef.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Decide vertical position
+    const spaceBelow = vh - rect.bottom;
+    const spaceAbove = rect.top;
+    let top;
+    if (preferSide === 'bottom' && spaceBelow >= Math.min(popoverH, 300) + gap) {
+      top = rect.bottom + gap;
+    } else if (spaceAbove >= Math.min(popoverH, 300) + gap) {
+      top = rect.top - Math.min(popoverH, spaceAbove - gap);
+    } else {
+      // Not enough space either side — center vertically on screen
+      top = Math.max(8, (vh - popoverH) / 2);
+    }
+
+    // Decide horizontal position — align to trigger, clamped to viewport
+    let left = rect.left;
+    if (left + popoverW > vw - 8) left = vw - popoverW - 8;
+    if (left < 8) left = 8;
+
+    // On mobile, always center
+    if (vw <= 640) {
+      top = Math.max(8, (vh - popoverH) / 2);
+      left = (vw - Math.min(popoverW, vw - 16)) / 2;
+    }
+
+    setPos({ top, left });
+    setOpen(true);
+  }, [preferSide, gap, popoverW, popoverH]);
+
+  return { anchorRef, open, setOpen, openPopover, popoverStyle: { position: 'fixed', top: pos.top, left: pos.left, width: Math.min(popoverW, window.innerWidth - 16), zIndex: 1000 } };
+};
+
+// AnchoredPopover: backdrop + positioned panel
+const AnchoredPopover = ({ open, onClose, popoverStyle, children, maxHeight = 520 }) => {
+  if (!open) return null;
+  return (
+    <>
+      {/* Invisible full-screen backdrop */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={onClose} />
+      {/* The panel itself */}
+      <div
+        style={{ ...popoverStyle, maxHeight, overflowY: 'auto', zIndex: 1000 }}
+        className="anchored-popover"
+        onClick={e => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </>
+  );
+};
 const haptic = (pattern = [10]) => {
   try { if (navigator.vibrate) navigator.vibrate(pattern); } catch {}
 };
@@ -428,11 +492,12 @@ const NutritionModalBody = ({ recipe, bodyIngredients, allIngredients, displayCa
 
 // --- Nutrition Card Popup --------------------------------------------------
 // Shown from recipe cards — fetches ingredient detail on demand
-const NutritionCardPopup = ({ recipe, allIngredients, onClose }) => {
+// anchorRect: DOMRect from the calories button so we can position near it
+const NutritionCardPopup = ({ recipe, allIngredients, onClose, anchorRect }) => {
   const calories = toNum(recipe.calories);
   const protein  = toNum(recipe.protein);
   const fiber    = toNum(recipe.fiber);
-  const [bodyIngredients, setBodyIngredients] = useState(null); // null = loading
+  const [bodyIngredients, setBodyIngredients] = useState(null);
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
@@ -450,9 +515,25 @@ const NutritionCardPopup = ({ recipe, allIngredients, onClose }) => {
     return () => { cancelled = true; };
   }, [recipe.id]);
 
+  // Compute position near the anchor
+  const popoverStyle = useMemo(() => {
+    const pw = 360, ph = 480;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    if (!anchorRect || vw <= 640) {
+      return { position: 'fixed', top: Math.max(8, (vh - ph) / 2), left: Math.max(8, (vw - pw) / 2), width: Math.min(pw, vw - 16), zIndex: 1001 };
+    }
+    let top = anchorRect.bottom + 8;
+    let left = anchorRect.left;
+    if (top + ph > vh - 8) top = Math.max(8, anchorRect.top - ph - 8);
+    if (left + pw > vw - 8) left = vw - pw - 8;
+    if (left < 8) left = 8;
+    return { position: 'fixed', top, left, width: pw, zIndex: 1001 };
+  }, [anchorRect]);
+
   return (
-    <div className="create-modal-overlay" onClick={onClose}>
-      <div className="nutrition-modal" onClick={e => e.stopPropagation()}>
+    <>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={onClose} />
+      <div className="nutrition-modal anchored-popover" style={{ ...popoverStyle, maxHeight: 520, overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
         <div className="nutrition-modal__header">
           <h2 className="nutrition-modal__title"><Icon name="zap" size={18} strokeWidth={2} /> Nutrition Info</h2>
           <button className="ing-modal__close" onClick={onClose}>✕</button>
@@ -474,7 +555,7 @@ const NutritionCardPopup = ({ recipe, allIngredients, onClose }) => {
           />
         )}
       </div>
-    </div>
+    </>
   );
 };
 
@@ -491,10 +572,11 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
   const progress = recipe.status === 'incomplete' ? <Icon name="alertTriangle" size={12} strokeWidth={2} /> : recipe.status === 'needs tweaking' ? <Icon name="tool" size={12} strokeWidth={2} /> : recipe.status === 'complete' ? <Icon name="checkCircle" size={12} strokeWidth={2} /> : recipe.status === 'to try' ? <Icon name="bookMarked" size={12} strokeWidth={2} /> : null;
   const isCookbookRef = Boolean(recipe.cookbook && (!recipe.ingredients || recipe.ingredients.length === 0));
   const [showNutrition, setShowNutrition] = useState(false);
+  const [nutritionAnchorRect, setNutritionAnchorRect] = useState(null);
 
   return (
     <>
-      {showNutrition && <NutritionCardPopup recipe={recipe} allIngredients={allIngredients} onClose={() => setShowNutrition(false)} />}
+      {showNutrition && <NutritionCardPopup recipe={recipe} allIngredients={allIngredients} anchorRect={nutritionAnchorRect} onClose={() => setShowNutrition(false)} />}
       <article className={`recipe-card ${isCookbookRef ? 'recipe-card--cb-ref' : ''}`} onClick={() => onClick(recipe)}>
         <div className="recipe-card__image">
           {coverImage
@@ -538,7 +620,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
             {calories !== null && (
               <button
                 className="recipe-card__stat recipe-card__stat--cal-btn"
-                onClick={e => { e.stopPropagation(); setShowNutrition(true); }}
+                onClick={e => { e.stopPropagation(); setNutritionAnchorRect(e.currentTarget.getBoundingClientRect()); setShowNutrition(true); }}
                 title="View nutrition info"
               >
                 <span className="recipe-card__stat-icon"><Icon name="zap" size={12} strokeWidth={2} /></span>
@@ -1007,18 +1089,30 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
 // --- Auto-growing textarea (grows to fit content, no scrollbar) -----------
 const AutoGrowTextarea = ({ value, onChange, placeholder, className, style, minRows = 2 }) => {
   const ref = useRef(null);
+  // Track the last known scrollHeight so we never shrink below it during drag
+  const lastHeightRef = useRef(0);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    // Reset to auto only if current rendered height > lastKnown (growing)
+    // or if value actually changed (not a layout pass during drag)
     el.style.height = 'auto';
-    el.style.height = el.scrollHeight + 'px';
+    const newHeight = el.scrollHeight;
+    // Never let height decrease — prevents jump when sortable placeholder collapses
+    const finalHeight = Math.max(newHeight, lastHeightRef.current);
+    el.style.height = finalHeight + 'px';
+    lastHeightRef.current = finalHeight;
   }, [value]);
   return (
     <textarea
       ref={ref}
       className={className}
       value={value}
-      onChange={onChange}
+      onChange={e => {
+        // When user actually types, allow shrinking by resetting the cached height
+        lastHeightRef.current = 0;
+        onChange(e);
+      }}
       placeholder={placeholder}
       rows={minRows}
       style={{ resize: 'none', overflow: 'hidden', ...style }}
@@ -1206,8 +1300,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCookedModal, setShowCookedModal] = useState(false);
   const [showNutritionModal, setShowNutritionModal] = useState(false);
+  const [nutritionAnchorRect, setNutritionAnchorRect] = useState(null);
   const [showNotesModal, setShowNotesModal] = useState(false);
+  const [notesAnchorRect, setNotesAnchorRect] = useState(null);
   const [showCookbookModal, setShowCookbookModal] = useState(false);
+  const [cookbookAnchorRect, setCookbookAnchorRect] = useState(null);
   const [showInstructionsModal, setShowInstructionsModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
@@ -1552,25 +1649,41 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
       )}
 
       {/* -- Nutrition Modal -- */}
-      {showNutritionModal && (
-        <div className="create-modal-overlay" onClick={() => setShowNutritionModal(false)}>
-          <div className="nutrition-modal" onClick={e => e.stopPropagation()}>
-            <div className="nutrition-modal__header">
-              <h2 className="nutrition-modal__title"><Icon name="zap" size={18} strokeWidth={2} /> Nutrition Info</h2>
-              <button className="ing-modal__close" onClick={() => setShowNutritionModal(false)}>✕</button>
+      {showNutritionModal && (() => {
+        const pw = 400, ph = 520;
+        const vw = window.innerWidth, vh = window.innerHeight;
+        let top, left;
+        if (nutritionAnchorRect && vw > 640) {
+          top = nutritionAnchorRect.bottom + 8;
+          left = nutritionAnchorRect.left;
+          if (top + ph > vh - 8) top = Math.max(8, nutritionAnchorRect.top - ph - 8);
+          if (left + pw > vw - 8) left = vw - pw - 8;
+          if (left < 8) left = 8;
+        } else {
+          top = Math.max(8, (vh - ph) / 2);
+          left = Math.max(8, (vw - pw) / 2);
+        }
+        return (
+          <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setShowNutritionModal(false)} />
+            <div className="nutrition-modal anchored-popover" style={{ position: 'fixed', top, left, width: Math.min(pw, vw - 16), maxHeight: ph, overflowY: 'auto', zIndex: 1000 }} onClick={e => e.stopPropagation()}>
+              <div className="nutrition-modal__header">
+                <h2 className="nutrition-modal__title"><Icon name="zap" size={18} strokeWidth={2} /> Nutrition Info</h2>
+                <button className="ing-modal__close" onClick={() => setShowNutritionModal(false)}>✕</button>
+              </div>
+              <NutritionModalBody
+                recipe={recipe}
+                bodyIngredients={bodyIngredients}
+                allIngredients={allIngredients}
+                displayCalories={displayCalories}
+                displayProtein={displayProtein}
+                displayFiber={displayFiber}
+                nutritionIsEstimate={nutritionIsEstimate}
+              />
             </div>
-            <NutritionModalBody
-              recipe={recipe}
-              bodyIngredients={bodyIngredients}
-              allIngredients={allIngredients}
-              displayCalories={displayCalories}
-              displayProtein={displayProtein}
-              displayFiber={displayFiber}
-              nutritionIsEstimate={nutritionIsEstimate}
-            />
-          </div>
-        </div>
-      )}
+          </>
+        );
+      })()}
       <div className="rp2__hero">
         {recipe.coverImage
           ? <HeroImage src={recipe.coverImage} alt={recipe.name} />
@@ -1666,7 +1779,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             {displayCalories !== null && (
               <button
                 className="rp2__pill rp2__pill--nutrition rp2__hero-mobile-cal"
-                onClick={e => { e.stopPropagation(); setShowNutritionModal(true); }}
+                onClick={e => { e.stopPropagation(); setNutritionAnchorRect(e.currentTarget.getBoundingClientRect()); setShowNutritionModal(true); }}
               >
                 <span className="rp2__pill-icon"><Icon name="zap" size={12} strokeWidth={2} /></span>
                 {displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}
@@ -1834,7 +1947,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               {displayCalories !== null && (
                 <button
                   className="rp2__pill rp2__pill--nutrition"
-                  onClick={e => { e.stopPropagation(); setShowNutritionModal(true); }}
+                  onClick={e => { e.stopPropagation(); setNutritionAnchorRect(e.currentTarget.getBoundingClientRect()); setShowNutritionModal(true); }}
                   title={nutritionIsEstimate ? 'Estimated — save ingredients to lock in' : 'Auto-calculated from ingredients'}
                 >
                   <span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>
@@ -2238,30 +2351,22 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             <div className="rp2__notes">
               <div className="rp2__section-title-row">
                 <h2 className="rp2__section-title rp2__section-title--sm">Notes &amp; Tips</h2>
-                {isAdmin && <SectionPencil
-                  isEditing={isEdit('notes')}
-                  onEdit={() => {
-                    startEdit('notes');
-                    if (window.innerWidth <= 640) setShowNotesModal(true);
-                  }}
-                  onSave={() => saveSection('notes')}
-                  onCancel={() => { cancelEdit(); setShowNotesModal(false); }}
-                  saving={saving}
-                />}
+                {isAdmin && (
+                  <span className="section-pencil-wrap">
+                    {isEdit('notes') && !showNotesModal ? (
+                      <>
+                        <button className="section-pencil section-pencil--confirm" onClick={() => saveSection('notes')} disabled={saving} title={saving ? 'Saving...' : 'Save'}>{saving ? '...' : '✓'}</button>
+                        <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowNotesModal(false); }} title="Cancel">✕</button>
+                      </>
+                    ) : (
+                      <button className="section-pencil" onClick={e => { e.stopPropagation(); setNotesAnchorRect(e.currentTarget.getBoundingClientRect()); startEdit('notes'); setShowNotesModal(true); }} title="Edit">✎</button>
+                    )}
+                  </span>
+                )}
               </div>
 
-              {/* Desktop inline edit */}
-              {isEdit('notes') && !showNotesModal ? (
-                <div className="rp2__inline-editor">
-                  {draftNotes.map(n => (
-                    <div key={n._id} className="rp2__ed-note-row">
-                      <input className="editor-input" style={{flex:1}} value={n.text} onChange={e => updateDraftNote(n._id, e.target.value)} placeholder="Add a tip or note..." />
-                      <button className="editor-remove-btn" onClick={() => removeDraftNote(n._id)}>✕</button>
-                    </div>
-                  ))}
-                  <button className="btn btn--ghost editor-add-btn" onClick={addDraftNote}>+ Add Note</button>
-                </div>
-              ) : (
+              {/* Read-only notes display */}
+              {!isEdit('notes') && (
                 notes?.length > 0
                   ? <ul className="rp2__notes-list">
                       {notes.map((n, i) => (
@@ -2271,88 +2376,138 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   : <p className="rp2__empty-hint">No notes yet.</p>
               )}
 
-              {/* Mobile notes modal */}
-              {showNotesModal && isEdit('notes') && (
-                <div className="create-modal-overlay" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>
-                  <div className="create-modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
-                    <div className="create-modal__header">
-                      <h2 className="create-modal__title"><Icon name="note" size={18} strokeWidth={2} /> Notes &amp; Tips</h2>
-                      <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>✕</button>
+              {/* Desktop inline edit (fallback if popover not open) */}
+              {isEdit('notes') && !showNotesModal && (
+                <div className="rp2__inline-editor">
+                  {draftNotes.map(n => (
+                    <div key={n._id} className="rp2__ed-note-row">
+                      <input className="editor-input" style={{flex:1}} value={n.text} onChange={e => updateDraftNote(n._id, e.target.value)} placeholder="Add a tip or note..." />
+                      <button className="editor-remove-btn" onClick={() => removeDraftNote(n._id)}>✕</button>
                     </div>
-                    <div className="create-modal__body" style={{ gap: 10 }}>
-                      {draftNotes.map(n => (
-                        <div key={n._id} className="rp2__ed-note-row">
-                          <input className="editor-input" style={{ flex: 1, fontSize: 16 }} value={n.text} onChange={e => updateDraftNote(n._id, e.target.value)} placeholder="Add a tip or note..." autoFocus />
-                          <button className="editor-remove-btn" onClick={() => removeDraftNote(n._id)}>✕</button>
-                        </div>
-                      ))}
-                      <button className="btn btn--ghost editor-add-btn" onClick={addDraftNote}>+ Add Note</button>
-                    </div>
-                    <div className="create-modal__footer">
-                      <button className="btn btn--ghost" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>Cancel</button>
-                      <button className="btn btn--primary" onClick={async () => { await saveSection('notes'); setShowNotesModal(false); }} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
-                    </div>
-                  </div>
+                  ))}
+                  <button className="btn btn--ghost editor-add-btn" onClick={addDraftNote}>+ Add Note</button>
                 </div>
               )}
+
+              {/* Anchored notes popover (all screen sizes) */}
+              {showNotesModal && isEdit('notes') && (() => {
+                const pw = 360, ph = 400;
+                const vw = window.innerWidth, vh = window.innerHeight;
+                let top, left;
+                if (notesAnchorRect && vw > 640) {
+                  top = notesAnchorRect.bottom + 8;
+                  left = notesAnchorRect.left - pw + notesAnchorRect.width;
+                  if (top + ph > vh - 8) top = Math.max(8, notesAnchorRect.top - ph - 8);
+                  if (left + pw > vw - 8) left = vw - pw - 8;
+                  if (left < 8) left = 8;
+                } else {
+                  top = Math.max(8, (vh - ph) / 2);
+                  left = Math.max(8, (vw - Math.min(pw, vw - 16)) / 2);
+                }
+                return (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => { cancelEdit(); setShowNotesModal(false); }} />
+                    <div className="anchored-popover create-modal" style={{ position: 'fixed', top, left, width: Math.min(pw, vw - 16), zIndex: 1000, maxHeight: ph }} onClick={e => e.stopPropagation()}>
+                      <div className="create-modal__header">
+                        <h2 className="create-modal__title"><Icon name="note" size={18} strokeWidth={2} /> Notes &amp; Tips</h2>
+                        <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>✕</button>
+                      </div>
+                      <div className="create-modal__body" style={{ gap: 10, overflowY: 'auto' }}>
+                        {draftNotes.map(n => (
+                          <div key={n._id} className="rp2__ed-note-row">
+                            <input className="editor-input" style={{ flex: 1, fontSize: 16 }} value={n.text} onChange={e => updateDraftNote(n._id, e.target.value)} placeholder="Add a tip or note..." autoFocus={draftNotes.indexOf(n) === 0} />
+                            <button className="editor-remove-btn" onClick={() => removeDraftNote(n._id)}>✕</button>
+                          </div>
+                        ))}
+                        <button className="btn btn--ghost editor-add-btn" onClick={addDraftNote}>+ Add Note</button>
+                      </div>
+                      <div className="create-modal__footer">
+                        <button className="btn btn--ghost" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>Cancel</button>
+                        <button className="btn btn--primary" onClick={async () => { await saveSection('notes'); setShowNotesModal(false); }} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Cookbook Reference -- editable */}
             <div className="rp2__cookbook">
               <div className="rp2__section-title-row">
                 <h2 className="rp2__section-title rp2__cookbook-title">Cookbook</h2>
-                {isAdmin && <SectionPencil
-                  isEditing={isEdit('cookbook')}
-                  onEdit={() => {
-                    startEdit('cookbook');
-                    if (window.innerWidth <= 640) setShowCookbookModal(true);
-                  }}
-                  onSave={() => saveSection('cookbook')}
-                  onCancel={() => { cancelEdit(); setShowCookbookModal(false); }}
-                  saving={saving}
-                />}
+                {isAdmin && (
+                  <span className="section-pencil-wrap">
+                    {isEdit('cookbook') && !showCookbookModal ? (
+                      <>
+                        <button className="section-pencil section-pencil--confirm" onClick={() => saveSection('cookbook')} disabled={saving} title={saving ? 'Saving...' : 'Save'}>{saving ? '...' : '✓'}</button>
+                        <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowCookbookModal(false); }} title="Cancel">✕</button>
+                      </>
+                    ) : (
+                      <button className="section-pencil" onClick={e => { e.stopPropagation(); setCookbookAnchorRect(e.currentTarget.getBoundingClientRect()); startEdit('cookbook'); setShowCookbookModal(true); }} title="Edit">✎</button>
+                    )}
+                  </span>
+                )}
               </div>
 
-              {/* Desktop inline edit */}
-              {isEdit('cookbook') && !showCookbookModal ? (
-                <div className="rp2__cookbook-editor">
-                  <CookbookAutocomplete value={draftCookbook.cookbook} onChange={v => setDraftCookbook(p => ({...p, cookbook: v}))} cookbooks={cookbooks} />
-                  <input className="editor-input" value={draftCookbook.reference} onChange={e => setDraftCookbook(p => ({...p, reference: e.target.value}))} placeholder="Page number" style={{marginTop: 6}} />
-                </div>
-              ) : (recipe.cookbook || recipe.reference) ? (
+              {/* Read-only cookbook display */}
+              {!isEdit('cookbook') && ((recipe.cookbook || recipe.reference) ? (
                 <div className="rp2__cookbook-text">
                   <span className="rp2__cookbook-text__book">{recipe.cookbook}</span>
                   {recipe.reference && <span className="rp2__cookbook-text__page">Page {recipe.reference}</span>}
                 </div>
               ) : (
                 <p className="rp2__empty-hint">No reference yet. Click ✎ to add.</p>
-              )}
+              ))}
 
-              {/* Mobile cookbook modal */}
-              {showCookbookModal && isEdit('cookbook') && (
-                <div className="create-modal-overlay" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>
-                  <div className="create-modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
-                    <div className="create-modal__header">
-                      <h2 className="create-modal__title"><Icon name="bookMarked" size={18} strokeWidth={2} /> Cookbook</h2>
-                      <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>✕</button>
-                    </div>
-                    <div className="create-modal__body" style={{ gap: 14 }}>
-                      <div className="create-modal__field">
-                        <label className="create-modal__field-label">Cookbook title</label>
-                        <CookbookAutocomplete value={draftCookbook.cookbook} onChange={v => setDraftCookbook(p => ({...p, cookbook: v}))} cookbooks={cookbooks} />
-                      </div>
-                      <div className="create-modal__field">
-                        <label className="create-modal__field-label">Page number</label>
-                        <input className="editor-input" style={{ fontSize: 16 }} value={draftCookbook.reference} onChange={e => setDraftCookbook(p => ({...p, reference: e.target.value}))} placeholder="e.g. 142" />
-                      </div>
-                    </div>
-                    <div className="create-modal__footer">
-                      <button className="btn btn--ghost" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>Cancel</button>
-                      <button className="btn btn--primary" onClick={async () => { await saveSection('cookbook'); setShowCookbookModal(false); }} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
-                    </div>
-                  </div>
+              {/* Desktop inline edit (fallback) */}
+              {isEdit('cookbook') && !showCookbookModal && (
+                <div className="rp2__cookbook-editor">
+                  <CookbookAutocomplete value={draftCookbook.cookbook} onChange={v => setDraftCookbook(p => ({...p, cookbook: v}))} cookbooks={cookbooks} />
+                  <input className="editor-input" value={draftCookbook.reference} onChange={e => setDraftCookbook(p => ({...p, reference: e.target.value}))} placeholder="Page number" style={{marginTop: 6}} />
                 </div>
               )}
+
+              {/* Anchored cookbook popover (all screen sizes) */}
+              {showCookbookModal && isEdit('cookbook') && (() => {
+                const pw = 320, ph = 280;
+                const vw = window.innerWidth, vh = window.innerHeight;
+                let top, left;
+                if (cookbookAnchorRect && vw > 640) {
+                  top = cookbookAnchorRect.bottom + 8;
+                  left = cookbookAnchorRect.left - pw + cookbookAnchorRect.width;
+                  if (top + ph > vh - 8) top = Math.max(8, cookbookAnchorRect.top - ph - 8);
+                  if (left + pw > vw - 8) left = vw - pw - 8;
+                  if (left < 8) left = 8;
+                } else {
+                  top = Math.max(8, (vh - ph) / 2);
+                  left = Math.max(8, (vw - Math.min(pw, vw - 16)) / 2);
+                }
+                return (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => { cancelEdit(); setShowCookbookModal(false); }} />
+                    <div className="anchored-popover create-modal" style={{ position: 'fixed', top, left, width: Math.min(pw, vw - 16), zIndex: 1000 }} onClick={e => e.stopPropagation()}>
+                      <div className="create-modal__header">
+                        <h2 className="create-modal__title"><Icon name="bookMarked" size={18} strokeWidth={2} /> Cookbook</h2>
+                        <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>✕</button>
+                      </div>
+                      <div className="create-modal__body" style={{ gap: 14 }}>
+                        <div className="create-modal__field">
+                          <label className="create-modal__field-label">Cookbook title</label>
+                          <CookbookAutocomplete value={draftCookbook.cookbook} onChange={v => setDraftCookbook(p => ({...p, cookbook: v}))} cookbooks={cookbooks} />
+                        </div>
+                        <div className="create-modal__field">
+                          <label className="create-modal__field-label">Page number</label>
+                          <input className="editor-input" style={{ fontSize: 16 }} value={draftCookbook.reference} onChange={e => setDraftCookbook(p => ({...p, reference: e.target.value}))} placeholder="e.g. 142" />
+                        </div>
+                      </div>
+                      <div className="create-modal__footer">
+                        <button className="btn btn--ghost" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>Cancel</button>
+                        <button className="btn btn--primary" onClick={async () => { await saveSection('cookbook'); setShowCookbookModal(false); }} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
