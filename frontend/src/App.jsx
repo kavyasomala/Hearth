@@ -1004,6 +1004,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [showIngredientsModal, setShowIngredientsModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCookedModal, setShowCookedModal] = useState(false);
+  const [showNutritionModal, setShowNutritionModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [stayAwake, setStayAwake] = useState(false);
@@ -1345,6 +1346,49 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           onClose={() => setShowCookedModal(false)}
         />
       )}
+
+      {/* -- Nutrition Modal (mobile full popup) -- */}
+      {showNutritionModal && (
+        <div className="create-modal-overlay" onClick={() => setShowNutritionModal(false)}>
+          <div className="nutrition-modal" onClick={e => e.stopPropagation()}>
+            <div className="nutrition-modal__header">
+              <h2 className="nutrition-modal__title"><Icon name="zap" size={18} strokeWidth={2} /> Nutrition Info</h2>
+              <button className="ing-modal__close" onClick={() => setShowNutritionModal(false)}>✕</button>
+            </div>
+            <div className="nutrition-modal__body">
+              {nutritionIsEstimate && (
+                <p className="nutrition-modal__note">~ Estimated from ingredients — save to lock in.</p>
+              )}
+              <div className="nutrition-modal__grid">
+                {displayCalories !== null && (
+                  <div className="nutrition-modal__item">
+                    <span className="nutrition-modal__icon"><Icon name="zap" size={20} strokeWidth={2} color="var(--terracotta)" /></span>
+                    <span className="nutrition-modal__value">{displayCalories}</span>
+                    <span className="nutrition-modal__label">Calories (kcal)</span>
+                  </div>
+                )}
+                {displayProtein !== null && (
+                  <div className="nutrition-modal__item">
+                    <span className="nutrition-modal__icon"><Icon name="dumbbell" size={20} strokeWidth={2} color="var(--sage)" /></span>
+                    <span className="nutrition-modal__value">{displayProtein}g</span>
+                    <span className="nutrition-modal__label">Protein</span>
+                  </div>
+                )}
+                {displayFiber !== null && (
+                  <div className="nutrition-modal__item">
+                    <span className="nutrition-modal__icon"><Icon name="leaf" size={20} strokeWidth={2} color="var(--sage-light)" /></span>
+                    <span className="nutrition-modal__value">{displayFiber}g</span>
+                    <span className="nutrition-modal__label">Fiber</span>
+                  </div>
+                )}
+              </div>
+              {recipe.servings && (
+                <p className="nutrition-modal__servings">Per serving · {recipe.servings} servings total</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="rp2__hero">
         {recipe.coverImage
           ? <HeroImage src={recipe.coverImage} alt={recipe.name} />
@@ -1595,10 +1639,19 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 )}
               </div>}
 
-              {/* Display-only nutrition pills */}
-              {displayCalories !== null && <span className="rp2__pill" title={nutritionIsEstimate ? 'Estimated -- save ingredients to lock in' : 'Auto-calculated from ingredients'}><span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>{displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}</span>}
-              {displayProtein  !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="dumbbell" size={13} strokeWidth={2} /></span>{displayProtein}g prot{nutritionIsEstimate ? ' ~' : ''}</span>}
-              {displayFiber    !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="leaf" size={13} strokeWidth={2} /></span>{displayFiber}g fiber{nutritionIsEstimate ? ' ~' : ''}</span>}
+              {/* Display-only nutrition pills — tappable on mobile to show full popup */}
+              {displayCalories !== null && (
+                <button
+                  className="rp2__pill rp2__pill--nutrition"
+                  onClick={e => { e.stopPropagation(); setShowNutritionModal(true); }}
+                  title={nutritionIsEstimate ? 'Estimated — save ingredients to lock in' : 'Auto-calculated from ingredients'}
+                >
+                  <span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>
+                  {displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}
+                </button>
+              )}
+              {displayProtein !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="dumbbell" size={13} strokeWidth={2} /></span>{displayProtein}g prot{nutritionIsEstimate ? ' ~' : ''}</span>}
+              {displayFiber   !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="leaf" size={13} strokeWidth={2} /></span>{displayFiber}g fiber{nutritionIsEstimate ? ' ~' : ''}</span>}
             </div>
           </div>
         </div>
@@ -2078,7 +2131,7 @@ const IngredientAutocomplete = ({ value, onChange, allIngredients }) => {
 
   return (
     <div className="ing-ac-wrap" ref={wrapperRef}>
-      <input className="editor-input" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={onKeyDown} placeholder="soy sauce" autoComplete="off" />
+      <input className="editor-input" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} onKeyDown={onKeyDown} placeholder="soy sauce" autoComplete="off" />
       {open && suggestions.length > 0 && (
         <ul className="ing-ac-dropdown">
           {suggestions.map((ing, i) => {
@@ -2126,7 +2179,7 @@ const UnitAutocomplete = ({ value, onChange }) => {
 
   return (
     <div className="ing-ac-wrap" ref={wrapperRef}>
-      <input className="editor-input editor-input--sm" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={onKeyDown} placeholder="tbsp" autoComplete="off" />
+      <input className="editor-input editor-input--sm" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} onKeyDown={onKeyDown} placeholder="tbsp" autoComplete="off" />
       {open && suggestions.length > 0 && (
         <ul className="ing-ac-dropdown">
           {suggestions.map((u, i) => {
@@ -2693,7 +2746,7 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
 };
 
 // --- Always-expanded types ---------------------------------------------------
-const ALWAYS_OPEN_TYPES = new Set(['produce', 'meat']);
+const ALWAYS_OPEN_TYPES = new Set([]); // all sections are now collapsible
 
 const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, authFetch }) => {
   const apiFetch = authFetch || fetch;
@@ -2844,12 +2897,16 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
                       {ing.name}
                       {hasNutrition && <span className="fridge-chip__nutrition-dot" title="Has nutrition data" />}
                     </button>
+                    {/* Desktop: hover-reveal actions */}
                     <div className="fridge-chip-actions">
                       <button className="fridge-chip-action fridge-chip-action--edit" title="Edit" onClick={() => setEditingIng({ ...ing, type: typeOverrides[ing.name] ?? ing.type })}>✎</button>
                       <button className="fridge-chip-action fridge-chip-action--del" title="Delete" onClick={() => setDeleteTarget(ing)}>✕</button>
                     </div>
-                    {/* Mobile: always-visible × remove button */}
-                    <button className="fridge-chip-remove-mobile" onClick={() => setDeleteTarget(ing)} title="Remove">✕</button>
+                    {/* Mobile: always-visible edit + delete */}
+                    <div className="fridge-chip-mobile-actions">
+                      <button className="fridge-chip-mobile-action fridge-chip-mobile-action--edit" onClick={e => { e.stopPropagation(); setEditingIng({ ...ing, type: typeOverrides[ing.name] ?? ing.type }); }} title="Edit">✎</button>
+                      <button className="fridge-chip-mobile-action fridge-chip-mobile-action--del" onClick={e => { e.stopPropagation(); setDeleteTarget(ing); }} title="Delete">✕</button>
+                    </div>
                   </div>
                 </div>
               );
@@ -3093,7 +3150,7 @@ const AddFriendModal = ({ onClose, onCreated, authFetch }) => {
   );
 };
 
-const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser, onLogout, onAuthUserUpdate, darkMode = false, setDarkMode }) => {
+const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser, onLogout, onAuthUserUpdate, darkMode = false, setDarkMode, tabBarTabs, setTabBarTabs }) => {
   const apiFetch = authFetch || fetch;
   const isAdmin = authUser?.role === 'admin';
   const [cookHistory, setCookHistory] = useState([]);
@@ -3577,6 +3634,60 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                 </button>
                 <span className="dark-mode-toggle__label"><Icon name="moon" size={14} strokeWidth={2} /> Dark</span>
               </div>
+            </div>
+
+            <div className="settings-section">
+              <h4 className="settings-section__title"><Icon name="home" size={15} strokeWidth={2} /> Bottom Tab Bar</h4>
+              <p className="settings-section__hint">Choose which 5 tabs appear on the bottom bar (Profile is always included)</p>
+              {(() => {
+                const ALL_TAB_OPTIONS = [
+                  { key: 'home',      label: 'Home',      icon: 'home'      },
+                  { key: 'recipes',   label: 'Recipes',   icon: 'bookOpen'  },
+                  { key: 'kitchen',   label: 'Kitchen',   icon: 'package'   },
+                  { key: 'grocery',   label: 'Grocery',   icon: 'cart'      },
+                  { key: 'cookbooks', label: 'Cookbooks', icon: 'bookMarked'},
+                  { key: 'notes',     label: 'Notes',     icon: 'lightbulb' },
+                ];
+                const selected = tabBarTabs || ['home', 'recipes', 'kitchen', 'grocery'];
+                const toggle = (key) => {
+                  if (key === 'profile') return; // always included
+                  if (selected.includes(key)) {
+                    if (selected.length <= 1) return; // keep at least 1
+                    setTabBarTabs(selected.filter(k => k !== key));
+                  } else {
+                    if (selected.length >= 4) return; // max 4 + profile = 5
+                    setTabBarTabs([...selected, key]);
+                  }
+                };
+                return (
+                  <div style={{ marginTop: 10 }}>
+                    <div className="picker__chips" style={{ flexWrap: 'wrap', gap: 8 }}>
+                      {ALL_TAB_OPTIONS.map(({ key, label, icon }) => {
+                        const isOn = selected.includes(key);
+                        const atMax = selected.length >= 4 && !isOn;
+                        return (
+                          <button key={key}
+                            className={`chip ${isOn ? 'chip--selected' : ''}`}
+                            onClick={() => toggle(key)}
+                            disabled={atMax}
+                            style={{ opacity: atMax ? 0.4 : 1 }}
+                          >
+                            {isOn && <span className="chip__check">✓</span>}
+                            <Icon name={icon} size={13} strokeWidth={2} /> {label}
+                          </button>
+                        );
+                      })}
+                      <button className="chip chip--selected" disabled style={{ opacity: 0.6 }}>
+                        <span className="chip__check">✓</span>
+                        <Icon name="user" size={13} strokeWidth={2} /> Profile
+                      </button>
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--warm-gray)', marginTop: 8 }}>
+                      {selected.length}/4 selected · Profile is always shown
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="settings-section">
@@ -6094,6 +6205,9 @@ function AppInner() {
   const [darkMode, setDarkModeRaw] = useState(() => LS.get('darkMode', false));
   const setDarkMode = (v) => { setDarkModeRaw(v); LS.set('darkMode', v); };
 
+  const [tabBarTabs, setTabBarTabsRaw] = useState(() => LS.get('tabBarTabs', ['home', 'recipes', 'kitchen', 'grocery']));
+  const setTabBarTabs = (v) => { setTabBarTabsRaw(v); LS.set('tabBarTabs', v); };
+
   // Apply dark mode to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
@@ -7136,6 +7250,8 @@ function AppInner() {
           onAuthUserUpdate={(updatedUser) => { setAuthUser(updatedUser); LS.set('authUser', updatedUser); }}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
+          tabBarTabs={tabBarTabs}
+          setTabBarTabs={setTabBarTabs}
         />
       )}
 
@@ -7161,22 +7277,26 @@ function AppInner() {
       {/* -- Mobile bottom tab bar -- */}
       <nav className="mobile-tab-bar">
         {[
-          { key: 'home',     icon: 'home',     label: 'Home'     },
-          { key: 'recipes',  icon: 'bookOpen', label: 'Recipes'  },
-          { key: 'kitchen',  icon: 'package',  label: 'Kitchen'  },
-          { key: 'grocery',  icon: 'cart',     label: 'Grocery'  },
-          { key: 'profile',  icon: 'user',     label: 'Profile'  },
-        ].map(({ key, icon, label }) => (
-          <button key={key}
-            className={`mobile-tab-bar__btn ${view === key ? 'mobile-tab-bar__btn--active' : ''}`}
-            onClick={() => { setView(key); setMobileNavOpen(false); }}
-          >
-            <span className="mobile-tab-bar__btn-inner">
-              <span className="mobile-tab-bar__icon"><Icon name={icon} size={22} strokeWidth={1.75} /></span>
-              <span className="mobile-tab-bar__label">{label}</span>
-            </span>
-          </button>
-        ))}
+          { key: 'home',      icon: 'home',      label: 'Home'      },
+          { key: 'recipes',   icon: 'bookOpen',  label: 'Recipes'   },
+          { key: 'kitchen',   icon: 'package',   label: 'Kitchen'   },
+          { key: 'grocery',   icon: 'cart',      label: 'Grocery'   },
+          { key: 'cookbooks', icon: 'bookMarked', label: 'Cookbooks' },
+          { key: 'notes',     icon: 'lightbulb', label: 'Notes'     },
+          { key: 'profile',   icon: 'user',      label: 'Profile'   },
+        ]
+          .filter(t => t.key === 'profile' || tabBarTabs.includes(t.key))
+          .map(({ key, icon, label }) => (
+            <button key={key}
+              className={`mobile-tab-bar__btn ${view === key ? 'mobile-tab-bar__btn--active' : ''}`}
+              onClick={() => { setView(key); setMobileNavOpen(false); }}
+            >
+              <span className="mobile-tab-bar__btn-inner">
+                <span className="mobile-tab-bar__icon"><Icon name={icon} size={22} strokeWidth={1.75} /></span>
+                <span className="mobile-tab-bar__label">{label}</span>
+              </span>
+            </button>
+          ))}
       </nav>
 
       {/* -- Scroll-to-top button -- */}

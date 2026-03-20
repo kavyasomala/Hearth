@@ -7743,3 +7743,82 @@ html, body {
   }
 }
 
+/* ── Nutrition Modal ─────────────────────────────────────────────────────── */
+.nutrition-modal {
+  background: var(--warm-white);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: var(--shadow-lg);
+  animation: scaleIn 0.2s cubic-bezier(0.22,1,0.36,1);
+  overflow: hidden;
+}
+.nutrition-modal__header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.nutrition-modal__title {
+  font-family: var(--font-display);
+  font-size: 1.1rem; font-weight: 700; color: var(--charcoal);
+  display: flex; align-items: center; gap: 8px;
+}
+.nutrition-modal__body {
+  padding: 20px 22px 24px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.nutrition-modal__note {
+  font-size: 12px; color: var(--warm-gray); font-style: italic;
+  background: var(--parchment); border-radius: 8px; padding: 8px 12px;
+}
+.nutrition-modal__grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+}
+.nutrition-modal__item {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px; padding: 16px 8px;
+  background: var(--cream); border: 1.5px solid var(--border);
+  border-radius: var(--radius); text-align: center;
+}
+.nutrition-modal__icon { flex-shrink: 0; }
+.nutrition-modal__value {
+  font-family: var(--font-display); font-size: 1.4rem; font-weight: 700;
+  color: var(--charcoal); line-height: 1;
+}
+.nutrition-modal__label {
+  font-size: 11px; color: var(--warm-gray); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.nutrition-modal__servings {
+  font-size: 13px; color: var(--warm-gray); text-align: center;
+  font-style: italic;
+}
+.rp2__pill--nutrition {
+  cursor: pointer; border: none; transition: opacity 0.15s;
+}
+.rp2__pill--nutrition:hover { opacity: 0.85; }
+[data-theme="dark"] .nutrition-modal { background: var(--warm-white); }
+[data-theme="dark"] .nutrition-modal__item { background: var(--parchment); }
+
+/* ── Mobile fridge chip: always-visible edit + delete ────────────────────── */
+.fridge-chip-mobile-actions { display: none; }
+@media (max-width: 640px) {
+  .fridge-chip-mobile-actions {
+    display: flex; gap: 2px; align-items: center; flex-shrink: 0;
+  }
+  .fridge-chip-actions { display: none !important; }
+  .fridge-chip-mobile-action {
+    width: 26px; height: 26px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--warm-white);
+    font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--warm-gray); transition: all 0.12s; padding: 0;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  }
+  .fridge-chip-mobile-action--edit:active { background: var(--parchment); color: var(--charcoal); }
+  .fridge-chip-mobile-action--del:active  { background: #fde8e0; color: var(--terracotta); }
+  /* No hover highlight on kitchen chips */
+  .chip:hover { border-color: var(--border) !important; background: var(--cream) !important; }
+  .chip--selected:hover { background: var(--terracotta) !important; border-color: var(--terracotta) !important; }
+}
+
