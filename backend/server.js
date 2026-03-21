@@ -22,7 +22,12 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  keepAlive: true,
+  connectionTimeoutMillis: 5000,
+  idleTimeoutMillis: 30000,
+});
 
 async function query(sql, params) {
   const client = await pool.connect();
@@ -1526,6 +1531,16 @@ app.delete('/api/cookbooks/:id', authenticateToken, requireAdmin, async (req, re
   } catch (e) {
     console.error('DELETE /api/cookbooks/:id error:', e);
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── Health check (keep-alive ping — warms both server and DB connection) ────
+app.get('/health', async (_, res) => {
+  try {
+    await query('SELECT 1');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
