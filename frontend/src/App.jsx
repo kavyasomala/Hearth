@@ -1155,52 +1155,85 @@ const AutoGrowTextarea = ({ value, onChange, placeholder, className, style, minR
 
 // --- Step Item with integrated timer --------------------------------------
 const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNotes = [] }) => {
-  const [activeNote, setActiveNote] = useState(null);
+  const [showTips, setShowTips] = useState(false);
   const hasTimer = step.timer_seconds && step.timer_seconds > 0;
   const [timerState, setTimerState] = useState('idle'); // 'idle' | 'running' | 'paused' | 'done'
   const [remaining, setRemaining] = useState(step.timer_seconds || 0);
-  const intervalRef = useRef(null);
+  // Store absolute end time so timer survives tab switches / phone lock
+  const endTimeRef = useRef(null);
+  const rafRef = useRef(null);
 
   useEffect(() => {
     setRemaining(step.timer_seconds || 0);
     setTimerState('idle');
+    endTimeRef.current = null;
   }, [step.timer_seconds]);
 
-  const startTimer = (e) => { e.stopPropagation(); if (timerState === 'idle' || timerState === 'paused') setTimerState('running'); };
-  const pauseTimer = (e) => { e.stopPropagation(); setTimerState('paused'); };
-  const resetTimer = (e) => { e.stopPropagation(); setTimerState('idle'); setRemaining(step.timer_seconds || 0); };
-
-  useEffect(() => {
-    if (timerState === 'running') {
-      intervalRef.current = setInterval(() => {
-        setRemaining(r => {
-          if (r <= 1) {
-            clearInterval(intervalRef.current);
-            setTimerState('done');
-            try {
-              const ctx = new (window.AudioContext || window.webkitAudioContext)();
-              const playBeep = (time, freq) => {
-                const osc = ctx.createOscillator(); const gain = ctx.createGain();
-                osc.connect(gain); gain.connect(ctx.destination);
-                osc.frequency.value = freq; osc.type = 'sine';
-                gain.gain.setValueAtTime(0.4, time);
-                gain.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
-                osc.start(time); osc.stop(time + 0.4);
-              };
-              playBeep(ctx.currentTime, 880); playBeep(ctx.currentTime + 0.45, 1100); playBeep(ctx.currentTime + 0.9, 1320);
-            } catch {}
-            if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification('Timer done!', { body: `Step ${step.step_number}: ${(step.body_text || '').slice(0, 60)}`, icon: '🍳' });
-            }
-            return 0;
-          }
-          return r - 1;
-        });
-      }, 1000);
-    } else {
-      clearInterval(intervalRef.current);
+  const startTimer = (e) => {
+    e.stopPropagation();
+    if (timerState === 'idle' || timerState === 'paused') {
+      // Request notification permission so the alarm fires when tab is in background
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+      // Set absolute end time from NOW + remaining seconds
+      endTimeRef.current = Date.now() + remaining * 1000;
+      setTimerState('running');
     }
-    return () => clearInterval(intervalRef.current);
+  };
+  const pauseTimer = (e) => {
+    e.stopPropagation();
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    setTimerState('paused');
+    endTimeRef.current = null;
+  };
+  const resetTimer = (e) => {
+    e.stopPropagation();
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    setTimerState('idle');
+    setRemaining(step.timer_seconds || 0);
+    endTimeRef.current = null;
+  };
+
+  // rAF loop — reads from wall clock, works even after tab becomes hidden then visible
+  useEffect(() => {
+    if (timerState !== 'running') {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      return;
+    }
+    const tick = () => {
+      const left = Math.max(0, Math.round((endTimeRef.current - Date.now()) / 1000));
+      setRemaining(left);
+      if (left <= 0) {
+        setTimerState('done');
+        // Beep
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const playBeep = (time, freq) => {
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.value = freq; osc.type = 'sine';
+            gain.gain.setValueAtTime(0.4, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
+            osc.start(time); osc.stop(time + 0.4);
+          };
+          playBeep(ctx.currentTime, 880); playBeep(ctx.currentTime + 0.45, 1100); playBeep(ctx.currentTime + 0.9, 1320);
+        } catch {}
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Timer done!', { body: `Step ${step.step_number}: ${(step.body_text || '').slice(0, 60)}`, icon: '🍳' });
+        }
+        return; // stop loop
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    // Also re-sync when tab becomes visible again after being hidden
+    const onVisible = () => { if (timerState === 'running') tick(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [timerState]);
 
   const fmtTime = (s) => {
@@ -1219,27 +1252,29 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
           <p className="rp2__step-body">{step.body_text}</p>
           {matchedNotes.length > 0 && (
             <div className="rp2__step-hints">
-              {matchedNotes.map(n => (
-                <div key={n.id} className="rp2__step-hint-wrap">
-                  <button
-                    className={`rp2__step-hint-btn ${activeNote?.id === n.id ? 'rp2__step-hint-btn--active' : ''}`}
-                    onClick={e => { e.stopPropagation(); setActiveNote(prev => prev?.id === n.id ? null : n); }}
-                    title={n.title}
-                  ><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
-                  {activeNote?.id === n.id && (
-                    <div className="rp2__step-hint-popover" onClick={e => e.stopPropagation()}>
-                      <div className="rp2__step-hint-popover__title">{n.title}</div>
-                      <p className="rp2__step-hint-popover__body">{n.body}</p>
-                      {n.bullets?.length > 0 && (
-                        <ul className="rp2__step-hint-popover__bullets">
-                          {n.bullets.map((b, i) => <li key={i}>{b.text}</li>)}
-                        </ul>
-                      )}
-                      {n.image_url && <img src={n.image_url} alt="" className="rp2__step-hint-popover__img" />}
-                    </div>
-                  )}
-                </div>
-              ))}
+              <div className="rp2__step-hint-wrap">
+                <button
+                  className={`rp2__step-hint-btn ${showTips ? 'rp2__step-hint-btn--active' : ''}`}
+                  onClick={e => { e.stopPropagation(); setShowTips(v => !v); }}
+                  title={matchedNotes.map(n => n.title).join(' · ')}
+                ><Icon name="lightbulb" size={13} strokeWidth={2} />{matchedNotes.length > 1 && <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 2 }}>{matchedNotes.length}</span>}</button>
+                {showTips && (
+                  <div className="rp2__step-hint-popover" onClick={e => e.stopPropagation()}>
+                    {matchedNotes.map((n, i) => (
+                      <div key={n.id} style={i > 0 ? { marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' } : {}}>
+                        <div className="rp2__step-hint-popover__title">{n.title}</div>
+                        <p className="rp2__step-hint-popover__body">{n.body}</p>
+                        {n.bullets?.length > 0 && (
+                          <ul className="rp2__step-hint-popover__bullets">
+                            {n.bullets.map((b, j) => <li key={j}>{b.text}</li>)}
+                          </ul>
+                        )}
+                        {n.image_url && <img src={n.image_url} alt="" className="rp2__step-hint-popover__img" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -1252,9 +1287,9 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
               <span className={`rp2__step-timer__display ${timerState === 'done' ? 'rp2__step-timer__display--done' : ''}`}>
                 {timerState === 'done' ? '✓ Done!' : fmtTime(remaining)}
               </span>
-              {timerState === 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}>▶ Start</button>}
-              {timerState === 'running' && <button className="rp2__step-timer__btn rp2__step-timer__btn--pause" onClick={pauseTimer}>⏸ Pause</button>}
-              {timerState === 'paused' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}>▶ Resume</button>}
+              {timerState === 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}><Icon name="arrowRight" size={12} strokeWidth={2.5} /> Start</button>}
+              {timerState === 'running' && <button className="rp2__step-timer__btn rp2__step-timer__btn--pause" onClick={pauseTimer}><Icon name="clock" size={12} strokeWidth={2.5} /> Pause</button>}
+              {timerState === 'paused' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}><Icon name="arrowRight" size={12} strokeWidth={2.5} /> Resume</button>}
               {timerState !== 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--reset" onClick={resetTimer}>↺</button>}
             </div>
           </div>
@@ -1272,10 +1307,7 @@ const IngredientItem = ({ ing, isChecked, amountStr, onToggle }) => (
     <div className="rp2__ing-text">
       <span className="rp2__ing-line">
         {amountStr && <span className="rp2__ing-amount">{amountStr} </span>}
-        <span className="rp2__ing-name">
-          {pluralizeIng(ing.name, ing.amount)}
-          {ing.prep_note ? <span className="rp2__ing-prep">, {ing.prep_note}</span> : ''}
-        </span>
+        <span className="rp2__ing-name">{pluralizeIng(ing.name, ing.amount)}{ing.prep_note ? <span className="rp2__ing-prep">, {ing.prep_note}</span> : ''}</span>
         {ing.optional && <span className="rp2__ing-optional">optional</span>}
       </span>
     </div>
@@ -4669,7 +4701,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
         <div className="grocery-empty">
           <div className="grocery-empty__icon"><Icon name="timer" size={40} color="var(--warm-gray)" strokeWidth={1.5} /></div>
           <h3 className="grocery-empty__title">No recipes in Make Soon</h3>
-          <p className="grocery-empty__sub">Tap ⏱ on any recipe to add it to Make Soon -- your grocery list will build automatically.</p>
+          <p className="grocery-empty__sub">Tap <Icon name="timer" size={13} strokeWidth={2} /> on any recipe to add it to Make Soon — your grocery list will build automatically.</p>
         </div>
       )}
 
@@ -7426,7 +7458,7 @@ function AppInner() {
                       <span className="home-empty-cta__icon"><Icon name="list" size={32} strokeWidth={1.5} /></span>
                       <div>
                         <p className="home-empty-cta__title">Plan your week</p>
-                        <p className="home-empty-cta__sub">Tap ⏱ on any recipe to add it here</p>
+                        <p className="home-empty-cta__sub">Tap <Icon name="timer" size={13} strokeWidth={2} /> on any recipe to add it here</p>
                       </div>
                       <span className="home-empty-cta__arrow">→</span>
                     </div>
