@@ -1282,6 +1282,19 @@ const IngredientItem = ({ ing, isChecked, amountStr, onToggle }) => (
   </li>
 );
 
+// --- Sortable Note Row (for drag-to-reorder notes inline editor) -----------
+const SortableNoteRow = ({ note, onUpdate, onRemove }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: note._id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
+  return (
+    <div ref={setNodeRef} style={style} className="rp2__ed-note-row">
+      <span style={{ cursor: 'grab', fontSize: 16, color: 'var(--ash)', flexShrink: 0, userSelect: 'none', touchAction: 'none' }} {...attributes} {...listeners}>⠿</span>
+      <input className="editor-input" style={{ flex: 1 }} value={note.text} onChange={e => onUpdate(e.target.value)} placeholder="Add a tip or note..." />
+      <button className="editor-remove-btn" onClick={onRemove}>✕</button>
+    </div>
+  );
+};
+
 // --- Recipe Page -------------------------------------------------------------
 const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [] }) => {
   const apiFetch = authFetch || fetch;
@@ -2043,23 +2056,15 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           const mh = isMobile
             ? `calc(100dvh - ${60}px - env(safe-area-inset-top, 0px))`
             : `min(85dvh, ${vh - 40}px)`;
-          const ar = ingredientsAnchorRect;
-          // Desktop: open near the pencil, right-aligned to the modal max-width
-          let topStyle = isMobile ? `calc(60px + env(safe-area-inset-top, 0px))` : undefined;
-          let topNum = 20;
-          if (!isMobile && ar) {
-            topNum = Math.min(ar.top, vh - 60);
-            if (topNum < 16) topNum = 16;
-          }
           return (
           <div
             style={{
               position: 'fixed', inset: 0, zIndex: 8999,
               background: 'rgba(0,0,0,0.45)',
               display: 'flex',
-              alignItems: isMobile ? 'flex-start' : 'flex-start',
+              alignItems: isMobile ? 'flex-start' : 'center',
               justifyContent: isMobile ? 'stretch' : 'center',
-              paddingTop: isMobile ? topStyle : topNum,
+              paddingTop: isMobile ? `calc(60px + env(safe-area-inset-top, 0px))` : 20,
               paddingBottom: isMobile ? 0 : 20,
               paddingLeft: isMobile ? 0 : 16,
               paddingRight: isMobile ? 0 : 16,
@@ -2388,7 +2393,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                         <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowNotesModal(false); }} title="Cancel">✕</button>
                       </>
                     ) : (
-                      <button className="section-pencil" onClick={e => { e.stopPropagation(); setNotesAnchorRect(e.currentTarget.getBoundingClientRect()); startEdit('notes'); setShowNotesModal(true); }} title="Edit">✎</button>
+                      <button className="section-pencil" onClick={e => { e.stopPropagation(); startEdit('notes'); if (window.innerWidth <= 640) { setNotesAnchorRect(e.currentTarget.getBoundingClientRect()); setShowNotesModal(true); } }} title="Edit">✎</button>
                     )}
                   </span>
                 )}
@@ -2405,15 +2410,18 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   : <p className="rp2__empty-hint">No notes yet.</p>
               )}
 
-              {/* Desktop inline edit (fallback if popover not open) */}
+              {/* Desktop inline edit with drag-to-reorder */}
               {isEdit('notes') && !showNotesModal && (
                 <div className="rp2__inline-editor">
-                  {draftNotes.map(n => (
-                    <div key={n._id} className="rp2__ed-note-row">
-                      <input className="editor-input" style={{flex:1}} value={n.text} onChange={e => updateDraftNote(n._id, e.target.value)} placeholder="Add a tip or note..." />
-                      <button className="editor-remove-btn" onClick={() => removeDraftNote(n._id)}>✕</button>
-                    </div>
-                  ))}
+                  <DndContext sensors={rpSensors} collisionDetection={closestCenter} onDragEnd={({ active, over }) => {
+                    if (over && active.id !== over.id) setDraftNotes(prev => arrayMove(prev, prev.findIndex(n => n._id === active.id), prev.findIndex(n => n._id === over.id)));
+                  }}>
+                    <SortableContext items={draftNotes.map(n => n._id)} strategy={verticalListSortingStrategy}>
+                      {draftNotes.map(n => (
+                        <SortableNoteRow key={n._id} note={n} onUpdate={v => updateDraftNote(n._id, v)} onRemove={() => removeDraftNote(n._id)} />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                   <button className="btn btn--ghost editor-add-btn" onClick={addDraftNote}>+ Add Note</button>
                 </div>
               )}
@@ -2474,7 +2482,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                         <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowCookbookModal(false); }} title="Cancel">✕</button>
                       </>
                     ) : (
-                      <button className="section-pencil" onClick={e => { e.stopPropagation(); setCookbookAnchorRect(e.currentTarget.getBoundingClientRect()); startEdit('cookbook'); setShowCookbookModal(true); }} title="Edit">✎</button>
+                      <button className="section-pencil" onClick={e => { e.stopPropagation(); startEdit('cookbook'); if (window.innerWidth <= 640) { setCookbookAnchorRect(e.currentTarget.getBoundingClientRect()); setShowCookbookModal(true); } }} title="Edit">✎</button>
                     )}
                   </span>
                 )}
@@ -3701,6 +3709,10 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [comingSoonOpen, setComingSoonOpen] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(() => LS.get('showComingSoon', true));
+  const [bugReportOpen, setBugReportOpen] = useState(false);
+  const [bugText, setBugText] = useState('');
+  const [bugList, setBugList] = useState(() => LS.get('bugReports', []));
+  const [bugSubmitted, setBugSubmitted] = useState(false);
   const [attemptsOpen, setAttemptsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [sharingOpen, setSharingOpen] = useState(false);
@@ -4206,6 +4218,105 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         </section>
       )}
 
+      {/* -- Bug Reports -- */}
+      {isAdmin && (
+        <section className="profile-section profile-section--collapsible">
+          <button className="profile-settings-toggle" onClick={() => setBugReportOpen(o => !o)}>
+            <span className="profile-settings-toggle__title"><Icon name="alertTriangle" size={15} strokeWidth={2} /> Bug Reports <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--warm-gray)', marginLeft: 4 }}>({bugList.length})</span></span>
+            <span className={`profile-settings-toggle__arrow ${bugReportOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
+          </button>
+          {bugReportOpen && (
+            <div className="profile-settings-body">
+              <div className="settings-section" style={{ borderBottom: 'none', marginBottom: 0, paddingBottom: 0 }}>
+                <h4 className="settings-section__title">Report a Bug</h4>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <input
+                    className="editor-input"
+                    style={{ flex: 1, fontSize: 14 }}
+                    placeholder="Describe what went wrong..."
+                    value={bugText}
+                    onChange={e => { setBugText(e.target.value); setBugSubmitted(false); }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && bugText.trim()) {
+                        const entry = { id: Date.now(), text: bugText.trim(), date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), done: false };
+                        const next = [entry, ...bugList];
+                        setBugList(next);
+                        LS.set('bugReports', next);
+                        setBugText('');
+                        setBugSubmitted(true);
+                        setTimeout(() => setBugSubmitted(false), 2000);
+                      }
+                    }}
+                  />
+                  <button
+                    className="btn btn--primary btn--sm"
+                    disabled={!bugText.trim()}
+                    onClick={() => {
+                      const entry = { id: Date.now(), text: bugText.trim(), date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), done: false };
+                      const next = [entry, ...bugList];
+                      setBugList(next);
+                      LS.set('bugReports', next);
+                      setBugText('');
+                      setBugSubmitted(true);
+                      setTimeout(() => setBugSubmitted(false), 2000);
+                    }}
+                  >+ Add</button>
+                </div>
+                {bugSubmitted && <p style={{ fontSize: 12, color: 'var(--sage)', marginTop: 6 }}>✓ Logged!</p>}
+              </div>
+              {bugList.length > 0 && (
+                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <h4 className="settings-section__title" style={{ margin: 0 }}>Open ({bugList.filter(b => !b.done).length})</h4>
+                    {bugList.some(b => b.done) && (
+                      <button className="btn btn--ghost btn--sm" style={{ fontSize: 11, padding: '3px 10px' }}
+                        onClick={() => { const next = bugList.filter(b => !b.done); setBugList(next); LS.set('bugReports', next); }}>
+                        Clear fixed
+                      </button>
+                    )}
+                  </div>
+                  {bugList.map(bug => (
+                    <div key={bug.id} style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px',
+                      background: bug.done ? 'var(--cream)' : 'var(--warm-white)',
+                      border: `1.5px solid ${bug.done ? 'var(--border)' : 'var(--border)'}`,
+                      borderLeft: `3px solid ${bug.done ? 'var(--sage)' : 'var(--terracotta-light)'}`,
+                      borderRadius: 10, opacity: bug.done ? 0.55 : 1,
+                    }}>
+                      <button
+                        title={bug.done ? 'Mark as open' : 'Mark as fixed'}
+                        onClick={() => {
+                          const next = bugList.map(b => b.id === bug.id ? { ...b, done: !b.done } : b);
+                          setBugList(next); LS.set('bugReports', next);
+                        }}
+                        style={{
+                          width: 20, height: 20, borderRadius: 5, flexShrink: 0, marginTop: 1,
+                          border: `1.5px solid ${bug.done ? 'var(--sage)' : 'var(--border)'}`,
+                          background: bug.done ? 'var(--sage)' : 'transparent',
+                          color: bug.done ? 'white' : 'transparent',
+                          cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >{bug.done ? '✓' : ''}</button>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, color: 'var(--charcoal)', margin: 0, textDecoration: bug.done ? 'line-through' : 'none', wordBreak: 'break-word' }}>{bug.text}</p>
+                        <p style={{ fontSize: 11, color: 'var(--warm-gray)', margin: '2px 0 0' }}>{bug.date}</p>
+                      </div>
+                      <button className="editor-remove-btn" title="Delete"
+                        onClick={() => { const next = bugList.filter(b => b.id !== bug.id); setBugList(next); LS.set('bugReports', next); }}
+                      >✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {bugList.length === 0 && (
+                <p style={{ fontSize: 13, color: 'var(--warm-gray)', fontStyle: 'italic', marginTop: 12 }}>No bugs logged yet. Nice!</p>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* -- 4. Settings -- */}
       <section className="profile-section profile-section--settings">
         <button className="profile-settings-toggle" onClick={() => setSettingsOpen(o => !o)}>
@@ -4306,17 +4417,6 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                 </label>
               )}
             </div>
-
-            {isAdmin && (
-              <div className="settings-section">
-                <h4 className="settings-section__title"><Icon name="zap" size={15} strokeWidth={2} /> Coming Soon Section</h4>
-                <p className="settings-section__hint">Show or hide the Coming Soon roadmap section on the profile page.</p>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, cursor: 'pointer', fontSize: 13 }}>
-                  <input type="checkbox" checked={showComingSoon} onChange={e => { setShowComingSoon(e.target.checked); LS.set('showComingSoon', e.target.checked); }} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--terracotta)' }} />
-                  <span>Show Coming Soon on profile</span>
-                </label>
-              </div>
-            )}
 
             <div className="settings-section settings-section--about">
               <h4 className="settings-section__title"><Icon name="lightbulb" size={15} strokeWidth={2} /> About Hearth</h4>
@@ -7494,7 +7594,7 @@ function AppInner() {
 
       {view === 'recipes' && (() => {
         const allCuisinesPool = GEO_CUISINES; // strictly geo only -- DB cuisine values are not shown as filters
-        const PAGE_SIZE = window.innerWidth <= 640 ? 12 : 24;
+        const PAGE_SIZE = window.innerWidth <= 640 ? 12 : 25;
         const totalPages = Math.max(1, Math.ceil(libraryRecipes.length / PAGE_SIZE));
         const safePage = Math.min(libraryPage, totalPages);
         const pageRecipes = libraryRecipes.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
