@@ -1102,8 +1102,18 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
                   return (
                     <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
                       <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
-                      <button className="rp2__ed-add-timer-btn" onClick={() => { const i = steps.findIndex(s => s._id===item._id); const t={_id:`timer-${'{'}Date.now(){'}'}`,_isTimer:true,h:'',m:'',s:''}; const n=[...steps]; n.splice(i+1,0,t); setSteps(n); }} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
+                        <button className="rp2__ed-add-timer-btn" onClick={() => { const i = steps.findIndex(s => s._id===item._id); const t={_id:`timer-${'{'}Date.now(){'}'}`,_isTimer:true,h:'',m:'',s:''}; const n=[...steps]; n.splice(i+1,0,t); setSteps(n); }} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                        <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
+                      </div>
                       <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                      {item._showTip && createPortal((() => {
+                        const ar = item._tipAnchor; const pw = 300, ph = 160;
+                        const vw = window.innerWidth, vh = window.innerHeight;
+                        let top = ar ? ar.bottom + 6 : vh/2-ph/2; let left = ar ? ar.left-pw+ar.width : vw/2-pw/2;
+                        if (top+ph > vh-8) top = ar ? ar.top-ph-6 : 8; if (left < 8) left = 8; if (left+pw > vw-8) left = vw-pw-8;
+                        return (<><div style={{ position:'fixed',inset:0,zIndex:8998 }} onClick={() => setSteps(prev => prev.map(s => s._id===item._id ? {...s,_showTip:false} : s))} /><div className="anchored-popover" style={{ position:'fixed',top,left,width:pw,zIndex:8999,padding:'12px 14px',display:'flex',flexDirection:'column',gap:8 }} onClick={e=>e.stopPropagation()}><label style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--warm-gray)' }}>Tip for this step</label><textarea className="editor-textarea" autoFocus rows={3} style={{ fontSize:13,resize:'none' }} value={item._tip||''} onChange={e=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:e.target.value}:s))} placeholder="e.g. don't overcrowd the pan..." /><div style={{ display:'flex',gap:6,justifyContent:'flex-end' }}>{item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize:11,padding:'3px 8px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s))}>Clear</button>}<button className="btn btn--primary btn--sm" style={{ fontSize:11,padding:'3px 10px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_showTip:false}:s))}>Done</button></div></div></>);
+                      })(), document.body)}
                     </StepSortableItem>
                   );
                 })}
@@ -2361,12 +2371,49 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       <StepSortableItem key={item._id} id={item._id} stepNum={stepNum} grouped={isGrouped}
                         onSnap={handleSnap} onUnsnap={handleUnsnap} canSnap={canSnap}>
                         <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
-                        <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step"><Icon name="timer" size={13} strokeWidth={2} /></button>
-                        <button className="rp2__ed-add-timer-btn" onClick={() => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip } : s))} title="Add tip to this step" style={{ color: item._showTip ? 'var(--terracotta)' : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
+                        {/* Timer + tip buttons stacked vertically */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
+                          <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                          <button
+                            className="rp2__ed-add-timer-btn"
+                            onClick={e => { e.stopPropagation(); setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }}
+                            title="Add tip to this step"
+                            style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}
+                          ><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
+                        </div>
                         <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
-                        {item._showTip && (
-                          <input className="editor-input rp2__step-tip-input" value={item._tip || ''} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _tip: e.target.value } : s))} placeholder="Tip for this step (e.g. don't overcrowd the pan)..." />
-                        )}
+                        {/* Tip popup portal */}
+                        {item._showTip && createPortal((() => {
+                          const ar = item._tipAnchor;
+                          const pw = 300, ph = 160;
+                          const vw = window.innerWidth, vh = window.innerHeight;
+                          let top = ar ? ar.bottom + 6 : vh / 2 - ph / 2;
+                          let left = ar ? ar.left - pw + ar.width : vw / 2 - pw / 2;
+                          if (top + ph > vh - 8) top = ar ? ar.top - ph - 6 : 8;
+                          if (left < 8) left = 8;
+                          if (left + pw > vw - 8) left = vw - pw - 8;
+                          return (
+                            <>
+                              <div style={{ position: 'fixed', inset: 0, zIndex: 8998 }} onClick={() => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: false } : s))} />
+                              <div className="anchored-popover" style={{ position: 'fixed', top, left, width: pw, zIndex: 8999, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }} onClick={e => e.stopPropagation()}>
+                                <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--warm-gray)' }}>Tip for this step</label>
+                                <textarea
+                                  className="editor-textarea"
+                                  autoFocus
+                                  rows={3}
+                                  style={{ fontSize: 13, resize: 'none' }}
+                                  value={item._tip || ''}
+                                  onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _tip: e.target.value } : s))}
+                                  placeholder="e.g. don't overcrowd the pan..."
+                                />
+                                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                                  {item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize: 11, padding: '3px 8px' }} onClick={() => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _tip: '', _showTip: false } : s))}>Clear</button>}
+                                  <button className="btn btn--primary btn--sm" style={{ fontSize: 11, padding: '3px 10px' }} onClick={() => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: false } : s))}>Done</button>
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })(), document.body)}
                       </StepSortableItem>
                     );
                   })}
@@ -2992,8 +3039,18 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
               return (
                 <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
                   <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
-                  <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
+                    <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                    <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
+                  </div>
                   <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                  {item._showTip && createPortal((() => {
+                    const ar = item._tipAnchor; const pw = 300, ph = 160;
+                    const vw = window.innerWidth, vh = window.innerHeight;
+                    let top = ar ? ar.bottom + 6 : vh/2-ph/2; let left = ar ? ar.left-pw+ar.width : vw/2-pw/2;
+                    if (top+ph > vh-8) top = ar ? ar.top-ph-6 : 8; if (left < 8) left = 8; if (left+pw > vw-8) left = vw-pw-8;
+                    return (<><div style={{ position:'fixed',inset:0,zIndex:8998 }} onClick={() => setSteps(prev => prev.map(s => s._id===item._id ? {...s,_showTip:false} : s))} /><div className="anchored-popover" style={{ position:'fixed',top,left,width:pw,zIndex:8999,padding:'12px 14px',display:'flex',flexDirection:'column',gap:8 }} onClick={e=>e.stopPropagation()}><label style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--warm-gray)' }}>Tip for this step</label><textarea className="editor-textarea" autoFocus rows={3} style={{ fontSize:13,resize:'none' }} value={item._tip||''} onChange={e=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:e.target.value}:s))} placeholder="e.g. don't overcrowd the pan..." /><div style={{ display:'flex',gap:6,justifyContent:'flex-end' }}>{item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize:11,padding:'3px 8px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s))}>Clear</button>}<button className="btn btn--primary btn--sm" style={{ fontSize:11,padding:'3px 10px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_showTip:false}:s))}>Done</button></div></div></>);
+                  })(), document.body)}
                 </StepSortableItem>
               );
             })}
@@ -5588,8 +5645,18 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
                   return (
                     <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
                       <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
-                      <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
+                        <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                        <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
+                      </div>
                       <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                      {item._showTip && createPortal((() => {
+                        const ar = item._tipAnchor; const pw = 300, ph = 160;
+                        const vw = window.innerWidth, vh = window.innerHeight;
+                        let top = ar ? ar.bottom + 6 : vh/2-ph/2; let left = ar ? ar.left-pw+ar.width : vw/2-pw/2;
+                        if (top+ph > vh-8) top = ar ? ar.top-ph-6 : 8; if (left < 8) left = 8; if (left+pw > vw-8) left = vw-pw-8;
+                        return (<><div style={{ position:'fixed',inset:0,zIndex:8998 }} onClick={() => setSteps(prev => prev.map(s => s._id===item._id ? {...s,_showTip:false} : s))} /><div className="anchored-popover" style={{ position:'fixed',top,left,width:pw,zIndex:8999,padding:'12px 14px',display:'flex',flexDirection:'column',gap:8 }} onClick={e=>e.stopPropagation()}><label style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--warm-gray)' }}>Tip for this step</label><textarea className="editor-textarea" autoFocus rows={3} style={{ fontSize:13,resize:'none' }} value={item._tip||''} onChange={e=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:e.target.value}:s))} placeholder="e.g. don't overcrowd the pan..." /><div style={{ display:'flex',gap:6,justifyContent:'flex-end' }}>{item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize:11,padding:'3px 8px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s))}>Clear</button>}<button className="btn btn--primary btn--sm" style={{ fontSize:11,padding:'3px 10px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_showTip:false}:s))}>Done</button></div></div></>);
+                      })(), document.body)}
                     </StepSortableItem>
                   );
                 })}
@@ -6652,8 +6719,18 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                       return (
                         <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
                           <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
-                          <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
+                            <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                            <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
+                          </div>
                           <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                          {item._showTip && createPortal((() => {
+                            const ar = item._tipAnchor; const pw = 300, ph = 160;
+                            const vw = window.innerWidth, vh = window.innerHeight;
+                            let top = ar ? ar.bottom + 6 : vh/2-ph/2; let left = ar ? ar.left-pw+ar.width : vw/2-pw/2;
+                            if (top+ph > vh-8) top = ar ? ar.top-ph-6 : 8; if (left < 8) left = 8; if (left+pw > vw-8) left = vw-pw-8;
+                            return (<><div style={{ position:'fixed',inset:0,zIndex:8998 }} onClick={() => setSteps(prev => prev.map(s => s._id===item._id ? {...s,_showTip:false} : s))} /><div className="anchored-popover" style={{ position:'fixed',top,left,width:pw,zIndex:8999,padding:'12px 14px',display:'flex',flexDirection:'column',gap:8 }} onClick={e=>e.stopPropagation()}><label style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--warm-gray)' }}>Tip for this step</label><textarea className="editor-textarea" autoFocus rows={3} style={{ fontSize:13,resize:'none' }} value={item._tip||''} onChange={e=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:e.target.value}:s))} placeholder="e.g. don't overcrowd the pan..." /><div style={{ display:'flex',gap:6,justifyContent:'flex-end' }}>{item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize:11,padding:'3px 8px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s))}>Clear</button>}<button className="btn btn--primary btn--sm" style={{ fontSize:11,padding:'3px 10px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_showTip:false}:s))}>Done</button></div></div></>);
+                          })(), document.body)}
                         </StepSortableItem>
                       );
                     })}
@@ -6866,7 +6943,11 @@ function AppInner() {
   // Always scroll to top when switching tabs
   const setView = useCallback((newView) => {
     setViewRaw(newView);
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (appScrollRef.current) {
+      appScrollRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
   }, []);
 
   // Swipe-right to go back (mobile) with visual feedback
@@ -6905,15 +6986,18 @@ function AppInner() {
   const [mobileSearchQuery, setMobileSearchQuery] = useState('');
   const [mobileSearchSubmitted, setMobileSearchSubmitted] = useState(false);
   const mainScrollRef = useRef(null);
+  const appScrollRef = useRef(null); // ref to the scrollable app__scroll wrapper
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  // Scroll-to-top detection
+  // Scroll-to-top detection — listen on app__scroll, not window
   useEffect(() => {
+    const el = appScrollRef.current;
+    if (!el) return;
     const handleScroll = () => {
-      setShowScrollTop(window.scrollY > window.innerHeight * 0.8);
+      setShowScrollTop(el.scrollTop > el.clientHeight * 0.8);
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
   }, []);
 
   useEffect(() => {
@@ -7190,6 +7274,8 @@ function AppInner() {
   return (
     <div className="app">
       {showLogin && <LoginModal onLogin={handleLogin} />}
+      {/* app__scroll wraps everything EXCEPT the tab bar so keyboard never moves the bar */}
+      <div className="app__scroll" ref={appScrollRef}>
       <header className="app-header">
         <div className="app-header__bar">
           {/* Mobile: back/search bar (recipes view) or logo */}
@@ -8069,7 +8155,21 @@ function AppInner() {
         />
       )}
 
-      {/* -- Mobile bottom tab bar -- */}
+      {/* Footer: show on all pages except the recipe summary/editor */}
+      {view !== 'recipe' && <SiteFooter onNav={setView} />}
+
+      {/* -- Scroll-to-top button -- */}
+      {showScrollTop && (
+        <button className="scroll-top-btn" onClick={() => {
+          if (appScrollRef.current) appScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+          else window.scrollTo({ top: 0, behavior: 'smooth' });
+        }} aria-label="Scroll to top">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+        </button>
+      )}
+      </div>{/* end app__scroll */}
+
+      {/* -- Mobile bottom tab bar — outside scroll area so keyboard never moves it -- */}
       <nav className="mobile-tab-bar">
         {[
           { key: 'home',      icon: 'home',      label: 'Home'      },
@@ -8093,16 +8193,6 @@ function AppInner() {
             </button>
           ))}
       </nav>
-
-      {/* -- Scroll-to-top button -- */}
-      {showScrollTop && (
-        <button className="scroll-top-btn" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Scroll to top">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
-        </button>
-      )}
-
-      {/* Footer: show on all pages except the recipe summary/editor */}
-      {view !== 'recipe' && <SiteFooter onNav={setView} />}
     </div>
   );
 }
