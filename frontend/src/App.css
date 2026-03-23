@@ -74,6 +74,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   line-height: 1.5;
+  /* Prevent pinch-zoom page shake on mobile */
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
 }
 
 /* Accessible focus styles — keyboard only */
@@ -1615,7 +1618,7 @@ body {
 
 /* ─── Notes + Cookbook row ───────────────────────────────────────────────── */
 .rp2__notes-row {
-  display: flex; gap: 24px; padding: 24px 0 0; margin-top: 24px;
+  display: flex; gap: 24px; padding: 24px 0 40px; margin-top: 24px;
   border-top: 1.5px solid var(--border); align-items: flex-start;
 }
 .rp2__notes { flex: 1; min-width: 0; }
@@ -6844,6 +6847,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
     padding-bottom: env(safe-area-inset-bottom, 0px);
     min-height: 83px; /* iOS standard tab bar height */
+    /* Stay pinned to layout viewport bottom even when keyboard is open */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
   }
   .mobile-tab-bar__btn {
     flex: 1;
@@ -8113,4 +8120,16 @@ html, body {
 /* ── Remove old mobile action button styles ── */
 .fridge-chip-mobile-actions { display: none !important; }
 .fridge-chip-remove-mobile { display: none !important; }
-
+/* ── Step editor manual tip input ── */
+.rp2__step-tip-input {
+  width: 100%;
+  margin-top: 6px;
+  font-size: 13px !important;
+  font-style: italic;
+  border-color: var(--terracotta-light) !important;
+  background: #fef8f5 !important;
+  grid-column: 1 / -1;
+}
+[data-theme="dark"] .rp2__step-tip-input {
+  background: rgba(212,120,72,0.08) !important;
+}

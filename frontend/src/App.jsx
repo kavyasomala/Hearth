@@ -1001,7 +1001,12 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
             if (item._isTimer) {
               const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
               if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
-            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null }); }
+            } else {
+              const bodyText = item._tip?.trim()
+                ? item.body_text + '\n\u26D4TIP\u26D4' + item._tip.trim()
+                : item.body_text;
+              result.push({ ...item, body_text: bodyText, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null });
+            }
           }
           return result;
         })(),
@@ -1156,6 +1161,8 @@ const AutoGrowTextarea = ({ value, onChange, placeholder, className, style, minR
 // --- Step Item with integrated timer --------------------------------------
 const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNotes = [] }) => {
   const [showTips, setShowTips] = useState(false);
+  // Parse manual tip embedded in body_text
+  const [cleanStepBody, manualTip] = (step.body_text || '').split('\u26D4TIP\u26D4');
   const hasTimer = step.timer_seconds && step.timer_seconds > 0;
   const [timerState, setTimerState] = useState('idle'); // 'idle' | 'running' | 'paused' | 'done'
   const [remaining, setRemaining] = useState(step.timer_seconds || 0);
@@ -1249,17 +1256,23 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
       <div className="rp2__step-num">{done ? '✓' : step.step_number}</div>
       <div className="rp2__step-content">
         <div className="rp2__step-body-row">
-          <p className="rp2__step-body">{step.body_text}</p>
-          {matchedNotes.length > 0 && (
+          <p className="rp2__step-body">{cleanStepBody}</p>
+          {(matchedNotes.length > 0 || manualTip) && (
             <div className="rp2__step-hints">
               <div className="rp2__step-hint-wrap">
                 <button
                   className={`rp2__step-hint-btn ${showTips ? 'rp2__step-hint-btn--active' : ''}`}
                   onClick={e => { e.stopPropagation(); setShowTips(v => !v); }}
-                  title={matchedNotes.map(n => n.title).join(' · ')}
-                ><Icon name="lightbulb" size={13} strokeWidth={2} />{matchedNotes.length > 1 && <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 2 }}>{matchedNotes.length}</span>}</button>
+                  title={[...(manualTip ? ['Tip'] : []), ...matchedNotes.map(n => n.title)].join(' · ')}
+                ><Icon name="lightbulb" size={13} strokeWidth={2} />{(matchedNotes.length + (manualTip ? 1 : 0)) > 1 && <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 2 }}>{matchedNotes.length + (manualTip ? 1 : 0)}</span>}</button>
                 {showTips && (
                   <div className="rp2__step-hint-popover" onClick={e => e.stopPropagation()}>
+                    {manualTip && (
+                      <div style={matchedNotes.length > 0 ? { marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--border)' } : {}}>
+                        <div className="rp2__step-hint-popover__title">Tip</div>
+                        <p className="rp2__step-hint-popover__body">{manualTip}</p>
+                      </div>
+                    )}
                     {matchedNotes.map((n, i) => (
                       <div key={n.id} style={i > 0 ? { marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' } : {}}>
                         <div className="rp2__step-hint-popover__title">{n.title}</div>
@@ -1430,7 +1443,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           emittedGroups.add(g);
           flat.push({ _id: `step-grp-exist-${g}`, _isGroup: true, name: g });
         }
-        flat.push({ ...s, _id: `step-${s.step_number}`, timer_seconds: s.timer_seconds ?? null, group_label: g || null });
+        const [cleanBody, stepTip] = (s.body_text || '').split('\u26D4TIP\u26D4');
+          flat.push({ ...s, _id: `step-${s.step_number}`, body_text: cleanBody, _tip: stepTip || '', _showTip: !!(stepTip), timer_seconds: s.timer_seconds ?? null, group_label: g || null });
         if (s.timer_seconds && s.timer_seconds > 0) {
           const h = Math.floor(s.timer_seconds / 3600);
           const m = Math.floor((s.timer_seconds % 3600) / 60);
@@ -2348,7 +2362,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                         onSnap={handleSnap} onUnsnap={handleUnsnap} canSnap={canSnap}>
                         <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateDraftStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
                         <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step"><Icon name="timer" size={13} strokeWidth={2} /></button>
+                        <button className="rp2__ed-add-timer-btn" onClick={() => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip } : s))} title="Add tip to this step" style={{ color: item._showTip ? 'var(--terracotta)' : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                         <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
+                        {item._showTip && (
+                          <input className="editor-input rp2__step-tip-input" value={item._tip || ''} onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _tip: e.target.value } : s))} placeholder="Tip for this step (e.g. don't overcrowd the pan)..." />
+                        )}
                       </StepSortableItem>
                     );
                   })}
@@ -2840,7 +2858,12 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
             if (item._isTimer) {
               const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
               if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
-            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null }); }
+            } else {
+              const bodyText = item._tip?.trim()
+                ? item.body_text + '\n\u26D4TIP\u26D4' + item._tip.trim()
+                : item.body_text;
+              result.push({ ...item, body_text: bodyText, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null });
+            }
           }
           return result;
         })(),
@@ -4701,7 +4724,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
         <div className="grocery-empty">
           <div className="grocery-empty__icon"><Icon name="timer" size={40} color="var(--warm-gray)" strokeWidth={1.5} /></div>
           <h3 className="grocery-empty__title">No recipes in Make Soon</h3>
-          <p className="grocery-empty__sub">Tap <Icon name="timer" size={13} strokeWidth={2} /> on any recipe to add it to Make Soon — your grocery list will build automatically.</p>
+          <p className="grocery-empty__sub">Tap <span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',margin:'0 2px'}}><Icon name="timer" size={13} strokeWidth={2} /></span> on any recipe to add it to Make Soon — your grocery list will build automatically.</p>
         </div>
       )}
 
@@ -5394,7 +5417,12 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
             if (item._isTimer) {
               const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
               if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
-            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null }); }
+            } else {
+              const bodyText = item._tip?.trim()
+                ? item.body_text + '\n\u26D4TIP\u26D4' + item._tip.trim()
+                : item.body_text;
+              result.push({ ...item, body_text: bodyText, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null });
+            }
           }
           return result;
         })(),
@@ -6309,7 +6337,12 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
             if (item._isTimer) {
               const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
               if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
-            } else { result.push({ ...item, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null }); }
+            } else {
+              const bodyText = item._tip?.trim()
+                ? item.body_text + '\n\u26D4TIP\u26D4' + item._tip.trim()
+                : item.body_text;
+              result.push({ ...item, body_text: bodyText, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null });
+            }
           }
           return result;
         })(),
@@ -6894,6 +6927,11 @@ function AppInner() {
     let appleLink = document.querySelector("link[rel='apple-touch-icon']");
     if (!appleLink) { appleLink = document.createElement('link'); appleLink.rel = 'apple-touch-icon'; document.head.appendChild(appleLink); }
     appleLink.href = `${process.env.PUBLIC_URL || ''}/hearth-icon.png`;
+
+    // Prevent pinch-zoom and page shake on mobile — set viewport meta
+    let viewport = document.querySelector("meta[name='viewport']");
+    if (!viewport) { viewport = document.createElement('meta'); viewport.name = 'viewport'; document.head.appendChild(viewport); }
+    viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
   }, []);
   const [allIngredients, setAllIngredients] = useState([]);
   const [recipes, setRecipes] = useState([]);
@@ -7458,7 +7496,7 @@ function AppInner() {
                       <span className="home-empty-cta__icon"><Icon name="list" size={32} strokeWidth={1.5} /></span>
                       <div>
                         <p className="home-empty-cta__title">Plan your week</p>
-                        <p className="home-empty-cta__sub">Tap <Icon name="timer" size={13} strokeWidth={2} /> on any recipe to add it here</p>
+                        <p className="home-empty-cta__sub">Tap <span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',margin:'0 2px'}}><Icon name="timer" size={13} strokeWidth={2} /></span> on any recipe to add it here</p>
                       </div>
                       <span className="home-empty-cta__arrow">→</span>
                     </div>
