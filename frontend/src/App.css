@@ -106,6 +106,14 @@ body {
   overflow: hidden;
 }
 
+
+/* app__scroll: on desktop just a normal flex child filling remaining height */
+.app__scroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 /* ─── Header / Nav Tabs ─────────────────────────────────────────────────── */
 /* ─── Header ─────────────────────────────────────────────────────────────── */
 .app-header {
@@ -6836,21 +6844,39 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 .mobile-tab-bar {
   display: none; /* hidden on desktop */
 }
+
+/* ── On mobile: app is a flex column filling the viewport.
+   app__scroll is the scrollable content area.
+   mobile-tab-bar sits below it as a static flex child.
+   The keyboard only shrinks app__scroll — the bar never moves. ── */
 @media (max-width: 640px) {
+  .app {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+  }
+  /* Use dvh when supported — it correctly excludes browser chrome */
+  @supports (height: 100dvh) {
+    .app { height: 100dvh !important; }
+  }
+  .app__scroll {
+    flex: 1 1 0;
+    min-height: 0; /* critical: prevents flex child from overflowing */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    position: relative;
+  }
   .mobile-tab-bar {
     display: flex;
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    z-index: 200;
+    flex-shrink: 0;            /* never squished by keyboard */
+    /* NOT position:fixed — just a static flex child */
     background: var(--warm-white);
     border-top: 1px solid var(--border);
     box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    min-height: 83px; /* iOS standard tab bar height */
-    /* Stay pinned to layout viewport bottom even when keyboard is open */
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    will-change: transform;
+    z-index: 200;
   }
   .mobile-tab-bar__btn {
     flex: 1;
@@ -6991,14 +7017,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .recipes-page-header__title { font-size: 18px; }
 }
 
-/* ── iOS-STYLE SWIPE: true slide with shadow ── */
-/* The ghost layer behind sits at z-index 0 in fixed position */
-/* Current page slides right on top of it with left shadow */
-/* No changes to JS needed beyond what's already there — just make sure */
-/* the page truly covers the full viewport */
+/* ── iOS-STYLE SWIPE: overflow on the scroll container ── */
 @media (max-width: 640px) {
-  /* Ensure swipe container fills full viewport height */
-  .app { overflow-x: hidden; }
+  .app__scroll { overflow-x: hidden; }
 }
 
 /* ── SCROLL-TO-TOP BUTTON ── */
@@ -7009,7 +7030,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .scroll-top-btn {
     display: flex;
     position: fixed;
-    bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+    /* Tab bar is no longer fixed, so just offset from viewport bottom by safe area */
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px));
     right: 16px;
     z-index: 190;
     width: 42px; height: 42px;
@@ -7670,19 +7692,15 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 /* ── STICKY HEADER: always visible when scrolling on mobile ── */
 @media (max-width: 640px) {
   .app-header {
-    position: fixed !important;
+    /* Now inside app__scroll flex container — sticky keeps it at top while scrolling */
+    position: sticky !important;
     top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
+    left: unset !important;
+    right: unset !important;
     z-index: 200 !important;
-    /* Height = bar (60px) + safe area */
     padding-top: env(safe-area-inset-top, 0px) !important;
   }
-  /* Push page content below the fixed header */
-  .app {
-    padding-top: calc(60px + env(safe-area-inset-top, 0px));
-  }
-  /* Overlay nav needs to account for fixed header height */
+  /* Overlay nav needs to account for header height */
   .mobile-nav-overlay {
     top: calc(60px + env(safe-area-inset-top, 0px)) !important;
   }
