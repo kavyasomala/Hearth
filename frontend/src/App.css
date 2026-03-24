@@ -1485,6 +1485,20 @@ body {
 
 /* ─── Hero tag/pill wrappers with popovers ───────────────────────────────── */
 .rp2__hero-tags { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; align-items: flex-end; }
+/* Stacked tags layout: cuisine on top row, category tags on second row */
+.rp2__hero-tag-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  justify-content: flex-end;
+}
+.rp2__hero-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
 .rp2__hero-tag-wrap { position: relative; }
 .rp2__hero-tag-wrap--right { position: relative; }
 
@@ -6845,33 +6859,35 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   display: none; /* hidden on desktop */
 }
 
-/* ── On mobile: app is a flex column filling the viewport.
-   app__scroll is the scrollable content area.
-   mobile-tab-bar sits below it as a static flex child.
-   The keyboard only shrinks app__scroll — the bar never moves. ── */
+/* ── On mobile: app is FIXED to viewport so header+tabbar are always visible.
+   position:fixed + inset:0 pins the shell; app__scroll is the only scrolling region.
+   This is the Instagram/Gmail pattern — the OS can never scroll the shell. ── */
 @media (max-width: 640px) {
+  html, body {
+    height: 100%;
+    overflow: hidden; /* stop body scroll — only app__scroll scrolls */
+  }
   .app {
+    position: fixed !important;   /* lock shell to viewport */
+    inset: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    height: 100vh !important;
     overflow: hidden !important;
-  }
-  /* Use dvh when supported — it correctly excludes browser chrome */
-  @supports (height: 100dvh) {
-    .app { height: 100dvh !important; }
+    /* No height needed — inset:0 fills the viewport */
   }
   .app__scroll {
-    flex: 1 1 0;
-    min-height: 0; /* critical: prevents flex child from overflowing */
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
+    flex: 1 1 0 !important;
+    min-height: 0 !important; /* critical: flex child must be allowed to shrink */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
     position: relative;
   }
   .mobile-tab-bar {
     display: flex;
-    flex-shrink: 0;            /* never squished by keyboard */
-    /* NOT position:fixed — just a static flex child */
+    flex-shrink: 0 !important;    /* never squished by keyboard */
+    position: relative !important; /* flex child, not fixed */
     background: var(--warm-white);
     border-top: 1px solid var(--border);
     box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
@@ -7689,18 +7705,18 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
    POLISH PASS 3 — Sticky header, pull-to-refresh, filters
    ══════════════════════════════════════════════════════════════════ */
 
-/* ── STICKY HEADER: always visible when scrolling on mobile ── */
+/* ── HEADER: sticky inside app__scroll so it stays at top while content scrolls ── */
 @media (max-width: 640px) {
   .app-header {
-    /* Now inside app__scroll flex container — sticky keeps it at top while scrolling */
     position: sticky !important;
     top: 0 !important;
     left: unset !important;
     right: unset !important;
     z-index: 200 !important;
+    flex-shrink: 0;
     padding-top: env(safe-area-inset-top, 0px) !important;
   }
-  /* Overlay nav needs to account for header height */
+  /* Overlay nav needs to account for header height + safe area */
   .mobile-nav-overlay {
     top: calc(60px + env(safe-area-inset-top, 0px)) !important;
   }
@@ -8150,4 +8166,77 @@ html, body {
 }
 [data-theme="dark"] .rp2__step-tip-input {
   background: rgba(212,120,72,0.08) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   HERO TAGS — mobile collapsible panel + desktop cuisine/tag stacking
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Mobile hero tags toggle button */
+.rp2__hero-tags-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0,0,0,0.48);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.rp2__hero-tags-btn:hover { background: rgba(0,0,0,0.65); }
+.rp2__hero-tags-btn--open {
+  background: rgba(184,74,40,0.82);
+  border-color: var(--terracotta-light);
+}
+
+/* Mobile collapsible tags sheet — slides up from hero bottom */
+.rp2__hero-tags-sheet {
+  position: absolute;
+  bottom: 56px;   /* sit just above corner buttons */
+  left: 0;
+  right: 0;
+  background: rgba(14,11,9,0.90);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 12px 14px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  z-index: 4;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  animation: tagsSheetIn 0.18s cubic-bezier(0.34,1.3,0.64,1);
+}
+@keyframes tagsSheetIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Desktop: tags on hero now stacked vertically per section */
+.rp2__hero-tag-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.rp2__hero-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ── Dark mode ── */
+[data-theme="dark"] .rp2__hero-tags-sheet {
+  background: rgba(8,6,4,0.93);
+  border-top-color: rgba(255,255,255,0.08);
 }
