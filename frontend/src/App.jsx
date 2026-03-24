@@ -1179,6 +1179,9 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
   // Store absolute end time so timer survives tab switches / phone lock
   const endTimeRef = useRef(null);
   const rafRef = useRef(null);
+  // Persistent alarm — repeats until dismissed
+  const alarmIntervalRef = useRef(null);
+  const alarmCtxRef = useRef(null);
 
   useEffect(() => {
     setRemaining(step.timer_seconds || 0);
@@ -1207,10 +1210,27 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
   const resetTimer = (e) => {
     e.stopPropagation();
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    // Stop alarm if running
+    if (alarmIntervalRef.current) { clearInterval(alarmIntervalRef.current); alarmIntervalRef.current = null; }
+    if (alarmCtxRef.current) { try { alarmCtxRef.current.close(); } catch {} alarmCtxRef.current = null; }
     setTimerState('idle');
     setRemaining(step.timer_seconds || 0);
     endTimeRef.current = null;
   };
+  const dismissAlarm = (e) => {
+    e.stopPropagation();
+    if (alarmIntervalRef.current) { clearInterval(alarmIntervalRef.current); alarmIntervalRef.current = null; }
+    if (alarmCtxRef.current) { try { alarmCtxRef.current.close(); } catch {} alarmCtxRef.current = null; }
+    setTimerState('idle');
+    setRemaining(step.timer_seconds || 0);
+  };
+  // Cleanup alarm on unmount
+  useEffect(() => {
+    return () => {
+      if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
+      if (alarmCtxRef.current) { try { alarmCtxRef.current.close(); } catch {} }
+    };
+  }, []);
 
   // rAF loop — reads from wall clock, works even after tab becomes hidden then visible
   useEffect(() => {
@@ -1223,21 +1243,38 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
       setRemaining(left);
       if (left <= 0) {
         setTimerState('done');
-        // Beep
-        try {
-          const ctx = new (window.AudioContext || window.webkitAudioContext)();
-          const playBeep = (time, freq) => {
-            const osc = ctx.createOscillator(); const gain = ctx.createGain();
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.frequency.value = freq; osc.type = 'sine';
-            gain.gain.setValueAtTime(0.4, time);
-            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
-            osc.start(time); osc.stop(time + 0.4);
-          };
-          playBeep(ctx.currentTime, 880); playBeep(ctx.currentTime + 0.45, 1100); playBeep(ctx.currentTime + 0.9, 1320);
-        } catch {}
+        // Start persistent repeating alarm until dismissed
+        const playAlarmBurst = () => {
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            alarmCtxRef.current = ctx;
+            const playBeep = (time, freq, duration = 0.35) => {
+              const osc = ctx.createOscillator(); const gain = ctx.createGain();
+              osc.connect(gain); gain.connect(ctx.destination);
+              osc.frequency.value = freq; osc.type = 'sine';
+              gain.gain.setValueAtTime(0.5, time);
+              gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+              osc.start(time); osc.stop(time + duration);
+            };
+            // Three-tone rising alarm
+            playBeep(ctx.currentTime, 880);
+            playBeep(ctx.currentTime + 0.38, 1100);
+            playBeep(ctx.currentTime + 0.76, 1320);
+          } catch {}
+        };
+        playAlarmBurst();
+        // Repeat every 2.5 seconds until dismissed
+        alarmIntervalRef.current = setInterval(playAlarmBurst, 2500);
+        // Persistent notification (requires user interaction to have happened)
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('Timer done!', { body: `Step ${step.step_number}: ${(step.body_text || '').slice(0, 60)}`, icon: '🍳' });
+          try {
+            new Notification('⏱ Timer done!', {
+              body: `Step ${step.step_number}: ${(step.body_text || '').slice(0, 80)}`,
+              icon: '/hearth-icon.png',
+              requireInteraction: true, // stays until dismissed
+              tag: `hearth-timer-${step.step_number}`,
+            });
+          } catch {}
         }
         return; // stop loop
       }
@@ -1308,12 +1345,13 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
             )}
             <div className="rp2__step-timer__controls">
               <span className={`rp2__step-timer__display ${timerState === 'done' ? 'rp2__step-timer__display--done' : ''}`}>
-                {timerState === 'done' ? '✓ Done!' : fmtTime(remaining)}
+                {timerState === 'done' ? '⏱ Done!' : fmtTime(remaining)}
               </span>
               {timerState === 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}><Icon name="arrowRight" size={12} strokeWidth={2.5} /> Start</button>}
               {timerState === 'running' && <button className="rp2__step-timer__btn rp2__step-timer__btn--pause" onClick={pauseTimer}><Icon name="clock" size={12} strokeWidth={2.5} /> Pause</button>}
               {timerState === 'paused' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}><Icon name="arrowRight" size={12} strokeWidth={2.5} /> Resume</button>}
-              {timerState !== 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--reset" onClick={resetTimer}>↺</button>}
+              {timerState === 'done' && <button className="rp2__step-timer__btn rp2__step-timer__btn--dismiss" onClick={dismissAlarm} style={{ background: 'var(--terracotta)', color: 'white', border: 'none', animation: 'pulse-alarm 1s ease-in-out infinite' }}>✓ Dismiss</button>}
+              {timerState !== 'idle' && timerState !== 'done' && <button className="rp2__step-timer__btn rp2__step-timer__btn--reset" onClick={resetTimer}>↺</button>}
             </div>
           </div>
         )}
@@ -1528,8 +1566,13 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               const secs = h * 3600 + m * 60 + s;
               if (result.length > 0) result[result.length - 1].timer_seconds = secs > 0 ? secs : null;
             } else {
+              // Embed tip into body_text before saving
+              const bodyText = item._tip?.trim()
+                ? item.body_text + '\n\u26D4TIP\u26D4' + item._tip.trim()
+                : item.body_text;
               result.push({
                 ...item,
+                body_text: bodyText,
                 step_number: stepNum++,
                 timer_seconds: item.timer_seconds ?? null,
                 group_label: item.group_label || null,
@@ -1803,9 +1846,18 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           </div>
 
           {/* == MOBILE: four-corner layout == */}
-          {/* Top-left: Back */}
+          {/* Top-left: Tags toggle (no back button — header has one) */}
           <div className="rp2__hero-corner rp2__hero-corner--tl rp2__hero-mobile-only">
-            <button className="rp2__hero-btn" onClick={e => { e.stopPropagation(); onBack(); }}>← Back</button>
+            {((recipe.tags?.length > 0) || recipe.cuisine || (recipe.status && recipe.status !== '')) && (
+              <button
+                className={`rp2__hero-tags-btn ${heroTagsOpen ? 'rp2__hero-tags-btn--open' : ''}`}
+                onClick={e => { e.stopPropagation(); setHeroTagsOpen(o => !o); }}
+                title="Show tags & info"
+              >
+                <Icon name="tag" size={11} strokeWidth={2.5} />
+                {heroTagsOpen ? 'hide' : [recipe.cuisine, ...(recipe.tags || [])].filter(Boolean).length + ' tags'}
+              </button>
+            )}
           </div>
           {/* Top-right: Photo edit (admin) + Cooked */}
           <div className="rp2__hero-corner rp2__hero-corner--tr rp2__hero-mobile-only">
@@ -1844,20 +1896,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               onClick={e => { e.stopPropagation(); onToggleMakeSoon && onToggleMakeSoon(); }}
               title={isMakeSoon ? 'Remove from Make Soon' : 'Add to Make Soon'}
             ><Icon name="timer" size={16} strokeWidth={2} /></button>
-            {/* Tags toggle — only show if there's anything to display */}
-            {((recipe.tags?.length > 0) || recipe.cuisine || (recipe.status && recipe.status !== '')) && (
-              <button
-                className={`rp2__hero-tags-btn ${heroTagsOpen ? 'rp2__hero-tags-btn--open' : ''}`}
-                onClick={e => { e.stopPropagation(); setHeroTagsOpen(o => !o); }}
-                title="Show tags & info"
-              >
-                <Icon name="tag" size={11} strokeWidth={2.5} />
-                {heroTagsOpen ? 'hide' : [recipe.cuisine, ...(recipe.tags || [])].filter(Boolean).length + ' tags'}
-              </button>
-            )}
           </div>
 
-          {/* Mobile tags sheet — expands from bottom of hero when toggle is open */}
+          {/* Mobile tags sheet — expands from top-left of hero when toggle is open */}
           {heroTagsOpen && (
             <div className="rp2__hero-tags-sheet rp2__hero-mobile-only" onClick={e => e.stopPropagation()}>
               {recipe.cuisine && (
@@ -1911,8 +1952,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             )}
           </div>
 
-          {/* -- Desktop-only tags+pills row at bottom -- */}
-          <div className="rp2__hero-bottom rp2__hero-bottom--desktop-only">
+          {/* -- Tags+pills row — shown on desktop always, on mobile only when open -- */}
+          <div className={`rp2__hero-bottom ${window.innerWidth > 640 || heroTagsOpen ? '' : 'rp2__hero-bottom--hidden'}`} style={window.innerWidth <= 640 && !heroTagsOpen ? { display: 'none' } : {}}>
 
             {/* Tags area — stacked: row 1 = cuisine+status, row 2 = category tags */}
             <div className="rp2__hero-tag-stack">
@@ -1922,8 +1963,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               {/* Cuisine chip -- only shown when set */}
               {recipe.cuisine && (
                 <div className="rp2__hero-tag-wrap">
-                  <button className={`rp2__tag rp2__tag--clickable ${isEdit('meta-cuisine') ? 'rp2__tag--editing' : ''}`}
-                    onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-cuisine') ? null : 'meta-cuisine'); }}>
+                  <button className={`rp2__tag ${isAdmin ? 'rp2__tag--clickable' : ''} ${isEdit('meta-cuisine') ? 'rp2__tag--editing' : ''}`}
+                    onClick={e => { if (!isAdmin) return; e.stopPropagation(); startEdit(isEdit('meta-cuisine') ? null : 'meta-cuisine'); }}
+                    style={!isAdmin ? { cursor: 'default', pointerEvents: 'none' } : {}}>
                     {recipe.cuisine}
                   </button>
                   {isEdit('meta-cuisine') && (
@@ -1949,8 +1991,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               {/* Progress chip -- only shown when set */}
               {(recipe.status && recipe.status !== '') && (
                 <div className="rp2__hero-tag-wrap">
-                  <button className={`rp2__tag rp2__tag--clickable ${recipe.status === 'incomplete' ? 'rp2__tag--warning' : recipe.status === 'needs tweaking' ? 'rp2__tag--warning' : recipe.status === 'complete' ? 'rp2__tag--success' : 'rp2__tag--light'} ${isEdit('meta-progress') ? 'rp2__tag--editing' : ''}`}
-                    onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-progress') ? null : 'meta-progress'); }}>
+                  <button className={`rp2__tag ${isAdmin ? 'rp2__tag--clickable' : ''} ${recipe.status === 'incomplete' ? 'rp2__tag--warning' : recipe.status === 'needs tweaking' ? 'rp2__tag--warning' : recipe.status === 'complete' ? 'rp2__tag--success' : 'rp2__tag--light'} ${isEdit('meta-progress') ? 'rp2__tag--editing' : ''}`}
+                    onClick={e => { if (!isAdmin) return; e.stopPropagation(); startEdit(isEdit('meta-progress') ? null : 'meta-progress'); }}
+                    style={!isAdmin ? { cursor: 'default', pointerEvents: 'none' } : {}}>
                     {recipe.status === 'incomplete' ? 'Incomplete' : recipe.status === 'needs tweaking' ? 'Tweaking' : recipe.status === 'complete' ? 'Complete' : recipe.status === 'to try' ? 'To Try' : null}
                   </button>
                   {isEdit('meta-progress') && (
@@ -1975,13 +2018,14 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               {/* Row 2: Category tags */}
               {((recipe.tags || []).length > 0 || (isAdmin && !isEdit('meta-tags'))) && (
               <div className="rp2__hero-tag-row">
-              {/* Individual tag chips -- one per tag, each clickable to edit */}
+              {/* Individual tag chips -- one per tag, clickable by admin to edit */}
               {(recipe.tags || []).map(tag => {
                 const tagDef = TAG_FILTERS.find(f => f.key === tag);
                 return (
                   <div key={tag} className="rp2__hero-tag-wrap">
-                    <button className={`rp2__tag rp2__tag--light rp2__tag--clickable ${isEdit('meta-tags') ? 'rp2__tag--editing' : ''}`}
-                      onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-tags') ? null : 'meta-tags'); }}>
+                    <button className={`rp2__tag rp2__tag--light ${isAdmin ? 'rp2__tag--clickable' : ''} ${isEdit('meta-tags') ? 'rp2__tag--editing' : ''}`}
+                      onClick={e => { if (!isAdmin) return; e.stopPropagation(); startEdit(isEdit('meta-tags') ? null : 'meta-tags'); }}
+                      style={!isAdmin ? { cursor: 'default', pointerEvents: 'none' } : {}}>
                       {tagDef ? tagDef.label : tag}
                     </button>
                   </div>
@@ -2042,11 +2086,18 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
 
               {/* Time pill -- hide if empty for guests */}
               {(isAdmin || recipe.time) && <div className="rp2__hero-tag-wrap rp2__hero-tag-wrap--right">
-                <button className={`rp2__pill rp2__pill--clickable ${isEdit('meta-time') ? 'rp2__pill--editing' : ''}`}
-                  onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-time') ? null : 'meta-time'); }}>
-                  <span className="rp2__pill-icon"><Icon name="clock" size={13} strokeWidth={2} /></span>
-                  {recipe.time || <span style={{opacity:0.6}}>+ Time</span>}
-                </button>
+                {isAdmin ? (
+                  <button className={`rp2__pill rp2__pill--clickable ${isEdit('meta-time') ? 'rp2__pill--editing' : ''}`}
+                    onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-time') ? null : 'meta-time'); }}>
+                    <span className="rp2__pill-icon"><Icon name="clock" size={13} strokeWidth={2} /></span>
+                    {recipe.time || <span style={{opacity:0.6}}>+ Time</span>}
+                  </button>
+                ) : (
+                  <span className="rp2__pill">
+                    <span className="rp2__pill-icon"><Icon name="clock" size={13} strokeWidth={2} /></span>
+                    {recipe.time}
+                  </span>
+                )}
                 {isEdit('meta-time') && (
                   <div className="rp2__hero-dark-popover rp2__hero-dark-popover--right">
                     <p className="rp2__dark-pop-label"><Icon name="clock" size={13} strokeWidth={2} /> Cook Time</p>
@@ -2064,11 +2115,18 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
 
               {/* Servings pill -- hide if empty for guests */}
               {(isAdmin || recipe.servings) && <div className="rp2__hero-tag-wrap rp2__hero-tag-wrap--right">
-                <button className={`rp2__pill rp2__pill--clickable ${isEdit('meta-servings') ? 'rp2__pill--editing' : ''}`}
-                  onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-servings') ? null : 'meta-servings'); }}>
-                  <span className="rp2__pill-icon"><Icon name="utensils" size={13} strokeWidth={2} /></span>
-                  {recipe.servings ? `${recipe.servings} srv` : <span style={{opacity:0.6}}>+ Servings</span>}
-                </button>
+                {isAdmin ? (
+                  <button className={`rp2__pill rp2__pill--clickable ${isEdit('meta-servings') ? 'rp2__pill--editing' : ''}`}
+                    onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-servings') ? null : 'meta-servings'); }}>
+                    <span className="rp2__pill-icon"><Icon name="utensils" size={13} strokeWidth={2} /></span>
+                    {recipe.servings ? `${recipe.servings} srv` : <span style={{opacity:0.6}}>+ Servings</span>}
+                  </button>
+                ) : (
+                  <span className="rp2__pill">
+                    <span className="rp2__pill-icon"><Icon name="utensils" size={13} strokeWidth={2} /></span>
+                    {recipe.servings} srv
+                  </span>
+                )}
                 {isEdit('meta-servings') && (
                   <div className="rp2__hero-dark-popover rp2__hero-dark-popover--right">
                     <p className="rp2__dark-pop-label"><Icon name="utensils" size={13} strokeWidth={2} /> Servings</p>
@@ -7906,7 +7964,7 @@ function AppInner() {
 
             {/* -- Filter Panel -- */}
             {filtersOpen && (
-              <div className="filter-panel">
+              <div className="filter-panel" onClick={e => e.stopPropagation()}>
 
                 {/* Cuisine -- rounded icon chips */}
                 <div className="filter-panel__group">
