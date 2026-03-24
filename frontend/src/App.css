@@ -8349,3 +8349,161 @@ html, body {
   background: var(--terracotta) !important;
   color: white !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   VIEWPORT + FOOTER + ALARM FIX PASS
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Tab bar: much smaller, compact ── */
+@media (max-width: 640px) {
+  .mobile-tab-bar__btn {
+    min-height: 52px !important;
+    padding: 0 !important;
+  }
+  .mobile-tab-bar__btn-inner {
+    padding-top: 6px !important;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 2px !important;
+  }
+  .mobile-tab-bar__icon svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  .mobile-tab-bar__label {
+    font-size: 9px !important;
+    font-weight: 600 !important;
+  }
+  /* Tab bar total height ≈ 52px, so views only need that much padding */
+  .view, .home-view, .grocery-view, .profile-view, .cn-tab, .cookbooks-tab {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ── Footer: HIDDEN on mobile — it's inside scroll but takes up too much space ──
+   On mobile, users don't need a footer; all nav is in the tab bar */
+@media (max-width: 640px) {
+  .site-footer {
+    display: none !important;
+  }
+}
+
+/* ── Tip modal: centered fixed modal, no anchor positioning ── */
+.tip-modal-centered {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: min(340px, calc(100vw - 32px)) !important;
+  padding: 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  z-index: 9000 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.22) !important;
+}
+
+/* ── Full-screen alarm overlay ── */
+.timer-alarm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn 0.2s ease;
+}
+.timer-alarm-card {
+  background: var(--warm-white);
+  border-radius: 24px;
+  padding: 36px 28px 28px;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.35);
+  animation: scaleIn 0.22s cubic-bezier(0.22,1,0.36,1);
+}
+.timer-alarm-card__icon {
+  font-size: 52px;
+  line-height: 1;
+  animation: pulse-alarm 1s ease-in-out infinite;
+}
+.timer-alarm-card__title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--terracotta);
+  margin: 0;
+}
+.timer-alarm-card__step {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--warm-gray);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.timer-alarm-card__body {
+  font-size: 0.92rem;
+  color: var(--charcoal);
+  line-height: 1.5;
+  margin: 4px 0 8px;
+}
+.timer-alarm-card__dismiss {
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: 999px;
+  border: none;
+  background: var(--terracotta);
+  color: white;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  animation: pulse-alarm 1s ease-in-out infinite;
+  margin-top: 8px;
+  touch-action: manipulation;
+}
+.timer-alarm-card__dismiss:hover { background: var(--terracotta-dark); }
+.timer-alarm-card__dismiss:active { transform: scale(0.97); }
+
+/* ── Alarm pulse ── */
+@keyframes pulse-alarm {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+/* ── Timer done: pulsing text ── */
+.rp2__step-timer__display--done {
+  color: var(--terracotta) !important;
+  font-weight: 700;
+  animation: pulse-alarm 1.2s ease-in-out infinite;
+}
+.rp2__step-timer__btn--dismiss {
+  background: var(--terracotta) !important;
+  color: white !important;
+  border-color: var(--terracotta) !important;
+  font-weight: 700 !important;
+  animation: pulse-alarm 1s ease-in-out infinite;
+}
+
+/* ── Dark mode alarm overlay ── */
+[data-theme="dark"] .timer-alarm-card {
+  background: var(--warm-white);
+}
+
+/* ── Desktop: no alarm overlay (just the inline dismiss button) ── */
+@media (min-width: 641px) {
+  .timer-alarm-overlay {
+    display: none !important;
+  }
+}

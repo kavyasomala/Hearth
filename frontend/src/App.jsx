@@ -1104,16 +1104,23 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
                       <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
                         <button className="rp2__ed-add-timer-btn" onClick={() => { const i = steps.findIndex(s => s._id===item._id); const t={_id:`timer-${'{'}Date.now(){'}'}`,_isTimer:true,h:'',m:'',s:''}; const n=[...steps]; n.splice(i+1,0,t); setSteps(n); }} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
-                        <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
+                        <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                       </div>
                       <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
-                      {item._showTip && createPortal((() => {
-                        const ar = item._tipAnchor; const pw = 300, ph = 160;
-                        const vw = window.innerWidth, vh = window.innerHeight;
-                        let top = ar ? ar.bottom + 6 : vh/2-ph/2; let left = ar ? ar.left-pw+ar.width : vw/2-pw/2;
-                        if (top+ph > vh-8) top = ar ? ar.top-ph-6 : 8; if (left < 8) left = 8; if (left+pw > vw-8) left = vw-pw-8;
-                        return (<><div style={{ position:'fixed',inset:0,zIndex:8998 }} onClick={() => setSteps(prev => prev.map(s => s._id===item._id ? {...s,_showTip:false} : s))} /><div className="anchored-popover" style={{ position:'fixed',top,left,width:pw,zIndex:8999,padding:'12px 14px',display:'flex',flexDirection:'column',gap:8 }} onClick={e=>e.stopPropagation()}><label style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--warm-gray)' }}>Tip for this step</label><textarea className="editor-textarea" autoFocus rows={3} style={{ fontSize:13,resize:'none' }} value={item._tip||''} onChange={e=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:e.target.value}:s))} placeholder="e.g. don't overcrowd the pan..." /><div style={{ display:'flex',gap:6,justifyContent:'flex-end' }}>{item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize:11,padding:'3px 8px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s))}>Clear</button>}<button className="btn btn--primary btn--sm" style={{ fontSize:11,padding:'3px 10px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_showTip:false}:s))}>Done</button></div></div></>);
-                      })(), document.body)}
+                      {item._showTip && createPortal(
+                          <>
+                            <div style={{ position:'fixed',inset:0,zIndex:8998,background:'rgba(0,0,0,0.35)',backdropFilter:'blur(2px)' }} onClick={() => { const updater = (prev) => prev.map(s => s._id === item._id ? { ...s, _showTip: false } : s); if(typeof setDraftSteps !== 'undefined') try{setDraftSteps(updater);}catch(e){} if(typeof setSteps !== 'undefined') try{setSteps(updater);}catch(e){} }} />
+                            <div className="anchored-popover tip-modal-centered" onClick={e=>e.stopPropagation()}>
+                              <label style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--warm-gray)' }}>💡 Tip for this step</label>
+                              <textarea className="editor-textarea" autoFocus rows={3} style={{ fontSize:13,resize:'none' }} value={item._tip||''} placeholder="e.g. don't overcrowd the pan..." onChange={e=>{ const v=e.target.value; try{setDraftSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:v}:s));}catch(e2){} try{setSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:v}:s));}catch(e2){} }} />
+                              <div style={{ display:'flex',gap:6,justifyContent:'flex-end' }}>
+                                {item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize:11,padding:'3px 8px' }} onClick={()=>{ try{setDraftSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s));}catch(e){} try{setSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s));}catch(e){} }}>Clear</button>}
+                                <button className="btn btn--primary btn--sm" style={{ fontSize:11,padding:'3px 10px' }} onClick={()=>{ try{setDraftSteps(p=>p.map(s=>s._id===item._id?{...s,_showTip:false}:s));}catch(e){} try{setSteps(p=>p.map(s=>s._id===item._id?{...s,_showTip:false}:s));}catch(e){} }}>Done</button>
+                              </div>
+                            </div>
+                          </>,
+                          document.body
+                        )}
                     </StepSortableItem>
                   );
                 })}
@@ -1171,32 +1178,62 @@ const AutoGrowTextarea = ({ value, onChange, placeholder, className, style, minR
 // --- Step Item with integrated timer --------------------------------------
 const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNotes = [] }) => {
   const [showTips, setShowTips] = useState(false);
-  // Parse manual tip embedded in body_text
   const [cleanStepBody, manualTip] = (step.body_text || '').split('\u26D4TIP\u26D4');
   const hasTimer = step.timer_seconds && step.timer_seconds > 0;
-  const [timerState, setTimerState] = useState('idle'); // 'idle' | 'running' | 'paused' | 'done'
+  const [timerState, setTimerState] = useState('idle');
   const [remaining, setRemaining] = useState(step.timer_seconds || 0);
-  // Store absolute end time so timer survives tab switches / phone lock
   const endTimeRef = useRef(null);
   const rafRef = useRef(null);
-  // Persistent alarm — repeats until dismissed
   const alarmIntervalRef = useRef(null);
-  const alarmCtxRef = useRef(null);
+  // Single shared AudioContext — created once on first user interaction
+  const audioCtxRef = useRef(null);
+
+  const getAudioCtx = () => {
+    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+      try { audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+    }
+    // Resume if suspended (autoplay policy)
+    if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume().catch(() => {});
+    }
+    return audioCtxRef.current;
+  };
+
+  const stopAlarm = () => {
+    if (alarmIntervalRef.current) { clearInterval(alarmIntervalRef.current); alarmIntervalRef.current = null; }
+  };
+
+  const playAlarmBurst = () => {
+    try {
+      const ctx = getAudioCtx();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      [[now, 880], [now + 0.35, 1100], [now + 0.70, 1320]].forEach(([t, freq]) => {
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = freq; osc.type = 'sine';
+        gain.gain.setValueAtTime(0.55, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+        osc.start(t); osc.stop(t + 0.33);
+      });
+    } catch {}
+  };
 
   useEffect(() => {
     setRemaining(step.timer_seconds || 0);
     setTimerState('idle');
     endTimeRef.current = null;
+    stopAlarm();
   }, [step.timer_seconds]);
 
   const startTimer = (e) => {
     e.stopPropagation();
     if (timerState === 'idle' || timerState === 'paused') {
-      // Request notification permission so the alarm fires when tab is in background
       if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
       }
-      // Set absolute end time from NOW + remaining seconds
+      // Warm up AudioContext on user gesture so it's ready when alarm fires
+      getAudioCtx();
       endTimeRef.current = Date.now() + remaining * 1000;
       setTimerState('running');
     }
@@ -1210,26 +1247,19 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
   const resetTimer = (e) => {
     e.stopPropagation();
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    // Stop alarm if running
-    if (alarmIntervalRef.current) { clearInterval(alarmIntervalRef.current); alarmIntervalRef.current = null; }
-    if (alarmCtxRef.current) { try { alarmCtxRef.current.close(); } catch {} alarmCtxRef.current = null; }
+    stopAlarm();
     setTimerState('idle');
     setRemaining(step.timer_seconds || 0);
     endTimeRef.current = null;
   };
   const dismissAlarm = (e) => {
-    e.stopPropagation();
-    if (alarmIntervalRef.current) { clearInterval(alarmIntervalRef.current); alarmIntervalRef.current = null; }
-    if (alarmCtxRef.current) { try { alarmCtxRef.current.close(); } catch {} alarmCtxRef.current = null; }
+    if (e) e.stopPropagation();
+    stopAlarm();
     setTimerState('idle');
     setRemaining(step.timer_seconds || 0);
   };
-  // Cleanup alarm on unmount
   useEffect(() => {
-    return () => {
-      if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
-      if (alarmCtxRef.current) { try { alarmCtxRef.current.close(); } catch {} }
-    };
+    return () => { stopAlarm(); };
   }, []);
 
   // rAF loop — reads from wall clock, works even after tab becomes hidden then visible
@@ -1243,40 +1273,21 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
       setRemaining(left);
       if (left <= 0) {
         setTimerState('done');
-        // Start persistent repeating alarm until dismissed
-        const playAlarmBurst = () => {
-          try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            alarmCtxRef.current = ctx;
-            const playBeep = (time, freq, duration = 0.35) => {
-              const osc = ctx.createOscillator(); const gain = ctx.createGain();
-              osc.connect(gain); gain.connect(ctx.destination);
-              osc.frequency.value = freq; osc.type = 'sine';
-              gain.gain.setValueAtTime(0.5, time);
-              gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
-              osc.start(time); osc.stop(time + duration);
-            };
-            // Three-tone rising alarm
-            playBeep(ctx.currentTime, 880);
-            playBeep(ctx.currentTime + 0.38, 1100);
-            playBeep(ctx.currentTime + 0.76, 1320);
-          } catch {}
-        };
+        // Play immediately then repeat every 2.5s until dismissed
         playAlarmBurst();
-        // Repeat every 2.5 seconds until dismissed
         alarmIntervalRef.current = setInterval(playAlarmBurst, 2500);
-        // Persistent notification (requires user interaction to have happened)
+        // Persistent notification
         if ('Notification' in window && Notification.permission === 'granted') {
           try {
             new Notification('⏱ Timer done!', {
-              body: `Step ${step.step_number}: ${(step.body_text || '').slice(0, 80)}`,
+              body: `Step ${step.step_number}: ${(step.body_text || '').split('\u26D4TIP\u26D4')[0].slice(0, 80)}`,
               icon: '/hearth-icon.png',
-              requireInteraction: true, // stays until dismissed
+              requireInteraction: true,
               tag: `hearth-timer-${step.step_number}`,
             });
           } catch {}
         }
-        return; // stop loop
+        return;
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -1350,10 +1361,23 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
               {timerState === 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}><Icon name="arrowRight" size={12} strokeWidth={2.5} /> Start</button>}
               {timerState === 'running' && <button className="rp2__step-timer__btn rp2__step-timer__btn--pause" onClick={pauseTimer}><Icon name="clock" size={12} strokeWidth={2.5} /> Pause</button>}
               {timerState === 'paused' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}><Icon name="arrowRight" size={12} strokeWidth={2.5} /> Resume</button>}
-              {timerState === 'done' && <button className="rp2__step-timer__btn rp2__step-timer__btn--dismiss" onClick={dismissAlarm} style={{ background: 'var(--terracotta)', color: 'white', border: 'none', animation: 'pulse-alarm 1s ease-in-out infinite' }}>✓ Dismiss</button>}
+              {timerState === 'done' && <button className="rp2__step-timer__btn rp2__step-timer__btn--dismiss" onClick={dismissAlarm}>✓ Dismiss</button>}
               {timerState !== 'idle' && timerState !== 'done' && <button className="rp2__step-timer__btn rp2__step-timer__btn--reset" onClick={resetTimer}>↺</button>}
             </div>
           </div>
+        )}
+        {/* Full-screen alarm overlay on mobile when timer is done */}
+        {timerState === 'done' && createPortal(
+          <div className="timer-alarm-overlay" onClick={dismissAlarm}>
+            <div className="timer-alarm-card" onClick={e => e.stopPropagation()}>
+              <div className="timer-alarm-card__icon">⏱</div>
+              <h2 className="timer-alarm-card__title">Timer Done!</h2>
+              <p className="timer-alarm-card__step">Step {step.step_number}</p>
+              <p className="timer-alarm-card__body">{cleanStepBody?.slice(0, 100)}{cleanStepBody?.length > 100 ? '...' : ''}</p>
+              <button className="timer-alarm-card__dismiss" onClick={dismissAlarm}>✓ Dismiss</button>
+            </div>
+          </div>,
+          document.body
         )}
       </div>
     </li>
@@ -2505,681 +2529,27 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                           <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer after this step"><Icon name="timer" size={13} strokeWidth={2} /></button>
                           <button
                             className="rp2__ed-add-timer-btn"
-                            onClick={e => { e.stopPropagation(); setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }}
+                            onClick={e => { e.stopPropagation(); setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip } : s)); }}
                             title="Add tip to this step"
                             style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}
                           ><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                         </div>
                         <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
                         {/* Tip popup portal */}
-                        {item._showTip && createPortal((() => {
-                          const ar = item._tipAnchor;
-                          const pw = 300, ph = 160;
-                          const vw = window.innerWidth, vh = window.innerHeight;
-                          let top = ar ? ar.bottom + 6 : vh / 2 - ph / 2;
-                          let left = ar ? ar.left - pw + ar.width : vw / 2 - pw / 2;
-                          if (top + ph > vh - 8) top = ar ? ar.top - ph - 6 : 8;
-                          if (left < 8) left = 8;
-                          if (left + pw > vw - 8) left = vw - pw - 8;
-                          return (
-                            <>
-                              <div style={{ position: 'fixed', inset: 0, zIndex: 8998 }} onClick={() => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: false } : s))} />
-                              <div className="anchored-popover" style={{ position: 'fixed', top, left, width: pw, zIndex: 8999, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }} onClick={e => e.stopPropagation()}>
-                                <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--warm-gray)' }}>Tip for this step</label>
-                                <textarea
-                                  className="editor-textarea"
-                                  autoFocus
-                                  rows={3}
-                                  style={{ fontSize: 13, resize: 'none' }}
-                                  value={item._tip || ''}
-                                  onChange={e => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _tip: e.target.value } : s))}
-                                  placeholder="e.g. don't overcrowd the pan..."
-                                />
-                                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                                  {item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize: 11, padding: '3px 8px' }} onClick={() => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _tip: '', _showTip: false } : s))}>Clear</button>}
-                                  <button className="btn btn--primary btn--sm" style={{ fontSize: 11, padding: '3px 10px' }} onClick={() => setDraftSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: false } : s))}>Done</button>
-                                </div>
+                        {item._showTip && createPortal(
+                          <>
+                            <div style={{ position:'fixed',inset:0,zIndex:8998,background:'rgba(0,0,0,0.35)',backdropFilter:'blur(2px)' }} onClick={() => { const updater = (prev) => prev.map(s => s._id === item._id ? { ...s, _showTip: false } : s); if(typeof setDraftSteps !== 'undefined') try{setDraftSteps(updater);}catch(e){} if(typeof setSteps !== 'undefined') try{setSteps(updater);}catch(e){} }} />
+                            <div className="anchored-popover tip-modal-centered" onClick={e=>e.stopPropagation()}>
+                              <label style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--warm-gray)' }}>💡 Tip for this step</label>
+                              <textarea className="editor-textarea" autoFocus rows={3} style={{ fontSize:13,resize:'none' }} value={item._tip||''} placeholder="e.g. don't overcrowd the pan..." onChange={e=>{ const v=e.target.value; try{setDraftSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:v}:s));}catch(e2){} try{setSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:v}:s));}catch(e2){} }} />
+                              <div style={{ display:'flex',gap:6,justifyContent:'flex-end' }}>
+                                {item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize:11,padding:'3px 8px' }} onClick={()=>{ try{setDraftSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s));}catch(e){} try{setSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s));}catch(e){} }}>Clear</button>}
+                                <button className="btn btn--primary btn--sm" style={{ fontSize:11,padding:'3px 10px' }} onClick={()=>{ try{setDraftSteps(p=>p.map(s=>s._id===item._id?{...s,_showTip:false}:s));}catch(e){} try{setSteps(p=>p.map(s=>s._id===item._id?{...s,_showTip:false}:s));}catch(e){} }}>Done</button>
                               </div>
-                            </>
-                          );
-                        })(), document.body)}
-                      </StepSortableItem>
-                    );
-                  })}
-                </SortableContext>
-              </DndContext>
-              <div className="ing-flat-add-row">
-                <button className="btn btn--ghost editor-add-btn" onClick={addDraftStep}>+ Add Step</button>
-                <button className="btn btn--ghost editor-add-btn ing-add-group-btn" onClick={() => setDraftSteps(prev => [...prev, { _id: `step-grp-${Date.now()}`, _isGroup: true, name: '' }])}>+ Add Group</button>
-              </div>
-            </div>
-          ) : null}
-
-          {/* Read-only steps view */}
-          {!isEdit('instructions') && (
-            instructions?.length > 0
-              ? (() => {
-                  const sorted = [...instructions].sort((a, b) => a.step_number - b.step_number);
-                  const sortedUndone = sorted.filter(s => !doneSteps.has(s.step_number));
-                  // Group steps — ungrouped steps interleaved with grouped sections
-                  const sections = [];
-                  for (const step of sorted) {
-                    const lbl = step.group_label || '';
-                    const last = sections[sections.length - 1];
-                    if (!last || last.label !== lbl) sections.push({ label: lbl, steps: [step] });
-                    else last.steps.push(step);
-                  }
-                  return (
-                    <div className="rp2__steps-outer">
-                      {sections.map((sec, si) => (
-                        <div key={si} className={sec.label ? 'rp2__step-section' : 'rp2__step-section rp2__step-section--ungrouped'}>
-                          {sec.label && <p className="rp2__step-section-label">{sec.label}</p>}
-                          <ol className="rp2__steps">
-                            {sec.steps.map((step, listIdx) => {
-                              const done = doneSteps.has(step.step_number);
-                              const isCurrent = !done && sortedUndone[0]?.step_number === step.step_number;
-                              const isFirst = sorted[0]?.step_number === step.step_number;
-                              const enlarge = isFirst && doneCount === 0 ? true : isCurrent;
-                              const stepText = (step.body_text || '').toLowerCase();
-                              const matchedNotes = cookingNotes.filter(n =>
-                                (n.keywords || []).some(kw => stepText.includes(kw.toLowerCase()))
-                              );
-                              return (
-                                <StepItem
-                                  key={step.step_number}
-                                  step={step}
-                                  done={done}
-                                  isCurrent={isCurrent}
-                                  enlarge={enlarge}
-                                  grouped={!!sec.label}
-                                  onToggle={() => toggleStep(step.step_number)}
-                                  matchedNotes={matchedNotes}
-                                />
-                              );
-                            })}
-                          </ol>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()
-              : <p className="rp2__empty-hint">No instructions yet.</p>
-          )}
-
-          {/* -- Notes + Cookbook -- side by side (desktop), stacked (mobile) -- */}
-          <div className="rp2__notes-row">
-            <div className="rp2__notes">
-              <div className="rp2__section-title-row">
-                <h2 className="rp2__section-title rp2__section-title--sm">Notes &amp; Tips</h2>
-                {isAdmin && (
-                  <span className="section-pencil-wrap">
-                    {isEdit('notes') && !showNotesModal ? (
-                      <>
-                        <button className="section-pencil section-pencil--confirm" onClick={() => saveSection('notes')} disabled={saving} title={saving ? 'Saving...' : 'Save'}>{saving ? '...' : '✓'}</button>
-                        <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowNotesModal(false); }} title="Cancel">✕</button>
-                      </>
-                    ) : (
-                      <button className="section-pencil" onClick={e => { e.stopPropagation(); startEdit('notes'); if (window.innerWidth <= 640) { setNotesAnchorRect(e.currentTarget.getBoundingClientRect()); setShowNotesModal(true); } }} title="Edit">✎</button>
-                    )}
-                  </span>
-                )}
-              </div>
-
-              {/* Read-only notes display */}
-              {!isEdit('notes') && (
-                notes?.length > 0
-                  ? <ul className="rp2__notes-list">
-                      {notes.map((n, i) => (
-                        <li key={i} className="rp2__notes-item">{n.text ?? n.body_text ?? n}</li>
-                      ))}
-                    </ul>
-                  : <p className="rp2__empty-hint">No notes yet.</p>
-              )}
-
-              {/* Desktop inline edit with drag-to-reorder */}
-              {isEdit('notes') && !showNotesModal && (
-                <div className="rp2__inline-editor">
-                  <DndContext sensors={rpSensors} collisionDetection={closestCenter} onDragEnd={({ active, over }) => {
-                    if (over && active.id !== over.id) setDraftNotes(prev => arrayMove(prev, prev.findIndex(n => n._id === active.id), prev.findIndex(n => n._id === over.id)));
-                  }}>
-                    <SortableContext items={draftNotes.map(n => n._id)} strategy={verticalListSortingStrategy}>
-                      {draftNotes.map(n => (
-                        <SortableNoteRow key={n._id} note={n} onUpdate={v => updateDraftNote(n._id, v)} onRemove={() => removeDraftNote(n._id)} />
-                      ))}
-                    </SortableContext>
-                  </DndContext>
-                  <button className="btn btn--ghost editor-add-btn" onClick={addDraftNote}>+ Add Note</button>
-                </div>
-              )}
-
-              {/* Notes popover — portal anchored near the pencil icon */}
-              {showNotesModal && isEdit('notes') && createPortal((() => {
-                const pw = 360, ph = 400;
-                const vw = window.innerWidth, vh = window.innerHeight;
-                const ar = notesAnchorRect;
-                let top, left;
-                if (ar) {
-                  top = ar.bottom + 8;
-                  left = ar.right - Math.min(pw, vw - 16);
-                  if (top + ph > vh - 8) top = Math.max(8, ar.top - ph - 8);
-                  if (left < 8) left = 8;
-                  if (left + Math.min(pw, vw - 16) > vw - 8) left = vw - Math.min(pw, vw - 16) - 8;
-                } else {
-                  top = Math.max(8, (vh - ph) / 2);
-                  left = Math.max(8, (vw - Math.min(pw, vw - 16)) / 2);
-                }
-                const w = Math.min(pw, vw - 16);
-                return (
-                  <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 8999 }} onClick={() => { cancelEdit(); setShowNotesModal(false); }} />
-                    <div className="anchored-popover create-modal" style={{ position: 'fixed', top, left, width: w, maxHeight: ph, zIndex: 9000 }} onClick={e => e.stopPropagation()}>
-                      <div className="create-modal__header">
-                        <h2 className="create-modal__title"><Icon name="note" size={18} strokeWidth={2} /> Notes &amp; Tips</h2>
-                        <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>✕</button>
-                      </div>
-                      <div className="create-modal__body" style={{ gap: 10, overflowY: 'auto', maxHeight: ph - 120 }}>
-                        {draftNotes.map((n, idx) => (
-                          <div key={n._id} className="rp2__ed-note-row">
-                            <input className="editor-input" style={{ flex: 1, fontSize: 16 }} value={n.text} onChange={e => updateDraftNote(n._id, e.target.value)} placeholder="Add a tip or note..." autoFocus={idx === 0} />
-                            <button className="editor-remove-btn" onClick={() => removeDraftNote(n._id)}>✕</button>
-                          </div>
-                        ))}
-                        <button className="btn btn--ghost editor-add-btn" onClick={addDraftNote}>+ Add Note</button>
-                      </div>
-                      <div className="create-modal__footer">
-                        <button className="btn btn--ghost" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>Cancel</button>
-                        <button className="btn btn--primary" onClick={async () => { await saveSection('notes'); setShowNotesModal(false); }} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
-                      </div>
-                    </div>
-                  </>
-                );
-              })(), document.body)}
-            </div>
-
-            {/* Cookbook Reference -- editable */}
-            <div className="rp2__cookbook">
-              <div className="rp2__section-title-row">
-                <h2 className="rp2__section-title rp2__cookbook-title">Cookbook</h2>
-                {isAdmin && (
-                  <span className="section-pencil-wrap">
-                    {isEdit('cookbook') && !showCookbookModal ? (
-                      <>
-                        <button className="section-pencil section-pencil--confirm" onClick={() => saveSection('cookbook')} disabled={saving} title={saving ? 'Saving...' : 'Save'}>{saving ? '...' : '✓'}</button>
-                        <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowCookbookModal(false); }} title="Cancel">✕</button>
-                      </>
-                    ) : (
-                      <button className="section-pencil" onClick={e => { e.stopPropagation(); startEdit('cookbook'); if (window.innerWidth <= 640) { setCookbookAnchorRect(e.currentTarget.getBoundingClientRect()); setShowCookbookModal(true); } }} title="Edit">✎</button>
-                    )}
-                  </span>
-                )}
-              </div>
-
-              {/* Read-only cookbook display */}
-              {!isEdit('cookbook') && ((recipe.cookbook || recipe.reference) ? (
-                <div className="rp2__cookbook-text">
-                  <span className="rp2__cookbook-text__book">{recipe.cookbook}</span>
-                  {recipe.reference && <span className="rp2__cookbook-text__page">Page {recipe.reference}</span>}
-                </div>
-              ) : (
-                <p className="rp2__empty-hint">No reference yet. Click ✎ to add.</p>
-              ))}
-
-              {/* Desktop inline edit (fallback when modal not open) */}
-              {isEdit('cookbook') && !showCookbookModal && (
-                <div className="rp2__cookbook-editor">
-                  <CookbookAutocomplete value={draftCookbook.cookbook} onChange={v => setDraftCookbook(p => ({...p, cookbook: v}))} cookbooks={cookbooks} />
-                  <input className="editor-input" value={draftCookbook.reference} onChange={e => setDraftCookbook(p => ({...p, reference: e.target.value}))} placeholder="Page number" style={{marginTop: 6}} />
-                </div>
-              )}
-
-              {/* Cookbook popover — portal anchored near the pencil icon */}
-              {showCookbookModal && isEdit('cookbook') && createPortal((() => {
-                const pw = 320, ph = 260;
-                const vw = window.innerWidth, vh = window.innerHeight;
-                const ar = cookbookAnchorRect;
-                let top, left;
-                if (ar) {
-                  top = ar.bottom + 8;
-                  left = ar.right - Math.min(pw, vw - 16);
-                  if (top + ph > vh - 8) top = Math.max(8, ar.top - ph - 8);
-                  if (left < 8) left = 8;
-                  if (left + Math.min(pw, vw - 16) > vw - 8) left = vw - Math.min(pw, vw - 16) - 8;
-                } else {
-                  top = Math.max(8, (vh - ph) / 2);
-                  left = Math.max(8, (vw - Math.min(pw, vw - 16)) / 2);
-                }
-                const w = Math.min(pw, vw - 16);
-                return (
-                  <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 8999 }} onClick={() => { cancelEdit(); setShowCookbookModal(false); }} />
-                    <div className="anchored-popover create-modal" style={{ position: 'fixed', top, left, width: w, zIndex: 9000 }} onClick={e => e.stopPropagation()}>
-                      <div className="create-modal__header">
-                        <h2 className="create-modal__title"><Icon name="bookMarked" size={18} strokeWidth={2} /> Cookbook</h2>
-                        <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>✕</button>
-                      </div>
-                      <div className="create-modal__body" style={{ gap: 14 }}>
-                        <div className="create-modal__field">
-                          <label className="create-modal__field-label">Cookbook title</label>
-                          <CookbookAutocomplete value={draftCookbook.cookbook} onChange={v => setDraftCookbook(p => ({...p, cookbook: v}))} cookbooks={cookbooks} />
-                        </div>
-                        <div className="create-modal__field">
-                          <label className="create-modal__field-label">Page number</label>
-                          <input className="editor-input" style={{ fontSize: 16 }} value={draftCookbook.reference} onChange={e => setDraftCookbook(p => ({...p, reference: e.target.value}))} placeholder="e.g. 142" />
-                        </div>
-                      </div>
-                      <div className="create-modal__footer">
-                        <button className="btn btn--ghost" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>Cancel</button>
-                        <button className="btn btn--primary" onClick={async () => { await saveSection('cookbook'); setShowCookbookModal(false); }} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
-                      </div>
-                    </div>
-                  </>
-                );
-              })(), document.body)}
-            </div>
-          </div>
-        </div>
-      </div>
-      )}
-    </main>
-  );
-};
-
-// --- Ingredient Autocomplete Input -----------------------------------------
-const IngredientAutocomplete = ({ value, onChange, allIngredients }) => {
-  const [open, setOpen] = useState(false);
-  const [highlighted, setHighlighted] = useState(0);
-  const wrapperRef = useRef(null);
-
-  const suggestions = useMemo(() => {
-    const val = value ?? '';
-    if (!val.trim()) return [];
-    const q = val.toLowerCase();
-    return allIngredients
-      .map(ing => {
-        const name = typeof ing === 'string' ? ing : ing?.name;
-        if (!name) return null;
-        const lower = name.toLowerCase();
-        if (!lower.includes(q)) return null;
-        const score = lower.startsWith(q) ? 0 : lower.indexOf(q);
-        return { ing: name, score };
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.score - b.score)
-      .slice(0, 8)
-      .map(x => x.ing);
-  }, [value, allIngredients]);
-
-  useEffect(() => { setHighlighted(0); }, [suggestions]);
-  useEffect(() => {
-    const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const select = (ing) => { onChange(ing); setOpen(false); };
-  const onKeyDown = (e) => {
-    if (!open || !suggestions.length) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, suggestions.length - 1)); }
-    if (e.key === 'ArrowUp')   { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
-    if (e.key === 'Enter' && suggestions[highlighted]) { e.preventDefault(); select(suggestions[highlighted]); }
-    if (e.key === 'Escape') setOpen(false);
-  };
-
-  return (
-    <div className="ing-ac-wrap" ref={wrapperRef}>
-      <input className="editor-input" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} onKeyDown={onKeyDown} placeholder="soy sauce" autoComplete="off" />
-      {open && suggestions.length > 0 && (
-        <ul className="ing-ac-dropdown">
-          {suggestions.map((ing, i) => {
-            const q = (value ?? '').toLowerCase();
-            const idx = ing.toLowerCase().indexOf(q);
-            return (
-              <li key={ing} className={`ing-ac-option ${i === highlighted ? 'ing-ac-option--active' : ''}`} onMouseDown={() => select(ing)} onMouseEnter={() => setHighlighted(i)}>
-                {idx >= 0 ? (<>{ing.slice(0, idx)}<strong>{ing.slice(idx, idx + q.length)}</strong>{ing.slice(idx + q.length)}</>) : ing}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-};
-
-const UnitAutocomplete = ({ value, onChange }) => {
-  const [open, setOpen] = useState(false);
-  const [highlighted, setHighlighted] = useState(0);
-  const wrapperRef = useRef(null);
-
-  const suggestions = useMemo(() => {
-    const val = value ?? '';
-    if (!val.trim()) return COMMON_UNITS.slice(0, 8);
-    const q = val.toLowerCase();
-    return COMMON_UNITS.filter(u => u.toLowerCase().startsWith(q) || u.toLowerCase().includes(q)).slice(0, 8);
-  }, [value]);
-
-  useEffect(() => { setHighlighted(0); }, [suggestions]);
-  useEffect(() => {
-    const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const select = (u) => { onChange(u); setOpen(false); };
-  const onKeyDown = (e) => {
-    if (!open || !suggestions.length) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, suggestions.length - 1)); }
-    if (e.key === 'ArrowUp')   { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
-    if (e.key === 'Enter' && suggestions[highlighted]) { e.preventDefault(); select(suggestions[highlighted]); }
-    if (e.key === 'Escape') setOpen(false);
-  };
-
-  return (
-    <div className="ing-ac-wrap" ref={wrapperRef}>
-      <input className="editor-input editor-input--sm" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} onKeyDown={onKeyDown} placeholder="tbsp" autoComplete="off" />
-      {open && suggestions.length > 0 && (
-        <ul className="ing-ac-dropdown">
-          {suggestions.map((u, i) => {
-            const q = (value ?? '').toLowerCase();
-            const idx = u.toLowerCase().indexOf(q);
-            return (
-              <li key={u} className={`ing-ac-option ${i === highlighted ? 'ing-ac-option--active' : ''}`} onMouseDown={() => select(u)} onMouseEnter={() => setHighlighted(i)}>
-                {idx >= 0 && q ? (<>{u.slice(0, idx)}<strong>{u.slice(idx, idx + q.length)}</strong>{u.slice(idx + q.length)}</>) : u}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-};
-
-const SortableItem = ({ id, children }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 100 : undefined,
-  };
-  return (
-    <div ref={setNodeRef} style={style} className={`sortable-item ${isDragging ? 'sortable-item--dragging' : ''}`}>
-      <div className="sortable-handle" {...attributes} {...listeners}>⠿</div>
-      {children}
-    </div>
-  );
-};
-
-// Step sortable item -- the step number bubble IS the drag handle
-const StepSortableItem = ({ id, stepNum, grouped, children, onSnap, onUnsnap, canSnap }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 100 : undefined,
-  };
-  return (
-    <div ref={setNodeRef} style={style} className={`step-sortable-row ${grouped ? 'step-sortable-row--grouped' : ''} ${isDragging ? 'step-sortable-row--dragging' : ''}`}>
-      {/* Snap/unsnap tab — only shown when relevant */}
-      {grouped ? (
-        <button
-          className="step-snap-btn step-snap-btn--out"
-          onClick={onUnsnap}
-          title="Remove from group"
-          type="button"
-        >
-          <Icon name="arrowRight" size={10} strokeWidth={2.5} />
-        </button>
-      ) : canSnap ? (
-        <button
-          className="step-snap-btn step-snap-btn--in"
-          onClick={onSnap}
-          title="Add to group above"
-          type="button"
-        >
-          <Icon name="arrowRight" size={10} strokeWidth={2.5} />
-        </button>
-      ) : null}
-      <span className="editor-step-num editor-step-num--drag" title="Drag to reorder" {...attributes} {...listeners}>{stepNum}</span>
-      {children}
-    </div>
-  );
-};
-
-// Step group row -- draggable group header for instruction sections
-const StepGroupRow = ({ grp, onLabelChange, onRemove, onAddStep }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: grp._id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 100 : undefined,
-  };
-  return (
-    <div className="step-group-row" ref={setNodeRef} style={style}>
-      <span className="step-group-row__drag" {...attributes} {...listeners}>⠿</span>
-      <input
-        className="step-group-row__label-input"
-        value={grp.name}
-        onChange={e => onLabelChange(e.target.value)}
-        placeholder="Group name (e.g. For the sauce, Marinade)…"
-      />
-      {onAddStep && (
-        <button className="ing-group-row__add-btn" onClick={onAddStep} title="Add step to this group">＋</button>
-      )}
-      <button className="editor-remove-btn" onClick={onRemove} title="Remove group">✕</button>
-    </div>
-  );
-};
-
-// --- Recipe Editor ----------------------------------------------------------
-const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredients, onBack, onSaved, authFetch }) => {
-  const apiFetch = authFetch || fetch;
-  const sensors = DRAG_SENSORS();
-
-  const [details, setDetails] = useState({
-    name: recipe?.name || '',
-    cuisine: recipe?.cuisine || '',
-    time: recipe?.time || '',
-    servings: recipe?.servings || '',
-    calories: recipe?.calories ?? '',
-    protein: recipe?.protein ?? '',
-    cover_image_url: recipe?.coverImage || '',
-  });
-
-  const [ings, setIngs] = useState(() => (bodyIngredients || []).map((i, idx) => ({ ...i, _id: `ing-${idx}` })));
-  const [steps, setSteps] = useState(() => (instructions || []).map((s, idx) => ({ ...s, _id: `step-${idx}` })));
-  const [notesList, setNotesList] = useState(() => (notes || []).map((n, idx) => ({ ...n, _id: `note-${idx}` })));
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [showImageInput, setShowImageInput] = useState(false);
-
-  const setDetail = (k, v) => setDetails(prev => ({ ...prev, [k]: v }));
-
-  const addIng = () => setIngs(prev => [...prev, { _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]);
-  const updateIng = (id, k, v) => setIngs(prev => prev.map(i => i._id === id ? { ...i, [k]: v } : i));
-  const removeIng = (id) => setIngs(prev => prev.filter(i => i._id !== id));
-  const onIngDragEnd = ({ active, over }) => {
-    if (over && active.id !== over.id) {
-      setIngs(prev => { const o = prev.findIndex(i => i._id === active.id); const n = prev.findIndex(i => i._id === over.id); return arrayMove(prev, o, n); });
-    }
-  };
-
-  const addStep = () => setSteps(prev => [...prev, { _id: `step-new-${Date.now()}`, step_number: prev.length + 1, body_text: '', timer_seconds: null }]);
-  const addTimerAfterStep = (afterId) => setSteps(prev => {
-    const idx = prev.findIndex(s => s._id === afterId);
-    const timer = { _id: `timer-${Date.now()}`, _isTimer: true, h: '', m: '', s: '' };
-    const next = [...prev]; next.splice(idx + 1, 0, timer); return next;
-  });
-  const updateStep = (id, v) => setSteps(prev => prev.map(s => s._id === id ? { ...s, body_text: v } : s));
-  const removeStep = (id) => setSteps(prev => prev.filter(s => s._id !== id));
-  const onStepDragEnd = ({ active, over }) => {
-    if (over && active.id !== over.id) {
-      setSteps(prev => { const o = prev.findIndex(s => s._id === active.id); const n = prev.findIndex(s => s._id === over.id); return arrayMove(prev, o, n); });
-    }
-  };
-
-  const addNote = () => setNotesList(prev => [...prev, { _id: `note-new-${Date.now()}`, text: '' }]);
-  const updateNote = (id, v) => setNotesList(prev => prev.map(n => n._id === id ? { ...n, text: v } : n));
-  const removeNote = (id) => setNotesList(prev => prev.filter(n => n._id !== id));
-
-  const save = async () => {
-    setSaving(true); setSaveError(null); setSaveSuccess(false);
-    try {
-      const payload = {
-        details,
-        ingredients: ings.map((i, idx) => ({ ...i, order_index: idx })),
-        instructions: (() => {
-          const result = []; let stepNum = 1;
-          for (let i = 0; i < steps.length; i++) {
-            const item = steps[i];
-            if (item._isTimer) {
-              const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
-              if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
-            } else {
-              const bodyText = item._tip?.trim()
-                ? item.body_text + '\n\u26D4TIP\u26D4' + item._tip.trim()
-                : item.body_text;
-              result.push({ ...item, body_text: bodyText, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null });
-            }
-          }
-          return result;
-        })(),
-        notes: notesList.map((n, idx) => ({ ...n, order_index: idx })),
-      };
-      const res = await apiFetch(`${API}/api/recipes/${recipe.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Save failed');
-      setSaveSuccess(true);
-      if (onSaved) onSaved(data.recipe);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (e) { setSaveError(e.message); } finally { setSaving(false); }
-  };
-
-  const groupLabels = [...new Set(ings.map(i => i.group_label).filter(Boolean))];
-
-  return (
-    <main className="view editor-page rp2">
-      <div className="rp2__hero ed-hero">
-        {details.cover_image_url ? <img className="rp2__hero-img" src={details.cover_image_url} alt={details.name} /> : <div className="rp2__hero-placeholder"><Icon name="image" size={40} color="var(--ash)" strokeWidth={1.5} /></div>}
-        <button className="ed-hero__img-btn" onClick={() => setShowImageInput(v => !v)} title="Change cover image">{details.cover_image_url ? <><Icon name="image" size={13} strokeWidth={2} /> Change</> : <><Icon name="image" size={13} strokeWidth={2} /> Add Photo</>}</button>
-        {showImageInput && (
-          <div className="ed-hero__img-popover">
-            <p className="ed-hero__img-popover-label">Cover image URL</p>
-            <input className="editor-input" autoFocus value={details.cover_image_url} onChange={e => setDetail('cover_image_url', e.target.value)} placeholder="https://..." onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setShowImageInput(false); }} />
-            <button className="btn btn--primary btn--sm" style={{marginTop:6}} onClick={() => setShowImageInput(false)}>Done</button>
-          </div>
-        )}
-        <div className="rp2__hero-overlay">
-          <div className="rp2__hero-topbar">
-            <button className="rp2__hero-btn" onClick={onBack}>← Cancel</button>
-            <button className="rp2__hero-btn rp2__hero-btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
-          </div>
-          <div className="rp2__hero-bottom">
-            <div className="rp2__hero-tags">{details.cuisine && <span className="rp2__tag">{details.cuisine}</span>}</div>
-            <div className="rp2__hero-pills">
-              {details.time && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="clock" size={13} strokeWidth={2} /></span>{details.time}</span>}
-              {details.servings && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="utensils" size={13} strokeWidth={2} /></span>{details.servings} srv</span>}
-              {details.calories !== '' && toNum(details.calories) !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>{Math.round(toNum(details.calories))} kcal</span>}
-              {details.protein !== '' && toNum(details.protein) !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="dumbbell" size={13} strokeWidth={2} /></span>{Math.round(toNum(details.protein))}g prot</span>}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {saveError && <p className="editor-error" style={{margin:'8px 24px 0'}}><Icon name="alertTriangle" size={14} strokeWidth={2} /> {saveError}</p>}
-      {saveSuccess && <p className="editor-success" style={{margin:'8px 24px 0'}}>✓ Saved successfully</p>}
-
-      <div className="rp2__header ed-name-row">
-        <input className="ed-title-input" value={details.name} onChange={e => setDetail('name', e.target.value)} placeholder="Recipe name..." />
-      </div>
-
-      <div className="ed-meta-row">
-        <label className="ed-meta-field">
-          <span className="ed-meta-label"><Icon name="mapPin" size={13} strokeWidth={2} /> Cuisine</span>
-          <select className="editor-input editor-select ed-meta-input" value={details.cuisine} onChange={e => setDetail('cuisine', e.target.value)}>
-            <option value="">-- none --</option>
-            {ALL_CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
-            {[...QUICK_CHIP_KEYS].filter(k => !ALL_CUISINES.includes(k)).map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </label>
-        <label className="ed-meta-field">
-          <span className="ed-meta-label"><Icon name="clock" size={13} strokeWidth={2} /> Time</span>
-          <input className="editor-input ed-meta-input" value={details.time} onChange={e => setDetail('time', e.target.value)} placeholder="45 mins" />
-        </label>
-        <label className="ed-meta-field">
-          <span className="ed-meta-label"><Icon name="utensils" size={13} strokeWidth={2} /> Servings</span>
-          <input className="editor-input ed-meta-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" />
-        </label>
-        <label className="ed-meta-field">
-          <span className="ed-meta-label"><Icon name="zap" size={13} strokeWidth={2} /> Calories</span>
-          <input className="editor-input ed-meta-input" type="number" value={details.calories} onChange={e => setDetail('calories', e.target.value)} placeholder="kcal" />
-        </label>
-        <label className="ed-meta-field">
-          <span className="ed-meta-label"><Icon name="dumbbell" size={13} strokeWidth={2} /> Protein</span>
-          <input className="editor-input ed-meta-input" type="number" value={details.protein} onChange={e => setDetail('protein', e.target.value)} placeholder="g" />
-        </label>
-      </div>
-
-      <section className="editor-section">
-        <h3 className="editor-section__title">Ingredients</h3>
-        <datalist id="group-labels">{groupLabels.map(l => <option key={l} value={l} />)}</datalist>
-        <div className="editor-ing-header"><span>Amount</span><span>Unit</span><span>Name</span><span>Group</span><span>Prep note</span><span>Opt?</span><span></span></div>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onIngDragEnd}>
-          <SortableContext items={ings.map(i => i._id)} strategy={verticalListSortingStrategy}>
-            {ings.map(ing => (
-              <SortableItem key={ing._id} id={ing._id}>
-                <div className="editor-ing-row">
-                  <input className="editor-input editor-input--sm" value={ing.amount} onChange={e => updateIng(ing._id, 'amount', e.target.value)} placeholder="2" />
-                  <UnitAutocomplete value={ing.unit} onChange={v => updateIng(ing._id, 'unit', v)} />
-                  <IngredientAutocomplete value={ing.name} onChange={v => updateIng(ing._id, 'name', v)} allIngredients={allIngredients.filter(Boolean)} />
-                  <input className="editor-input editor-input--sm" value={ing.group_label || ''} onChange={e => updateIng(ing._id, 'group_label', e.target.value)} placeholder="e.g. Sauce" list="group-labels" />
-                  <input className="editor-input" value={ing.prep_note || ''} onChange={e => updateIng(ing._id, 'prep_note', e.target.value)} placeholder="finely chopped" />
-                  <button className={`editor-optional-btn ${ing.optional ? 'editor-optional-btn--on' : ''}`} onClick={() => updateIng(ing._id, 'optional', !ing.optional)} title="Mark as optional">{ing.optional ? '✓' : '○'}</button>
-                  <button className="editor-remove-btn" onClick={() => removeIng(ing._id)}>✕</button>
-                </div>
-              </SortableItem>
-            ))}
-          </SortableContext>
-        </DndContext>
-        <button className="btn btn--ghost editor-add-btn" onClick={addIng}>+ Add Ingredient</button>
-      </section>
-
-      <section className="editor-section">
-        <h3 className="editor-section__title">Instructions</h3>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onStepDragEnd}>
-          <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
-            {steps.map((item, idx) => {
-              if (item._isTimer) {
-                return (
-                  <div key={item._id} className="rp2__ed-timer-row">
-                    <span className="rp2__ed-timer-row__icon"><Icon name="timer" size={14} strokeWidth={2} /></span>
-                    <div className="rp2__ed-timer-row__inputs">
-                      <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" value={item.h} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, h: e.target.value} : s))} placeholder="0" />
-                      <span className="rp2__ed-timer-row__sep">h</span>
-                      <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.m} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, m: e.target.value} : s))} placeholder="0" />
-                      <span className="rp2__ed-timer-row__sep">m</span>
-                      <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
-                      <span className="rp2__ed-timer-row__sep">s</span>
-                    </div>
-                    <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
-                  </div>
-                );
-              }
-              const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
-              return (
-                <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
-                  <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
-                    <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
-                    <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
-                  </div>
-                  <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
-                  {item._showTip && createPortal((() => {
-                    const ar = item._tipAnchor; const pw = 300, ph = 160;
-                    const vw = window.innerWidth, vh = window.innerHeight;
-                    let top = ar ? ar.bottom + 6 : vh/2-ph/2; let left = ar ? ar.left-pw+ar.width : vw/2-pw/2;
-                    if (top+ph > vh-8) top = ar ? ar.top-ph-6 : 8; if (left < 8) left = 8; if (left+pw > vw-8) left = vw-pw-8;
-                    return (<><div style={{ position:'fixed',inset:0,zIndex:8998 }} onClick={() => setSteps(prev => prev.map(s => s._id===item._id ? {...s,_showTip:false} : s))} /><div className="anchored-popover" style={{ position:'fixed',top,left,width:pw,zIndex:8999,padding:'12px 14px',display:'flex',flexDirection:'column',gap:8 }} onClick={e=>e.stopPropagation()}><label style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--warm-gray)' }}>Tip for this step</label><textarea className="editor-textarea" autoFocus rows={3} style={{ fontSize:13,resize:'none' }} value={item._tip||''} onChange={e=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:e.target.value}:s))} placeholder="e.g. don't overcrowd the pan..." /><div style={{ display:'flex',gap:6,justifyContent:'flex-end' }}>{item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize:11,padding:'3px 8px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s))}>Clear</button>}<button className="btn btn--primary btn--sm" style={{ fontSize:11,padding:'3px 10px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_showTip:false}:s))}>Done</button></div></div></>);
-                  })(), document.body)}
+                            </div>
+                          </>,
+                          document.body
+                        )}
                 </StepSortableItem>
               );
             })}
@@ -5776,16 +5146,23 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
                       <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
                         <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
-                        <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
+                        <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                       </div>
                       <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
-                      {item._showTip && createPortal((() => {
-                        const ar = item._tipAnchor; const pw = 300, ph = 160;
-                        const vw = window.innerWidth, vh = window.innerHeight;
-                        let top = ar ? ar.bottom + 6 : vh/2-ph/2; let left = ar ? ar.left-pw+ar.width : vw/2-pw/2;
-                        if (top+ph > vh-8) top = ar ? ar.top-ph-6 : 8; if (left < 8) left = 8; if (left+pw > vw-8) left = vw-pw-8;
-                        return (<><div style={{ position:'fixed',inset:0,zIndex:8998 }} onClick={() => setSteps(prev => prev.map(s => s._id===item._id ? {...s,_showTip:false} : s))} /><div className="anchored-popover" style={{ position:'fixed',top,left,width:pw,zIndex:8999,padding:'12px 14px',display:'flex',flexDirection:'column',gap:8 }} onClick={e=>e.stopPropagation()}><label style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--warm-gray)' }}>Tip for this step</label><textarea className="editor-textarea" autoFocus rows={3} style={{ fontSize:13,resize:'none' }} value={item._tip||''} onChange={e=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:e.target.value}:s))} placeholder="e.g. don't overcrowd the pan..." /><div style={{ display:'flex',gap:6,justifyContent:'flex-end' }}>{item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize:11,padding:'3px 8px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s))}>Clear</button>}<button className="btn btn--primary btn--sm" style={{ fontSize:11,padding:'3px 10px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_showTip:false}:s))}>Done</button></div></div></>);
-                      })(), document.body)}
+                      {item._showTip && createPortal(
+                          <>
+                            <div style={{ position:'fixed',inset:0,zIndex:8998,background:'rgba(0,0,0,0.35)',backdropFilter:'blur(2px)' }} onClick={() => { const updater = (prev) => prev.map(s => s._id === item._id ? { ...s, _showTip: false } : s); if(typeof setDraftSteps !== 'undefined') try{setDraftSteps(updater);}catch(e){} if(typeof setSteps !== 'undefined') try{setSteps(updater);}catch(e){} }} />
+                            <div className="anchored-popover tip-modal-centered" onClick={e=>e.stopPropagation()}>
+                              <label style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--warm-gray)' }}>💡 Tip for this step</label>
+                              <textarea className="editor-textarea" autoFocus rows={3} style={{ fontSize:13,resize:'none' }} value={item._tip||''} placeholder="e.g. don't overcrowd the pan..." onChange={e=>{ const v=e.target.value; try{setDraftSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:v}:s));}catch(e2){} try{setSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:v}:s));}catch(e2){} }} />
+                              <div style={{ display:'flex',gap:6,justifyContent:'flex-end' }}>
+                                {item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize:11,padding:'3px 8px' }} onClick={()=>{ try{setDraftSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s));}catch(e){} try{setSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s));}catch(e){} }}>Clear</button>}
+                                <button className="btn btn--primary btn--sm" style={{ fontSize:11,padding:'3px 10px' }} onClick={()=>{ try{setDraftSteps(p=>p.map(s=>s._id===item._id?{...s,_showTip:false}:s));}catch(e){} try{setSteps(p=>p.map(s=>s._id===item._id?{...s,_showTip:false}:s));}catch(e){} }}>Done</button>
+                              </div>
+                            </div>
+                          </>,
+                          document.body
+                        )}
                     </StepSortableItem>
                   );
                 })}
@@ -6850,16 +6227,23 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                           <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
                             <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
-                            <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
+                            <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                           </div>
                           <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
-                          {item._showTip && createPortal((() => {
-                            const ar = item._tipAnchor; const pw = 300, ph = 160;
-                            const vw = window.innerWidth, vh = window.innerHeight;
-                            let top = ar ? ar.bottom + 6 : vh/2-ph/2; let left = ar ? ar.left-pw+ar.width : vw/2-pw/2;
-                            if (top+ph > vh-8) top = ar ? ar.top-ph-6 : 8; if (left < 8) left = 8; if (left+pw > vw-8) left = vw-pw-8;
-                            return (<><div style={{ position:'fixed',inset:0,zIndex:8998 }} onClick={() => setSteps(prev => prev.map(s => s._id===item._id ? {...s,_showTip:false} : s))} /><div className="anchored-popover" style={{ position:'fixed',top,left,width:pw,zIndex:8999,padding:'12px 14px',display:'flex',flexDirection:'column',gap:8 }} onClick={e=>e.stopPropagation()}><label style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--warm-gray)' }}>Tip for this step</label><textarea className="editor-textarea" autoFocus rows={3} style={{ fontSize:13,resize:'none' }} value={item._tip||''} onChange={e=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:e.target.value}:s))} placeholder="e.g. don't overcrowd the pan..." /><div style={{ display:'flex',gap:6,justifyContent:'flex-end' }}>{item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize:11,padding:'3px 8px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s))}>Clear</button>}<button className="btn btn--primary btn--sm" style={{ fontSize:11,padding:'3px 10px' }} onClick={()=>setSteps(prev=>prev.map(s=>s._id===item._id?{...s,_showTip:false}:s))}>Done</button></div></div></>);
-                          })(), document.body)}
+                          {item._showTip && createPortal(
+                          <>
+                            <div style={{ position:'fixed',inset:0,zIndex:8998,background:'rgba(0,0,0,0.35)',backdropFilter:'blur(2px)' }} onClick={() => { const updater = (prev) => prev.map(s => s._id === item._id ? { ...s, _showTip: false } : s); if(typeof setDraftSteps !== 'undefined') try{setDraftSteps(updater);}catch(e){} if(typeof setSteps !== 'undefined') try{setSteps(updater);}catch(e){} }} />
+                            <div className="anchored-popover tip-modal-centered" onClick={e=>e.stopPropagation()}>
+                              <label style={{ fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--warm-gray)' }}>💡 Tip for this step</label>
+                              <textarea className="editor-textarea" autoFocus rows={3} style={{ fontSize:13,resize:'none' }} value={item._tip||''} placeholder="e.g. don't overcrowd the pan..." onChange={e=>{ const v=e.target.value; try{setDraftSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:v}:s));}catch(e2){} try{setSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:v}:s));}catch(e2){} }} />
+                              <div style={{ display:'flex',gap:6,justifyContent:'flex-end' }}>
+                                {item._tip && <button className="btn btn--ghost btn--sm" style={{ fontSize:11,padding:'3px 8px' }} onClick={()=>{ try{setDraftSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s));}catch(e){} try{setSteps(p=>p.map(s=>s._id===item._id?{...s,_tip:'',_showTip:false}:s));}catch(e){} }}>Clear</button>}
+                                <button className="btn btn--primary btn--sm" style={{ fontSize:11,padding:'3px 10px' }} onClick={()=>{ try{setDraftSteps(p=>p.map(s=>s._id===item._id?{...s,_showTip:false}:s));}catch(e){} try{setSteps(p=>p.map(s=>s._id===item._id?{...s,_showTip:false}:s));}catch(e){} }}>Done</button>
+                              </div>
+                            </div>
+                          </>,
+                          document.body
+                        )}
                         </StepSortableItem>
                       );
                     })}
