@@ -8240,3 +8240,112 @@ html, body {
   background: rgba(8,6,4,0.93);
   border-top-color: rgba(255,255,255,0.08);
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   FIX PASS — Tab bar, footer, filter chips, alarm, tags sheet
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Tab bar: raise it up, reduce padding ── */
+@media (max-width: 640px) {
+  .mobile-tab-bar__btn-inner {
+    padding-top: 7px !important;
+    padding-bottom: calc(5px + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 3px !important;
+  }
+  .mobile-tab-bar__label {
+    font-size: 10px !important;
+  }
+  /* Reduce the min-height so the bar is shorter overall */
+  .mobile-tab-bar__btn {
+    min-height: 52px !important;
+  }
+}
+
+/* ── Footer: NOT fixed, just at bottom of content flow. No extra bottom margin. ── */
+@media (max-width: 640px) {
+  .site-footer {
+    margin-bottom: 0 !important;
+    /* just enough padding for the tab bar above it */
+    padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  /* Views: reduce bottom padding so footer isn't pushed way down */
+  .view,
+  .home-view,
+  .grocery-view,
+  .profile-view,
+  .cn-tab,
+  .cookbooks-tab {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ── Filter chips: wider, more padding, stable (don't disappear) ── */
+.filter-bar__chip,
+.filter-panel__chips .filter-bar__chip {
+  padding: 7px 16px !important;
+  min-height: 38px !important;
+  font-size: 13px !important;
+  white-space: nowrap !important;
+  /* Prevent click-through to backdrop that would close the panel */
+  position: relative;
+  z-index: 1;
+}
+
+/* Filter panel itself: never close on internal clicks (handled in JSX) */
+.filter-panel {
+  /* Ensure it stays above backdrop */
+  position: relative;
+  z-index: 10;
+}
+
+/* ── Alarm pulse animation on dismiss button ── */
+@keyframes pulse-alarm {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(184, 74, 40, 0.5); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(184, 74, 40, 0); }
+}
+.rp2__step-timer__btn--dismiss {
+  animation: pulse-alarm 1s ease-in-out infinite !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em;
+}
+
+/* ── Timer done display: pulsing ── */
+.rp2__step-timer__display--done {
+  color: var(--terracotta) !important;
+  animation: pulse-alarm 1.5s ease-in-out infinite;
+}
+
+/* ── Tags sheet: anchor to top-left on mobile ── */
+@media (max-width: 640px) {
+  .rp2__hero-tags-sheet {
+    top: 56px !important;   /* just below hero top buttons */
+    bottom: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    border-top: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+  }
+}
+
+/* ── Guests: non-admin elements should not look interactive ── */
+/* Tags and pills without rp2__tag--clickable class = not interactive */
+.rp2__tag:not(.rp2__tag--clickable):not(.rp2__tag--add) {
+  cursor: default;
+}
+
+/* ── Section pencil hover should only show for admins ── */
+/* (Already guarded in JSX with isAdmin checks) */
+
+/* ── Desktop: filter panel wider chips on hover ── */
+@media (min-width: 641px) {
+  .filter-bar__chip:hover {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+}
+
+/* ── Dark mode: timer dismiss button ── */
+[data-theme="dark"] .rp2__step-timer__btn--dismiss {
+  background: var(--terracotta) !important;
+  color: white !important;
+}
