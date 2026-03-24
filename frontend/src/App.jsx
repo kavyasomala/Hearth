@@ -2550,13 +2550,13 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                           </>,
                           document.body
                         )}
-                </StepSortableItem>
-              );
-            })}
-          </SortableContext>
-        </DndContext>
-        <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
-      </section>
+                      </StepSortableItem>
+                    );
+                  })}
+                </SortableContext>
+              </DndContext>
+              <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
+            </section>
 
       <section className="editor-section">
         <h3 className="editor-section__title">Notes &amp; Modifications</h3>
