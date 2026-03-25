@@ -1369,7 +1369,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [stayAwake, setStayAwake] = useState(false);
-  const [heroTagsOpen, setHeroTagsOpen] = useState(false);
   const wakeLockRef = useRef(null);
   const ingDndSensors = DRAG_SENSORS();
 
@@ -1844,60 +1843,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               onClick={e => { e.stopPropagation(); onToggleMakeSoon && onToggleMakeSoon(); }}
               title={isMakeSoon ? 'Remove from Make Soon' : 'Add to Make Soon'}
             ><Icon name="timer" size={16} strokeWidth={2} /></button>
-            {/* Tags toggle — only show if there's anything to display */}
-            {((recipe.tags?.length > 0) || recipe.cuisine || (recipe.status && recipe.status !== '')) && (
-              <button
-                className={`rp2__hero-tags-btn ${heroTagsOpen ? 'rp2__hero-tags-btn--open' : ''}`}
-                onClick={e => { e.stopPropagation(); setHeroTagsOpen(o => !o); }}
-                title="Show tags & info"
-              >
-                <Icon name="tag" size={11} strokeWidth={2.5} />
-                {heroTagsOpen ? 'hide' : [recipe.cuisine, ...(recipe.tags || [])].filter(Boolean).length + ' tags'}
-              </button>
-            )}
           </div>
-
-          {/* Mobile tags sheet — expands from bottom of hero when toggle is open */}
-          {heroTagsOpen && (
-            <div className="rp2__hero-tags-sheet rp2__hero-mobile-only" onClick={e => e.stopPropagation()}>
-              {recipe.cuisine && (
-                <span className="rp2__tag" style={{ background: 'var(--terracotta)', border: 'none' }}>
-                  <Icon name="globe" size={11} strokeWidth={2} /> {recipe.cuisine}
-                </span>
-              )}
-              {(recipe.tags || []).map(tag => {
-                const def = TAG_FILTERS.find(f => f.key === tag);
-                return (
-                  <span key={tag} className="rp2__tag rp2__tag--light">
-                    {def ? def.label : tag}
-                  </span>
-                );
-              })}
-              {recipe.status && recipe.status !== '' && (
-                <span className={`rp2__tag ${
-                  recipe.status === 'complete' ? 'rp2__tag--success' :
-                  (recipe.status === 'incomplete' || recipe.status === 'needs tweaking') ? 'rp2__tag--warning' :
-                  'rp2__tag--light'
-                }`}>
-                  {recipe.status === 'incomplete' ? 'Incomplete' :
-                   recipe.status === 'needs tweaking' ? 'Needs Tweaking' :
-                   recipe.status === 'complete' ? 'Complete' :
-                   recipe.status === 'to try' ? 'To Try' : recipe.status}
-                </span>
-              )}
-              {recipe.servings && (
-                <span className="rp2__pill" style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', fontSize: 11 }}>
-                  <Icon name="utensils" size={11} strokeWidth={2} /> {recipe.servings} srv
-                </span>
-              )}
-              {recipe.time && (
-                <span className="rp2__pill" style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', fontSize: 11 }}>
-                  <Icon name="clock" size={11} strokeWidth={2} /> {recipe.time}
-                </span>
-              )}
-            </div>
-          )}
-
           {/* Bottom-right: Calories pill (tappable) */}
           <div className="rp2__hero-corner rp2__hero-corner--br rp2__hero-mobile-only">
             {displayCalories !== null && (
@@ -1914,11 +1860,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           {/* -- Desktop-only tags+pills row at bottom -- */}
           <div className="rp2__hero-bottom rp2__hero-bottom--desktop-only">
 
-            {/* Tags area — stacked: row 1 = cuisine+status, row 2 = category tags */}
-            <div className="rp2__hero-tag-stack">
+            {/* Tags area -- only show fields that have values; add button for adding more */}
+            <div className="rp2__hero-tags">
 
-              {/* Row 1: Cuisine + Status + add-tag (admin) */}
-              <div className="rp2__hero-tag-row">
               {/* Cuisine chip -- only shown when set */}
               {recipe.cuisine && (
                 <div className="rp2__hero-tag-wrap">
@@ -1946,35 +1890,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 </div>
               )}
 
-              {/* Progress chip -- only shown when set */}
-              {(recipe.status && recipe.status !== '') && (
-                <div className="rp2__hero-tag-wrap">
-                  <button className={`rp2__tag rp2__tag--clickable ${recipe.status === 'incomplete' ? 'rp2__tag--warning' : recipe.status === 'needs tweaking' ? 'rp2__tag--warning' : recipe.status === 'complete' ? 'rp2__tag--success' : 'rp2__tag--light'} ${isEdit('meta-progress') ? 'rp2__tag--editing' : ''}`}
-                    onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-progress') ? null : 'meta-progress'); }}>
-                    {recipe.status === 'incomplete' ? 'Incomplete' : recipe.status === 'needs tweaking' ? 'Tweaking' : recipe.status === 'complete' ? 'Complete' : recipe.status === 'to try' ? 'To Try' : null}
-                  </button>
-                  {isEdit('meta-progress') && (
-                    <div className="rp2__hero-dark-popover">
-                      <p className="rp2__dark-pop-label"><Icon name="list" size={13} strokeWidth={2} /> Progress</p>
-                      <div className="rp2__dark-pop-chips">
-                        {[{key:'',label:'-- None'},{key:'complete',label:'Complete'},{key:'needs tweaking',label:'Needs Tweaking'},{key:'to try',label:'To Try'},{key:'incomplete',label:'Incomplete'}].map(({key,label}) => (
-                          <button key={key} className={`rp2__dark-chip ${draftMeta.status === key ? 'rp2__dark-chip--on' : ''}`}
-                            onClick={() => setDraftMeta(p => ({...p, status: key}))}>{label}</button>
-                        ))}
-                      </div>
-                      <div className="rp2__dark-pop-actions">
-                        <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
-                        <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              </div>{/* end row 1 */}
-
-              {/* Row 2: Category tags */}
-              {((recipe.tags || []).length > 0 || (isAdmin && !isEdit('meta-tags'))) && (
-              <div className="rp2__hero-tag-row">
               {/* Individual tag chips -- one per tag, each clickable to edit */}
               {(recipe.tags || []).map(tag => {
                 const tagDef = TAG_FILTERS.find(f => f.key === tag);
@@ -1999,15 +1914,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                           onClick={() => toggleDraftTag(key)}>{label}</button>
                       ))}
                     </div>
-                    <p className="rp2__dark-pop-label" style={{marginTop:10}}><Icon name="globe" size={13} strokeWidth={2} /> Cuisine</p>
-                    <div className="rp2__dark-pop-chips">
-                      <button className={`rp2__dark-chip ${draftMeta.cuisine === '' ? 'rp2__dark-chip--on' : ''}`}
-                        onClick={() => setDraftMeta(p => ({...p, cuisine: ''}))}>None</button>
-                      {GEO_CUISINES.map(c => (
-                        <button key={c} className={`rp2__dark-chip ${draftMeta.cuisine === c ? 'rp2__dark-chip--on' : ''}`}
-                          onClick={() => setDraftMeta(p => ({...p, cuisine: c}))}>{c}</button>
-                      ))}
-                    </div>
                     <p className="rp2__dark-pop-label" style={{marginTop:10}}><Icon name="list" size={13} strokeWidth={2} /> Progress</p>
                     <div className="rp2__dark-pop-chips">
                       {[{key:'',label:'-- None'},{key:'complete',label:'Complete'},{key:'needs tweaking',label:'Needs Tweaking'},{key:'to try',label:'To Try'},{key:'incomplete',label:'Incomplete'}].map(({key,label}) => (
@@ -2023,6 +1929,31 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 </div>
               )}
 
+              {/* Progress chip -- only shown when set */}
+              {(recipe.status && recipe.status !== '') && (
+                <div className="rp2__hero-tag-wrap">
+                  <button className={`rp2__tag rp2__tag--clickable ${recipe.status === 'incomplete' ? 'rp2__tag--warning' : recipe.status === 'needs tweaking' ? 'rp2__tag--warning' : recipe.status === 'complete' ? 'rp2__tag--success' : 'rp2__tag--light'} ${isEdit('meta-progress') ? 'rp2__tag--editing' : ''}`}
+                    onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-progress') ? null : 'meta-progress'); }}>
+                    {recipe.status === 'incomplete' ? 'Incomplete' : recipe.status === 'needs tweaking' ? 'Tweaking' : recipe.status === 'complete' ? 'Complete' : recipe.status === 'to try' ? 'To Try' : null}
+                  </button>
+                  {isEdit('meta-progress') && (
+                    <div className="rp2__hero-dark-popover">
+                      <p className="rp2__dark-pop-label"><Icon name="list" size={13} strokeWidth={2} /> Progress</p>
+                      <div className="rp2__dark-pop-chips">
+                        {[{key:'',label:'-- None'},{key:'complete',label:'Complete'},{key:'needs tweaking',label:'Needs Tweaking'},{key:'to try',label:'To Try'},{key:'incomplete',label:'Incomplete'}].map(({key,label}) => (
+                          <button key={key} className={`rp2__dark-chip ${draftMeta.status === key ? 'rp2__dark-chip--on' : ''}`}
+                            onClick={() => setDraftMeta(p => ({...p, status: key}))}>{label}</button>
+                        ))}
+                      </div>
+                      <div className="rp2__dark-pop-actions">
+                        <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
+                        <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* + Add tag button -- admin only */}
               {isAdmin && !isEdit('meta-tags') && (
                 <div className="rp2__hero-tag-wrap">
@@ -2033,9 +1964,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   </button>
                 </div>
               )}
-              </div>)}{/* end row 2 */}
-
-            </div>{/* end rp2__hero-tag-stack */}
+            </div>
 
             {/* Pills -- time and servings are clickable, nutrition is display-only */}
             <div className="rp2__hero-pills">
