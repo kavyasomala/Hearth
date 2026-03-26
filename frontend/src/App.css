@@ -6918,8 +6918,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .view, .home-view, .grocery-view, .profile-view, .cn-tab, .cookbooks-tab {
     padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
   }
-  /* Footer padding so content above tab bar isn't hidden */
-  .site-footer { margin-bottom: 0; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ── HEADER: mobile left area (back btn + search) ── */
@@ -7651,11 +7649,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   }
 }
 
-/* ── FOOTER: always shown on non-recipe pages, never on recipe page ── */
-/* (visibility controlled via JS: view !== 'recipe') */
+/* ── FOOTER: hidden on mobile — tab bar serves as nav ── */
 @media (max-width: 640px) {
-  .site-footer__inner {
-    padding-bottom: 8px !important;
+  .site-footer {
+    display: none !important;
   }
 }
 
@@ -7668,8 +7665,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     justify-content: center;
     gap: 4px;
     /* Top padding = bottom padding + safe area, so icons appear visually centered */
-    padding-top: 10px;
-    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    padding-top: 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     width: 100%;
   }
   /* The outer button just fills height, no extra padding */
