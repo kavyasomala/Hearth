@@ -6885,14 +6885,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     align-items: center;
     justify-content: center;
     gap: 5px;
-    padding: 12px 4px 10px;
-    border: none;
+    padding: 8px 4px 6px;    border: none;
     background: transparent;
     cursor: pointer;
     color: var(--warm-gray);
     transition: color 0.15s;
     min-width: 0;
-    min-height: 83px;
+    min-height: 60px;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
@@ -6919,8 +6918,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .view, .home-view, .grocery-view, .profile-view, .cn-tab, .cookbooks-tab {
     padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
   }
-  /* Also add space before footer */
-  .site-footer { margin-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+  /* Footer padding so content above tab bar isn't hidden */
+  .site-footer { margin-bottom: 0; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ── HEADER: mobile left area (back btn + search) ── */
