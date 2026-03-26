@@ -6891,7 +6891,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     color: var(--warm-gray);
     transition: color 0.15s;
     min-width: 0;
-    min-height: 52px;
+    min-height: 44px;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
@@ -7649,11 +7649,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   }
 }
 
-/* ── FOOTER: visible at scroll bottom on mobile, simplified ── */
+/* ── FOOTER: simplified on mobile, sits at scroll bottom ── */
 @media (max-width: 640px) {
-  .site-footer__col {
-    display: none !important;
-  }
+  .site-footer__col { display: none !important; }
+  .site-footer__inner { display: none !important; }
   .site-footer {
     padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
   }
@@ -7668,8 +7667,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     justify-content: center;
     gap: 4px;
     /* Top padding = bottom padding + safe area, so icons appear visually centered */
-    padding-top: 6px;
-    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+    padding-top: 4px;
+    padding-bottom: calc(2px + env(safe-area-inset-bottom, 0px));
     width: 100%;
   }
   /* The outer button just fills height, no extra padding */
