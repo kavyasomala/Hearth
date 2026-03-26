@@ -6958,10 +6958,10 @@ function AppInner() {
   const swipeTouchStart = useRef(null);
   const [swipeDx, setSwipeDx] = useState(0);
   const handleSwipeTouchStart = useCallback((e) => {
-    if (recipeIsEditing) return;
+    if (editingRecipe) return;
     swipeTouchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     setSwipeDx(0);
-  }, [recipeIsEditing]);
+  }, [editingRecipe]);
   const handleSwipeTouchMove = useCallback((e) => {
     if (!swipeTouchStart.current) return;
     const dx = e.touches[0].clientX - swipeTouchStart.current.x;
