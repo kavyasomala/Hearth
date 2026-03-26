@@ -6954,6 +6954,9 @@ function AppInner() {
     }
   }, []);
 
+  // Declared early so swipe callbacks can reference it
+  const [editingRecipe, setEditingRecipe] = useState(false);
+
   // Swipe-right to go back (mobile) with visual feedback
   const swipeTouchStart = useRef(null);
   const [swipeDx, setSwipeDx] = useState(0);
@@ -7046,7 +7049,6 @@ function AppInner() {
   const [recipeBodyIngredients, setRecipeBodyIngredients] = useState([]);
   const [recipeInstructions, setRecipeInstructions] = useState([]);
   const [recipeNotes, setRecipeNotes] = useState([]);
-  const [editingRecipe, setEditingRecipe] = useState(false);
   const [recipeLoading, setRecipeLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
