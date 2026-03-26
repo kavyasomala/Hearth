@@ -8159,8 +8159,12 @@ function AppInner() {
         />
       )}
 
-      {/* Footer: show on all pages except the recipe summary/editor */}
-      {view !== 'recipe' && <SiteFooter onNav={setView} />}
+      {/* Footer: show on all pages except the recipe summary/editor, hidden on mobile */}
+      {view !== 'recipe' && (
+        <div className="site-footer-wrapper">
+          <SiteFooter onNav={setView} />
+        </div>
+      )}
 
       {/* -- Scroll-to-top button -- */}
       {showScrollTop && (
