@@ -1527,8 +1527,12 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               const secs = h * 3600 + m * 60 + s;
               if (result.length > 0) result[result.length - 1].timer_seconds = secs > 0 ? secs : null;
             } else {
+              const bodyText = item._tip?.trim()
+                ? item.body_text + '\n\u26D4TIP\u26D4' + item._tip.trim()
+                : item.body_text;
               result.push({
                 ...item,
+                body_text: bodyText,
                 step_number: stepNum++,
                 timer_seconds: item.timer_seconds ?? null,
                 group_label: item.group_label || null,
