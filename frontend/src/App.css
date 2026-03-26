@@ -2043,6 +2043,8 @@ body {
   .site-footer {
     padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     position: static !important;
+    transform: none !important;
+    z-index: auto !important;
   }
 }
 
@@ -5635,8 +5637,8 @@ button, [role="button"] { cursor: pointer; }
 
 
 /* ── Reduce footer bottom spacing ── */
-.view { padding-bottom: 0 !important; }
-.home-view { padding-bottom: 0 !important; }
+.view { padding-bottom: 0; }
+.home-view { padding-bottom: 0; }
 
 /* ── Recipes toolbar: search + layout-toggle in one row, filters full-width below ── */
 .recipes-search-row {
