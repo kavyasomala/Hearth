@@ -2016,6 +2016,9 @@ body {
     padding: 16px 20px 8px !important;
     border-bottom: none !important;
   }
+  .site-footer-wrapper {
+    display: none !important;
+  }
   .site-footer__brand {
     display: flex !important;
     flex-direction: row !important;
