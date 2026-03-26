@@ -2042,6 +2042,7 @@ body {
   }
   .site-footer {
     padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    position: static !important;
   }
 }
 
@@ -7540,7 +7541,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .profile-view,
   .cn-tab,
   .cookbooks-tab {
-    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: calc(0px + env(safe-area-inset-bottom, 0px)) !important;
   }
   /* Individual section last-child gaps */
   .home-section:last-of-type { margin-bottom: 0 !important; padding-bottom: 0 !important; }
