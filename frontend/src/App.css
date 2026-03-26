@@ -3094,8 +3094,14 @@ body {
   }
   /* Drag handle sits at top-left, row1 fills the rest */
   .ing-flat-row__drag {
-    display: none !important; /* hide drag on mobile — too fiddly */
+    display: flex !important;
+    min-width: 40px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
   }
+
   /* Row 1: Name (full width), then Qty + Unit side by side below it */
   .ing-flat-row__fields {
     flex-direction: column !important;
@@ -7523,10 +7529,14 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   }
   /* Use safe-area padding on the bar itself, not the buttons */
   .mobile-tab-bar {
-    padding-bottom: 0 !important;
-    padding-top: 0 !important;
-    align-items: stretch;
+    display: flex;
+    flex-shrink: 0;
+    background: var(--warm-white);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+    z-index: 200;
   }
+  
   /* The icon+label group centers itself with equal breathing room */
   .mobile-tab-bar__btn-inner {
     display: flex;
@@ -7567,9 +7577,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     align-items: center;
     justify-content: center;
     gap: 4px;
-    /* Top padding = bottom padding + safe area, so icons appear visually centered */
-    padding-top: 4px;
-    padding-bottom: calc(2px + env(safe-area-inset-bottom, 0px));
+    padding-top: 8px;
+    padding-bottom: 8px;
     width: 100%;
   }
   /* The outer button just fills height, no extra padding */
