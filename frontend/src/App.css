@@ -7091,6 +7091,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     gap: 0 !important;
     padding: 20px 20px 16px !important;
     border-bottom: none !important;
+    display: none !important;
   }
   .site-footer__bottom {
     padding: 12px 20px !important;
@@ -7643,8 +7644,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .cn-tab__groups            { padding-bottom: 4px !important; }
   .profile-section:last-child { margin-bottom: 0 !important; }
   .cookbooks-grid, .cookbook-detail { padding-bottom: 4px !important; }
-  /* Footer: flush under last section, above tab bar */
+  /* Footer: flush under last section — sits naturally at scroll bottom */
   .site-footer {
+    position: static !important;
     margin-bottom: 0 !important;
     padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
   }
