@@ -1914,11 +1914,10 @@ body {
 
 /* ─── Footer ─────────────────────────────────────────────────────────────── */
 .site-footer {
-  background: var(--tan);
+  background: var(--parchment);
   color: var(--warm-gray);
   font-family: var(--font-body);
   border-top: 1.5px solid var(--tan-dark);
-  margin-top: auto;
   flex-shrink: 0;
 }
 .site-footer__inner {
@@ -1991,17 +1990,62 @@ body {
   font-size: 12px;
   color: var(--ash);
 }
-.site-footer__credit { color: var(--warm-gray); }
+.site-footer__credit { color: var(--warm-gray); display: inline-flex; align-items: center; gap: 4px; }
 .site-footer__updated { color: var(--warm-gray); }
+.site-footer__logo { display: flex; align-items: center; gap: 7px; }
 
-@media (max-width: 640px) {
-  .site-footer__inner {
-    grid-template-columns: 1fr;
-    gap: 28px;
-    padding: 32px 24px 24px;
-  }
-  .site-footer__bottom { padding: 14px 24px; flex-direction: column; gap: 4px; align-items: flex-start; }
+/* ─── Footer: consolidated responsive rules ─────────────────────────────── */
+/* Dark mode */
+[data-theme="dark"] .site-footer {
+  background: var(--cream);
+  border-top-color: var(--border);
 }
+
+/* Desktop: full three-column layout */
+@media (min-width: 641px) {
+  .site-footer__col { display: block; }
+  .site-footer__col-title { color: var(--charcoal); opacity: 0.7; }
+}
+
+/* Mobile: show only brand + bottom bar, hide nav columns */
+@media (max-width: 640px) {
+  .site-footer__col { display: none !important; }
+  .site-footer__inner {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+    padding: 16px 20px 8px !important;
+    border-bottom: none !important;
+  }
+  .site-footer__brand {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+  .site-footer__logo {
+    font-size: 18px !important;
+    margin-bottom: 0 !important;
+  }
+  .site-footer__tagline {
+    font-size: 11px !important;
+    line-height: 1.5 !important;
+    margin: 0 !important;
+    flex: 1 !important;
+  }
+  .site-footer__bottom {
+    flex-direction: row !important;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0 !important;
+    padding: 10px 20px !important;
+    font-size: 11px;
+  }
+  .site-footer {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* footer mobile handled in consolidated block below */
 
 /* ─── Make Soon stopwatch button on recipe card ─────────────────────────── */
 .recipe-card__soon {
@@ -5381,7 +5425,7 @@ button, [role="button"] { cursor: pointer; }
 [data-theme="dark"] .app-header             { background: rgba(22,20,17,0.96); border-bottom-color: var(--border); }
 [data-theme="dark"] .view                   { background: var(--cream); }
 [data-theme="dark"] .home-view              { background: var(--cream); }
-[data-theme="dark"] .site-footer            { background: var(--warm-white); border-top-color: var(--border); }
+
 
 /* Nav */
 [data-theme="dark"] .nav-tab                { color: var(--warm-gray); }
@@ -5587,44 +5631,7 @@ button, [role="button"] { cursor: pointer; }
   .header-user-btn--desktop-only { display: none !important; }
 }
 
-/* ── Footer: two-column nav on mobile, brand inline, credit inline ── */
-@media (max-width: 640px) {
-  .site-footer {
-    margin-top: 16px;
-  }
-  .site-footer__inner {
-    grid-template-columns: 1fr 1fr !important;
-    grid-template-rows: auto auto;
-    gap: 20px 16px !important;
-    padding: 24px 20px 16px !important;
-  }
-  .site-footer__brand {
-    grid-column: 1 / -1; /* full width */
-  }
-  .site-footer__logo {
-    display: flex !important;
-    align-items: center;
-    gap: 7px;
-    font-size: 18px;
-  }
-  .site-footer__tagline {
-    margin-top: 4px;
-    font-size: 12px;
-  }
-  .site-footer__bottom {
-    flex-direction: row !important;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0 !important;
-    padding: 10px 20px !important;
-    font-size: 11px;
-  }
-  .site-footer__credit {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-}
+
 
 /* ── Reduce footer bottom spacing ── */
 .view { padding-bottom: 0 !important; }
@@ -6129,17 +6136,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   }
 }
 
-/* ── FOOTER desktop — icon left of Hearth, heart inline ── */
-.site-footer__logo {
-  display: flex !important;
-  align-items: center !important;
-  gap: 7px !important;
-}
-.site-footer__credit {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-}
+
 
 /* ── Dark mode overrides for new rules ── */
 [data-theme="dark"] .app-header {
@@ -6415,38 +6412,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
    UI POLISH — v5
    ══════════════════════════════════════════════════════════════════ */
 
-/* ── FOOTER same color as page background ── */
-.site-footer {
-  background: var(--parchment) !important;
-  border-top-color: var(--tan-dark) !important;
-}
-[data-theme="dark"] .site-footer {
-  background: var(--cream) !important;
-  border-top-color: var(--border) !important;
-}
 
-/* ── FOOTER column headers darker ── */
-.site-footer__col-title {
-  color: var(--charcoal) !important;
-  opacity: 0.7;
-}
-
-/* ── FOOTER mobile: tagline right of logo ── */
-@media (max-width: 640px) {
-  .site-footer__brand {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    gap: 14px !important;
-    flex-wrap: nowrap !important;
-  }
-  .site-footer__tagline {
-    margin: 0 !important;
-    font-size: 11px !important;
-    line-height: 1.5 !important;
-    flex: 1 !important;
-  }
-}
 
 /* ── HERO overlay: four-corner layout ── */
 .rp2__hero-overlay {
@@ -6731,22 +6697,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   }
 }
 
-/* ── FOOTER: tagline right-aligned on mobile ── */
-@media (max-width: 640px) {
-  .site-footer__brand {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    gap: 12px !important;
-  }
-  .site-footer__tagline {
-    text-align: right !important;
-    flex: 1 !important;
-    margin: 0 !important;
-    font-size: 11px !important;
-  }
-  .site-footer__logo { margin-bottom: 0 !important; }
-}
+
 
 /* ── DARK MODE: remove light bar above footer ── */
 [data-theme="dark"] body {
@@ -6756,15 +6707,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 [data-theme="dark"] .app-root {
   background: var(--cream) !important;
 }
-[data-theme="dark"] .site-footer {
-  border-top-color: var(--border) !important;
-  margin-top: 0 !important;
-}
-/* Kill any gap between last view and footer */
-[data-theme="dark"] .view {
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-}
+
 
 /* ── KITCHEN: ingredient remove button — visible on mobile ── */
 .fridge-chip-remove-mobile {
@@ -7080,21 +7023,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .cookbook-card__add-label { font-size: 10px !important; }
 }
 
-/* ── FOOTER: hide Recipes/Kitchen columns on mobile ── */
-@media (max-width: 640px) {
-  .site-footer__col { display: none !important; }
-  .site-footer__inner {
-    grid-template-columns: 1fr !important;
-    gap: 0 !important;
-    padding: 20px 20px 16px !important;
-    border-bottom: none !important;
-    display: none !important;
-  }
-  .site-footer__bottom {
-    padding: 12px 20px !important;
-    border-top: none !important;
-  }
-}
+
 
 /* ── GROCERY: fix large gap between header and page top on mobile ── */
 @media (max-width: 640px) {
@@ -7251,8 +7180,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .cn-tab__groups { padding-bottom: 0 !important; }
   .cookbooks-grid { margin-bottom: 0 !important; }
   .profile-section:last-child { margin-bottom: 0 !important; }
-  /* Reduce excess gap above footer */
-  .site-footer { margin-top: 0 !important; }
+
 }
 
 /* ── FIX 7: Profile — reduce top space on mobile ── */
@@ -7295,24 +7223,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   }
 }
 
-/* ── FIX 9: Footer — persistent on all pages, fix desktop empty footer ── */
-/* Desktop: ensure footer has content */
-@media (min-width: 641px) {
-  .site-footer {
-    display: block !important;
-  }
-  .site-footer__inner {
-    display: grid !important;
-  }
-  .site-footer__col {
-    display: block !important;
-  }
-}
-/* Recipe summary page: show footer */
-.view.rp2 ~ .site-footer,
-.rp2 + .site-footer {
-  display: block !important;
-}
 
 /* ── FIX 11: Recipe summary page — match background to all other pages ── */
 .view.rp2 {
@@ -7386,8 +7296,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   }
 }
 
-/* ── DESKTOP: footer columns always shown ── */
-.site-footer__col { display: block; }
+
 
 /* ── MOBILE SEARCH DROPDOWN: show recipe images ── */
 .mobile-search-dropdown__item-img {
@@ -7641,22 +7550,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .cn-tab__groups            { padding-bottom: 4px !important; }
   .profile-section:last-child { margin-bottom: 0 !important; }
   .cookbooks-grid, .cookbook-detail { padding-bottom: 4px !important; }
-  /* Footer: flush under last section — sits naturally at scroll bottom */
-  .site-footer {
-    position: static !important;
-    margin-bottom: 0 !important;
-    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
-  }
 }
 
-/* ── FOOTER: simplified on mobile, sits at scroll bottom ── */
-@media (max-width: 640px) {
-  .site-footer__col { display: none !important; }
-  .site-footer__inner { display: none !important; }
-  .site-footer {
-    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
-  }
-}
 
 /* ── TAB BAR inner wrapper: safe-area padding lives here, icons stay centered ── */
 @media (max-width: 640px) {
