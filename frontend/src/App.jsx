@@ -249,6 +249,7 @@ const LS = {
   set: (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} },
 };
 
+// ─── Constants ───────────────────────────────────────────────────────────────
 const API = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 const COMMON_UNITS = [
@@ -494,12 +495,12 @@ const NutritionModalBody = ({ recipe, bodyIngredients, allIngredients, displayCa
 // --- Nutrition Card Popup --------------------------------------------------
 // Shown from recipe cards — fetches ingredient detail on demand
 // anchorRect: DOMRect from the calories button so we can position near it
+// ─── Nutrition ───────────────────────────────────────────────────────────────
 const NutritionCardPopup = ({ recipe, allIngredients, onClose, anchorRect }) => {
   const calories = toNum(recipe.calories);
   const protein  = toNum(recipe.protein);
   const fiber    = toNum(recipe.fiber);
   const [bodyIngredients, setBodyIngredients] = useState(null);
-  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -509,7 +510,7 @@ const NutritionCardPopup = ({ recipe, allIngredients, onClose, anchorRect }) => 
         const data = await res.json();
         if (!cancelled) setBodyIngredients(data.bodyIngredients || []);
       } catch {
-        if (!cancelled) { setLoadError(true); setBodyIngredients([]); }
+        if (!cancelled) setBodyIngredients([]);
       }
     };
     load();
@@ -604,6 +605,7 @@ const NutritionCardPopup = ({ recipe, allIngredients, onClose, anchorRect }) => 
 // --- Recipe Summary Card ---------------------------------------------------
 const toNum = (v) => { const n = Number(v); return (!isNaN(n) && v !== '' && v !== null && v !== undefined) ? n : null; };
 
+// ─── Recipe Card ─────────────────────────────────────────────────────────────
 const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked, showScore, onConvertRef, allIngredients = [] }) => {
   const { name, coverImage, cuisine, time } = recipe;
   const calories = toNum(recipe.calories);
@@ -762,9 +764,9 @@ const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
 };
 
 // --- Mark As Cooked Modal --------------------------------------------------
-// PERISHABLE_TYPES: categories where "use up / remove" makes sense after cooking
-const PERISHABLE_TYPES = new Set(['produce', 'meat & fish', 'dairy']);
 
+
+// ─── Mark As Cooked Modal ─────────────────────────────────────────────────────
 const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpdateKitchen, authFetch }) => {
   const apiFetch = authFetch || fetch;
   const [step, setStep] = useState(1); // 1 = rate/notes, 2 = ingredient cleanup
@@ -777,34 +779,36 @@ const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpda
   // Ingredient actions: 'remove' | 'keep' | null (undecided)
   const [ingActions, setIngActions] = useState({});
 
-  // Perishable ingredients used in this recipe
+// Perishable ingredient categories — used in post-cook cleanup to suggest removal
+const PERISHABLE_CATEGORY_MAP = {
+  produce: ['onion','garlic','ginger','tomato','lemon','lime','spinach','carrot','celery',
+    'potato','bell pepper','cucumber','zucchini','broccoli','cauliflower','mushroom','avocado',
+    'lettuce','kale','cabbage','spring onion','scallion','shallot','chilli','chili','jalapeño',
+    'leek','asparagus','eggplant','sweet potato','pumpkin','butternut squash','beetroot','radish',
+    'green beans','peas','corn','coriander','cilantro','parsley','basil','mint','thyme','rosemary',
+    'dill','chives','bay leaves','lemongrass','orange','apple','banana','mango','berry','strawberry',
+    'blueberry','peach','pear','grape','cherry'],
+  'meat & fish': ['chicken','beef','pork','lamb','turkey','duck','bacon','sausage','mince',
+    'ground beef','steak','salmon','tuna','shrimp','prawns','cod','tilapia','fish','crab',
+    'lobster','scallops','mussels','anchovies','ham','pancetta','prosciutto','chorizo','salami'],
+  dairy: ['egg','eggs','milk','butter','cream','heavy cream','sour cream','yogurt','greek yogurt',
+    'cheese','parmesan','cheddar','feta','mozzarella','ricotta','cream cheese','brie','gouda',
+    'halloumi','creme fraiche','ghee','buttermilk','condensed milk','coconut milk','coconut cream'],
+};
+const perishableCatOf = (name) => {
+  const lower = name.toLowerCase().trim();
+  for (const [cat, kws] of Object.entries(PERISHABLE_CATEGORY_MAP)) {
+    if (kws.some(k => lower.includes(k) || k.includes(lower))) return cat;
+  }
+  return null;
+};
+
+  // Perishable ingredients used in this recipe (suggests removal after cooking)
   const perishableIngs = useMemo(() => {
     if (!bodyIngredients?.length) return [];
-    const CATEGORY_MAP = {
-      produce: ['onion','garlic','ginger','tomato','lemon','lime','spinach','carrot','celery',
-        'potato','bell pepper','cucumber','zucchini','broccoli','cauliflower','mushroom','avocado',
-        'lettuce','kale','cabbage','spring onion','scallion','shallot','chilli','chili','jalapeño',
-        'leek','asparagus','eggplant','sweet potato','pumpkin','butternut squash','beetroot','radish',
-        'green beans','peas','corn','coriander','cilantro','parsley','basil','mint','thyme','rosemary',
-        'dill','chives','bay leaves','lemongrass','orange','apple','banana','mango','berry','strawberry',
-        'blueberry','peach','pear','grape','cherry'],
-      'meat & fish': ['chicken','beef','pork','lamb','turkey','duck','bacon','sausage','mince',
-        'ground beef','steak','salmon','tuna','shrimp','prawns','cod','tilapia','fish','crab',
-        'lobster','scallops','mussels','anchovies','ham','pancetta','prosciutto','chorizo','salami'],
-      dairy: ['egg','eggs','milk','butter','cream','heavy cream','sour cream','yogurt','greek yogurt',
-        'cheese','parmesan','cheddar','feta','mozzarella','ricotta','cream cheese','brie','gouda',
-        'halloumi','creme fraiche','ghee','buttermilk','condensed milk','coconut milk','coconut cream'],
-    };
-    const catOf = (name) => {
-      const lower = name.toLowerCase().trim();
-      for (const [cat, kws] of Object.entries(CATEGORY_MAP)) {
-        if (kws.some(k => lower.includes(k) || k.includes(lower))) return cat;
-      }
-      return null;
-    };
     return bodyIngredients
       .filter(i => !i._isGroup)
-      .map(i => ({ ...i, _cat: catOf(i.name) }))
+      .map(i => ({ ...i, _cat: perishableCatOf(i.name) }))
       .filter(i => i._cat !== null);
   }, [bodyIngredients]);
 
@@ -1351,6 +1355,7 @@ const SortableNoteRow = ({ note, onUpdate, onRemove }) => {
 };
 
 // --- Recipe Page -------------------------------------------------------------
+// ─── Recipe Page ─────────────────────────────────────────────────────────────
 const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [] }) => {
   const apiFetch = authFetch || fetch;
   const [checkedIngredients, setCheckedIngredients] = useState(new Set());
@@ -1364,8 +1369,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [notesAnchorRect, setNotesAnchorRect] = useState(null);
   const [showCookbookModal, setShowCookbookModal] = useState(false);
   const [cookbookAnchorRect, setCookbookAnchorRect] = useState(null);
-  const [showInstructionsModal, setShowInstructionsModal] = useState(false);
-  const [ingredientsAnchorRect, setIngredientsAnchorRect] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [stayAwake, setStayAwake] = useState(false);
@@ -2217,7 +2220,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         <div className="rp2__ingredients">
           <div className="rp2__section-title-row">
             <h2 className="rp2__section-title rp2__section-title--sm">Ingredients</h2>
-            {isAdmin && <button className="section-pencil" onClick={e => { setIngredientsAnchorRect(e.currentTarget.getBoundingClientRect()); startEdit('ingredients'); setShowIngredientsModal(true); }} title="Edit ingredients">✎</button>}
+            {isAdmin && <button className="section-pencil" onClick={e => { startEdit('ingredients'); setShowIngredientsModal(true); }} title="Edit ingredients">✎</button>}
           </div>
 
           {ingredientGroups.length > 0
@@ -3376,6 +3379,7 @@ const LongPressChip = ({ ing, isOn, hasNutrition, onToggle, onLongPress }) => {
 // --- Always-expanded types ---------------------------------------------------
 const ALWAYS_OPEN_TYPES = new Set([]); // all sections are now collapsible
 
+// ─── Kitchen / Fridge Tab ────────────────────────────────────────────────────
 const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, authFetch }) => {
   const apiFetch = authFetch || fetch;
   const [typeOverrides, setTypeOverrides] = useState(() => LS.get('ingredientTypeOverrides', {}));
@@ -3565,10 +3569,6 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
       </div>
     );
   };
-
-  const recentIngredients = useMemo(() =>
-    recentlyUsed.map(name => enriched.find(i => i.name.toLowerCase() === name)).filter(Boolean),
-  [recentlyUsed, enriched]);
 
   return (
     <main className="view">
@@ -3817,6 +3817,7 @@ const AddFriendModal = ({ onClose, onCreated, authFetch }) => {
   );
 };
 
+// ─── Profile Tab ─────────────────────────────────────────────────────────────
 const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser, onLogout, onAuthUserUpdate, darkMode = false, setDarkMode, tabBarTabs, setTabBarTabs }) => {
   const apiFetch = authFetch || fetch;
   const isAdmin = authUser?.role === 'admin';
@@ -4661,6 +4662,7 @@ const consolidateItems = (items) => {
   return Object.values(map);
 };
 
+// ─── Grocery List Tab ────────────────────────────────────────────────────────
 const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients, setFridgeIngredients, setPantryStaples }) => {
   const [categories, setCategories] = useState([]);
   const [recipeNames, setRecipeNames] = useState([]);
@@ -5020,6 +5022,7 @@ const NoteCard = ({ note, isAdmin, onEdit, onDelete }) => {
   );
 };
 
+// ─── Cooking Notes Tab ───────────────────────────────────────────────────────
 const CookingNotesTab = ({ notes, setNotes, authFetch, isAdmin }) => {
   const [editingNote, setEditingNote] = useState(null); // null = closed, false = new, obj = editing
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -5135,6 +5138,7 @@ const CookingNotesTab = ({ notes, setNotes, authFetch, isAdmin }) => {
 // --- Site Footer ------------------------------------------------------------
 const GITHUB_REPO = 'kavyasomala/RecipeApp'; // update with actual repo path
 
+// ─── Site Footer ─────────────────────────────────────────────────────────────
 const SiteFooter = ({ onNav }) => {
   const [lastUpdated, setLastUpdated] = useState(null);
 
@@ -5200,7 +5204,7 @@ const COOKBOOK_SORTS = [
 ];
 
 // --- Add Reference Modal -----------------------------------------------------
-const AddReferenceModal = ({ onSave, onClose, allTags, cookbookTitle = '', authFetch }) => {
+const AddReferenceModal = ({ onSave, onClose, cookbookTitle = '', authFetch }) => {
   const apiFetch = authFetch || fetch;
   const [name, setName]       = useState('');
   const [page, setPage]       = useState('');
@@ -5842,7 +5846,7 @@ const CbEntry = ({ entry, linked, entryTags, idx, onOpenRecipe, onMarkCooked, on
   );
 };
 
-const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, recipes, onUpdateRecipes, allTags, allIngredients, setCookingRecipe, cookLog, onRecipeConverted, authFetch }) => {
+const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, recipes, onUpdateRecipes, allIngredients, setCookingRecipe, cookLog, onRecipeConverted, authFetch }) => {
   const apiFetch = authFetch || fetch;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddRef,   setShowAddRef]   = useState(false);
@@ -5885,7 +5889,7 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
 
   return (
     <main className="view cookbook-detail">
-      {showAddRef   && <AddReferenceModal onSave={e => addEntries([e])} onClose={() => setShowAddRef(false)} allTags={allTags} cookbookTitle={cookbook.title} authFetch={apiFetch} />}
+      {showAddRef   && <AddReferenceModal onSave={e => addEntries([e])} onClose={() => setShowAddRef(false)} cookbookTitle={cookbook.title} authFetch={apiFetch} />}
       {showQuickAdd && <QuickAddModal onSave={addEntries} onClose={() => setShowQuickAdd(false)} />}
       {convertEntry && (
         <ConvertRecipeModal
@@ -5998,7 +6002,8 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
 };
 
 // --- CookbooksTab -------------------------------------------------------------
-const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags, allIngredients, setCookingRecipe, cookLog, onRecipeConverted, isAdmin, authFetch }) => {
+// ─── Cookbooks Tab ───────────────────────────────────────────────────────────
+const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngredients, setCookingRecipe, cookLog, onRecipeConverted, isAdmin, authFetch }) => {
   const [selectedCookbook, setSelectedCookbook] = useState(null);
   const [showAddModal,     setShowAddModal]     = useState(false);
   const [editingCookbook,  setEditingCookbook]  = useState(null);
@@ -6092,7 +6097,6 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags,
           });
         } catch { /* local update already applied */ }
       }}
-      allTags={allTags}
       setCookingRecipe={setCookingRecipe}
       cookLog={cookLog}
       onRecipeConverted={onRecipeConverted}
@@ -6190,6 +6194,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allTags,
 };
 
 // --- Add Recipe Tab ---------------------------------------------------------
+// ─── Add Recipe Tab ──────────────────────────────────────────────────────────
 const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) => {
   const apiFetch = authFetch || fetch;
   const sensors = DRAG_SENSORS();
@@ -6785,6 +6790,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
 };
 
 // --- Login Modal -------------------------------------------------------------
+// ─── Login Modal ─────────────────────────────────────────────────────────────
 const LoginModal = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -6901,6 +6907,7 @@ const CreateUserModal = ({ onClose, authFetch }) => {
 };
 
 // --- Main App ----------------------------------------------------------------
+// ─── Main App ────────────────────────────────────────────────────────────────
 function AppInner() {
   // --- Auth ------------------------------------------------------------------
   const [authToken, setAuthToken] = useState(() => LS.get('authToken', null));
@@ -6941,6 +6948,7 @@ function AppInner() {
     });
   }, [authToken]);
 
+  // --- Navigation & UI -------------------------------------------------------
   const [view, setViewRaw] = useState('home');
   const [lastView, setLastView] = useState('home');
 
@@ -6987,9 +6995,6 @@ function AppInner() {
     swipeTouchStart.current = null;
   }, [lastView]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [showAllSoon] = useState(true);
-  const [showAllMatch] = useState(true);
-  const [showAllFav] = useState(true);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileSearchQuery, setMobileSearchQuery] = useState('');
   const [mobileSearchSubmitted, setMobileSearchSubmitted] = useState(false);
@@ -7025,6 +7030,7 @@ function AppInner() {
     if (!viewport) { viewport = document.createElement('meta'); viewport.name = 'viewport'; document.head.appendChild(viewport); }
     viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
   }, []);
+  // --- Data ------------------------------------------------------------------
   const [allIngredients, setAllIngredients] = useState([]);
   const [recipes, setRecipes] = useState([]);
   const [fridgeIngredients, setFridgeIngredients] = useState(() => LS.get('fridgeIngredients', []));
@@ -7045,6 +7051,7 @@ function AppInner() {
       }).catch(() => {});
     }, 800);
   }, [authToken, authFetch]);
+  // --- Recipe Detail ---------------------------------------------------------
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [recipeBodyIngredients, setRecipeBodyIngredients] = useState([]);
   const [recipeInstructions, setRecipeInstructions] = useState([]);
@@ -7052,6 +7059,7 @@ function AppInner() {
   const [recipeLoading, setRecipeLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // --- Library Filters -------------------------------------------------------
   const [librarySearch, setLibrarySearch] = useState('');
   const [activeTags, setActiveTags] = useState([]);
   const [activeCuisines, setActiveCuisines] = useState([]);
@@ -7062,12 +7070,12 @@ function AppInner() {
   const [activeCookbooks, setActiveCookbooks] = useState([]); // cookbook titles + '__uncategorized'
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [customCuisines, setCustomCuisines] = useState(() => LS.get('customCuisines', []));
+  // --- User Preferences & Interactions ---------------------------------------
   const [heartedIds, setHeartedIds] = useState(() => LS.get('heartedIds', []));
   const [makeSoonIds, setMakeSoonIds] = useState(() => LS.get('makeSoonIds', []));
   const [cookingRecipe, setCookingRecipe] = useState(null); // recipe object to mark cooked
   const [libraryPage, setLibraryPage] = useState(1);
   const [libraryLayout, setLibraryLayout] = useState('grid'); // 'grid' | 'list'
-  const [lastSynced, setLastSynced] = useState(null);
 
   useEffect(() => { LS.set('customCuisines', customCuisines); }, [customCuisines]);
 
@@ -7087,6 +7095,7 @@ function AppInner() {
     });
   }, [authToken, authFetch]);
 
+  // --- Settings & Appearance -------------------------------------------------
   const [darkMode, setDarkModeRaw] = useState(() => LS.get('darkMode', false));
   const setDarkMode = (v) => { setDarkModeRaw(v); LS.set('darkMode', v); };
 
@@ -7102,6 +7111,7 @@ function AppInner() {
   const [dietaryFilters, setDietaryFiltersRaw] = useState(() => LS.get('dietaryFilters', []));
   const [hideIncompatible, setHideIncompatibleRaw] = useState(() => LS.get('hideIncompatible', false));
   const setHideIncompatible = (v) => { setHideIncompatibleRaw(v); LS.set('hideIncompatible', v); };
+  // --- App-Level Data (loaded from API) --------------------------------------
   const [cookbooks, setCookbooks] = useState([]);
   const [cookLog, setCookLog] = useState([]);
   const [cookingNotes, setCookingNotes] = useState([]);
@@ -7169,15 +7179,12 @@ function AppInner() {
         } catch {}
       }
 
-      setLastSynced(Date.now());
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }, [authToken, authFetch]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   const allMyIngredients = useMemo(() => new Set([...fridgeIngredients, ...pantryStaples].map(i => i.toLowerCase().trim())), [fridgeIngredients, pantryStaples]);
-
-  const allTags = useMemo(() => { const tagSet = new Set(); recipes.forEach(r => (r.tags || []).forEach(t => tagSet.add(t))); return Array.from(tagSet).sort(); }, [recipes]);
 
   const matches = useMemo(() => {
     if (allMyIngredients.size === 0) return [];
@@ -7215,7 +7222,6 @@ function AppInner() {
       }));
     }
     if (maxCalories !== null) {
-      const parseTime = v => { if (!v) return null; const n = parseFloat(v); return isNaN(n) ? null : n; };
       list = list.filter(r => {
         const c = toNum(r.calories);
         if (c === null) return true;
@@ -7575,7 +7581,6 @@ function AppInner() {
             {/* -- ⏱ Make Soon -- */}
             {(() => {
               const makeSoonRecipes = recipes.filter(r => makeSoonIds.includes(r.id));
-              const visibleSoon = showAllSoon ? makeSoonRecipes : makeSoonRecipes.slice(0, 4);
               return (
                 <div className="home-section">
                   <div className="home-section__header">
@@ -7610,7 +7615,6 @@ function AppInner() {
             {/* -- What can I make? -- */}
             {(() => {
               const goodMatches = matches.filter(m => m.matchScore > 0);
-              const visibleMatch = showAllMatch ? goodMatches : goodMatches.slice(0, 4);
               return (
                 <div className="home-section">
                   <div className="home-section__header">
@@ -7727,7 +7731,7 @@ function AppInner() {
                   <span className="quick-action__arrow"><Icon name="arrowRight" size={14} strokeWidth={1.75} /></span>
                 </button>
                 {matches.filter(m => m.canMake).length > 0 && (
-                  <button className="quick-action quick-action--highlight" onClick={() => { setActiveTag(null); setActiveCuisine(''); setLibrarySearch(''); setView('recipes'); }}>
+                  <button className="quick-action quick-action--highlight" onClick={() => { setActiveTags([]); setActiveCuisines([]); setActiveProgresses(['__readytocook']); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>
                     <span className="quick-action__icon"><Icon name="utensils" size={18} strokeWidth={1.75} /></span>
                     <div className="quick-action__text">
                       <span className="quick-action__label">Cook something now</span>
@@ -8112,7 +8116,6 @@ function AppInner() {
           setCookbooks={setCookbooks}
           recipes={recipes}
           onOpenRecipe={openRecipe}
-          allTags={allTags}
           allIngredients={allIngredients}
           setCookingRecipe={setCookingRecipe}
           authFetch={authFetch}
