@@ -6785,11 +6785,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
    MOBILE UI v7 — tab bar, search, swipe, cookbooks, scroll-top
    ══════════════════════════════════════════════════════════════════ */
 
-/* ── MOBILE BOTTOM TAB BAR (Gmail style) ── */
-.mobile-tab-bar {
-  display: none; /* hidden on desktop */
-}
-
 /* ── On mobile: app is a flex column filling the viewport.
    app__scroll is the scrollable content area.
    mobile-tab-bar sits below it as a static flex child.
@@ -6812,16 +6807,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
     position: relative;
-  }
-  .mobile-tab-bar {
-    display: flex;
-    flex-shrink: 0;            /* never squished by keyboard */
-    /* NOT position:fixed — just a static flex child */
-    background: var(--warm-white);
-    border-top: 1px solid var(--border);
-    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    z-index: 200;
   }
   .mobile-tab-bar__btn {
     flex: 1;
@@ -6854,11 +6839,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     text-overflow: ellipsis;
     max-width: 100%;
   }
-  /* Dark mode */
-  [data-theme="dark"] .mobile-tab-bar {
-    background: var(--warm-white);
-    border-top-color: var(--border);
-  }
+
   /* Give all views extra bottom padding so tab bar doesn't obscure content */
   .view, .home-view, .grocery-view, .profile-view, .cn-tab, .cookbooks-tab {
     padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
@@ -7048,10 +7029,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 }
 
 /* ── DARK MODE: tab bar ── */
-[data-theme="dark"] .mobile-tab-bar {
-  background: var(--warm-white) !important;
-  border-top-color: var(--border) !important;
-}
 [data-theme="dark"] .mobile-tab-bar__btn { color: var(--warm-gray); }
 [data-theme="dark"] .mobile-tab-bar__btn--active { color: var(--terracotta); }
 [data-theme="dark"] .app-header__mobile-search-pill {
@@ -7517,15 +7494,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     justify-content: center !important;
     align-items: center !important;
   }
-  /* Use safe-area padding on the bar itself, not the buttons */
-  .mobile-tab-bar {
-    display: flex;
-    flex-shrink: 0;
-    background: var(--warm-white);
-    border-top: 1px solid var(--border);
-    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
-    z-index: 200;
-  }
   
   /* The icon+label group centers itself with equal breathing room */
   .mobile-tab-bar__btn-inner {
@@ -7533,8 +7501,30 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     flex-direction: column;
     align-items: center;
     gap: 3px;
-    padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
   }
+}
+
+/* ── MOBILE BOTTOM TAB BAR ── */
+.mobile-tab-bar {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .mobile-tab-bar {
+    display: flex;
+    flex-shrink: 0;
+    background: var(--warm-white);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+    z-index: 200;
+    /* No padding-bottom here — lives on btn-inner instead */
+  }
+}
+
+[data-theme="dark"] .mobile-tab-bar {
+  background: var(--warm-white) !important;
+  border-top-color: var(--border) !important;
 }
 
 /* ── SECTION BOTTOM SPACING: reduce gap before footer on mobile ── */
@@ -7567,8 +7557,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     align-items: center;
     justify-content: center;
     gap: 3px;
-    padding-top: 4px;
-    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+    padding-top: 6px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
     width: 100%;
   }
   .mobile-tab-bar__btn {

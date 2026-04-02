@@ -757,9 +757,26 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
   };
   return (
     <div className="ing-flat-row" ref={setNodeRef} style={style}>
-      <span className="ing-flat-row__drag" {...attributes} {...listeners} tabIndex={-1}>⠿</span>
+      {/* Invisible full-row drag handle — long press activates on mobile */}
+      <span 
+        className="ing-flat-row__drag" 
+        {...attributes} 
+        {...listeners} 
+        tabIndex={-1}
+        style={{
+          opacity: isDragging ? 0.4 : 0.15,
+          fontSize: 10,
+          color: 'var(--ash)',
+          letterSpacing: '0.05em',
+          cursor: 'grab',
+          userSelect: 'none',
+          touchAction: 'none',
+          flexShrink: 0,
+          transition: 'opacity 0.2s',
+        }}
+      >··</span>
       <div className="ing-flat-row__fields">
-        {/* Row 1 (desktop inline / mobile: Name full width) */}
+        {/* Row 1 */}
         <div className="ing-flat-row__row1">
           <input className="editor-input ing-flat-row__qty" value={ing.amount} onChange={e => onUpdate('amount', e.target.value)} placeholder="Qty" />
           <div className="ing-flat-row__unit-wrap">
@@ -769,19 +786,18 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
             <IngredientAutocomplete value={ing.name} onChange={v => onUpdate('name', v)} allIngredients={allIngredients} />
           </div>
         </div>
-        {/* Row 2 (desktop inline / mobile: Prep + optional + remove) */}
+        {/* Row 2 */}
         <div className="ing-flat-row__row2">
           <input className="editor-input ing-flat-row__prep" value={ing.prep_note || ''} onChange={e => onUpdate('prep_note', e.target.value)} placeholder="Prep note (e.g. finely chopped)" />
           <button
             className={`ing-opt-toggle ${ing.optional ? 'ing-opt-toggle--on' : ''}`}
             onClick={() => onUpdate('optional', !ing.optional)}
-            title={ing.optional ? 'Mark as required' : 'Mark as optional'}
             type="button"
             tabIndex={-1}
           >
             {ing.optional ? 'optional' : 'required'}
           </button>
-          <button className="editor-remove-btn" onClick={onRemove} title="Remove" tabIndex={-1}>✕</button>
+          <button className="editor-remove-btn" onClick={onRemove} tabIndex={-1}>✕</button>
         </div>
       </div>
     </div>
