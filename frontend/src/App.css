@@ -7542,8 +7542,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    padding: 10px 4px calc(10px + env(safe-area-inset-bottom, 0px));
+    gap: 3px;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -7576,12 +7576,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    padding-top: 8px;
-    padding-bottom: 8px;
+    gap: 3px;
+    padding-top: 6px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
     width: 100%;
   }
-  /* The outer button just fills height, no extra padding */
   .mobile-tab-bar__btn {
     padding: 0 !important;
     align-items: stretch !important;
