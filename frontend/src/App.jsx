@@ -1810,9 +1810,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
 
           {/* == MOBILE: four-corner layout == */}
           {/* Top-left: Back */}
-          <div className="rp2__hero-corner rp2__hero-corner--tl rp2__hero-mobile-only">
-            <button className="rp2__hero-btn" onClick={e => { e.stopPropagation(); onBack(); }}>← Back</button>
-          </div>
           {/* Top-right: Photo edit (admin) + Cooked */}
           <div className="rp2__hero-corner rp2__hero-corner--tr rp2__hero-mobile-only">
             {isMakeSoon && onMarkCooked && (
@@ -7231,10 +7228,20 @@ function AppInner() {
       });
     }
     if (maxMinutes !== null) {
+      // Parse time strings like '45 mins', '1 hr 20 mins', '1.5 hours', '90 min'
+      const parseMinutes = (t) => {
+        if (!t) return null;
+        const s = t.toLowerCase();
+        const hrs  = parseFloat((s.match(/([\d.]+)\s*h/)  || [])[1] || 0);
+        const mins = parseFloat((s.match(/([\d.]+)\s*m(?!o)/) || [])[1] || 0);
+        const total = hrs * 60 + mins;
+        return total > 0 ? total : null;
+      };
       list = list.filter(r => {
-        if (!r.time) return true;
-        const m = parseInt(r.time);
-        return !isNaN(m) && m <= maxMinutes;
+        const mins = parseMinutes(r.time);
+        // Exclude recipes with no time set — we can't confirm they're under the limit
+        if (mins === null) return false;
+        return mins <= maxMinutes;
       });
     }
     // Cookbook filter
@@ -7675,7 +7682,13 @@ function AppInner() {
                 <button className="insight-item insight-item--purple insight-item--btn"
                   onClick={() => { setMaxMinutes(30); setView('recipes'); }}>
                   <span className="insight-item__number">
-                    {recipes.filter(r => { const t = (r.time || '').toLowerCase(); const m = t.match(/(\d+)/); return m && parseInt(m[1]) <= 30; }).length}
+                    {recipes.filter(r => {
+                        const s = (r.time || '').toLowerCase();
+                        const hrs  = parseFloat((s.match(/([\d.]+)\s*h/)  || [])[1] || 0);
+                        const mins = parseFloat((s.match(/([\d.]+)\s*m(?!o)/) || [])[1] || 0);
+                        const total = hrs * 60 + mins;
+                        return total > 0 && total <= 30;
+                      }).length}
                   </span>
                   <span className="insight-item__label">Under 30 min</span>
                   <span className="insight-item__icon"><Icon name="clock" size={16} color="var(--insight-rust-ic)" /></span>
