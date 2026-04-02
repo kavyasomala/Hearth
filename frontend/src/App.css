@@ -3053,12 +3053,12 @@ body {
   .ing-modal-overlay {
     padding: 0 !important;
     align-items: flex-start !important;
-    padding-top: calc(60px + env(safe-area-inset-top, 0px)) !important;
+    padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
   }
   .ing-modal--wide {
     max-width: 100% !important;
     width: 100% !important;
-    max-height: calc(100dvh - 60px - env(safe-area-inset-top, 0px)) !important;
+    max-height: calc(100dvh - 56px - env(safe-area-inset-top, 0px)) !important;
     border-radius: 0 !important;
     overflow-y: auto !important;
   }
@@ -3093,6 +3093,20 @@ body {
     align-items: center;
     justify-content: center;
     font-size: 22px;
+  }
+
+  @media (max-width: 640px) {
+    .ing-modal__body {
+      padding: 6px 12px 80px !important;
+    }
+    
+    .ing-flat-row {
+      margin-bottom: 6px !important;
+    }
+    
+    .ing-flat-header--desktop {
+      display: none !important;
+    }
   }
 
   /* Row 1: Name (full width), then Qty + Unit side by side below it */
@@ -7487,23 +7501,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   }
 }
 
-/* ── TAB BAR: perfectly centered icons — equal space above and below ── */
-@media (max-width: 640px) {
-  .mobile-tab-bar__btn {
-    padding: 0 4px !important;         /* remove asymmetric padding */
-    justify-content: center !important;
-    align-items: center !important;
-  }
-  
-  /* The icon+label group centers itself with equal breathing room */
-  .mobile-tab-bar__btn-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
-  }
-}
 
 /* ── MOBILE BOTTOM TAB BAR ── */
 .mobile-tab-bar {
@@ -7548,22 +7545,22 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .cookbooks-grid, .cookbook-detail { padding-bottom: 4px !important; }
 }
 
-
-/* ── TAB BAR inner wrapper: safe-area padding lives here, icons stay centered ── */
 @media (max-width: 640px) {
+  .mobile-tab-bar__btn {
+    padding: 0 !important;
+    align-items: stretch !important;
+    justify-content: center !important;
+  }
+  
   .mobile-tab-bar__btn-inner {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    padding-top: 6px;
-    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    gap: 2px;
+    padding-top: 4px;
+    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
     width: 100%;
-  }
-  .mobile-tab-bar__btn {
-    padding: 0 !important;
-    align-items: stretch !important;
   }
 }
 
