@@ -3191,15 +3191,17 @@ const CookbookAutocomplete = ({ value, onChange, cookbooks = [] }) => {
 };
 
 // --- Fridge Tab -------------------------------------------------------------
-const ALL_TYPES = ['produce', 'meat', 'dairy', 'sauce', 'spice', 'alcohol', 'staple'];
+// Must match category keys from server's categorise() function
+const ALL_TYPES = ['produce', 'meat & fish', 'dairy', 'sauces', 'spices', 'alcohol', 'staples', 'other'];
 const TYPE_META = {
-  produce:  { label: 'Produce',     icon: 'leaf',     group: 'fridge'  },
-  meat:     { label: 'Meat & Fish', icon: 'utensils', group: 'fridge'  },
-  dairy:    { label: 'Dairy',       icon: 'coffee',   group: 'fridge'  },
-  sauce:    { label: 'Sauces',      icon: 'package',  group: 'fridge'  },
-  spice:    { label: 'Spices',      icon: 'zap',      group: 'pantry'  },
-  alcohol:  { label: 'Alcohol',     icon: 'shuffle',  group: 'pantry'  },
-  staple:   { label: 'Staples',     icon: 'list',     group: 'pantry'  },
+  produce:       { label: 'Produce',     icon: 'leaf',     group: 'fridge'  },
+  'meat & fish': { label: 'Meat & Fish', icon: 'utensils', group: 'fridge'  },
+  dairy:         { label: 'Dairy',       icon: 'coffee',   group: 'fridge'  },
+  sauces:        { label: 'Sauces',      icon: 'package',  group: 'fridge'  },
+  spices:        { label: 'Spices',      icon: 'zap',      group: 'pantry'  },
+  alcohol:       { label: 'Alcohol',     icon: 'shuffle',  group: 'pantry'  },
+  staples:       { label: 'Staples',     icon: 'list',     group: 'pantry'  },
+  other:         { label: 'Other',       icon: 'folder',   group: 'pantry'  },
 };
 
 const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
@@ -3207,7 +3209,7 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
   const isNew = !ing;
   const [form, setForm] = useState({
     name:           ing?.name           || '',
-    type:           ing?.type           || 'staple',
+    type:           ing?.type           || 'staples',
     calories:       ing?.calories       ?? '',
     protein:        ing?.protein        ?? '',
     fiber:          ing?.fiber          ?? '',
@@ -3453,7 +3455,7 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
 
   const toggle = (name, type) => {
     const lower = name.toLowerCase();
-    const isFridgeType = ['produce', 'meat', 'dairy', 'sauce'].includes(type);
+    const isFridgeType = ['produce', 'meat & fish', 'dairy', 'sauces'].includes(type);
     const isOn = allSelected.has(lower);
     if (isOn) {
       // Remove from have
@@ -4691,7 +4693,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
         next.add(key);
         // Auto-add to kitchen
         const known = allIngredients?.find(i => (typeof i === 'string' ? i : i.name).toLowerCase() === lower);
-        const isFridgeType = known && typeof known === 'object' && ['produce','meat & fish','dairy'].includes(known.type);
+        const isFridgeType = known && typeof known === 'object' && ['produce', 'meat & fish', 'dairy', 'sauces'].includes(known.type);
         if (isFridgeType) {
           setFridgeIngredients(prev2 => prev2.includes(lower) ? prev2 : [...prev2, lower]);
         } else {
