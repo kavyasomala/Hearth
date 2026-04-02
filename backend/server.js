@@ -623,9 +623,14 @@ app.post('/api/recipes', authenticateToken, requireAdmin, async (req, res) => {
       for (const ing of ingredients) {
         const ingName = ing.name?.trim().toLowerCase();
         if (!ingName) continue;
+        const ingType = categorise(ingName);
         const { rows: ingRows } = await client.query(
-          `INSERT INTO ingredients (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
-          [ingName]
+          `INSERT INTO ingredients (name, type)
+           VALUES ($1, $2)
+           ON CONFLICT (name) DO UPDATE SET
+             type = CASE WHEN ingredients.type IS NULL THEN EXCLUDED.type ELSE ingredients.type END
+           RETURNING id`,
+          [ingName, ingType]
         );
         await client.query(
           `INSERT INTO recipe_body_ingredients
@@ -735,9 +740,14 @@ app.put('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) =>
       for (const ing of ingredients) {
         const ingName = ing.name?.trim().toLowerCase();
         if (!ingName) continue;
+        const ingType = categorise(ingName);
         const { rows: ingRows } = await client.query(
-          `INSERT INTO ingredients (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
-          [ingName]
+          `INSERT INTO ingredients (name, type)
+           VALUES ($1, $2)
+           ON CONFLICT (name) DO UPDATE SET
+             type = CASE WHEN ingredients.type IS NULL THEN EXCLUDED.type ELSE ingredients.type END
+           RETURNING id`,
+          [ingName, ingType]
         );
         await client.query(
           `INSERT INTO recipe_body_ingredients
