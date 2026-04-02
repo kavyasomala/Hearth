@@ -1425,15 +1425,8 @@ body {
 .rp2__step-body { font-size: 15px; line-height: 1.65; color: var(--charcoal); }
 
 /* Notes */
-.rp2__notes-list { list-style: none; display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; }
-.rp2__notes-list { list-style: none; display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; }
-.rp2__notes-item {
-  display: flex; gap: 10px; font-size: 14px; line-height: 1.55; color: var(--charcoal);
-  padding: 10px 14px; background: var(--cream);
-  border: 1px solid var(--border); border-radius: var(--radius);
-  border-left: 3px solid var(--sage);
-}
-.rp2__notes-item::before { content: ''; display: none; }
+.rp2__notes-list { list-style: none; display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; min-width: 0; overflow: hidden; }
+.rp2__notes-list { list-style: none; display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; min-width: 0; overflow: hidden; }
 
 @media (max-width: 700px) {
   .rp2__body { grid-template-columns: 1fr; overflow-x: hidden; }
@@ -5237,12 +5230,6 @@ button, [role="button"] { cursor: pointer; }
 }
 .kitchen-quickadd-bar:focus-within { border-color: var(--terracotta); box-shadow: var(--focus-ring), var(--shadow-xs); }
 
-/* Notes items — warmer */
-.rp2__notes-item {
-  background: var(--cream);
-  border-left-color: var(--sage);
-}
-
 /* Library/grocery header typography */
 .grocery-title { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
 
@@ -5258,16 +5245,7 @@ button, [role="button"] { cursor: pointer; }
 .filter-panel__chips .chip { gap: 5px; }
 
 /* ── Notes & Tips — themed, rounded card style ── */
-.rp2__notes-list { list-style: none; display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; }
-.rp2__notes-item {
-  display: flex; gap: 8px; font-size: 14px; line-height: 1.55; color: var(--charcoal);
-  padding: 10px 14px;
-  background: var(--warm-white);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--sage);
-  border-radius: var(--radius);
-}
-.rp2__notes-item::before { display: none !important; }
+.rp2__notes-list { list-style: none; display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; min-width: 0; overflow: hidden; }
 
 /* ── Ingredient list — checkbox top-aligned, text wraps ── */
 .rp2__ing-item { align-items: flex-start !important; }
@@ -5357,9 +5335,6 @@ button, [role="button"] { cursor: pointer; }
 
   /* Stay awake + trash btn row wraps */
   .rp2__title-row-actions { gap: 6px; flex-wrap: wrap; }
-
-  /* Notes section */
-  .rp2__notes-item { font-size: 13px; padding: 9px 12px; }
 
   /* Grocery copy btn */
   .grocery-copy-btn { padding: 6px 10px; font-size: 11px; }
@@ -5493,7 +5468,7 @@ button, [role="button"] { cursor: pointer; }
 [data-theme="dark"] .rp2__ingredients      { border-right-color: var(--border); }
 [data-theme="dark"] .rp2__ing-item:hover   { background: var(--parchment); }
 [data-theme="dark"] .rp2__ing-check        { border-color: var(--border); }
-[data-theme="dark"] .rp2__notes-item       { background: var(--warm-white); border-color: var(--border); border-left-color: var(--sage); }
+[data-theme="dark"] .rp2__notes-item { background: var(--warm-white); border-color: var(--border); border-left-color: var(--sage); }
 [data-theme="dark"] .rp2__step             { background: var(--warm-white); border-color: var(--border); }
 [data-theme="dark"] .rp2__step--current    { background: var(--parchment); border-left-color: var(--terracotta); }
 [data-theme="dark"] .rp2__step--done       { background: var(--cream); border-color: transparent; }
@@ -5788,11 +5763,26 @@ button, [role="button"] { cursor: pointer; }
   .rp2__section-title {
     font-size: 15px !important;
   }
-  
-  /* Notes */
+
   .rp2__notes-item {
-    font-size: 13px !important;
-    padding: 9px 12px !important;
+    display: flex;
+    gap: 8px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--charcoal);
+    padding: 10px 14px;
+    background: var(--cream);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--sage);
+    border-radius: var(--radius);
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+  .rp2__notes-item::before { display: none !important; }
+    
+  @media (max-width: 640px) {
+    .rp2__notes-item { font-size: 13px !important; padding: 9px 12px !important; }
   }
   
   /* Ingredient items */
@@ -7543,7 +7533,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     flex-direction: column;
     align-items: center;
     gap: 3px;
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -7577,8 +7567,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     align-items: center;
     justify-content: center;
     gap: 3px;
-    padding-top: 6px;
-    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    padding-top: 4px;
+    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
     width: 100%;
   }
   .mobile-tab-bar__btn {

@@ -704,6 +704,49 @@ const HeroImage = ({ src, alt }) => (
   </div>
 );
 
+const HeroTagsButton = ({ recipe }) => {
+  const [open, setOpen] = React.useState(false);
+  const allTags = [
+    ...(recipe.cuisine ? [recipe.cuisine] : []),
+    ...(recipe.tags || []).map(t => TAG_FILTERS.find(f => f.key === t)?.label || t),
+    ...(recipe.status && recipe.status !== '' ? [recipe.status] : []),
+  ];
+  if (!allTags.length) return null;
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        className="rp2__hero-btn"
+        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        style={{ fontSize: 12, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
+      >
+        <Icon name="tag" size={12} strokeWidth={2} /> Tags
+      </button>
+      {open && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 299 }} onClick={() => setOpen(false)} />
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 8px)', left: 0,
+            background: 'rgba(20,20,20,0.95)', backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
+            padding: '12px 14px', zIndex: 300,
+            display: 'flex', flexWrap: 'wrap', gap: 6,
+            minWidth: 160, maxWidth: 260,
+          }} onClick={e => e.stopPropagation()}>
+            {allTags.map(tag => (
+              <span key={tag} style={{
+                fontSize: 12, fontWeight: 600, padding: '4px 10px',
+                borderRadius: 999, background: 'rgba(255,255,255,0.12)',
+                color: 'white', border: '1px solid rgba(255,255,255,0.2)',
+                whiteSpace: 'nowrap',
+              }}>{tag}</span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 // --- Ingredient Flat Row (sortable) ----------------------------------------
 const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ing._id });
@@ -1809,7 +1852,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           </div>
 
           {/* == MOBILE: four-corner layout == */}
-          {/* Top-left: Back */}
+          {/* Top-left: Tags (mobile only) */}
+          <div className="rp2__hero-corner rp2__hero-corner--tl rp2__hero-mobile-only">
+            <HeroTagsButton recipe={recipe} />
+          </div>
           {/* Top-right: Photo edit (admin) + Cooked */}
           <div className="rp2__hero-corner rp2__hero-corner--tr rp2__hero-mobile-only">
             {isMakeSoon && onMarkCooked && (
