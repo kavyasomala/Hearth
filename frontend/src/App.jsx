@@ -631,35 +631,41 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
             <div className="recipe-card__book-corner"><Icon name="bookOpen" size={12} strokeWidth={1.75} color="white" /></div>
           )}
           {showScore && matchScore !== null && (
-            <div style={{ position: 'relative' }}>
+            <>
               <button
                 className={`recipe-card__score ${canMakeNow ? 'recipe-card__score--ready' : ''}`}
                 onClick={e => { e.stopPropagation(); setShowMissing(o => !o); }}
-                style={{ cursor: 'pointer', border: 'none', background: canMakeNow ? 'rgba(107,145,112,0.92)' : 'rgba(30,22,14,0.82)' }}
+                style={{ cursor: 'pointer', border: 'none' }}
               >
                 {pct(matchScore)}%
               </button>
-              {showMissing && match?.missing?.length > 0 && (
+              {showMissing && (
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 299 }} onClick={e => { e.stopPropagation(); setShowMissing(false); }} />
                   <div style={{
-                    position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                    position: 'absolute', top: 44, right: 10,
                     background: 'rgba(20,20,20,0.95)', backdropFilter: 'blur(12px)',
                     border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-                    padding: '12px 14px', zIndex: 300, minWidth: 180, maxWidth: 260,
+                    padding: '12px 14px', zIndex: 300, minWidth: 180, maxWidth: 240,
                   }} onClick={e => e.stopPropagation()}>
-                    <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.5)', margin: '0 0 8px' }}>
-                      Missing {match.missing.length} ingredient{match.missing.length > 1 ? 's' : ''}
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {match.missing.map(name => (
-                        <span key={name} style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>· {name}</span>
-                      ))}
-                    </div>
+                    {match?.missing?.length > 0 ? (
+                      <>
+                        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.5)', margin: '0 0 8px' }}>
+                          Missing {match.missing.length} ingredient{match.missing.length > 1 ? 's' : ''}
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {match.missing.map(n => (
+                            <span key={n} style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>· {n}</span>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: 0 }}>✓ You have everything!</p>
+                    )}
                   </div>
                 </>
               )}
-            </div>
+            </>
           )}
           {onToggleHeart && (
             <button
@@ -3293,7 +3299,7 @@ const TYPE_META = {
   other:         { label: 'Other',       icon: 'folder',   group: 'pantry'  },
 };
 
-const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
+const IngredientEditModal = ({ ing, onSave, onClose, authFetch, recipes = [] }) => {
   const apiFetch = authFetch || fetch;
   const isNew = !ing;
   const [form, setForm] = useState({
@@ -3426,6 +3432,36 @@ const IngredientEditModal = ({ ing, onSave, onClose, authFetch }) => {
               Used when a recipe says "3 eggs" or "2 cloves" -- no weight unit. Leave blank for ingredients always measured by weight or volume.
             </p>
           </div>
+          {!isNew && (() => {
+            const usedIn = recipes.filter(r =>
+              (r.ingredients || []).some(i =>
+                (typeof i === 'string' ? i : i.name || '').toLowerCase() === form.name.toLowerCase()
+              )
+            );
+            if (!usedIn.length) return null;
+            return (
+              <div className="create-modal__field">
+                <label className="create-modal__field-label">
+                  <Icon name="bookOpen" size={13} strokeWidth={2} /> Used in {usedIn.length} recipe{usedIn.length > 1 ? 's' : ''}
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                  {usedIn.map(r => (
+                    <div key={r.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 10px', borderRadius: 8,
+                      background: 'var(--cream)', border: '1px solid var(--border)',
+                    }}>
+                      {r.coverImage && (
+                        <img src={r.coverImage} alt={r.name} style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                      )}
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--charcoal)' }}>{r.name}</span>
+                      {r.time && <span style={{ fontSize: 11, color: 'var(--warm-gray)', marginLeft: 'auto' }}>{r.time}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           {error && <p className="editor-error"><Icon name="alertTriangle" size={14} strokeWidth={2} /> {error}</p>}
         </div>
         <div className="create-modal__footer">
@@ -3471,7 +3507,7 @@ const LongPressChip = ({ ing, isOn, hasNutrition, onToggle, onLongPress }) => {
 const ALWAYS_OPEN_TYPES = new Set([]); // all sections are now collapsible
 
 // ─── Kitchen / Fridge Tab ────────────────────────────────────────────────────
-const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, authFetch }) => {
+const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, authFetch, recipes = [] }) => {
   const apiFetch = authFetch || fetch;
   const [typeOverrides, setTypeOverrides] = useState(() => LS.get('ingredientTypeOverrides', {}));
   const [editingIng, setEditingIng] = useState(null);
@@ -3680,6 +3716,7 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
           onSave={handleSaveIng}
           onClose={() => setEditingIng(null)}
           authFetch={apiFetch}
+          recipes={recipes}
         />
       )}
       {deleteTarget && (
@@ -7691,7 +7728,7 @@ function AppInner() {
       )}
 
       {view === 'kitchen' && (
-        <FridgeTab allIngredients={allIngredients} setAllIngredients={setAllIngredients} fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} authFetch={authFetch} />
+        <FridgeTab allIngredients={allIngredients} setAllIngredients={setAllIngredients} fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} authFetch={authFetch} recipes={recipes} />
       )}
 
       {/* ======================================================
