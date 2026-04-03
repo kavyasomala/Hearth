@@ -617,6 +617,7 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
   const isCookbookRef = Boolean(recipe.cookbook && (!recipe.ingredients || recipe.ingredients.length === 0));
   const [showNutrition, setShowNutrition] = useState(false);
   const [nutritionAnchorRect, setNutritionAnchorRect] = useState(null);
+  const [showMissing, setShowMissing] = useState(false);
 
   return (
     <>
@@ -630,8 +631,34 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
             <div className="recipe-card__book-corner"><Icon name="bookOpen" size={12} strokeWidth={1.75} color="white" /></div>
           )}
           {showScore && matchScore !== null && (
-            <div className={`recipe-card__score ${canMakeNow ? 'recipe-card__score--ready' : ''}`}>
-              {pct(matchScore)}%
+            <div style={{ position: 'relative' }}>
+              <button
+                className={`recipe-card__score ${canMakeNow ? 'recipe-card__score--ready' : ''}`}
+                onClick={e => { e.stopPropagation(); setShowMissing(o => !o); }}
+                style={{ cursor: 'pointer', border: 'none', background: canMakeNow ? 'rgba(107,145,112,0.92)' : 'rgba(30,22,14,0.82)' }}
+              >
+                {pct(matchScore)}%
+              </button>
+              {showMissing && match?.missing?.length > 0 && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 299 }} onClick={e => { e.stopPropagation(); setShowMissing(false); }} />
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                    background: 'rgba(20,20,20,0.95)', backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
+                    padding: '12px 14px', zIndex: 300, minWidth: 180, maxWidth: 260,
+                  }} onClick={e => e.stopPropagation()}>
+                    <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.5)', margin: '0 0 8px' }}>
+                      Missing {match.missing.length} ingredient{match.missing.length > 1 ? 's' : ''}
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {match.missing.map(name => (
+                        <span key={name} style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>· {name}</span>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
           {onToggleHeart && (
@@ -3546,10 +3573,12 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
   // Quick-add: adds an ingredient from missing → have immediately
   const quickAddSuggestions = useMemo(() => {
     const q = quickAddValue.toLowerCase().trim();
-    const missingNames = missingList.map(i => i.name.toLowerCase());
     if (!q) return missingList.slice(0, 8);
-    return missingList.filter(i => i.name.toLowerCase().includes(q)).slice(0, 10);
-  }, [quickAddValue, missingList]);
+    // Search all ingredients when typing, not just missing
+    return enriched
+      .filter(i => i.name.toLowerCase().includes(q))
+      .slice(0, 10);
+  }, [quickAddValue, missingList, enriched]);
 
   const handleQuickAdd = (ing) => {
     toggle(ing.name, typeOverrides[ing.name] ?? ing.type);
@@ -3711,12 +3740,25 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
         </div>
         {quickAddOpen && quickAddSuggestions.length > 0 && (
           <div className="kitchen-quickadd-dropdown">
-            {quickAddSuggestions.map(ing => (
-              <button key={ing.name} className="kitchen-quickadd-option" onMouseDown={() => handleQuickAdd(ing)}>
-                <span className="kitchen-quickadd-option__emoji">{TYPE_META[ing.type]?.icon ? <Icon name={TYPE_META[ing.type].icon} size={13} strokeWidth={2} /> : '·'}</span>
-                {ing.name}
-              </button>
-            ))}
+            {quickAddSuggestions.map(ing => {
+              const isOnHand = allSelected.has(ing.name.toLowerCase());
+              return (
+                <button key={ing.name} className="kitchen-quickadd-option" 
+                  onMouseDown={() => handleQuickAdd(ing)}
+                  style={{ opacity: isOnHand ? 0.5 : 1 }}
+                >
+                  <span className="kitchen-quickadd-option__emoji">
+                    {isOnHand 
+                      ? <Icon name="checkCircle" size={13} strokeWidth={2} color="var(--sage)" />
+                      : TYPE_META[ing.type]?.icon 
+                      ? <Icon name={TYPE_META[ing.type].icon} size={13} strokeWidth={2} /> 
+                      : '·'}
+                  </span>
+                  {ing.name}
+                  {isOnHand && <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--sage)', fontWeight: 600 }}>on hand</span>}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
