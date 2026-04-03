@@ -3508,7 +3508,16 @@ const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFr
   // Group by type
   const groupBy = (list) => {
     const map = {};
-    for (const ing of list) { const t = ing.type || 'other'; if (!map[t]) map[t] = []; map[t].push(ing); }
+    for (const ing of list) {
+      // Normalise type variations to match ALL_TYPES keys
+      let t = ing.type || 'other';
+      if (t === 'staple') t = 'staples';
+      if (t === 'spice') t = 'spices';  
+      if (t === 'meat' || t === 'fish') t = 'meat & fish';
+      if (t === 'sauce') t = 'sauces';
+      if (!map[t]) map[t] = [];
+      map[t].push(ing);
+    }
     return map;
   };
 
