@@ -1951,117 +1951,85 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             {/* Tags area -- only show fields that have values; add button for adding more */}
             <div className="rp2__hero-tags">
 
-              {/* Show tags/cuisine/progress only when editing */}
-              {isEdit('meta-tags') || isEdit('meta-cuisine') || isEdit('meta-progress') ? (
-                <>
-                  {/* Cuisine chip */}
-                  {recipe.cuisine && (
-                    <div className="rp2__hero-tag-wrap">
-                      <button className={`rp2__tag rp2__tag--clickable ${isEdit('meta-cuisine') ? 'rp2__tag--editing' : ''}`}
-                        onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-cuisine') ? null : 'meta-cuisine'); }}>
-                        {recipe.cuisine}
-                      </button>
-                      {isEdit('meta-cuisine') && (
-                        <div className="rp2__hero-dark-popover">
-                          <p className="rp2__dark-pop-label"><Icon name="mapPin" size={13} strokeWidth={2} /> Cuisine</p>
-                          <div className="rp2__dark-pop-chips">
-                            <button className={`rp2__dark-chip ${draftMeta.cuisine === '' ? 'rp2__dark-chip--on' : ''}`}
-                              onClick={() => setDraftMeta(p => ({...p, cuisine: ''}))}>None</button>
-                            {GEO_CUISINES.map(c => (
-                              <button key={c} className={`rp2__dark-chip ${draftMeta.cuisine === c ? 'rp2__dark-chip--on' : ''}`}
-                                onClick={() => setDraftMeta(p => ({...p, cuisine: c}))}>{c}</button>
-                            ))}
-                          </div>
-                          <div className="rp2__dark-pop-actions">
-                            <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
-                            <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Individual tag chips */}
-                  {(recipe.tags || []).map(tag => {
-                    const tagDef = TAG_FILTERS.find(f => f.key === tag);
-                    return (
-                      <div key={tag} className="rp2__hero-tag-wrap">
-                        <button className={`rp2__tag rp2__tag--light rp2__tag--clickable ${isEdit('meta-tags') ? 'rp2__tag--editing' : ''}`}
-                          onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-tags') ? null : 'meta-tags'); }}>
-                          {tagDef ? tagDef.label : tag}
-                        </button>
-                      </div>
-                    );
-                  })}
-
-                  {/* Tags + progress popover */}
-                  {isEdit('meta-tags') && (
-                    <div className="rp2__hero-tag-wrap">
-                      <div className="rp2__hero-dark-popover rp2__hero-dark-popover--wide">
-                        <p className="rp2__dark-pop-label"><Icon name="tag" size={13} strokeWidth={2} /> Tags</p>
-                        <div className="rp2__dark-pop-chips">
-                          {TAG_FILTERS.map(({ key, label }) => (
-                            <button key={key} className={`rp2__dark-chip ${(draftMeta.tags || []).includes(key) ? 'rp2__dark-chip--on' : ''}`}
-                              onClick={() => toggleDraftTag(key)}>{label}</button>
-                          ))}
-                        </div>
-                        <p className="rp2__dark-pop-label" style={{marginTop:10}}><Icon name="list" size={13} strokeWidth={2} /> Progress</p>
-                        <div className="rp2__dark-pop-chips">
-                          {[{key:'',label:'-- None'},{key:'complete',label:'Complete'},{key:'needs tweaking',label:'Needs Tweaking'},{key:'to try',label:'To Try'},{key:'incomplete',label:'Incomplete'}].map(({key,label}) => (
-                            <button key={key} className={`rp2__dark-chip ${draftMeta.status === key ? 'rp2__dark-chip--on' : ''}`}
-                              onClick={() => setDraftMeta(p => ({...p, status: key}))}>{label}</button>
-                          ))}
-                        </div>
-                        <div className="rp2__dark-pop-actions">
-                          <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
-                          <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Progress icon chip */}
-                  {(recipe.status && recipe.status !== '') && (
-                    <div className="rp2__hero-tag-wrap">
-                      <button
-                        className={`rp2__tag rp2__tag--clickable ${recipe.status === 'incomplete' || recipe.status === 'needs tweaking' ? 'rp2__tag--warning' : recipe.status === 'complete' ? 'rp2__tag--success' : 'rp2__tag--light'} ${isEdit('meta-progress') ? 'rp2__tag--editing' : ''}`}
-                        onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-progress') ? null : 'meta-progress'); }}
-                        style={{ padding: '4px 8px' }}
-                        title={recipe.status}
-                      >
-                        {recipe.status === 'incomplete' ? <Icon name="alertTriangle" size={12} strokeWidth={2} /> :
-                        recipe.status === 'needs tweaking' ? <Icon name="tool" size={12} strokeWidth={2} /> :
-                        recipe.status === 'complete' ? <Icon name="checkCircle" size={12} strokeWidth={2} /> :
-                        recipe.status === 'to try' ? <Icon name="bookMarked" size={12} strokeWidth={2} /> : null}
-                      </button>
-                      {isEdit('meta-progress') && (
-                        <div className="rp2__hero-dark-popover">
-                          <p className="rp2__dark-pop-label"><Icon name="list" size={13} strokeWidth={2} /> Progress</p>
-                          <div className="rp2__dark-pop-chips">
-                            {[{key:'',label:'-- None'},{key:'complete',label:'Complete'},{key:'needs tweaking',label:'Needs Tweaking'},{key:'to try',label:'To Try'},{key:'incomplete',label:'Incomplete'}].map(({key,label}) => (
-                              <button key={key} className={`rp2__dark-chip ${draftMeta.status === key ? 'rp2__dark-chip--on' : ''}`}
-                                onClick={() => setDraftMeta(p => ({...p, status: key}))}>{label}</button>
-                            ))}
-                          </div>
-                          <div className="rp2__dark-pop-actions">
-                            <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
-                            <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : null}
-
-              {/* + tag button — admin only, always visible, this is the only thing shown when not editing */}
-              {isAdmin && (
+              {/* Cuisine chip */}
+              {recipe.cuisine && (
                 <div className="rp2__hero-tag-wrap">
-                  <button className="rp2__tag rp2__tag--add"
-                    onClick={e => { e.stopPropagation(); startEdit('meta-tags'); }}
-                    title="Edit tags, cuisine & progress">
-                    + tag
+                  <button
+                    className={`rp2__tag rp2__tag--clickable ${isEdit('meta-tags') ? 'rp2__tag--editing' : ''}`}
+                    onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-tags') ? null : 'meta-tags'); }}
+                  >
+                    {recipe.cuisine}
                   </button>
+                </div>
+              )}
+
+              {/* Progress icon chip */}
+              {recipe.status && recipe.status !== '' && (
+                <div className="rp2__hero-tag-wrap">
+                  <button
+                    className={`rp2__tag rp2__tag--clickable ${
+                      recipe.status === 'incomplete' || recipe.status === 'needs tweaking'
+                        ? 'rp2__tag--warning'
+                        : recipe.status === 'complete'
+                        ? 'rp2__tag--success'
+                        : 'rp2__tag--light'
+                    } ${isEdit('meta-tags') ? 'rp2__tag--editing' : ''}`}
+                    onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-tags') ? null : 'meta-tags'); }}
+                    style={{ padding: '4px 8px' }}
+                    title={recipe.status}
+                  >
+                    {recipe.status === 'incomplete' ? <Icon name="alertTriangle" size={12} strokeWidth={2} /> :
+                    recipe.status === 'needs tweaking' ? <Icon name="tool" size={12} strokeWidth={2} /> :
+                    recipe.status === 'complete' ? <Icon name="checkCircle" size={12} strokeWidth={2} /> :
+                    recipe.status === 'to try' ? <Icon name="bookMarked" size={12} strokeWidth={2} /> : null}
+                  </button>
+                </div>
+              )}
+
+              {/* Combined edit popover — opens from either chip */}
+              {isEdit('meta-tags') && (
+                <div className="rp2__hero-tag-wrap">
+                  <div className="rp2__hero-dark-popover" style={{ minWidth: 340 }}>
+
+                    <p className="rp2__dark-pop-label"><Icon name="mapPin" size={13} strokeWidth={2} /> Cuisine</p>
+                    <div className="rp2__dark-pop-chips">
+                      <button className={`rp2__dark-chip ${draftMeta.cuisine === '' ? 'rp2__dark-chip--on' : ''}`}
+                        onClick={() => setDraftMeta(p => ({...p, cuisine: ''}))}>None</button>
+                      {GEO_CUISINES.map(c => (
+                        <button key={c} className={`rp2__dark-chip ${draftMeta.cuisine === c ? 'rp2__dark-chip--on' : ''}`}
+                          onClick={() => setDraftMeta(p => ({...p, cuisine: c}))}>{c}</button>
+                      ))}
+                    </div>
+
+                    <p className="rp2__dark-pop-label" style={{ marginTop: 10 }}><Icon name="tag" size={13} strokeWidth={2} /> Tags</p>
+                    <div className="rp2__dark-pop-chips">
+                      {TAG_FILTERS.map(({ key, label }) => (
+                        <button key={key} className={`rp2__dark-chip ${(draftMeta.tags || []).includes(key) ? 'rp2__dark-chip--on' : ''}`}
+                          onClick={() => toggleDraftTag(key)}>{label}</button>
+                      ))}
+                    </div>
+
+                    <p className="rp2__dark-pop-label" style={{ marginTop: 10 }}><Icon name="list" size={13} strokeWidth={2} /> Progress</p>
+                    <div className="rp2__dark-pop-chips">
+                      {[
+                        { key: '', label: '-- None' },
+                        { key: 'complete', label: 'Complete' },
+                        { key: 'needs tweaking', label: 'Needs Tweaking' },
+                        { key: 'to try', label: 'To Try' },
+                        { key: 'incomplete', label: 'Incomplete' },
+                      ].map(({ key, label }) => (
+                        <button key={key} className={`rp2__dark-chip ${draftMeta.status === key ? 'rp2__dark-chip--on' : ''}`}
+                          onClick={() => setDraftMeta(p => ({...p, status: key}))}>{label}</button>
+                      ))}
+                    </div>
+
+                    <div className="rp2__dark-pop-actions">
+                      <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>
+                        {saving ? '...' : '✓ Save'}
+                      </button>
+                      <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
+                    </div>
+                  </div>
                 </div>
               )}
 
