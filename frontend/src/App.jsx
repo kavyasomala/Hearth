@@ -7288,18 +7288,18 @@ function AppInner() {
 
   const loadData = useCallback(async () => {
     try {
-      const [ingRes, recipeRes, notesRes, cbRes] = await Promise.all([
-        fetch(`${API}/api/ingredients`),
+      const [recipeRes, notesRes, cbRes] = await Promise.all([
         fetch(`${API}/api/recipes`),
         authFetch ? authFetch(`${API}/api/cooking-notes`) : fetch(`${API}/api/cooking-notes`),
         fetch(`${API}/api/cookbooks`),
       ]);
-      if (!ingRes.ok || !recipeRes.ok) throw new Error('Failed to load data');
-      const { ingredients } = await ingRes.json();
+      if (!recipeRes.ok) throw new Error('Failed to load data');
       const { recipes: recipeData } = await recipeRes.json();
       if (notesRes.ok) { const d = await notesRes.json(); setCookingNotes(d.notes || []); }
       if (cbRes.ok) { const d = await cbRes.json(); setCookbooks(d.cookbooks || d || []); }
-      setAllIngredients(ingredients.sort((a, b) => a.name.localeCompare(b.name)));
+      // Derive ingredient list from recipes for autocomplete (no separate ingredients endpoint)
+      const ingNames = [...new Set(recipeData.flatMap(r => r.ingredients || []))].sort();
+      setAllIngredients(ingNames.map(name => ({ name })));
       setRecipes(recipeData);
 
       // Load user-specific data if logged in
