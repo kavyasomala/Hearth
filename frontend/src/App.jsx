@@ -6352,72 +6352,6 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
   const sensors = DRAG_SENSORS();
   const [showModal, setShowModal] = useState(false);
 
-  // -- Link import state --
-  const [showLinkModal, setShowLinkModal] = useState(false);
-  const [linkUrl, setLinkUrl] = useState('');
-  const [linkScraping, setLinkScraping] = useState(false);
-  const [linkError, setLinkError] = useState(null);
-
-  // -- Text import state --
-  const [showTextModal, setShowTextModal] = useState(false);
-  const [pastedText, setPastedText] = useState('');
-  const [textParsing, setTextParsing] = useState(false);
-  const [textError, setTextError] = useState(null);
-
-  const openTextModal = () => { setPastedText(''); setTextError(null); setShowTextModal(true); };
-  const closeTextModal = () => { setShowTextModal(false); setTextParsing(false); };
-
-  const parseTextAndOpen = async () => {
-    if (!pastedText.trim()) { setTextError('Please paste some recipe text'); return; }
-    setTextParsing(true); setTextError(null);
-    try {
-      const res = await apiFetch(`${API}/api/parse-recipe-text`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: pastedText.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Parse failed');
-
-      setDetails({
-        name: data.name || '',
-        cuisine: normaliseCuisine(data.cuisine),
-        time: data.time || '',
-        servings: data.servings || '',
-        cover_image_url: data.image || '',
-        cookbook: '', reference: '', status: 'to try', tags: [],
-      });
-      setIngs(
-        data.ingredients?.length
-          ? data.ingredients.map((i, idx) => ({
-              _id: `ing-txt-${idx}-${Date.now()}`,
-              name: i.name || '', amount: i.amount || '', unit: i.unit || '',
-              prep_note: '', optional: false, group_label: '',
-            }))
-          : [{ _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]
-      );
-      setSteps(
-        data.steps?.length
-          ? data.steps.map((s, idx) => ({
-              _id: `step-txt-${idx}-${Date.now()}`,
-              step_number: idx + 1, body_text: s, timer_seconds: null,
-            }))
-          : [{ _id: `step-${Date.now()}`, step_number: 1, body_text: '' }]
-      );
-      setNotesList(
-        data.description ? [{ _id: `note-txt-${Date.now()}`, text: data.description }] : []
-      );
-      setImgPreviewError(false);
-      setSaveError(null);
-      setShowTextModal(false);
-      setShowModal(true);
-    } catch (e) {
-      setTextError(e.message);
-    } finally {
-      setTextParsing(false);
-    }
-  };
-
   const emptyForm = () => ({
     name: '', cuisine: '', time: '', servings: '',
     cover_image_url: '', cookbook: '', reference: '', status: '', tags: [],
@@ -6430,73 +6364,6 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [imgPreviewError, setImgPreviewError] = useState(false);
-
-  // Map a scraped cuisine string to one of our known cuisines (best-effort)
-  const normaliseCuisine = (raw) => {
-    if (!raw) return '';
-    const r = raw.toLowerCase();
-    for (const c of ALL_CUISINES) {
-      if (r.includes(c.toLowerCase())) return c;
-    }
-    return '';
-  };
-
-  const openLinkModal = () => { setLinkUrl(''); setLinkError(null); setShowLinkModal(true); };
-  const closeLinkModal = () => { setShowLinkModal(false); setLinkScraping(false); };
-
-  const scrapeAndOpen = async () => {
-    if (!linkUrl.trim()) { setLinkError('Please paste a URL'); return; }
-    setLinkScraping(true); setLinkError(null);
-    try {
-      const res = await apiFetch(`${API}/api/scrape-recipe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: linkUrl.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Scrape failed');
-
-      // Pre-fill the manual form with scraped data
-      setDetails({
-        name: data.name || '',
-        cuisine: normaliseCuisine(data.cuisine),
-        time: data.time || '',
-        servings: data.servings || '',
-        cover_image_url: data.image || '',
-        cookbook: '', reference: '', status: 'to try', tags: [],
-      });
-      setIngs(
-        data.ingredients?.length
-          ? data.ingredients.map((i, idx) => ({
-              _id: `ing-link-${idx}-${Date.now()}`,
-              name: i.name || '', amount: i.amount || '', unit: i.unit || '',
-              prep_note: '', optional: false, group_label: '',
-            }))
-          : [{ _id: `ing-new-${Date.now()}`, name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]
-      );
-      setSteps(
-        data.steps?.length
-          ? data.steps.map((s, idx) => ({
-              _id: `step-link-${idx}-${Date.now()}`,
-              step_number: idx + 1, body_text: s, timer_seconds: null,
-            }))
-          : [{ _id: `step-${Date.now()}`, step_number: 1, body_text: '' }]
-      );
-      setNotesList(
-        data.description
-          ? [{ _id: `note-link-${Date.now()}`, text: data.description }]
-          : []
-      );
-      setImgPreviewError(false);
-      setSaveError(null);
-      setShowLinkModal(false);
-      setShowModal(true);
-    } catch (e) {
-      setLinkError(e.message);
-    } finally {
-      setLinkScraping(false);
-    }
-  };
 
   const setDetail = (k, v) => setDetails(prev => ({ ...prev, [k]: v }));
   const toggleTag = (tag) => setDetails(prev => ({
@@ -6590,120 +6457,17 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
     <main className="view add-tab">
       <div className="add-tab__header">
         <h2 className="add-tab__title">Add a Recipe</h2>
-        <p className="add-tab__sub">Grow your collection -- add a recipe by hand or from a link</p>
+        <p className="add-tab__sub">Grow your collection</p>
       </div>
 
-      <div className="add-tab__cards add-tab__cards--three">
-        {/* Manual card */}
+      <div className="add-tab__cards">
         <button className="add-tab__card" onClick={openModal}>
           <span className="add-tab__card-icon"><Icon name="note" size={28} strokeWidth={1.5} /></span>
           <h3 className="add-tab__card-title">Add Manually</h3>
           <p className="add-tab__card-desc">Type in the name, ingredients, steps, and notes yourself</p>
           <span className="add-tab__card-cta">Get started →</span>
         </button>
-
-        {/* From link card */}
-        <button className="add-tab__card" onClick={openLinkModal}>
-          <span className="add-tab__card-icon"><Icon name="arrowRight" size={28} strokeWidth={1.5} /></span>
-          <h3 className="add-tab__card-title">Add from Link</h3>
-          <p className="add-tab__card-desc">Paste any recipe URL and we'll pull in the name, ingredients, and steps automatically</p>
-          <span className="add-tab__card-cta">Import →</span>
-        </button>
-
-        {/* From text card */}
-        <button className="add-tab__card" onClick={openTextModal}>
-          <span className="add-tab__card-icon"><Icon name="list" size={28} strokeWidth={1.5} /></span>
-          <h3 className="add-tab__card-title">Add from Text</h3>
-          <p className="add-tab__card-desc">Paste copied text -- we'll parse it automatically</p>
-          <span className="add-tab__card-cta">Paste &amp; import →</span>
-        </button>
       </div>
-
-      {/* -- Text Import Modal -- */}
-      {showTextModal && (
-        <div className="create-modal-overlay" onClick={closeTextModal}>
-          <div className="create-modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
-            <div className="create-modal__header">
-              <h2 className="create-modal__title"><Icon name="list" size={18} strokeWidth={2} /> Import from Text</h2>
-              <button className="ing-modal__close" onClick={closeTextModal}>✕</button>
-            </div>
-            <div className="create-modal__body" style={{ gap: 14 }}>
-              <p style={{ fontSize: '0.9rem', color: 'var(--warm-gray)', margin: 0 }}>
-                Paste copied recipe text below -- we'll extract the title, ingredients, and steps automatically.
-              </p>
-              <div className="create-modal__field">
-                <label className="create-modal__field-label">Paste recipe text</label>
-                <textarea
-                  className="editor-textarea"
-                  value={pastedText}
-                  onChange={e => { setPastedText(e.target.value); setTextError(null); }}
-                  placeholder={"e.g.\nCreamy Tuscan Chicken\n\nIngredients:\n- 4 chicken breasts\n- 1 cup heavy cream\n...\n\nInstructions:\n1. Season the chicken...\n2. Heat oil in a pan..."}
-                  rows={12}
-                  style={{ resize: 'vertical', fontFamily: 'var(--font-body)', fontSize: '0.88rem' }}
-                  autoFocus
-                />
-              </div>
-              {textError && <p className="editor-error"><Icon name="alertTriangle" size={14} strokeWidth={2} /> {textError}</p>}
-              {textParsing && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--warm-gray)', fontSize: '0.88rem' }}>
-                  <span className="link-import__spinner" />
-                  Parsing recipe...
-                </div>
-              )}
-            </div>
-            <div className="create-modal__footer">
-              <button className="btn btn--ghost" onClick={closeTextModal}>Cancel</button>
-              <button className="btn btn--primary" onClick={parseTextAndOpen} disabled={textParsing || !pastedText.trim()}>
-                {textParsing ? 'Parsing...' : 'Next →'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* -- Link Import Modal -- */}
-      {showLinkModal && (
-        <div className="create-modal-overlay" onClick={closeLinkModal}>
-          <div className="create-modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
-            <div className="create-modal__header">
-              <h2 className="create-modal__title"><Icon name="arrowRight" size={18} strokeWidth={2} /> Import from Link</h2>
-              <button className="ing-modal__close" onClick={closeLinkModal}>✕</button>
-            </div>
-            <div className="create-modal__body" style={{ gap: 14 }}>
-              <p style={{ fontSize: '0.9rem', color: 'var(--warm-gray)', margin: 0 }}>
-                Paste the URL of any recipe page -- we'll extract the name, ingredients, steps, and image automatically using the page's structured data.
-              </p>
-              <div className="create-modal__field">
-                <label className="create-modal__field-label">Recipe URL</label>
-                <input
-                  className="editor-input"
-                  value={linkUrl}
-                  onChange={e => { setLinkUrl(e.target.value); setLinkError(null); }}
-                  onKeyDown={e => e.key === 'Enter' && scrapeAndOpen()}
-                  placeholder="https://www.seriouseats.com/..."
-                  autoFocus
-                />
-              </div>
-              {linkError && <p className="editor-error"><Icon name="alertTriangle" size={14} strokeWidth={2} /> {linkError}</p>}
-              {linkScraping && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--warm-gray)', fontSize: '0.88rem' }}>
-                  <span className="link-import__spinner" />
-                  Fetching recipe data...
-                </div>
-              )}
-              <p style={{ fontSize: '0.8rem', color: 'var(--warm-gray)', margin: 0 }}>
-                Works best with recipe sites that use structured data (most major food blogs, NYT Cooking, Serious Eats, BBC Good Food, etc). You can always edit anything after import.
-              </p>
-            </div>
-            <div className="create-modal__footer">
-              <button className="btn btn--ghost" onClick={closeLinkModal}>Cancel</button>
-              <button className="btn btn--primary" onClick={scrapeAndOpen} disabled={linkScraping || !linkUrl.trim()}>
-                {linkScraping ? 'Importing...' : 'Next →'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* -- Create Recipe Modal -- */}
       {showModal && (
@@ -7813,117 +7577,6 @@ function AppInner() {
             })()}
 
                     </div>{/* end home-main */}
-
-          {/* -- Right sidebar: Quick Actions FIRST, then Insights -- */}
-          <aside className="home-sidebar">
-
-          <div className="insights-card">
-              <h3 className="insights-title">Recipe Insights</h3>
-              <div className="insights-grid">
-                <button className="insight-item insight-item--green insight-item--btn"
-                  onClick={() => { setActiveProgresses(['__readytocook']); setView('recipes'); }}>
-                  <span className="insight-item__number">{matches.filter(m => m.canMake).length}</span>
-                  <span className="insight-item__label">Ready to cook</span>
-                  <span className="insight-item__icon"><Icon name="checkCircle" size={16} color="var(--insight-green-ic)" /></span>
-                </button>
-                <button className="insight-item insight-item--amber insight-item--btn"
-                  onClick={() => { setActiveProgresses(['__almostready']); setView('recipes'); }}>
-                  <span className="insight-item__number">{matches.filter(m => m.matchScore >= 0.7 && !m.canMake).length}</span>
-                  <span className="insight-item__label">Almost ready</span>
-                  <span className="insight-item__icon"><Icon name="flame" size={16} color="var(--insight-amber-ic)" /></span>
-                </button>
-                <button className="insight-item insight-item--purple insight-item--btn"
-                  onClick={() => { setMaxMinutes(30); setView('recipes'); }}>
-                  <span className="insight-item__number">
-                    {recipes.filter(r => {
-                        const s = (r.time || '').toLowerCase();
-                        const hrs  = parseFloat((s.match(/([\d.]+)\s*h/)  || [])[1] || 0);
-                        const mins = parseFloat((s.match(/([\d.]+)\s*m(?!o)/) || [])[1] || 0);
-                        const total = hrs * 60 + mins;
-                        return total > 0 && total <= 30;
-                      }).length}
-                  </span>
-                  <span className="insight-item__label">Under 30 min</span>
-                  <span className="insight-item__icon"><Icon name="clock" size={16} color="var(--insight-rust-ic)" /></span>
-                </button>
-                <button className="insight-item insight-item--orange insight-item--btn"
-                  onClick={() => { setActiveProgresses(['__favorite']); setView('recipes'); }}>
-                  <span className="insight-item__number">{heartedIds.filter(id => recipes.some(r => r.id === id)).length}</span>
-                  <span className="insight-item__label">Favorites</span>
-                  <span className="insight-item__icon"><Icon name="heart" size={16} color="var(--insight-gold-ic)" /></span>
-                </button>
-                <button className="insight-item insight-item--sage insight-item--btn" style={{ cursor: 'default' }}>
-                  <span className="insight-item__number">
-                    {(() => {
-                      const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-                      return cookLog.filter(e => new Date(e.cooked_at) >= weekAgo).length;
-                    })()}
-                  </span>
-                  <span className="insight-item__label">Cooked this week</span>
-                  <span className="insight-item__icon"><Icon name="chefHat" size={16} color="var(--insight-sage-ic)" /></span>
-                </button>
-                <button className="insight-item insight-item--blue insight-item--btn"
-                  onClick={() => { clearAllFilters(); setView('recipes'); }}>
-                  <span className="insight-item__number">{recipes.length}</span>
-                  <span className="insight-item__label">Total recipes</span>
-                  <span className="insight-item__icon"><Icon name="bookMarked" size={16} color="var(--insight-brown-ic)" /></span>
-                </button>
-              </div>
-            </div>
-
-            <div className="quick-actions-card">
-              <h3 className="insights-title">Quick Actions</h3>
-              <div className="quick-actions-list">
-                <button className="quick-action" onClick={() => setView('recipes')}>
-                  <span className="quick-action__icon"><Icon name="bookOpen" size={18} strokeWidth={1.75} /></span>
-                  <div className="quick-action__text">
-                    <span className="quick-action__label">Browse all recipes</span>
-                    <span className="quick-action__sub">{recipes.length} in your library</span>
-                  </div>
-                  <span className="quick-action__arrow"><Icon name="arrowRight" size={14} strokeWidth={1.75} /></span>
-                </button>
-                <button className="quick-action" onClick={() => setView('kitchen')}>
-                  <span className="quick-action__icon"><Icon name="package" size={18} strokeWidth={1.75} /></span>
-                  <div className="quick-action__text">
-                    <span className="quick-action__label">Update my kitchen</span>
-                    <span className="quick-action__sub">{fridgeIngredients.length + pantryStaples.length} ingredients tracked</span>
-                  </div>
-                  <span className="quick-action__arrow"><Icon name="arrowRight" size={14} strokeWidth={1.75} /></span>
-                </button>
-                <button className="quick-action" onClick={() => setView('grocery')}>
-                  <span className="quick-action__icon"><Icon name="cart" size={18} strokeWidth={1.75} /></span>
-                  <div className="quick-action__text">
-                    <span className="quick-action__label">Build grocery list</span>
-                    <span className="quick-action__sub">Plan your weekly shop</span>
-                  </div>
-                  <span className="quick-action__arrow"><Icon name="arrowRight" size={14} strokeWidth={1.75} /></span>
-                </button>
-                {matches.filter(m => m.canMake).length > 0 && (
-                  <button className="quick-action quick-action--highlight" onClick={() => { setActiveTags([]); setActiveCuisines([]); setActiveProgresses(['__readytocook']); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>
-                    <span className="quick-action__icon"><Icon name="utensils" size={18} strokeWidth={1.75} /></span>
-                    <div className="quick-action__text">
-                      <span className="quick-action__label">Cook something now</span>
-                      <span className="quick-action__sub">{matches.filter(m => m.canMake).length} recipes you can make</span>
-                    </div>
-                    <span className="quick-action__arrow"><Icon name="arrowRight" size={14} strokeWidth={1.75} /></span>
-                  </button>
-                )}
-                <button className="quick-action quick-action--surprise" onClick={() => {
-                  if (recipes.length === 0) return;
-                  const r = recipes[Math.floor(Math.random() * recipes.length)];
-                  openRecipe(r);
-                }}>
-                  <span className="quick-action__icon"><Icon name="shuffle" size={18} strokeWidth={1.75} /></span>
-                  <div className="quick-action__text">
-                    <span className="quick-action__label">Surprise me!</span>
-                    <span className="quick-action__sub">Open a random recipe</span>
-                  </div>
-                  <span className="quick-action__arrow"><Icon name="arrowRight" size={14} strokeWidth={1.75} /></span>
-                </button>
-              </div>
-            </div>
-
-          </aside>
         </main>
       )}
 
