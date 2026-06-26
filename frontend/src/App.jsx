@@ -231,7 +231,7 @@ class ErrorBoundary extends React.Component {
     if (this.state.error) {
       return (
         <div style={{ padding: 40, fontFamily: 'monospace', background: '#fff0f0', minHeight: '100vh' }}>
-          <h2 style={{ color: '#c00' }}>ðŸ’¥ Runtime Error</h2>
+          <h2 style={{ color: ‘#c00’ }}>Runtime Error</h2>
           <pre style={{ background: '#fff', padding: 16, borderRadius: 8, border: '1px solid #f99', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
             {this.state.error.toString()}
             {'\n\n'}
@@ -694,7 +694,7 @@ const perishableCatOf = (name) => {
   };
 
   const displayRating = hoverRating || rating;
-  const RATING_LABELS = ['', "Didn't love it", 'It was okay', 'Pretty good!', 'Really good!', 'Perfect! â­'];
+  const RATING_LABELS = ['', "Didn't love it", 'It was okay', 'Pretty good!', 'Really good!', 'Perfect!'];
   const CAT_ICON = { produce: 'apple', 'meat & fish': 'beef', dairy: 'milk' };
   const CAT_LABEL = { produce: 'Produce', 'meat & fish': 'Meat & Fish', dairy: 'Dairy' };
 
@@ -1967,7 +1967,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   </ul>
                 </div>
               ))
-            : <p className="rp2__empty-hint">No ingredients yet.</p>
+            : <div className="rp2__empty-state">
+                <Icon name="list" size={28} strokeWidth={1.5} color="var(--ash)" />
+                <p>No ingredients added yet</p>
+              </div>
           }
         </div>
 
@@ -2203,7 +2206,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     </div>
                   );
                 })()
-              : <p className="rp2__empty-hint">No instructions yet.</p>
+              : <div className="rp2__empty-state">
+                  <Icon name="bookOpen" size={28} strokeWidth={1.5} color="var(--ash)" />
+                  <p>No instructions added yet</p>
+                </div>
           )}
 
           {/* -- Notes + Cookbook -- side by side (desktop), stacked (mobile) -- */}
@@ -2233,7 +2239,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                         <li key={i} className="rp2__notes-item">{n.text ?? n.body_text ?? n}</li>
                       ))}
                     </ul>
-                  : <p className="rp2__empty-hint">No notes yet.</p>
+                  : <div className="rp2__empty-state">
+                      <Icon name="lightbulb" size={24} strokeWidth={1.5} color="var(--ash)" />
+                      <p>No notes yet</p>
+                    </div>
               )}
 
               {/* Desktop inline edit with drag-to-reorder */}

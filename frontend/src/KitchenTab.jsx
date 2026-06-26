@@ -54,10 +54,10 @@ const ALL_PANTRY_ITEMS = new Set([
 
 // Static fridge suggestions shown when the input is focused
 const FRIDGE_SUGGESTIONS = [
-  { label: 'Produce 🥦', items: ['onion', 'garlic', 'ginger', 'lemon', 'lime', 'tomato', 'carrot', 'celery', 'bell pepper', 'spinach', 'potato', 'mushrooms', 'zucchini', 'broccoli', 'cucumber', 'avocado', 'spring onion', 'kale', 'sweet potato'] },
-  { label: 'Dairy & Eggs 🥛', items: ['eggs', 'milk', 'butter', 'cheddar', 'parmesan', 'feta', 'mozzarella', 'cream', 'sour cream', 'yogurt', 'cream cheese'] },
-  { label: 'Meat & Fish 🥩', items: ['chicken breast', 'chicken thighs', 'ground beef', 'salmon', 'bacon', 'pork', 'shrimp', 'tuna', 'sausage'] },
-  { label: 'Freezer ❄️', items: ['frozen peas', 'frozen spinach', 'frozen shrimp', 'frozen berries', 'frozen edamame', 'frozen corn', 'bread'] },
+  { label: 'Produce', items: ['onion', 'garlic', 'ginger', 'lemon', 'lime', 'tomato', 'carrot', 'celery', 'bell pepper', 'spinach', 'potato', 'mushrooms', 'zucchini', 'broccoli', 'cucumber', 'avocado', 'spring onion', 'kale', 'sweet potato'] },
+  { label: 'Dairy & Eggs', items: ['eggs', 'milk', 'butter', 'cheddar', 'parmesan', 'feta', 'mozzarella', 'cream', 'sour cream', 'yogurt', 'cream cheese'] },
+  { label: 'Meat & Fish', items: ['chicken breast', 'chicken thighs', 'ground beef', 'salmon', 'bacon', 'pork', 'shrimp', 'tuna', 'sausage'] },
+  { label: 'Freezer', items: ['frozen peas', 'frozen spinach', 'frozen shrimp', 'frozen berries', 'frozen edamame', 'frozen corn', 'bread'] },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -162,7 +162,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     })).filter(g => g.items.length > 0);
 
     if (recipeMatches.length > 0) {
-      return [{ label: 'From your recipes 📖', items: recipeMatches.slice(0, 10) }, ...staticGroups];
+      return [{ label: 'From your recipes', items: recipeMatches.slice(0, 10) }, ...staticGroups];
     }
     return staticGroups;
   }, [fridgeInput, recipeIngredientPool, fridgeSet]);
@@ -193,7 +193,6 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
       {/* ── Fridge & Freezer ─────────────────────────────────────────────────── */}
       <section className="kitchen-section">
         <div className="kitchen-section__header">
-          <span className="kitchen-section__emoji">🥦</span>
           <div>
             <h3 className="kitchen-section__title">Fridge &amp; Freezer</h3>
             <p className="kitchen-section__sub">Update this when you shop — drives "What can I make?"</p>
@@ -257,7 +256,6 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
       {notInStock.length > 0 && (
         <section className="kitchen-section">
           <button className="kitchen-section__header kitchen-section__header--btn" onClick={() => setNotStockOpen(p => !p)}>
-            <span className="kitchen-section__emoji">🛒</span>
             <div>
               <h3 className="kitchen-section__title">Not in stock</h3>
               <p className="kitchen-section__sub">
@@ -285,7 +283,6 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
       {/* ── Pantry ───────────────────────────────────────────────────────────── */}
       <section className="kitchen-section kitchen-section--collapsible">
         <button className="kitchen-section__header kitchen-section__header--btn" onClick={() => setPantryOpen(p => !p)}>
-          <span className="kitchen-section__emoji">🫙</span>
           <div>
             <h3 className="kitchen-section__title">Pantry</h3>
             <p className="kitchen-section__sub">
@@ -299,7 +296,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
           <div className="kitchen-checklist">
             {PANTRY_SECTIONS.map(group => (
               <div key={group.label} className="kitchen-checklist__group">
-                <p className="kitchen-checklist__group-label">{group.emoji} {group.label}</p>
+                <p className="kitchen-checklist__group-label">{group.label}</p>
                 <div className="kitchen-checklist__items">
                   {group.items.map(item => (
                     <label key={item} className="kitchen-check-item">
@@ -314,7 +311,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
 
             <div className="kitchen-checklist__group">
               <button className="kitchen-checklist__spice-toggle" onClick={() => setSpicesOpen(p => !p)}>
-                🧂 Spices &amp; Herbs
+                Spices &amp; Herbs
                 <span className={`kitchen-section__arrow ${spicesOpen ? 'kitchen-section__arrow--open' : ''}`}>▾</span>
               </button>
               {spicesOpen && (
@@ -336,7 +333,6 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
       {/* ── Staples ──────────────────────────────────────────────────────────── */}
       <section className="kitchen-section kitchen-section--collapsible">
         <button className="kitchen-section__header kitchen-section__header--btn" onClick={() => setStaplesOpen(p => !p)}>
-          <span className="kitchen-section__emoji">🌾</span>
           <div>
             <h3 className="kitchen-section__title">Staples</h3>
             <p className="kitchen-section__sub">
@@ -350,7 +346,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
           <div className="kitchen-checklist">
             {STAPLES_SECTIONS.map(group => (
               <div key={group.label} className="kitchen-checklist__group">
-                <p className="kitchen-checklist__group-label">{group.emoji} {group.label}</p>
+                <p className="kitchen-checklist__group-label">{group.label}</p>
                 <div className="kitchen-checklist__items">
                   {group.items.map(item => (
                     <label key={item} className="kitchen-check-item">
