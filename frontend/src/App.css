@@ -8037,3 +8037,135 @@ html, body {
 [data-theme="dark"] .rp2__step-tip-input {
   background: rgba(212,120,72,0.08) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KitchenTab — new three-section kitchen tracker
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.kitchen-view { max-width: 720px; margin: 0 auto; padding: 0 0 80px; }
+
+.kitchen-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px;
+}
+.kitchen-title { font-size: 1.5rem; font-weight: 700; margin: 0 0 2px; }
+.kitchen-subtitle { font-size: 0.85rem; color: var(--warm-gray); margin: 0; }
+
+/* ── Sections ── */
+.kitchen-section {
+  background: var(--warm-white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.kitchen-section__header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 18px;
+}
+.kitchen-section__header--btn {
+  width: 100%; background: none; border: none; cursor: pointer;
+  text-align: left;
+}
+.kitchen-section__header--btn:hover { background: var(--bg-hover, rgba(0,0,0,0.02)); }
+.kitchen-section__emoji { font-size: 1.4rem; flex-shrink: 0; }
+.kitchen-section__title { font-size: 1rem; font-weight: 600; margin: 0 0 1px; }
+.kitchen-section__sub { font-size: 0.8rem; color: var(--warm-gray); margin: 0; }
+.kitchen-section__arrow {
+  margin-left: auto; font-size: 1rem; color: var(--warm-gray);
+  transition: transform 0.2s; flex-shrink: 0;
+}
+.kitchen-section__arrow--open { transform: rotate(180deg); }
+
+/* ── Active fridge chips ── */
+.kitchen-active-chips {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  padding: 0 18px 14px;
+}
+
+/* ── Chips (fridge suggestions + active items) ── */
+.kitchen-chip {
+  padding: 6px 12px; border-radius: 20px; font-size: 0.85rem;
+  border: 1.5px solid var(--border); background: var(--bg);
+  cursor: pointer; transition: all 0.15s; color: var(--text);
+}
+.kitchen-chip:hover { border-color: var(--terracotta); color: var(--terracotta); }
+.kitchen-chip--active {
+  background: var(--terracotta); color: white; border-color: var(--terracotta);
+}
+.kitchen-chip--active:hover { background: var(--terracotta-dark, #b04e2e); }
+.kitchen-chip__remove { margin-left: 4px; opacity: 0.7; font-size: 0.75rem; }
+.kitchen-chip__check { margin-left: 4px; font-size: 0.75rem; }
+
+/* ── Fridge text input ── */
+.kitchen-fridge-input-wrap { position: relative; padding: 0 18px 18px; }
+.kitchen-fridge-input-row { display: flex; gap: 8px; align-items: center; }
+.kitchen-fridge-input {
+  flex: 1; padding: 10px 14px; border-radius: 10px;
+  border: 1.5px solid var(--border); background: var(--bg);
+  font-size: 0.9rem; color: var(--text); outline: none;
+}
+.kitchen-fridge-input:focus { border-color: var(--terracotta); }
+
+/* ── Suggestions dropdown ── */
+.kitchen-suggestions {
+  background: var(--warm-white); border: 1px solid var(--border);
+  border-radius: 12px; margin-top: 10px; padding: 14px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.kitchen-suggestions__label {
+  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--warm-gray); margin: 0 0 8px;
+}
+.kitchen-suggestions__chips { display: flex; flex-wrap: wrap; gap: 7px; }
+
+.kitchen-empty-hint {
+  padding: 4px 18px 18px;
+  font-size: 0.85rem; color: var(--warm-gray); margin: 0;
+}
+
+/* ── Pantry / Staples checklist ── */
+.kitchen-checklist { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 18px; }
+.kitchen-checklist__group { display: flex; flex-direction: column; gap: 10px; }
+.kitchen-checklist__group-label {
+  font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--warm-gray); margin: 0;
+}
+.kitchen-checklist__items { display: flex; flex-wrap: wrap; gap: 8px; }
+.kitchen-check-item { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.kitchen-check-item__input { accent-color: var(--terracotta); width: 15px; height: 15px; cursor: pointer; }
+.kitchen-check-item__label { font-size: 0.88rem; color: var(--text); }
+
+.kitchen-checklist__spice-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  background: none; border: none; cursor: pointer; padding: 0;
+  font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--warm-gray); width: 100%;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .kitchen-view { padding: 0 0 100px; }
+  .kitchen-section__header { padding: 14px 14px; }
+  .kitchen-active-chips { padding: 0 14px 12px; }
+  .kitchen-fridge-input-wrap { padding: 0 14px 14px; }
+  .kitchen-checklist { padding: 0 14px 14px; }
+  .kitchen-suggestions { padding: 10px; }
+}
+
+/* ── Not-in-stock chips ── */
+.kitchen-not-in-stock {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  padding: 4px 18px 18px;
+}
+.kitchen-chip--missing {
+  border-color: var(--border); background: var(--bg);
+  color: var(--warm-gray); position: relative;
+}
+.kitchen-chip--missing:hover { border-color: var(--terracotta); color: var(--terracotta); }
+.kitchen-chip__count {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--terracotta); color: white;
+  font-size: 0.65rem; font-weight: 700; margin-left: 5px;
+}
