@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+﻿import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 // --- Inline SVG Icons -----------------------------------------------------
@@ -122,7 +122,7 @@ const HScrollRow = ({ children, count }) => {
         <button
           className={`hscroll-arrow hscroll-arrow--left ${!canScrollLeft ? 'hscroll-arrow--disabled' : ''}`}
           onClick={() => scroll(-1)} disabled={!canScrollLeft} aria-label="Scroll left"
-        >‹</button>
+        >â€¹</button>
       )}
       <div className="hscroll-row" ref={rowRef}>
         {children}
@@ -131,7 +131,7 @@ const HScrollRow = ({ children, count }) => {
         <button
           className={`hscroll-arrow hscroll-arrow--right ${!canScrollRight ? 'hscroll-arrow--disabled' : ''}`}
           onClick={() => scroll(1)} disabled={!canScrollRight} aria-label="Scroll right"
-        >›</button>
+        >â€º</button>
       )}
     </div>
   );
@@ -170,11 +170,11 @@ const useAnchoredPopover = (opts = {}) => {
     } else if (spaceAbove >= Math.min(popoverH, 300) + gap) {
       top = rect.top - Math.min(popoverH, spaceAbove - gap);
     } else {
-      // Not enough space either side — center vertically on screen
+      // Not enough space either side â€” center vertically on screen
       top = Math.max(8, (vh - popoverH) / 2);
     }
 
-    // Decide horizontal position — align to trigger, clamped to viewport
+    // Decide horizontal position â€” align to trigger, clamped to viewport
     let left = rect.left;
     if (left + popoverW > vw - 8) left = vw - popoverW - 8;
     if (left < 8) left = 8;
@@ -231,7 +231,7 @@ class ErrorBoundary extends React.Component {
     if (this.state.error) {
       return (
         <div style={{ padding: 40, fontFamily: 'monospace', background: '#fff0f0', minHeight: '100vh' }}>
-          <h2 style={{ color: '#c00' }}>💥 Runtime Error</h2>
+          <h2 style={{ color: '#c00' }}>ðŸ’¥ Runtime Error</h2>
           <pre style={{ background: '#fff', padding: 16, borderRadius: 8, border: '1px solid #f99', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
             {this.state.error.toString()}
             {'\n\n'}
@@ -250,7 +250,7 @@ const LS = {
   set: (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} },
 };
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const API = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 const COMMON_UNITS = [
@@ -302,52 +302,6 @@ const CUISINE_ICON = {
 
 const ALL_CUISINES = [...GEO_CUISINES].sort();
 
-// Shared unit → grams conversion
-const UNIT_GRAMS = {
-  'g': 1, 'kg': 1000, 'oz': 28.35, 'lb': 453.6,
-  'cup': 240, 'cups': 240, 'ml': 1, 'l': 1000,
-  'tbsp': 15, 'tsp': 5,
-};
-
-// Calculate nutrition totals from a recipe ingredient list.
-// allIngredients = full objects from the DB (with .calories/.protein/.fiber per 100g, optional .grams_per_unit)
-// Recipe ingredients have .name, .amount, .unit -- we look up nutrition from allIngredients by name match.
-const calcNutrition = (ings, allIngredients = []) => {
-  let totalCal = 0, totalProt = 0, totalFiber = 0, matched = 0;
-  for (const ing of (ings || [])) {
-    if (ing._isGroup) continue;
-    const name = (ing.name || '').toLowerCase().trim();
-    // Find matching ingredient in the DB (exact first, then substring)
-    const dbIng = allIngredients.find(a => {
-      const n = (typeof a === 'string' ? a : a.name || '').toLowerCase();
-      return n === name;
-    }) || allIngredients.find(a => {
-      const n = (typeof a === 'string' ? a : a.name || '').toLowerCase();
-      return name.includes(n) || n.includes(name);
-    });
-    if (!dbIng || typeof dbIng === 'string') continue;
-    if (dbIng.calories == null) continue; // no nutrition data entered yet
-    const amount = parseFloat(ing.amount) || 1;
-    const unit = (ing.unit || '').toLowerCase().trim();
-    let gramsTotal;
-    if (UNIT_GRAMS[unit]) {
-      // Known weight/volume unit -- straightforward
-      gramsTotal = amount * UNIT_GRAMS[unit];
-    } else if (dbIng.grams_per_unit) {
-      // Unitless (e.g. "3 eggs") or unrecognised unit (e.g. "cloves") -- use grams_per_unit
-      gramsTotal = amount * dbIng.grams_per_unit;
-    } else {
-      // No unit info at all -- skip rather than guess
-      continue;
-    }
-    const factor = gramsTotal / 100;
-    totalCal   += (dbIng.calories || 0) * factor;
-    totalProt  += (dbIng.protein  || 0) * factor;
-    totalFiber += (dbIng.fiber    || 0) * factor;
-    matched++;
-  }
-  return matched > 0 ? { calories: Math.round(totalCal), protein: Math.round(totalProt), fiber: Math.round(totalFiber) } : null;
-};
 
 // --- Helpers ---------------------------------------------------------------
 const pct = (score) => Math.round(score * 100);
@@ -394,235 +348,20 @@ const Badge = ({ children, variant = 'default' }) => (
   <span className={`badge badge--${variant}`}>{children}</span>
 );
 
-// --- Shared Nutrition Modal Body -------------------------------------------
-// Renders totals grid + per-ingredient breakdown table (calories, protein, fiber)
-const NutritionModalBody = ({ recipe, bodyIngredients, allIngredients, displayCalories, displayProtein, displayFiber, nutritionIsEstimate }) => {
-  const rows = useMemo(() => {
-    if (!bodyIngredients?.length) return [];
-    return bodyIngredients.filter(i => !i._isGroup).map(ing => {
-      const dbIng = allIngredients.find(a => a.name?.toLowerCase() === ing.name?.toLowerCase());
-      if (!dbIng || dbIng.calories == null) return null;
-      const amount = parseFloat(ing.amount) || 1;
-      const unit = (ing.unit || '').toLowerCase().trim();
-      let grams;
-      if (UNIT_GRAMS[unit]) grams = amount * UNIT_GRAMS[unit];
-      else if (dbIng.grams_per_unit) grams = amount * dbIng.grams_per_unit;
-      else return null;
-      const cal  = Math.round((dbIng.calories * grams) / 100);
-      const prot = dbIng.protein != null ? Math.round((dbIng.protein * grams) / 100 * 10) / 10 : null;
-      const fib  = dbIng.fiber   != null ? Math.round((dbIng.fiber   * grams) / 100 * 10) / 10 : null;
-      const calPct  = displayCalories ? Math.round((cal / displayCalories) * 100) : 0;
-      const protPct = displayProtein  && prot != null ? Math.round((prot / displayProtein) * 100) : 0;
-      const fibPct  = displayFiber    && fib  != null ? Math.round((fib  / displayFiber)  * 100) : 0;
-      return { name: `${[ing.amount, ing.unit].filter(Boolean).join(' ')} ${ing.name}`.trim(), cal, prot, fib, calPct, protPct, fibPct };
-    }).filter(Boolean);
-  }, [bodyIngredients, allIngredients, displayCalories, displayProtein, displayFiber]);
-
-  return (
-    <div className="nutrition-modal__body">
-      {nutritionIsEstimate && (
-        <p className="nutrition-modal__note">~ Estimated from ingredients — save to lock in.</p>
-      )}
-      <p className="nutrition-modal__recipe-name">{recipe.name}</p>
-      <div className="nutrition-modal__grid">
-        {displayCalories !== null && (
-          <div className="nutrition-modal__item">
-            <span className="nutrition-modal__icon"><Icon name="zap" size={20} strokeWidth={2} color="var(--terracotta)" /></span>
-            <span className="nutrition-modal__value">{displayCalories}</span>
-            <span className="nutrition-modal__label">Calories</span>
-          </div>
-        )}
-        {displayProtein !== null && (
-          <div className="nutrition-modal__item">
-            <span className="nutrition-modal__icon"><Icon name="dumbbell" size={20} strokeWidth={2} color="var(--sage)" /></span>
-            <span className="nutrition-modal__value">{displayProtein}g</span>
-            <span className="nutrition-modal__label">Protein</span>
-          </div>
-        )}
-        {displayFiber !== null && (
-          <div className="nutrition-modal__item">
-            <span className="nutrition-modal__icon"><Icon name="leaf" size={20} strokeWidth={2} color="var(--sage-light)" /></span>
-            <span className="nutrition-modal__value">{displayFiber}g</span>
-            <span className="nutrition-modal__label">Fiber</span>
-          </div>
-        )}
-      </div>
-      {recipe.servings && <p className="nutrition-modal__servings">Per serving · {recipe.servings} servings total</p>}
-
-      {rows.length > 0 && (
-        <div className="nutrition-modal__breakdown">
-          {/* Header row */}
-          <div className="nutrition-modal__breakdown-header">
-            <span className="nutrition-modal__breakdown-hcol nutrition-modal__breakdown-hcol--name">Ingredient</span>
-            {displayCalories !== null && <span className="nutrition-modal__breakdown-hcol">kcal</span>}
-            {displayProtein  !== null && <span className="nutrition-modal__breakdown-hcol">prot</span>}
-            {displayFiber    !== null && <span className="nutrition-modal__breakdown-hcol">fiber</span>}
-          </div>
-          {rows.map((r, i) => (
-            <div key={i} className="nutrition-modal__breakdown-row">
-              <span className="nutrition-modal__row-name">{r.name}</span>
-              {displayCalories !== null && (
-                <span className="nutrition-modal__row-cell">
-                  <span className="nutrition-modal__row-num">{r.cal}</span>
-                  <span className="nutrition-modal__row-bar-wrap">
-                    <span className="nutrition-modal__row-bar nutrition-modal__row-bar--cal" style={{ width: `${Math.min(r.calPct, 100)}%` }} />
-                  </span>
-                </span>
-              )}
-              {displayProtein !== null && (
-                <span className="nutrition-modal__row-cell">
-                  <span className="nutrition-modal__row-num">{r.prot != null ? `${r.prot}g` : '—'}</span>
-                  {r.prot != null && <span className="nutrition-modal__row-bar-wrap">
-                    <span className="nutrition-modal__row-bar nutrition-modal__row-bar--prot" style={{ width: `${Math.min(r.protPct, 100)}%` }} />
-                  </span>}
-                </span>
-              )}
-              {displayFiber !== null && (
-                <span className="nutrition-modal__row-cell">
-                  <span className="nutrition-modal__row-num">{r.fib != null ? `${r.fib}g` : '—'}</span>
-                  {r.fib != null && <span className="nutrition-modal__row-bar-wrap">
-                    <span className="nutrition-modal__row-bar nutrition-modal__row-bar--fib" style={{ width: `${Math.min(r.fibPct, 100)}%` }} />
-                  </span>}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// --- Nutrition Card Popup --------------------------------------------------
-// Shown from recipe cards — fetches ingredient detail on demand
-// anchorRect: DOMRect from the calories button so we can position near it
-// ─── Nutrition ───────────────────────────────────────────────────────────────
-const NutritionCardPopup = ({ recipe, allIngredients, onClose, anchorRect }) => {
-  const calories = toNum(recipe.calories);
-  const protein  = toNum(recipe.protein);
-  const fiber    = toNum(recipe.fiber);
-  const [bodyIngredients, setBodyIngredients] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const res = await fetch(`${API}/api/recipes/${recipe.id}`);
-        const data = await res.json();
-        if (!cancelled) setBodyIngredients(data.bodyIngredients || []);
-      } catch {
-        if (!cancelled) setBodyIngredients([]);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [recipe.id]);
-
-  // Compute position near the anchor (desktop only)
-  const popoverStyle = useMemo(() => {
-    const pw = 380, ph = 500;
-    const vw = window.innerWidth, vh = window.innerHeight;
-    if (!anchorRect) {
-      return { position: 'fixed', top: Math.max(8, (vh - ph) / 2), left: Math.max(8, (vw - pw) / 2), width: pw, zIndex: 9000 };
-    }
-    let top = anchorRect.bottom + 8;
-    let left = anchorRect.left;
-    if (top + ph > vh - 8) top = Math.max(8, anchorRect.top - ph - 8);
-    if (left + pw > vw - 8) left = vw - pw - 8;
-    if (left < 8) left = 8;
-    return { position: 'fixed', top, left, width: pw, zIndex: 9000 };
-  }, [anchorRect]);
-
-  // Always render via portal so we escape any overflow:hidden/auto ancestor
-  // (hscroll-row on mobile clips position:fixed children in iOS Safari)
-  const vw = window.innerWidth;
-  const isMobile = vw <= 640;
-
-  const inner = (
-    <div
-      className={`nutrition-modal ${!isMobile ? 'anchored-popover' : ''}`}
-      style={isMobile ? {
-        background: 'var(--warm-white)',
-        borderRadius: 20,
-        width: `min(400px, calc(100vw - 16px))`,
-        maxHeight: '80dvh',
-        overflowY: 'auto',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.22)',
-      } : {
-        ...popoverStyle,
-        maxHeight: 500,
-        overflowY: 'auto',
-      }}
-      onClick={e => e.stopPropagation()}
-    >
-      <div className="nutrition-modal__header">
-        <h2 className="nutrition-modal__title"><Icon name="zap" size={18} strokeWidth={2} /> Nutrition Info</h2>
-        <button className="ing-modal__close" onClick={onClose}>✕</button>
-      </div>
-      {bodyIngredients === null ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '32px 24px', color: 'var(--warm-gray)' }}>
-          <div className="loading-spinner" style={{ width: 24, height: 24 }} />
-          Loading...
-        </div>
-      ) : (
-        <NutritionModalBody
-          recipe={recipe}
-          bodyIngredients={bodyIngredients}
-          allIngredients={allIngredients}
-          displayCalories={calories}
-          displayProtein={protein}
-          displayFiber={fiber}
-          nutritionIsEstimate={false}
-        />
-      )}
-    </div>
-  );
-
-  return createPortal(
-    isMobile ? (
-      // Mobile: centered overlay that sits above everything
-      <div
-        style={{
-          position: 'fixed', inset: 0, zIndex: 9000,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 8,
-        }}
-        onClick={onClose}
-      >
-        {inner}
-      </div>
-    ) : (
-      // Desktop: fixed-positioned near the trigger, backdrop behind
-      <>
-        <div style={{ position: 'fixed', inset: 0, zIndex: 8999 }} onClick={onClose} />
-        {inner}
-      </>
-    ),
-    document.body
-  );
-};
-
-// --- Recipe Summary Card ---------------------------------------------------
 const toNum = (v) => { const n = Number(v); return (!isNaN(n) && v !== '' && v !== null && v !== undefined) ? n : null; };
 
-// ─── Recipe Card ─────────────────────────────────────────────────────────────
-const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked, showScore, onConvertRef, allIngredients = [] }) => {
+// â”€â”€â”€ Recipe Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, onMarkCooked, showScore, onConvertRef }) => {
   const { name, coverImage, cuisine, time } = recipe;
-  const calories = toNum(recipe.calories);
-  const protein  = toNum(recipe.protein);
   const matchScore = match?.matchScore ?? null;
   const canMakeNow = Boolean(match?.canMake);
   const tags = recipe.tags || [];
   const progress = recipe.status === 'incomplete' ? <Icon name="alertTriangle" size={12} strokeWidth={2} /> : recipe.status === 'needs tweaking' ? <Icon name="tool" size={12} strokeWidth={2} /> : recipe.status === 'complete' ? <Icon name="checkCircle" size={12} strokeWidth={2} /> : recipe.status === 'to try' ? <Icon name="bookMarked" size={12} strokeWidth={2} /> : null;
   const isCookbookRef = Boolean(recipe.cookbook && (!recipe.ingredients || recipe.ingredients.length === 0));
-  const [showNutrition, setShowNutrition] = useState(false);
-  const [nutritionAnchorRect, setNutritionAnchorRect] = useState(null);
   const [showMissing, setShowMissing] = useState(false);
 
   return (
     <>
-      {showNutrition && <NutritionCardPopup recipe={recipe} allIngredients={allIngredients} anchorRect={nutritionAnchorRect} onClose={() => setShowNutrition(false)} />}
       <article className={`recipe-card ${isCookbookRef ? 'recipe-card--cb-ref' : ''}`} onClick={() => onClick(recipe)}>
         <div className="recipe-card__image">
           {coverImage
@@ -656,12 +395,12 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {match.missing.map(n => (
-                            <span key={n} style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>· {n}</span>
+                            <span key={n} style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Â· {n}</span>
                           ))}
                         </div>
                       </>
                     ) : (
-                      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: 0 }}>✓ You have everything!</p>
+                      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: 0 }}>âœ“ You have everything!</p>
                     )}
                   </div>
                 </>
@@ -695,17 +434,6 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
           </div>
           <div className="recipe-card__stats">
             {time && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="clock" size={12} strokeWidth={2} /></span>{time}</span>}
-            {calories !== null && (
-              <button
-                className="recipe-card__stat recipe-card__stat--cal-btn"
-                onClick={e => { e.stopPropagation(); setNutritionAnchorRect(e.currentTarget.getBoundingClientRect()); setShowNutrition(true); }}
-                title="View nutrition info"
-              >
-                <span className="recipe-card__stat-icon"><Icon name="zap" size={12} strokeWidth={2} /></span>
-                {Math.round(calories)} kcal
-              </button>
-            )}
-            {protein !== null && <span className="recipe-card__stat"><span className="recipe-card__stat-icon"><Icon name="dumbbell" size={12} strokeWidth={2} /></span>{Math.round(protein)}g</span>}
             {canMakeNow && <span className="recipe-card__can-make"><Icon name="checkCircle" size={11} strokeWidth={2} /> Ready</span>}
             {progress && <span className="recipe-card__progress">{progress}</span>}
           </div>
@@ -721,12 +449,12 @@ const SectionPencil = ({ isEditing, onEdit, onSave, onCancel, saving }) => (
     {isEditing ? (
       <>
         <button className="section-pencil section-pencil--confirm" onClick={onSave} disabled={saving} title={saving ? 'Saving...' : 'Save'}>
-          {saving ? '...' : '✓'}
+          {saving ? '...' : 'âœ“'}
         </button>
-        <button className="section-pencil section-pencil--cancel" onClick={onCancel} title="Cancel">✕</button>
+        <button className="section-pencil section-pencil--cancel" onClick={onCancel} title="Cancel">âœ•</button>
       </>
     ) : (
-      <button className="section-pencil" onClick={e => { e.stopPropagation(); onEdit(); }} title="Edit">✎</button>
+      <button className="section-pencil" onClick={e => { e.stopPropagation(); onEdit(); }} title="Edit">âœŽ</button>
     )}
   </span>
 );
@@ -813,7 +541,7 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
   };
   return (
     <div className="ing-flat-row" ref={setNodeRef} style={style}>
-      {/* Invisible full-row drag handle — long press activates on mobile */}
+      {/* Invisible full-row drag handle â€” long press activates on mobile */}
       <span 
         className="ing-flat-row__drag" 
         {...attributes} 
@@ -830,7 +558,7 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
           flexShrink: 0,
           transition: 'opacity 0.2s',
         }}
-      >··</span>
+      >Â·Â·</span>
       <div className="ing-flat-row__fields">
         {/* Row 1 */}
         <div className="ing-flat-row__row1">
@@ -853,7 +581,7 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
           >
             {ing.optional ? 'optional' : 'required'}
           </button>
-          <button className="editor-remove-btn" onClick={onRemove} tabIndex={-1}>✕</button>
+          <button className="editor-remove-btn" onClick={onRemove} tabIndex={-1}>âœ•</button>
         </div>
       </div>
     </div>
@@ -870,10 +598,10 @@ const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
   };
   return (
     <div className="ing-group-row" ref={setNodeRef} style={style}>
-      <span className="ing-flat-row__drag ing-group-row__drag" {...attributes} {...listeners}>⠿</span>
+      <span className="ing-flat-row__drag ing-group-row__drag" {...attributes} {...listeners}>â ¿</span>
       <input className="ing-group-row__label-input" value={ing.name} onChange={e => onLabelChange(e.target.value)} placeholder="Group name..." />
-      <button className="ing-group-row__add-btn" onClick={onAddIngredient} title="Add ingredient to this group">＋</button>
-      <button className="editor-remove-btn" onClick={onRemove} title="Remove group">✕</button>
+      <button className="ing-group-row__add-btn" onClick={onAddIngredient} title="Add ingredient to this group">ï¼‹</button>
+      <button className="editor-remove-btn" onClick={onRemove} title="Remove group">âœ•</button>
     </div>
   );
 };
@@ -881,7 +609,7 @@ const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
 // --- Mark As Cooked Modal --------------------------------------------------
 
 
-// ─── Mark As Cooked Modal ─────────────────────────────────────────────────────
+// â”€â”€â”€ Mark As Cooked Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpdateKitchen, authFetch }) => {
   const apiFetch = authFetch || fetch;
   const [step, setStep] = useState(1); // 1 = rate/notes, 2 = ingredient cleanup
@@ -894,11 +622,11 @@ const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpda
   // Ingredient actions: 'remove' | 'keep' | null (undecided)
   const [ingActions, setIngActions] = useState({});
 
-// Perishable ingredient categories — used in post-cook cleanup to suggest removal
+// Perishable ingredient categories â€” used in post-cook cleanup to suggest removal
 const PERISHABLE_CATEGORY_MAP = {
   produce: ['onion','garlic','ginger','tomato','lemon','lime','spinach','carrot','celery',
     'potato','bell pepper','cucumber','zucchini','broccoli','cauliflower','mushroom','avocado',
-    'lettuce','kale','cabbage','spring onion','scallion','shallot','chilli','chili','jalapeño',
+    'lettuce','kale','cabbage','spring onion','scallion','shallot','chilli','chili','jalapeÃ±o',
     'leek','asparagus','eggplant','sweet potato','pumpkin','butternut squash','beetroot','radish',
     'green beans','peas','corn','coriander','cilantro','parsley','basil','mint','thyme','rosemary',
     'dill','chives','bay leaves','lemongrass','orange','apple','banana','mango','berry','strawberry',
@@ -966,7 +694,7 @@ const perishableCatOf = (name) => {
   };
 
   const displayRating = hoverRating || rating;
-  const RATING_LABELS = ['', "Didn't love it", 'It was okay', 'Pretty good!', 'Really good!', 'Perfect! ⭐'];
+  const RATING_LABELS = ['', "Didn't love it", 'It was okay', 'Pretty good!', 'Really good!', 'Perfect! â­'];
   const CAT_ICON = { produce: 'apple', 'meat & fish': 'beef', dairy: 'milk' };
   const CAT_LABEL = { produce: 'Produce', 'meat & fish': 'Meat & Fish', dairy: 'Dairy' };
 
@@ -1004,7 +732,7 @@ const perishableCatOf = (name) => {
                   <button key={n}
                     className={`cooked-modal__star ${n <= displayRating ? 'cooked-modal__star--on' : ''}`}
                     onMouseEnter={() => setHoverRating(n)} onMouseLeave={() => setHoverRating(0)}
-                    onClick={() => setRating(r => r === n ? 0 : n)} type="button">★</button>
+                    onClick={() => setRating(r => r === n ? 0 : n)} type="button">â˜…</button>
                 ))}
                 {displayRating > 0 && <span className="cooked-modal__rating-label">{RATING_LABELS[displayRating]}</span>}
               </div>
@@ -1022,7 +750,7 @@ const perishableCatOf = (name) => {
           <div className="create-modal__footer">
             <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
             <button className="btn btn--primary cooked-modal__save-btn" onClick={saveLog} disabled={saving}>
-              {saving ? 'Saving...' : perishableIngs.length > 0 ? 'Next →' : '✓ Save'}
+              {saving ? 'Saving...' : perishableIngs.length > 0 ? 'Next â†’' : 'âœ“ Save'}
             </button>
           </div>
         </>)}
@@ -1052,12 +780,12 @@ const perishableCatOf = (name) => {
                           <button
                             className={`cooked-cleanup__btn cooked-cleanup__btn--keep ${action === 'keep' ? 'cooked-cleanup__btn--active' : ''}`}
                             onClick={() => setAction(ing.name, 'keep')} type="button">
-                            ✓ Keep
+                            âœ“ Keep
                           </button>
                           <button
                             className={`cooked-cleanup__btn cooked-cleanup__btn--remove ${action === 'remove' ? 'cooked-cleanup__btn--active' : ''}`}
                             onClick={() => setAction(ing.name, 'remove')} type="button">
-                            ✕ Used up
+                            âœ• Used up
                           </button>
                         </div>
                       </div>
@@ -1069,7 +797,7 @@ const perishableCatOf = (name) => {
           </div>
           <div className="create-modal__footer">
             <button className="btn btn--ghost" onClick={() => onSave({ toRemove: [] })}>Skip</button>
-            <button className="btn btn--primary" onClick={finishCleanup}>✓ Update Kitchen</button>
+            <button className="btn btn--primary" onClick={finishCleanup}>âœ“ Update Kitchen</button>
           </div>
         </>)}
 
@@ -1112,7 +840,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
       let grp = '';
       const flatIngs = ings.map(i => { if (i._isGroup) { grp = i.name || ''; return null; } return { ...i, group_label: grp }; }).filter(Boolean);
       const payload = {
-        details: { ...details, calories: null, protein: null, fiber: null },
+        details,
         ingredients: flatIngs.map((i, idx) => ({ ...i, order_index: idx })),
         instructions: (() => {
           const result = []; let stepNum = 1;
@@ -1151,7 +879,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
       <div className="create-modal" onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title"><Icon name="shuffle" size={18} strokeWidth={2} /> Convert to Full Recipe</h2>
-          <button className="ing-modal__close" onClick={() => setShowModal(false)}>✕</button>
+          <button className="ing-modal__close" onClick={() => setShowModal(false)}>âœ•</button>
         </div>
         <div className="create-modal__body">
           {/* Name */}
@@ -1168,17 +896,16 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
           <div className="create-modal__field">
             <label className="create-modal__field-label"><Icon name="mapPin" size={13} strokeWidth={2} /> Cuisine</label>
             <div className="picker__chips" style={{ marginTop:6 }}>
-              {ALL_CUISINES.map(c => <button key={c} className={`chip ${details.cuisine===c?'chip--selected':''}`} onClick={() => setDetail('cuisine', details.cuisine===c?'':c)} type="button">{details.cuisine===c&&<span className="chip__check">✓</span>}{c}</button>)}
+              {ALL_CUISINES.map(c => <button key={c} className={`chip ${details.cuisine===c?'chip--selected':''}`} onClick={() => setDetail('cuisine', details.cuisine===c?'':c)} type="button">{details.cuisine===c&&<span className="chip__check">âœ“</span>}{c}</button>)}
             </div>
           </div>
           {/* Tags */}
           <div className="create-modal__field">
             <label className="create-modal__field-label"><Icon name="tag" size={13} strokeWidth={2} /> Tags</label>
             <div className="picker__chips" style={{ marginTop:6 }}>
-              {TAG_FILTERS.map(({ key, label }) => <button key={key} className={`chip ${details.tags.includes(key)?'chip--selected':''}`} onClick={() => toggleTag(key)} type="button">{details.tags.includes(key)&&<span className="chip__check">✓</span>}{label}</button>)}
+              {TAG_FILTERS.map(({ key, label }) => <button key={key} className={`chip ${details.tags.includes(key)?'chip--selected':''}`} onClick={() => toggleTag(key)} type="button">{details.tags.includes(key)&&<span className="chip__check">âœ“</span>}{label}</button>)}
             </div>
           </div>
-          <p className="create-modal__field-hint">Calories, protein &amp; fiber auto-calculated from ingredients</p>
           {/* Ingredients */}
           <div className="create-modal__field">
             <label className="create-modal__field-label">Ingredients</label>
@@ -1214,7 +941,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
                         <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setSteps(prev => prev.map(s => s._id===item._id?{...s,s:e.target.value}:s))} placeholder="0" />
                         <span className="rp2__ed-timer-row__sep">s</span>
                       </div>
-                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
                     </div>
                   );
                   const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
@@ -1225,7 +952,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
                         <button className="rp2__ed-add-timer-btn" onClick={() => { const i = steps.findIndex(s => s._id===item._id); const t={_id:`timer-${'{'}Date.now(){'}'}`,_isTimer:true,h:'',m:'',s:''}; const n=[...steps]; n.splice(i+1,0,t); setSteps(n); }} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                         <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                       </div>
-                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
                       {item._showTip && createPortal((() => {
                         const ar = item._tipAnchor; const pw = 300, ph = 160;
                         const vw = window.innerWidth, vh = window.innerHeight;
@@ -1246,7 +973,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
             {notesList.map(note => (
               <div key={note._id} className="editor-note-row">
                 <input className="editor-input" value={note.text||''} onChange={e => updateNote(note._id, e.target.value)} placeholder="e.g. Great with oat milk instead of dairy" />
-                <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>✕</button>
+                <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>âœ•</button>
               </div>
             ))}
             <button className="btn btn--ghost editor-add-btn" onClick={() => setNotesList(prev => [...prev, { _id:`note-${Date.now()}`,text:'' }])}>+ Add Note</button>
@@ -1262,7 +989,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
   );
 };
 
-// --- Auto-growing textarea (ghost-div approach — immune to drag collapsing) ---
+// --- Auto-growing textarea (ghost-div approach â€” immune to drag collapsing) ---
 // A hidden "ghost" div with identical text determines the correct height.
 // The textarea reads that height via a CSS custom property on the wrapper.
 // Because value never changes during a dnd-kit drag, height stays locked.
@@ -1331,7 +1058,7 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
     endTimeRef.current = null;
   };
 
-  // rAF loop — reads from wall clock, works even after tab becomes hidden then visible
+  // rAF loop â€” reads from wall clock, works even after tab becomes hidden then visible
   useEffect(() => {
     if (timerState !== 'running') {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -1356,7 +1083,7 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
           playBeep(ctx.currentTime, 880); playBeep(ctx.currentTime + 0.45, 1100); playBeep(ctx.currentTime + 0.9, 1320);
         } catch {}
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('Timer done!', { body: `Step ${step.step_number}: ${(step.body_text || '').slice(0, 60)}`, icon: '🍳' });
+          new Notification('Timer done!', { body: `Step ${step.step_number}: ${(step.body_text || '').slice(0, 60)}`, icon: 'ðŸ³' });
         }
         return; // stop loop
       }
@@ -1382,7 +1109,7 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
 
   return (
     <li className={`rp2__step ${done ? 'rp2__step--done' : ''} ${isCurrent ? 'rp2__step--current' : ''} ${enlarge ? 'rp2__step--enlarged' : ''} ${grouped ? 'rp2__step--grouped' : ''}`} onClick={onToggle}>
-      <div className="rp2__step-num">{done ? '✓' : step.step_number}</div>
+      <div className="rp2__step-num">{done ? 'âœ“' : step.step_number}</div>
       <div className="rp2__step-content">
         <div className="rp2__step-body-row">
           <p className="rp2__step-body">{cleanStepBody}</p>
@@ -1392,7 +1119,7 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
                 <button
                   className={`rp2__step-hint-btn ${showTips ? 'rp2__step-hint-btn--active' : ''}`}
                   onClick={e => { e.stopPropagation(); setShowTips(v => !v); }}
-                  title={[...(manualTip ? ['Tip'] : []), ...matchedNotes.map(n => n.title)].join(' · ')}
+                  title={[...(manualTip ? ['Tip'] : []), ...matchedNotes.map(n => n.title)].join(' Â· ')}
                 ><Icon name="lightbulb" size={13} strokeWidth={2} />{(matchedNotes.length + (manualTip ? 1 : 0)) > 1 && <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 2 }}>{matchedNotes.length + (manualTip ? 1 : 0)}</span>}</button>
                 {showTips && (
                   <div className="rp2__step-hint-popover" onClick={e => e.stopPropagation()}>
@@ -1427,12 +1154,12 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
             )}
             <div className="rp2__step-timer__controls">
               <span className={`rp2__step-timer__display ${timerState === 'done' ? 'rp2__step-timer__display--done' : ''}`}>
-                {timerState === 'done' ? '✓ Done!' : fmtTime(remaining)}
+                {timerState === 'done' ? 'âœ“ Done!' : fmtTime(remaining)}
               </span>
               {timerState === 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}><Icon name="arrowRight" size={12} strokeWidth={2.5} /> Start</button>}
               {timerState === 'running' && <button className="rp2__step-timer__btn rp2__step-timer__btn--pause" onClick={pauseTimer}><Icon name="clock" size={12} strokeWidth={2.5} /> Pause</button>}
               {timerState === 'paused' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}><Icon name="arrowRight" size={12} strokeWidth={2.5} /> Resume</button>}
-              {timerState !== 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--reset" onClick={resetTimer}>↺</button>}
+              {timerState !== 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--reset" onClick={resetTimer}>â†º</button>}
             </div>
           </div>
         )}
@@ -1462,15 +1189,15 @@ const SortableNoteRow = ({ note, onUpdate, onRemove }) => {
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
   return (
     <div ref={setNodeRef} style={style} className="rp2__ed-note-row">
-      <span style={{ cursor: 'grab', fontSize: 16, color: 'var(--ash)', flexShrink: 0, userSelect: 'none', touchAction: 'none' }} {...attributes} {...listeners}>⠿</span>
+      <span style={{ cursor: 'grab', fontSize: 16, color: 'var(--ash)', flexShrink: 0, userSelect: 'none', touchAction: 'none' }} {...attributes} {...listeners}>â ¿</span>
       <input className="editor-input" style={{ flex: 1 }} value={note.text} onChange={e => onUpdate(e.target.value)} placeholder="Add a tip or note..." />
-      <button className="editor-remove-btn" onClick={onRemove}>✕</button>
+      <button className="editor-remove-btn" onClick={onRemove}>âœ•</button>
     </div>
   );
 };
 
 // --- Recipe Page -------------------------------------------------------------
-// ─── Recipe Page ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Recipe Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [] }) => {
   const apiFetch = authFetch || fetch;
   const [checkedIngredients, setCheckedIngredients] = useState(new Set());
@@ -1478,8 +1205,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [showIngredientsModal, setShowIngredientsModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCookedModal, setShowCookedModal] = useState(false);
-  const [showNutritionModal, setShowNutritionModal] = useState(false);
-  const [nutritionAnchorRect, setNutritionAnchorRect] = useState(null);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [notesAnchorRect, setNotesAnchorRect] = useState(null);
   const [showCookbookModal, setShowCookbookModal] = useState(false);
@@ -1600,16 +1325,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
     setSaving(true); setSaveError(null);
     const isMeta = section === 'meta' || section.startsWith('meta-');
 
-    // When saving ingredients, compute fresh nutrition from the new ingredient list
-    let computedNutrition = { calories: recipe.calories ?? '', protein: recipe.protein ?? '', fiber: recipe.fiber ?? '' };
-    if (section === 'ingredients') {
-      const ingsToCalc = draftIngs
-        .map(i => { if (i._isGroup) return null; return i; })
-        .filter(Boolean);
-      const nutrition = calcNutrition(ingsToCalc, allIngredients);
-      if (nutrition) computedNutrition = nutrition;
-    }
-
     try {
       const payload = {
         details: {
@@ -1617,9 +1332,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           cuisine:         isMeta ? draftMeta.cuisine : (recipe.cuisine || ''),
           time:            isMeta ? draftMeta.time    : (recipe.time || ''),
           servings:        isMeta ? draftMeta.servings : (recipe.servings || ''),
-          calories:        computedNutrition.calories,
-          protein:         computedNutrition.protein,
-          fiber:           computedNutrition.fiber,
           cover_image_url: section === 'image' ? draftImageInput : (recipe.coverImage || ''),
           status:          isMeta ? draftMeta.status : (recipe.status || ''),
           tags:            isMeta ? draftMeta.tags   : (recipe.tags || []),
@@ -1710,9 +1422,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           newGroupLabel = item.name || null;
           break;
         }
-        // Hit a regular step — check if IT is grouped under a header
+        // Hit a regular step â€” check if IT is grouped under a header
         if (item.group_label) {
-          // The step above is grouped — the dragged step is also in that group
+          // The step above is grouped â€” the dragged step is also in that group
           newGroupLabel = item.group_label;
         }
         break;
@@ -1760,25 +1472,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
     const next = new Set(prev); next.has(num) ? next.delete(num) : next.add(num); return next;
   });
 
-  // -- Auto-calculate nutrition -- must be before any early returns (Rules of Hooks) --
-  const autoNutrition = useMemo(() => {
-    if (!bodyIngredients?.length) return { calories: null, protein: null, fiber: null };
-    const r = calcNutrition(bodyIngredients, allIngredients);
-    return r ?? { calories: null, protein: null, fiber: null };
-  }, [bodyIngredients, allIngredients]);
-
   if (loading) return <main className="view"><div className="placeholder"><h2>Loading recipe...</h2></div></main>;
-  if (!recipe) return <main className="view"><div className="placeholder"><h2>Recipe not found</h2><button className="btn btn--ghost" onClick={onBack}>← Back</button></div></main>;
+  if (!recipe) return <main className="view"><div className="placeholder"><h2>Recipe not found</h2><button className="btn btn--ghost" onClick={onBack}>â† Back</button></div></main>;
 
-  const calories = toNum(recipe.calories);
-  const protein  = toNum(recipe.protein);
-  const fiber    = toNum(recipe.fiber);
-
-  const displayCalories = calories ?? autoNutrition.calories;
-  const displayProtein  = protein  ?? autoNutrition.protein;
-  const displayFiber    = fiber    ?? autoNutrition.fiber;
-  // Show ~ if we're showing a live estimate (not yet saved to DB)
-  const nutritionIsEstimate = calories === null && autoNutrition.calories !== null;
   const doneCount  = doneSteps.size;
   const totalSteps = instructions?.length ?? 0;
 
@@ -1831,51 +1527,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         />
       )}
 
-      {/* -- Nutrition Modal (portal so it escapes any stacking context) -- */}
-      {showNutritionModal && (() => {
-        const pw = 400, ph = 520;
-        const vw = window.innerWidth, vh = window.innerHeight;
-        const isMobile = vw <= 640;
-        let style;
-        if (!isMobile && nutritionAnchorRect) {
-          let top = nutritionAnchorRect.bottom + 8;
-          let left = nutritionAnchorRect.left;
-          if (top + ph > vh - 8) top = Math.max(8, nutritionAnchorRect.top - ph - 8);
-          if (left + pw > vw - 8) left = vw - pw - 8;
-          if (left < 8) left = 8;
-          style = { position: 'fixed', top, left, width: pw, maxHeight: ph, overflowY: 'auto', zIndex: 9000 };
-        }
-        const panel = (
-          <div className="nutrition-modal anchored-popover" style={style || { background: 'var(--warm-white)', borderRadius: 20, width: `min(400px, calc(100vw - 16px))`, maxHeight: '80dvh', overflowY: 'auto', boxShadow: '0 8px 40px rgba(0,0,0,0.22)' }} onClick={e => e.stopPropagation()}>
-            <div className="nutrition-modal__header">
-              <h2 className="nutrition-modal__title"><Icon name="zap" size={18} strokeWidth={2} /> Nutrition Info</h2>
-              <button className="ing-modal__close" onClick={() => setShowNutritionModal(false)}>✕</button>
-            </div>
-            <NutritionModalBody
-              recipe={recipe}
-              bodyIngredients={bodyIngredients}
-              allIngredients={allIngredients}
-              displayCalories={displayCalories}
-              displayProtein={displayProtein}
-              displayFiber={displayFiber}
-              nutritionIsEstimate={nutritionIsEstimate}
-            />
-          </div>
-        );
-        return createPortal(
-          isMobile ? (
-            <div style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8 }} onClick={() => setShowNutritionModal(false)}>
-              {panel}
-            </div>
-          ) : (
-            <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 8999 }} onClick={() => setShowNutritionModal(false)} />
-              {panel}
-            </>
-          ),
-          document.body
-        );
-      })()}
       <div className="rp2__hero">
         {recipe.coverImage
           ? <HeroImage src={recipe.coverImage} alt={recipe.name} />
@@ -1885,7 +1536,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           {/* == DESKTOP: original top-bar layout == */}
           <div className="rp2__hero-desktop-layout">
             <div className="rp2__hero-topbar">
-              <button className="rp2__hero-btn" onClick={e => { e.stopPropagation(); onBack(); }}>← Back</button>
+              <button className="rp2__hero-btn" onClick={e => { e.stopPropagation(); onBack(); }}>â† Back</button>
               <div className="rp2__hero-topbar-right">
                 {isMakeSoon && onMarkCooked && (
                   <button className="rp2__hero-btn rp2__hero-cooked-btn"
@@ -1904,7 +1555,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 ><Icon name="timer" size={16} strokeWidth={2} /></button>
                 {isAdmin && <div className="rp2__photo-btn-wrap">
                   <button className="rp2__hero-btn rp2__hero-soon rp2__hero-btn--photo"
-                    onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Change photo link">✎
+                    onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Change photo link">âœŽ
                   </button>
                   {isEdit('image') && (
                     <div className="rp2__img-popover-down">
@@ -1913,8 +1564,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                         onChange={e => setDraftImageInput(e.target.value)} placeholder="https://..."
                         onKeyDown={e => { if (e.key === 'Enter') saveSection('image'); if (e.key === 'Escape') cancelEdit(); }} />
                       <div className="rp2__dark-pop-actions">
-                        <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
-                        <button className="rp2__dark-cancel" onClick={cancelEdit}>✕ Cancel</button>
+                        <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '...' : 'âœ“ Save'}</button>
+                        <button className="rp2__dark-cancel" onClick={cancelEdit}>âœ• Cancel</button>
                       </div>
                     </div>
                   )}
@@ -1937,7 +1588,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             )}
             {isAdmin && <div className="rp2__photo-btn-wrap">
               <button className="rp2__hero-btn rp2__hero-soon rp2__hero-btn--photo"
-                onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Change photo link">✎
+                onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Change photo link">âœŽ
               </button>
               {isEdit('image') && (
                 <div className="rp2__img-popover-down">
@@ -1946,8 +1597,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     onChange={e => setDraftImageInput(e.target.value)} placeholder="https://..."
                     onKeyDown={e => { if (e.key === 'Enter') saveSection('image'); if (e.key === 'Escape') cancelEdit(); }} />
                   <div className="rp2__dark-pop-actions">
-                    <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
-                    <button className="rp2__dark-cancel" onClick={cancelEdit}>✕ Cancel</button>
+                    <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '...' : 'âœ“ Save'}</button>
+                    <button className="rp2__dark-cancel" onClick={cancelEdit}>âœ• Cancel</button>
                   </div>
                 </div>
               )}
@@ -1965,18 +1616,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               onClick={e => { e.stopPropagation(); onToggleMakeSoon && onToggleMakeSoon(); }}
               title={isMakeSoon ? 'Remove from Make Soon' : 'Add to Make Soon'}
             ><Icon name="timer" size={16} strokeWidth={2} /></button>
-          </div>
-          {/* Bottom-right: Calories pill (tappable) */}
-          <div className="rp2__hero-corner rp2__hero-corner--br rp2__hero-mobile-only">
-            {displayCalories !== null && (
-              <button
-                className="rp2__pill rp2__pill--nutrition rp2__hero-mobile-cal"
-                onClick={e => { e.stopPropagation(); setNutritionAnchorRect(e.currentTarget.getBoundingClientRect()); setShowNutritionModal(true); }}
-              >
-                <span className="rp2__pill-icon"><Icon name="zap" size={12} strokeWidth={2} /></span>
-                {displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}
-              </button>
-            )}
           </div>
 
           {/* -- Desktop-only tags+pills row at bottom -- */}
@@ -2020,7 +1659,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 </div>
               )}
 
-              {/* Combined edit popover — opens from either chip */}
+              {/* Combined edit popover â€” opens from either chip */}
               {isEdit('meta-tags') && (
                 <div className="rp2__hero-tag-wrap">
                   <div className="rp2__hero-dark-popover" style={{ minWidth: 340 }}>
@@ -2059,9 +1698,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
 
                     <div className="rp2__dark-pop-actions">
                       <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>
-                        {saving ? '...' : '✓ Save'}
+                        {saving ? '...' : 'âœ“ Save'}
                       </button>
-                      <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
+                      <button className="rp2__dark-cancel" onClick={cancelEdit}>âœ•</button>
                     </div>
                   </div>
                 </div>
@@ -2087,8 +1726,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       placeholder="e.g. 45 mins"
                       onKeyDown={e => { if (e.key === 'Enter') saveSection('meta'); if (e.key === 'Escape') cancelEdit(); }} />
                     <div className="rp2__dark-pop-actions">
-                      <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
-                      <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
+                      <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : 'âœ“ Save'}</button>
+                      <button className="rp2__dark-cancel" onClick={cancelEdit}>âœ•</button>
                     </div>
                   </div>
                 )}
@@ -2109,26 +1748,13 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       placeholder="e.g. 4"
                       onKeyDown={e => { if (e.key === 'Enter') saveSection('meta'); if (e.key === 'Escape') cancelEdit(); }} />
                     <div className="rp2__dark-pop-actions">
-                      <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
-                      <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
+                      <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : 'âœ“ Save'}</button>
+                      <button className="rp2__dark-cancel" onClick={cancelEdit}>âœ•</button>
                     </div>
                   </div>
                 )}
               </div>}
 
-              {/* Display-only nutrition pills — tappable on mobile to show full popup */}
-              {displayCalories !== null && (
-                <button
-                  className="rp2__pill rp2__pill--nutrition"
-                  onClick={e => { e.stopPropagation(); setNutritionAnchorRect(e.currentTarget.getBoundingClientRect()); setShowNutritionModal(true); }}
-                  title={nutritionIsEstimate ? 'Estimated — save ingredients to lock in' : 'Auto-calculated from ingredients'}
-                >
-                  <span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>
-                  {displayCalories} kcal{nutritionIsEstimate ? ' ~' : ''}
-                </button>
-              )}
-              {displayProtein !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="dumbbell" size={13} strokeWidth={2} /></span>{displayProtein}g prot{nutritionIsEstimate ? ' ~' : ''}</span>}
-              {displayFiber   !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="leaf" size={13} strokeWidth={2} /></span>{displayFiber}g fiber{nutritionIsEstimate ? ' ~' : ''}</span>}
             </div>
           </div>
         </div>
@@ -2166,7 +1792,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           <div className="dietary-warnings">
             {dietaryWarnings.map((w, i) => (
               <div key={i} className="dietary-warning">
-                <span className="dietary-warning__icon">⚠️</span>
+                <span className="dietary-warning__icon">âš ï¸</span>
                 <div className="dietary-warning__body">
                   <span className="dietary-warning__title">Contains {w.label}</span>
                   {w.conflicts.length > 1 ? (
@@ -2236,11 +1862,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 <div className="ing-modal__header-actions">
                   {isEdit('ingredients') ? (
                     <>
-                      <button className="ing-modal__save-btn" onClick={async () => { await saveSection('ingredients'); setShowIngredientsModal(false); }} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
-                      <button className="ing-modal__close" onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}>✕</button>
+                      <button className="ing-modal__save-btn" onClick={async () => { await saveSection('ingredients'); setShowIngredientsModal(false); }} disabled={saving}>{saving ? '...' : 'âœ“ Save'}</button>
+                      <button className="ing-modal__close" onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}>âœ•</button>
                     </>
                   ) : (
-                    <button className="ing-modal__close" onClick={() => setShowIngredientsModal(false)}>✕</button>
+                    <button className="ing-modal__close" onClick={() => setShowIngredientsModal(false)}>âœ•</button>
                   )}
                 </div>
               </div>
@@ -2316,7 +1942,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         <div className="rp2__ingredients">
           <div className="rp2__section-title-row">
             <h2 className="rp2__section-title rp2__section-title--sm">Ingredients</h2>
-            {isAdmin && <button className="section-pencil" onClick={e => { startEdit('ingredients'); setShowIngredientsModal(true); }} title="Edit ingredients">✎</button>}
+            {isAdmin && <button className="section-pencil" onClick={e => { startEdit('ingredients'); setShowIngredientsModal(true); }} title="Edit ingredients">âœŽ</button>}
           </div>
 
           {ingredientGroups.length > 0
@@ -2367,7 +1993,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             </div>
           )}
 
-          {/* Inline editor — desktop and mobile */}
+          {/* Inline editor â€” desktop and mobile */}
           {isEdit('instructions') ? (
             <div className="rp2__inline-editor">
               <DndContext sensors={rpSensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onDraftStepDragEnd}>
@@ -2381,7 +2007,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                         let insertIdx = idx;
                         for (let j = idx + 1; j < draftSteps.length; j++) {
                           const s = draftSteps[j];
-                          if (s._isGroup) break; // next group header — stop
+                          if (s._isGroup) break; // next group header â€” stop
                           if (!s._isTimer && s.group_label !== grpName) break; // step not in this group
                           insertIdx = j;
                         }
@@ -2437,12 +2063,12 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                               }
                               return next;
                             });
-                          }}>✕</button>
+                          }}>âœ•</button>
                         </div>
                       );
                     }
 
-                    // Regular step — snap/unsnap into nearest group above
+                    // Regular step â€” snap/unsnap into nearest group above
                     const isGrouped = !!item.group_label;
                     const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
 
@@ -2484,7 +2110,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                             style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}
                           ><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                         </div>
-                        <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
+                        <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>âœ•</button>
                         {/* Tip popup portal */}
                         {item._showTip && createPortal((() => {
                           const ar = item._tipAnchor;
@@ -2535,7 +2161,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               ? (() => {
                   const sorted = [...instructions].sort((a, b) => a.step_number - b.step_number);
                   const sortedUndone = sorted.filter(s => !doneSteps.has(s.step_number));
-                  // Group steps — ungrouped steps interleaved with grouped sections
+                  // Group steps â€” ungrouped steps interleaved with grouped sections
                   const sections = [];
                   for (const step of sorted) {
                     const lbl = step.group_label || '';
@@ -2589,11 +2215,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   <span className="section-pencil-wrap">
                     {isEdit('notes') && !showNotesModal ? (
                       <>
-                        <button className="section-pencil section-pencil--confirm" onClick={() => saveSection('notes')} disabled={saving} title={saving ? 'Saving...' : 'Save'}>{saving ? '...' : '✓'}</button>
-                        <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowNotesModal(false); }} title="Cancel">✕</button>
+                        <button className="section-pencil section-pencil--confirm" onClick={() => saveSection('notes')} disabled={saving} title={saving ? 'Saving...' : 'Save'}>{saving ? '...' : 'âœ“'}</button>
+                        <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowNotesModal(false); }} title="Cancel">âœ•</button>
                       </>
                     ) : (
-                      <button className="section-pencil" onClick={e => { e.stopPropagation(); startEdit('notes'); if (window.innerWidth <= 640) { setNotesAnchorRect(e.currentTarget.getBoundingClientRect()); setShowNotesModal(true); } }} title="Edit">✎</button>
+                      <button className="section-pencil" onClick={e => { e.stopPropagation(); startEdit('notes'); if (window.innerWidth <= 640) { setNotesAnchorRect(e.currentTarget.getBoundingClientRect()); setShowNotesModal(true); } }} title="Edit">âœŽ</button>
                     )}
                   </span>
                 )}
@@ -2626,7 +2252,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 </div>
               )}
 
-              {/* Notes popover — portal anchored near the pencil icon */}
+              {/* Notes popover â€” portal anchored near the pencil icon */}
               {showNotesModal && isEdit('notes') && createPortal((() => {
                 const pw = 360, ph = 400;
                 const vw = window.innerWidth, vh = window.innerHeight;
@@ -2649,20 +2275,20 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     <div className="anchored-popover create-modal" style={{ position: 'fixed', top, left, width: w, maxHeight: ph, zIndex: 9000 }} onClick={e => e.stopPropagation()}>
                       <div className="create-modal__header">
                         <h2 className="create-modal__title"><Icon name="note" size={18} strokeWidth={2} /> Notes &amp; Tips</h2>
-                        <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>✕</button>
+                        <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>âœ•</button>
                       </div>
                       <div className="create-modal__body" style={{ gap: 10, overflowY: 'auto', maxHeight: ph - 120 }}>
                         {draftNotes.map((n, idx) => (
                           <div key={n._id} className="rp2__ed-note-row">
                             <input className="editor-input" style={{ flex: 1, fontSize: 16 }} value={n.text} onChange={e => updateDraftNote(n._id, e.target.value)} placeholder="Add a tip or note..." autoFocus={idx === 0} />
-                            <button className="editor-remove-btn" onClick={() => removeDraftNote(n._id)}>✕</button>
+                            <button className="editor-remove-btn" onClick={() => removeDraftNote(n._id)}>âœ•</button>
                           </div>
                         ))}
                         <button className="btn btn--ghost editor-add-btn" onClick={addDraftNote}>+ Add Note</button>
                       </div>
                       <div className="create-modal__footer">
                         <button className="btn btn--ghost" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>Cancel</button>
-                        <button className="btn btn--primary" onClick={async () => { await saveSection('notes'); setShowNotesModal(false); }} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
+                        <button className="btn btn--primary" onClick={async () => { await saveSection('notes'); setShowNotesModal(false); }} disabled={saving}>{saving ? 'Saving...' : 'âœ“ Save'}</button>
                       </div>
                     </div>
                   </>
@@ -2678,11 +2304,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   <span className="section-pencil-wrap">
                     {isEdit('cookbook') && !showCookbookModal ? (
                       <>
-                        <button className="section-pencil section-pencil--confirm" onClick={() => saveSection('cookbook')} disabled={saving} title={saving ? 'Saving...' : 'Save'}>{saving ? '...' : '✓'}</button>
-                        <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowCookbookModal(false); }} title="Cancel">✕</button>
+                        <button className="section-pencil section-pencil--confirm" onClick={() => saveSection('cookbook')} disabled={saving} title={saving ? 'Saving...' : 'Save'}>{saving ? '...' : 'âœ“'}</button>
+                        <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowCookbookModal(false); }} title="Cancel">âœ•</button>
                       </>
                     ) : (
-                      <button className="section-pencil" onClick={e => { e.stopPropagation(); startEdit('cookbook'); if (window.innerWidth <= 640) { setCookbookAnchorRect(e.currentTarget.getBoundingClientRect()); setShowCookbookModal(true); } }} title="Edit">✎</button>
+                      <button className="section-pencil" onClick={e => { e.stopPropagation(); startEdit('cookbook'); if (window.innerWidth <= 640) { setCookbookAnchorRect(e.currentTarget.getBoundingClientRect()); setShowCookbookModal(true); } }} title="Edit">âœŽ</button>
                     )}
                   </span>
                 )}
@@ -2695,7 +2321,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   {recipe.reference && <span className="rp2__cookbook-text__page">Page {recipe.reference}</span>}
                 </div>
               ) : (
-                <p className="rp2__empty-hint">No reference yet. Click ✎ to add.</p>
+                <p className="rp2__empty-hint">No reference yet. Click âœŽ to add.</p>
               ))}
 
               {/* Desktop inline edit (fallback when modal not open) */}
@@ -2706,7 +2332,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 </div>
               )}
 
-              {/* Cookbook popover — portal anchored near the pencil icon */}
+              {/* Cookbook popover â€” portal anchored near the pencil icon */}
               {showCookbookModal && isEdit('cookbook') && createPortal((() => {
                 const pw = 320, ph = 260;
                 const vw = window.innerWidth, vh = window.innerHeight;
@@ -2729,7 +2355,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     <div className="anchored-popover create-modal" style={{ position: 'fixed', top, left, width: w, zIndex: 9000 }} onClick={e => e.stopPropagation()}>
                       <div className="create-modal__header">
                         <h2 className="create-modal__title"><Icon name="bookMarked" size={18} strokeWidth={2} /> Cookbook</h2>
-                        <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>✕</button>
+                        <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>âœ•</button>
                       </div>
                       <div className="create-modal__body" style={{ gap: 14 }}>
                         <div className="create-modal__field">
@@ -2743,7 +2369,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       </div>
                       <div className="create-modal__footer">
                         <button className="btn btn--ghost" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>Cancel</button>
-                        <button className="btn btn--primary" onClick={async () => { await saveSection('cookbook'); setShowCookbookModal(false); }} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
+                        <button className="btn btn--primary" onClick={async () => { await saveSection('cookbook'); setShowCookbookModal(false); }} disabled={saving}>{saving ? 'Saving...' : 'âœ“ Save'}</button>
                       </div>
                     </div>
                   </>
@@ -2876,7 +2502,7 @@ const SortableItem = ({ id, children }) => {
   };
   return (
     <div ref={setNodeRef} style={style} className={`sortable-item ${isDragging ? 'sortable-item--dragging' : ''}`}>
-      <div className="sortable-handle" {...attributes} {...listeners}>⠿</div>
+      <div className="sortable-handle" {...attributes} {...listeners}>â ¿</div>
       {children}
     </div>
   );
@@ -2892,7 +2518,7 @@ const StepSortableItem = ({ id, stepNum, grouped, children, onSnap, onUnsnap, ca
   };
   return (
     <div ref={setNodeRef} style={style} className={`step-sortable-row ${grouped ? 'step-sortable-row--grouped' : ''} ${isDragging ? 'step-sortable-row--dragging' : ''}`}>
-      {/* Snap/unsnap tab — only shown when relevant */}
+      {/* Snap/unsnap tab â€” only shown when relevant */}
       {grouped ? (
         <button
           className="step-snap-btn step-snap-btn--out"
@@ -2928,17 +2554,17 @@ const StepGroupRow = ({ grp, onLabelChange, onRemove, onAddStep }) => {
   };
   return (
     <div className="step-group-row" ref={setNodeRef} style={style}>
-      <span className="step-group-row__drag" {...attributes} {...listeners}>⠿</span>
+      <span className="step-group-row__drag" {...attributes} {...listeners}>â ¿</span>
       <input
         className="step-group-row__label-input"
         value={grp.name}
         onChange={e => onLabelChange(e.target.value)}
-        placeholder="Group name (e.g. For the sauce, Marinade)…"
+        placeholder="Group name (e.g. For the sauce, Marinade)â€¦"
       />
       {onAddStep && (
-        <button className="ing-group-row__add-btn" onClick={onAddStep} title="Add step to this group">＋</button>
+        <button className="ing-group-row__add-btn" onClick={onAddStep} title="Add step to this group">ï¼‹</button>
       )}
-      <button className="editor-remove-btn" onClick={onRemove} title="Remove group">✕</button>
+      <button className="editor-remove-btn" onClick={onRemove} title="Remove group">âœ•</button>
     </div>
   );
 };
@@ -2953,8 +2579,6 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
     cuisine: recipe?.cuisine || '',
     time: recipe?.time || '',
     servings: recipe?.servings || '',
-    calories: recipe?.calories ?? '',
-    protein: recipe?.protein ?? '',
     cover_image_url: recipe?.coverImage || '',
   });
 
@@ -3044,23 +2668,21 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
         )}
         <div className="rp2__hero-overlay">
           <div className="rp2__hero-topbar">
-            <button className="rp2__hero-btn" onClick={onBack}>← Cancel</button>
-            <button className="rp2__hero-btn rp2__hero-btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
+            <button className="rp2__hero-btn" onClick={onBack}>â† Cancel</button>
+            <button className="rp2__hero-btn rp2__hero-btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'âœ“ Save'}</button>
           </div>
           <div className="rp2__hero-bottom">
             <div className="rp2__hero-tags">{details.cuisine && <span className="rp2__tag">{details.cuisine}</span>}</div>
             <div className="rp2__hero-pills">
               {details.time && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="clock" size={13} strokeWidth={2} /></span>{details.time}</span>}
               {details.servings && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="utensils" size={13} strokeWidth={2} /></span>{details.servings} srv</span>}
-              {details.calories !== '' && toNum(details.calories) !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="zap" size={13} strokeWidth={2} /></span>{Math.round(toNum(details.calories))} kcal</span>}
-              {details.protein !== '' && toNum(details.protein) !== null && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="dumbbell" size={13} strokeWidth={2} /></span>{Math.round(toNum(details.protein))}g prot</span>}
             </div>
           </div>
         </div>
       </div>
 
       {saveError && <p className="editor-error" style={{margin:'8px 24px 0'}}><Icon name="alertTriangle" size={14} strokeWidth={2} /> {saveError}</p>}
-      {saveSuccess && <p className="editor-success" style={{margin:'8px 24px 0'}}>✓ Saved successfully</p>}
+      {saveSuccess && <p className="editor-success" style={{margin:'8px 24px 0'}}>âœ“ Saved successfully</p>}
 
       <div className="rp2__header ed-name-row">
         <input className="ed-title-input" value={details.name} onChange={e => setDetail('name', e.target.value)} placeholder="Recipe name..." />
@@ -3083,14 +2705,6 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
           <span className="ed-meta-label"><Icon name="utensils" size={13} strokeWidth={2} /> Servings</span>
           <input className="editor-input ed-meta-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" />
         </label>
-        <label className="ed-meta-field">
-          <span className="ed-meta-label"><Icon name="zap" size={13} strokeWidth={2} /> Calories</span>
-          <input className="editor-input ed-meta-input" type="number" value={details.calories} onChange={e => setDetail('calories', e.target.value)} placeholder="kcal" />
-        </label>
-        <label className="ed-meta-field">
-          <span className="ed-meta-label"><Icon name="dumbbell" size={13} strokeWidth={2} /> Protein</span>
-          <input className="editor-input ed-meta-input" type="number" value={details.protein} onChange={e => setDetail('protein', e.target.value)} placeholder="g" />
-        </label>
       </div>
 
       <section className="editor-section">
@@ -3107,8 +2721,8 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
                   <IngredientAutocomplete value={ing.name} onChange={v => updateIng(ing._id, 'name', v)} allIngredients={allIngredients.filter(Boolean)} />
                   <input className="editor-input editor-input--sm" value={ing.group_label || ''} onChange={e => updateIng(ing._id, 'group_label', e.target.value)} placeholder="e.g. Sauce" list="group-labels" />
                   <input className="editor-input" value={ing.prep_note || ''} onChange={e => updateIng(ing._id, 'prep_note', e.target.value)} placeholder="finely chopped" />
-                  <button className={`editor-optional-btn ${ing.optional ? 'editor-optional-btn--on' : ''}`} onClick={() => updateIng(ing._id, 'optional', !ing.optional)} title="Mark as optional">{ing.optional ? '✓' : '○'}</button>
-                  <button className="editor-remove-btn" onClick={() => removeIng(ing._id)}>✕</button>
+                  <button className={`editor-optional-btn ${ing.optional ? 'editor-optional-btn--on' : ''}`} onClick={() => updateIng(ing._id, 'optional', !ing.optional)} title="Mark as optional">{ing.optional ? 'âœ“' : 'â—‹'}</button>
+                  <button className="editor-remove-btn" onClick={() => removeIng(ing._id)}>âœ•</button>
                 </div>
               </SortableItem>
             ))}
@@ -3134,7 +2748,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
                       <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
                       <span className="rp2__ed-timer-row__sep">s</span>
                     </div>
-                    <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                    <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
                   </div>
                 );
               }
@@ -3146,7 +2760,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
                     <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                     <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                   </div>
-                  <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                  <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
                   {item._showTip && createPortal((() => {
                     const ar = item._tipAnchor; const pw = 300, ph = 160;
                     const vw = window.innerWidth, vh = window.innerHeight;
@@ -3167,7 +2781,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
         {notesList.map(note => (
           <div key={note._id} className="editor-note-row">
             <input className="editor-input" value={note.text || ''} onChange={e => updateNote(note._id, e.target.value)} placeholder="e.g. Works great with tofu instead of chicken" />
-            <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>✕</button>
+            <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>âœ•</button>
           </div>
         ))}
         <button className="btn btn--ghost editor-add-btn" onClick={addNote}>+ Add Note</button>
@@ -3175,7 +2789,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
 
       <div className="editor-save-bar">
         {saveError && <p className="editor-error"><Icon name="alertTriangle" size={14} strokeWidth={2} /> {saveError}</p>}
-        {saveSuccess && <p className="editor-success">✓ Saved successfully</p>}
+        {saveSuccess && <p className="editor-success">âœ“ Saved successfully</p>}
         <button className="btn btn--primary btn--large" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
       </div>
     </main>
@@ -3211,7 +2825,7 @@ const CuisineDropdown = ({ cuisines, value, onChange, onCreateNew }) => {
       <button className={`cuisine-dd__trigger ${value ? 'cuisine-dd__trigger--active' : ''}`} onClick={() => setOpen(o => !o)}>
         <span className="cuisine-dd__globe"><Icon name="globe" size={14} strokeWidth={2} /></span>
         <span className="cuisine-dd__label">{value || 'Cuisine'}</span>
-        {value ? <span className="cuisine-dd__x" onMouseDown={clear}>✕</span> : <span className={`cuisine-dd__arrow ${open ? 'cuisine-dd__arrow--open' : ''}`}>▾</span>}
+        {value ? <span className="cuisine-dd__x" onMouseDown={clear}>âœ•</span> : <span className={`cuisine-dd__arrow ${open ? 'cuisine-dd__arrow--open' : ''}`}>â–¾</span>}
       </button>
       {open && (
         <div className="cuisine-dd__panel">
@@ -3219,7 +2833,7 @@ const CuisineDropdown = ({ cuisines, value, onChange, onCreateNew }) => {
           <div className="cuisine-dd__list">
             {filtered.map(c => (
               <button key={c} className={`cuisine-dd__option ${value === c ? 'cuisine-dd__option--active' : ''}`} onMouseDown={() => select(c)}>
-                <span className="cuisine-dd__check">{value === c ? '✓' : ''}</span>{c}
+                <span className="cuisine-dd__check">{value === c ? 'âœ“' : ''}</span>{c}
               </button>
             ))}
             {showCreate && (
@@ -3286,550 +2900,6 @@ const CookbookAutocomplete = ({ value, onChange, cookbooks = [] }) => {
   );
 };
 
-// --- Fridge Tab -------------------------------------------------------------
-// Must match category keys from server's categorise() function
-const ALL_TYPES = ['produce', 'meat & fish', 'dairy', 'sauces', 'spices', 'alcohol', 'staples', 'other'];
-const TYPE_META = {
-  produce:       { label: 'Produce',     icon: 'leaf',     group: 'fridge'  },
-  'meat & fish': { label: 'Meat & Fish', icon: 'utensils', group: 'fridge'  },
-  dairy:         { label: 'Dairy',       icon: 'coffee',   group: 'fridge'  },
-  sauces:        { label: 'Sauces',      icon: 'package',  group: 'fridge'  },
-  spices:        { label: 'Spices',      icon: 'zap',      group: 'pantry'  },
-  alcohol:       { label: 'Alcohol',     icon: 'shuffle',  group: 'pantry'  },
-  staples:       { label: 'Staples',     icon: 'list',     group: 'pantry'  },
-  other:         { label: 'Other',       icon: 'folder',   group: 'pantry'  },
-};
-
-const IngredientEditModal = ({ ing, onSave, onClose, authFetch, recipes = [] }) => {
-  const apiFetch = authFetch || fetch;
-  const isNew = !ing;
-  const [form, setForm] = useState({
-    name:           ing?.name           || '',
-    type:           ing?.type           || 'staples',
-    calories:       ing?.calories       ?? '',
-    protein:        ing?.protein        ?? '',
-    fiber:          ing?.fiber          ?? '',
-    grams_per_unit: ing?.grams_per_unit ?? '',
-  });
-  const [saving, setSaving] = useState(false);
-  const [fetching, setFetching] = useState(false);
-  const [fetchMsg, setFetchMsg] = useState(null);
-  const [error, setError] = useState(null);
-
-  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
-
-  const fetchNutrition = async () => {
-    const query = form.name.trim();
-    if (!query) { setFetchMsg({ type: 'err', text: 'Enter a name first' }); return; }
-    setFetching(true); setFetchMsg(null);
-    try {
-      const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=5&fields=product_name,nutriments,serving_quantity,serving_size`;
-      const res = await fetch(url);
-      const data = await res.json();
-      const products = (data.products || []).filter(p =>
-        p.nutriments && p.nutriments['energy-kcal_100g'] != null
-      );
-      if (!products.length) {
-        setFetchMsg({ type: 'err', text: 'No nutrition data found -- try a simpler name' });
-        setFetching(false); return;
-      }
-      const p = products[0];
-      const n = p.nutriments;
-      const cal  = Math.round(n['energy-kcal_100g'] ?? n['energy-kcal'] ?? 0);
-      const prot = Math.round((n['proteins_100g']   ?? 0) * 10) / 10;
-      const fib  = Math.round((n['fiber_100g']       ?? 0) * 10) / 10;
-      // Try to extract a sensible grams-per-unit from serving data
-      const servingG = parseFloat(p.serving_quantity) || null;
-      const updates = { calories: cal, protein: prot, fiber: fib };
-      if (servingG && servingG > 0 && servingG < 1000) updates.grams_per_unit = Math.round(servingG);
-      setForm(prev => ({ ...prev, ...updates }));
-      const gpuNote = updates.grams_per_unit ? ` · ${updates.grams_per_unit}g/unit` : '';
-      setFetchMsg({ type: 'ok', text: `Fetched from Open Food Facts${p.product_name ? ` · "${p.product_name}"` : ''}${gpuNote}` });
-    } catch {
-      setFetchMsg({ type: 'err', text: 'Fetch failed -- check your connection' });
-    }
-    setFetching(false);
-  };
-
-  const save = async () => {
-    if (!form.name.trim()) { setError('Name is required'); return; }
-    setSaving(true); setError(null);
-    try {
-      const payload = {
-        name:           form.name.trim(),
-        type:           form.type,
-        calories:       form.calories       === '' ? null : Number(form.calories),
-        protein:        form.protein        === '' ? null : Number(form.protein),
-        fiber:          form.fiber          === '' ? null : Number(form.fiber),
-        grams_per_unit: form.grams_per_unit === '' ? null : Number(form.grams_per_unit),
-      };
-      const url = isNew ? `${API}/api/ingredients` : `${API}/api/ingredients/${encodeURIComponent(ing.name)}`;
-      const method = isNew ? 'POST' : 'PUT';
-      const res = await apiFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Save failed');
-      onSave(data.ingredient || payload);
-    } catch (e) { setError(e.message); setSaving(false); }
-  };
-
-  return (
-    <div className="create-modal-overlay ing-edit-modal-overlay" onClick={onClose}>
-      <div className="create-modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
-        <div className="create-modal__header ing-edit-modal-header">
-          <h2 className="create-modal__title" style={{ fontSize: '1rem', lineHeight: 1.3, wordBreak: 'break-word' }}>{isNew ? 'Add Ingredient' : `Edit: ${ing.name}`}</h2>
-          <button className="ing-modal__close" onClick={onClose}>✕</button>
-        </div>
-        <div className="create-modal__body" style={{ gap: 16 }}>
-          <div className="create-modal__field">
-            <label className="create-modal__field-label">Name <span className="create-modal__required">*</span></label>
-            <input className="editor-input" value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Olive Oil" autoFocus={isNew} />
-          </div>
-          <div className="create-modal__field">
-            <label className="create-modal__field-label">Category</label>
-            <div className="picker__chips" style={{ marginTop: 4 }}>
-              {ALL_TYPES.map(t => (
-                <button key={t} className={`chip ${form.type === t ? 'chip--selected' : ''}`} onClick={() => set('type', t)}>
-                  {form.type === t && <span className="chip__check">✓</span>}{TYPE_META[t].icon && <Icon name={TYPE_META[t].icon} size={12} strokeWidth={2} />} {TYPE_META[t].label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span className="create-modal__field-label" style={{ margin: 0 }}>Nutrition <span style={{opacity:0.6,fontWeight:400}}>/ 100g</span></span>
-              <button className="ing-fetch-btn" onClick={fetchNutrition} disabled={fetching}>
-                {fetching ? <><Icon name="repeat" size={13} strokeWidth={2} /> Fetching...</> : <><Icon name="search" size={13} strokeWidth={2} /> Fetch Nutrition</>}
-              </button>
-            </div>
-            {fetchMsg && <p className={`ing-fetch-msg ing-fetch-msg--${fetchMsg.type}`}>{fetchMsg.text}</p>}
-            <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
-              <div className="create-modal__field">
-                <label className="create-modal__field-label"><Icon name="zap" size={13} strokeWidth={2} /> Calories</label>
-                <input className="editor-input" type="number" value={form.calories} onChange={e => set('calories', e.target.value)} placeholder="kcal" />
-              </div>
-              <div className="create-modal__field">
-                <label className="create-modal__field-label"><Icon name="dumbbell" size={13} strokeWidth={2} /> Protein</label>
-                <input className="editor-input" type="number" value={form.protein} onChange={e => set('protein', e.target.value)} placeholder="g" />
-              </div>
-              <div className="create-modal__field">
-                <label className="create-modal__field-label"><Icon name="leaf" size={13} strokeWidth={2} /> Fiber</label>
-                <input className="editor-input" type="number" value={form.fiber} onChange={e => set('fiber', e.target.value)} placeholder="g" />
-              </div>
-            </div>
-          </div>
-          <div className="create-modal__field">
-            <label className="create-modal__field-label">
-              <Icon name="dumbbell" size={13} strokeWidth={2} /> Grams per unit
-              <span style={{ fontWeight: 400, opacity: 0.6, marginLeft: 6 }}>optional</span>
-            </label>
-            <input
-              className="editor-input"
-              type="number"
-              value={form.grams_per_unit}
-              onChange={e => set('grams_per_unit', e.target.value)}
-              placeholder="e.g. 50 for eggs, 5 for garlic cloves"
-            />
-            <p className="create-modal__field-hint" style={{ marginTop: 4 }}>
-              Used when a recipe says "3 eggs" or "2 cloves" -- no weight unit. Leave blank for ingredients always measured by weight or volume.
-            </p>
-          </div>
-          {!isNew && (() => {
-            const usedIn = recipes.filter(r =>
-              (r.ingredients || []).some(i =>
-                (typeof i === 'string' ? i : i.name || '').toLowerCase() === form.name.toLowerCase()
-              )
-            );
-            if (!usedIn.length) return null;
-            return (
-              <div className="create-modal__field">
-                <label className="create-modal__field-label">
-                  <Icon name="bookOpen" size={13} strokeWidth={2} /> Used in {usedIn.length} recipe{usedIn.length > 1 ? 's' : ''}
-                </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-                  {usedIn.map(r => (
-                    <div key={r.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 10px', borderRadius: 8,
-                      background: 'var(--cream)', border: '1px solid var(--border)',
-                    }}>
-                      {r.coverImage && (
-                        <img src={r.coverImage} alt={r.name} style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
-                      )}
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--charcoal)' }}>{r.name}</span>
-                      {r.time && <span style={{ fontSize: 11, color: 'var(--warm-gray)', marginLeft: 'auto' }}>{r.time}</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-          {error && <p className="editor-error"><Icon name="alertTriangle" size={14} strokeWidth={2} /> {error}</p>}
-        </div>
-        <div className="create-modal__footer">
-          <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : isNew ? '+ Add Ingredient' : '✓ Save Changes'}</button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Long Press Chip (kitchen ingredients on mobile) -------------------------
-const LongPressChip = ({ ing, isOn, hasNutrition, onToggle, onLongPress }) => {
-  const timerRef = useRef(null);
-  const didLongPress = useRef(false);
-
-  const startPress = () => {
-    didLongPress.current = false;
-    timerRef.current = setTimeout(() => {
-      didLongPress.current = true;
-      onLongPress();
-    }, 500);
-  };
-  const endPress = () => clearTimeout(timerRef.current);
-  const handleClick = () => { if (!didLongPress.current) onToggle(); };
-
-  return (
-    <button
-      className={`chip ${isOn ? 'chip--selected' : ''}`}
-      onTouchStart={startPress}
-      onTouchEnd={endPress}
-      onTouchMove={endPress}
-      onClick={handleClick}
-    >
-      {isOn && <span className="chip__check">✓</span>}
-      {ing.name}
-      {hasNutrition && <span className="fridge-chip__nutrition-dot" title="Has nutrition data" />}
-    </button>
-  );
-};
-
-// --- Always-expanded types ---------------------------------------------------
-const ALWAYS_OPEN_TYPES = new Set([]); // all sections are now collapsible
-
-// ─── Kitchen / Fridge Tab ────────────────────────────────────────────────────
-const FridgeTab = ({ allIngredients, setAllIngredients, fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, authFetch, recipes = [] }) => {
-  const apiFetch = authFetch || fetch;
-  const [typeOverrides, setTypeOverrides] = useState(() => LS.get('ingredientTypeOverrides', {}));
-  const [editingIng, setEditingIng] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [contextMenu, setContextMenu] = useState(null); // { ing, x, y }
-  const contextMenuRef = useRef(null);
-  // Collapsible state for sections -- all collapsed except produce/meat by default
-  const [collapsedTypes, setCollapsedTypes] = useState(() => {
-    const init = {};
-    ALL_TYPES.forEach(t => { if (!ALWAYS_OPEN_TYPES.has(t)) init[t] = true; });
-    return init;
-  });
-  // Missing half collapsed state
-  const [missingCollapsed, setMissingCollapsed] = useState(true);
-  // Quick-add bar
-  const [quickAddValue, setQuickAddValue] = useState('');
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
-  const quickAddRef = useRef(null);
-  // Recently used
-  const [recentlyUsed, setRecentlyUsed] = useState(() => LS.get('kitchenRecentlyUsed', []));
-
-  useEffect(() => { LS.set('ingredientTypeOverrides', typeOverrides); }, [typeOverrides]);
-  useEffect(() => { LS.set('kitchenRecentlyUsed', recentlyUsed); }, [recentlyUsed]);
-
-  // Close context menu on outside tap
-  useEffect(() => {
-    const handler = (e) => {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) setContextMenu(null);
-    };
-    document.addEventListener('mousedown', handler);
-    document.addEventListener('touchstart', handler);
-    return () => { document.removeEventListener('mousedown', handler); document.removeEventListener('touchstart', handler); };
-  }, []);
-
-  // Long-press handler factory
-  const useLongPress = (ing) => {
-    const timerRef = useRef(null);
-    const onStart = (e) => {
-      timerRef.current = setTimeout(() => {
-        setContextMenu({ ing });
-      }, 500);
-    };
-    const onEnd = () => clearTimeout(timerRef.current);
-    return { onTouchStart: onStart, onTouchEnd: onEnd, onTouchMove: onEnd };
-  };
-
-  // Close quick-add dropdown on outside click
-  useEffect(() => {
-    const handler = (e) => { if (quickAddRef.current && !quickAddRef.current.contains(e.target)) setQuickAddOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const allSelected = useMemo(() => new Set([...fridgeIngredients, ...pantryStaples]), [fridgeIngredients, pantryStaples]);
-  const enriched = useMemo(() => allIngredients.map(i => ({ ...i, type: typeOverrides[i.name] ?? i.type })), [allIngredients, typeOverrides]);
-
-  // Split into Have vs Missing
-  const haveList = useMemo(() => enriched.filter(i => allSelected.has(i.name.toLowerCase())), [enriched, allSelected]);
-  const missingList = useMemo(() => enriched.filter(i => !allSelected.has(i.name.toLowerCase())), [enriched, allSelected]);
-
-  // Group by type
-  const groupBy = (list) => {
-    const map = {};
-    for (const ing of list) {
-      // Normalise type variations to match ALL_TYPES keys
-      let t = ing.type || 'other';
-      if (t === 'staple') t = 'staples';
-      if (t === 'spice') t = 'spices';  
-      if (t === 'meat' || t === 'fish') t = 'meat & fish';
-      if (t === 'sauce') t = 'sauces';
-      if (!map[t]) map[t] = [];
-      map[t].push(ing);
-    }
-    return map;
-  };
-
-  const haveGrouped = useMemo(() => groupBy(haveList), [haveList]);
-  const missingGrouped = useMemo(() => groupBy(missingList), [missingList]);
-
-  const toggle = (name, type) => {
-    const lower = name.toLowerCase();
-    const isFridgeType = ['produce', 'meat & fish', 'dairy', 'sauces'].includes(type);
-    const isOn = allSelected.has(lower);
-    if (isOn) {
-      // Remove from have
-      setFridgeIngredients(prev => prev.filter(i => i !== lower));
-      setPantryStaples(prev => prev.filter(i => i !== lower));
-    } else {
-      // Add to have -- also track in recently used
-      setRecentlyUsed(prev => {
-        const next = [lower, ...prev.filter(x => x !== lower)].slice(0, 12);
-        return next;
-      });
-      if (isFridgeType) setFridgeIngredients(prev => [...prev, lower]);
-      else setPantryStaples(prev => [...prev, lower]);
-    }
-  };
-
-  // Quick-add: adds an ingredient from missing → have immediately
-  const quickAddSuggestions = useMemo(() => {
-    const q = quickAddValue.toLowerCase().trim();
-    if (!q) return missingList.slice(0, 8);
-    // Search all ingredients when typing, not just missing
-    return enriched
-      .filter(i => i.name.toLowerCase().includes(q))
-      .slice(0, 10);
-  }, [quickAddValue, missingList, enriched]);
-
-  const handleQuickAdd = (ing) => {
-    toggle(ing.name, typeOverrides[ing.name] ?? ing.type);
-    setQuickAddValue('');
-    setQuickAddOpen(false);
-  };
-
-  const toggleSection = (type) => {
-    if (ALWAYS_OPEN_TYPES.has(type)) return;
-    setCollapsedTypes(prev => ({ ...prev, [type]: !prev[type] }));
-  };
-
-  const clearSection = (type) => {
-    const names = (haveGrouped[type] || []).map(i => i.name.toLowerCase());
-    setFridgeIngredients(prev => prev.filter(x => !names.includes(x)));
-    setPantryStaples(prev => prev.filter(x => !names.includes(x)));
-  };
-
-  const handleSaveIng = (saved) => {
-    if (editingIng === false) {
-      setAllIngredients(prev => [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)));
-    } else {
-      setAllIngredients(prev => prev.map(i => i.name === editingIng.name ? { ...i, ...saved } : i));
-      if (saved.type !== editingIng.type) setTypeOverrides(prev => ({ ...prev, [saved.name]: saved.type }));
-    }
-    setEditingIng(null);
-  };
-
-  const handleDeleteIng = async (ing) => {
-    try {
-      const res = await apiFetch(`${API}/api/ingredients/${encodeURIComponent(ing.name)}`, { method: 'DELETE' });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Delete failed'); }
-      setAllIngredients(prev => prev.filter(i => i.name !== ing.name));
-      setFridgeIngredients(prev => prev.filter(x => x !== ing.name.toLowerCase()));
-      setPantryStaples(prev => prev.filter(x => x !== ing.name.toLowerCase()));
-    } catch (e) { alert('Could not delete: ' + e.message); }
-    setDeleteTarget(null);
-  };
-
-  const renderGroup = (type, ings, side) => {
-    const isCollapsed = side === 'have' ? collapsedTypes[type] : false;
-    const isAlwaysOpen = ALWAYS_OPEN_TYPES.has(type);
-    const haveCount = (haveGrouped[type] || []).length;
-    return (
-      <div key={type} className="fridge-group">
-        <div className={`fridge-group__header ${!isAlwaysOpen ? 'fridge-group__header--collapsible' : ''}`}
-          onClick={() => !isAlwaysOpen && toggleSection(type)}>
-          <h3 className="fridge-group__title">
-            {TYPE_META[type]?.icon && <Icon name={TYPE_META[type].icon} size={14} strokeWidth={2} />} {TYPE_META[type]?.label ?? type}
-            {side === 'missing' && <span className="fridge-group__count">{ings.length}</span>}
-            {side === 'have' && <span className="fridge-group__count">{ings.length}</span>}
-          </h3>
-          <div className="fridge-group__header-actions" onClick={e => e.stopPropagation()}>
-            {side === 'have' && haveCount > 0 && (
-              <button className="fridge-group__clear-btn" title={`Clear ${TYPE_META[type]?.label}`} onClick={() => clearSection(type)}>
-                Clear
-              </button>
-            )}
-            {!isAlwaysOpen && (
-              <span className={`fridge-group__arrow ${isCollapsed ? '' : 'fridge-group__arrow--open'}`}>▾</span>
-            )}
-          </div>
-        </div>
-        {!isCollapsed && (
-          <div className="fridge-chips">
-            {ings.map(ing => {
-              const isOn = allSelected.has(ing.name.toLowerCase());
-              const hasNutrition = ing.calories != null || ing.protein != null || ing.fiber != null;
-              return (
-                <div key={ing.name} className="fridge-ing-wrap">
-                  <div className="fridge-chip-group">
-                    <LongPressChip
-                      ing={ing}
-                      isOn={allSelected.has(ing.name.toLowerCase())}
-                      hasNutrition={ing.calories != null || ing.protein != null || ing.fiber != null}
-                      onToggle={() => toggle(ing.name, typeOverrides[ing.name] ?? ing.type)}
-                      onLongPress={() => setContextMenu({ ing })}
-                    />
-                    {/* Desktop: hover-reveal actions */}
-                    <div className="fridge-chip-actions">
-                      <button className="fridge-chip-action fridge-chip-action--edit" title="Edit" onClick={() => setEditingIng({ ...ing, type: typeOverrides[ing.name] ?? ing.type })}>✎</button>
-                      <button className="fridge-chip-action fridge-chip-action--del" title="Delete" onClick={() => setDeleteTarget(ing)}>✕</button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  return (
-    <main className="view">
-      {(editingIng !== null) && (
-        <IngredientEditModal
-          ing={editingIng === false ? null : editingIng}
-          onSave={handleSaveIng}
-          onClose={() => setEditingIng(null)}
-          authFetch={apiFetch}
-          recipes={recipes}
-        />
-      )}
-      {deleteTarget && (
-        <div className="create-modal-overlay" onClick={() => setDeleteTarget(null)}>
-          <div className="delete-confirm-modal" onClick={e => e.stopPropagation()}>
-            <div className="delete-confirm-modal__icon"><Icon name="trash2" size={32} color="var(--terracotta)" strokeWidth={1.5} /></div>
-            <h2 className="delete-confirm-modal__title">Remove "{deleteTarget.name}"?</h2>
-            <p className="delete-confirm-modal__body">This will remove the ingredient from the database. <strong>This cannot be undone.</strong></p>
-            <div className="delete-confirm-modal__actions">
-              <button className="btn btn--ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
-              <button className="btn btn--danger" onClick={() => handleDeleteIng(deleteTarget)}><Icon name="trash2" size={14} strokeWidth={2} /> Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Long-press context menu (mobile) */}
-      {contextMenu && (
-        <div className="fridge-context-overlay" onClick={() => setContextMenu(null)}>
-          <div className="fridge-context-menu" ref={contextMenuRef} onClick={e => e.stopPropagation()}>
-            <div className="fridge-context-menu__title">{contextMenu.ing.name}</div>
-            <button className="fridge-context-menu__item" onClick={() => { setEditingIng({ ...contextMenu.ing, type: typeOverrides[contextMenu.ing.name] ?? contextMenu.ing.type }); setContextMenu(null); }}>
-              <Icon name="pencil" size={16} strokeWidth={2} /> Edit ingredient
-            </button>
-            <button className="fridge-context-menu__item fridge-context-menu__item--danger" onClick={() => { setDeleteTarget(contextMenu.ing); setContextMenu(null); }}>
-              <Icon name="trash2" size={16} strokeWidth={2} /> Delete ingredient
-            </button>
-            <button className="fridge-context-menu__item fridge-context-menu__item--cancel" onClick={() => setContextMenu(null)}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="fridge-header">
-        <div>
-          <h2 className="fridge-title">My Kitchen</h2>
-          <p className="fridge-subtitle">{allSelected.size} ingredients tracked · {missingList.length} missing</p>
-        </div>
-        <div className="fridge-header__actions">
-          <button className="btn btn--primary btn--sm" onClick={() => setEditingIng(false)}>+ Add ingredient</button>
-          <button className="btn btn--ghost btn--sm" onClick={() => { setFridgeIngredients([]); setPantryStaples([]); }}>Clear all</button>
-        </div>
-      </div>
-
-      {/* Quick-Add Bar */}
-      <div className="kitchen-quickadd-wrap" ref={quickAddRef}>
-        <div className="kitchen-quickadd-bar">
-          <span className="kitchen-quickadd-icon">＋</span>
-          <input
-            className="kitchen-quickadd-input"
-            placeholder="Quick-add an ingredient to your kitchen..."
-            value={quickAddValue}
-            onChange={e => { setQuickAddValue(e.target.value); setQuickAddOpen(true); }}
-            onFocus={() => setQuickAddOpen(true)}
-          />
-          {quickAddValue && <button className="fridge-filter-bar__clear" onClick={() => { setQuickAddValue(''); setQuickAddOpen(false); }}>✕</button>}
-        </div>
-        {quickAddOpen && quickAddSuggestions.length > 0 && (
-          <div className="kitchen-quickadd-dropdown">
-            {quickAddSuggestions.map(ing => {
-              const isOnHand = allSelected.has(ing.name.toLowerCase());
-              return (
-                <button key={ing.name} className="kitchen-quickadd-option" 
-                  onMouseDown={() => handleQuickAdd(ing)}
-                  style={{ opacity: isOnHand ? 0.5 : 1 }}
-                >
-                  <span className="kitchen-quickadd-option__emoji">
-                    {isOnHand 
-                      ? <Icon name="checkCircle" size={13} strokeWidth={2} color="var(--sage)" />
-                      : TYPE_META[ing.type]?.icon 
-                      ? <Icon name={TYPE_META[ing.type].icon} size={13} strokeWidth={2} /> 
-                      : '·'}
-                  </span>
-                  {ing.name}
-                  {isOnHand && <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--sage)', fontWeight: 600 }}>on hand</span>}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* -- ON HAND area (full width) -- */}
-      <div className="kitchen-onhand-area">
-        <div className="kitchen-onhand-header">
-          <h2 className="kitchen-split__title">On Hand <span className="kitchen-split__count">{haveList.length}</span></h2>
-        </div>
-        <div className="fridge-groups kitchen-onhand-groups">
-          {ALL_TYPES.filter(t => haveGrouped[t]?.length > 0).map(t => renderGroup(t, haveGrouped[t], 'have'))}
-          {haveList.length === 0 && (
-            <div className="fridge-empty"><p>Nothing added yet. Use quick-add above or tap ingredients below.</p></div>
-          )}
-        </div>
-      </div>
-
-      {/* -- MISSING -- full width bar -- */}
-      <div className="kitchen-missing-section">
-        <button className="kitchen-missing-header" onClick={() => setMissingCollapsed(p => !p)}>
-          <h2 className="kitchen-split__title">Missing <span className="kitchen-split__count">{missingList.length}</span></h2>
-          <span className={`fridge-group__arrow ${missingCollapsed ? '' : 'fridge-group__arrow--open'}`}>▾</span>
-        </button>
-        {!missingCollapsed && (
-          <div className="fridge-groups">
-            {ALL_TYPES.filter(t => missingGrouped[t]?.length > 0).map(t => renderGroup(t, missingGrouped[t], 'missing'))}
-          </div>
-        )}
-      </div>
-    </main>
-  );
-};
-
 // --- Profile Tab -------------------------------------------------------------
 const DIETARY_OPTIONS = ['Vegetarian', 'Vegan', 'Dairy-Free', 'Nut-Free', 'Gluten-Free'];
 
@@ -3845,7 +2915,7 @@ const DIETARY_CONFLICTS = {
     label: 'animal products',
   },
   'Dairy-Free': {
-    keywords: ['milk','cream','butter','cheese','yogurt','whey','casein','ghee','cheddar','mozzarella','parmesan','brie','feta','ricotta','mascarpone','sour cream','half and half','buttermilk','kefir','cream cheese','crème fraîche','condensed milk','evaporated milk'],
+    keywords: ['milk','cream','butter','cheese','yogurt','whey','casein','ghee','cheddar','mozzarella','parmesan','brie','feta','ricotta','mascarpone','sour cream','half and half','buttermilk','kefir','cream cheese','crÃ¨me fraÃ®che','condensed milk','evaporated milk'],
     label: 'dairy',
   },
   'Nut-Free': {
@@ -3932,7 +3002,7 @@ const AddFriendModal = ({ onClose, onCreated, authFetch }) => {
         style={{ background: 'var(--warm-white)', borderRadius: 16, padding: '24px 22px', width: '100%', maxWidth: 320, boxShadow: '0 8px 40px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
           <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700, color: 'var(--charcoal)' }}><Icon name="users" size={18} strokeWidth={2} /> Add a Friend</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--warm-gray)', lineHeight: 1, padding: '2px 4px' }}>×</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--warm-gray)', lineHeight: 1, padding: '2px 4px' }}>Ã—</button>
         </div>
         {error && <div style={{ background: '#fff0ee', border: '1px solid #f5c2b8', borderRadius: 8, padding: '7px 10px', fontSize: '0.8rem', color: 'var(--terracotta-dark, #b84a2e)' }}>{error}</div>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -3970,7 +3040,7 @@ const AddFriendModal = ({ onClose, onCreated, authFetch }) => {
   );
 };
 
-// ─── Profile Tab ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Profile Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser, onLogout, onAuthUserUpdate, darkMode = false, setDarkMode, tabBarTabs, setTabBarTabs }) => {
   const apiFetch = authFetch || fetch;
   const isAdmin = authUser?.role === 'admin';
@@ -4124,7 +3194,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         <AddFriendModal
           authFetch={authFetch}
           onClose={() => setShowAddFriend(false)}
-          onCreated={(uname) => { setAddFriendSuccess(`Account created for ${uname} ✓`); loadUsers(); setTimeout(() => setAddFriendSuccess(''), 4000); }}
+          onCreated={(uname) => { setAddFriendSuccess(`Account created for ${uname} âœ“`); loadUsers(); setTimeout(() => setAddFriendSuccess(''), 4000); }}
         />
       )}
       {/* -- User header -- */}
@@ -4142,7 +3212,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                 onKeyDown={e => { if (e.key === 'Enter') handleSaveDisplayName(); if (e.key === 'Escape') setEditingDisplayName(false); }}
               />
               <button onClick={handleSaveDisplayName} disabled={savingDisplayName} className="display-name-save-btn">
-                {savingDisplayName ? '...' : '✓ Save'}
+                {savingDisplayName ? '...' : 'âœ“ Save'}
               </button>
               <button onClick={() => setEditingDisplayName(false)} className="display-name-cancel-btn">
                 Cancel
@@ -4152,12 +3222,12 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <h2 className="profile-header__title" style={{ margin: 0 }}>{authUser?.display_name || authUser?.username || 'Your Kitchen'}</h2>
               <button onClick={() => { setDraftDisplayName(authUser?.display_name || ''); setEditingDisplayName(true); }}
-                style={{ background: 'none', border: 'none', color: 'var(--warm-gray)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', lineHeight: 1 }} title="Edit display name">✎</button>
+                style={{ background: 'none', border: 'none', color: 'var(--warm-gray)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', lineHeight: 1 }} title="Edit display name">âœŽ</button>
             </div>
           )}
           <p className="profile-header__sub" style={{ marginTop: 2 }}>
-            {authUser?.display_name ? <span style={{ color: 'var(--warm-gray)', fontSize: '0.8rem' }}>@{authUser.username} · </span> : null}
-            {totalRecipes} recipes · {cookHistory.length} times cooked{isAdmin ? ' · admin' : ''}
+            {authUser?.display_name ? <span style={{ color: 'var(--warm-gray)', fontSize: '0.8rem' }}>@{authUser.username} Â· </span> : null}
+            {totalRecipes} recipes Â· {cookHistory.length} times cooked{isAdmin ? ' Â· admin' : ''}
           </p>
         </div>
         <button onClick={onLogout} style={{ background: 'none', border: '1.5px solid var(--border)', borderRadius: 999, padding: '6px 16px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--warm-gray)', cursor: 'pointer', flexShrink: 0 }}>
@@ -4172,11 +3242,11 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
           <div className="profile-settings-toggle__right">
             {cookHistory.length > 0 && historyOpen && (
               <div className="history-view-toggle" onClick={e => e.stopPropagation()}>
-                <button className={`history-view-toggle__btn ${historyView==='timeline'?'history-view-toggle__btn--on':''}`} onClick={() => setHistoryView('timeline')} title="Timeline view">☰</button>
-                <button className={`history-view-toggle__btn ${historyView==='calendar'?'history-view-toggle__btn--on':''}`} onClick={() => setHistoryView('calendar')} title="Calendar view">▦</button>
+                <button className={`history-view-toggle__btn ${historyView==='timeline'?'history-view-toggle__btn--on':''}`} onClick={() => setHistoryView('timeline')} title="Timeline view">â˜°</button>
+                <button className={`history-view-toggle__btn ${historyView==='calendar'?'history-view-toggle__btn--on':''}`} onClick={() => setHistoryView('calendar')} title="Calendar view">â–¦</button>
               </div>
             )}
-            <span className={`profile-settings-toggle__arrow ${historyOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
+            <span className={`profile-settings-toggle__arrow ${historyOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
           </div>
         </button>
 
@@ -4214,7 +3284,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                                 <p className="cook-timeline__date">{d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
                                 {entry.rating > 0 && (
                                   <div className="cook-timeline__rating">
-                                    {'★'.repeat(entry.rating)}<span className="cook-timeline__rating-empty">{'★'.repeat(5 - entry.rating)}</span>
+                                    {'â˜…'.repeat(entry.rating)}<span className="cook-timeline__rating-empty">{'â˜…'.repeat(5 - entry.rating)}</span>
                                     <span className="cook-timeline__rating-label">{STAR_LABELS[entry.rating]}</span>
                                   </div>
                                 )}
@@ -4231,9 +3301,9 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
             ) : (
               <div className="cook-calendar cook-calendar--gcal">
                 <div className="cook-calendar__nav">
-                  <button className="cook-calendar__nav-btn" onClick={prevMonth}>‹</button>
+                  <button className="cook-calendar__nav-btn" onClick={prevMonth}>â€¹</button>
                   <span className="cook-calendar__month-label">{MONTH_NAMES[calendarDate.month]} {calendarDate.year}</span>
-                  <button className="cook-calendar__nav-btn" onClick={nextMonth}>›</button>
+                  <button className="cook-calendar__nav-btn" onClick={nextMonth}>â€º</button>
                 </div>
                 <div className="cook-calendar__gcal-grid">
                   {DAY_NAMES.map(d => <div key={d} className="cook-calendar__gcal-day-header">{d}</div>)}
@@ -4267,7 +3337,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       <section className="profile-section profile-section--collapsible">
         <button className="profile-settings-toggle" onClick={() => setAttemptsOpen(o => !o)}>
           <span className="profile-settings-toggle__title"><Icon name="repeat" size={15} strokeWidth={2} /> Recipe Attempts</span>
-          <span className={`profile-settings-toggle__arrow ${attemptsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
+          <span className={`profile-settings-toggle__arrow ${attemptsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
         </button>
         {attemptsOpen && (
           <div className="profile-attempts">
@@ -4307,7 +3377,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         <section className="profile-section profile-section--collapsible">
           <button className="profile-settings-toggle" onClick={() => setSharingOpen(o => !o)}>
             <span className="profile-settings-toggle__title"><Icon name="users" size={15} strokeWidth={2} /> Sharing Options</span>
-            <span className={`profile-settings-toggle__arrow ${sharingOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
+            <span className={`profile-settings-toggle__arrow ${sharingOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
           </button>
           {sharingOpen && (
             <div className="profile-settings-body">
@@ -4363,7 +3433,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                               </button>
                             </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--warm-gray)' }}>
-                              {u.display_name ? `@${u.username} · ` : ''}<span style={{ textTransform: 'capitalize' }}>{u.role}</span>
+                              {u.display_name ? `@${u.username} Â· ` : ''}<span style={{ textTransform: 'capitalize' }}>{u.role}</span>
                             </div>
                           </div>
                           {u.role !== 'admin' && (
@@ -4402,7 +3472,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         <section className="profile-section profile-section--collapsible" style={{ marginBottom: 12 }}>
           <button className="profile-settings-toggle" onClick={() => setAdminToolsOpen(o => !o)}>
             <span className="profile-settings-toggle__title"><Icon name="tool" size={15} strokeWidth={2} /> Admin Tools</span>
-            <span className={`profile-settings-toggle__arrow ${adminToolsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
+            <span className={`profile-settings-toggle__arrow ${adminToolsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
           </button>
           {adminToolsOpen && (
             <div className="profile-settings-body">
@@ -4421,12 +3491,12 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                       const res = await apiFetch(`${API}/api/admin/recalculate-nutrition`, { method: 'POST' });
                       const data = await res.json();
                       if (!res.ok) throw new Error(data.error || 'Failed');
-                      setRecalcResult(`✓ Done -- updated ${data.updated} of ${data.total} recipes`);
-                    } catch (e) { setRecalcResult(`⚠️ ${e.message}`); }
+                      setRecalcResult(`âœ“ Done -- updated ${data.updated} of ${data.total} recipes`);
+                    } catch (e) { setRecalcResult(`âš ï¸ ${e.message}`); }
                     setRecalcRunning(false);
                   }}
                 >{recalcRunning ? 'Running...' : 'Recalculate All Nutrition'}</button>
-                {recalcResult && <p style={{ marginTop: 10, fontSize: '0.85rem', color: recalcResult.startsWith('✓') ? 'var(--sage)' : 'var(--terracotta)' }}>{recalcResult}</p>}
+                {recalcResult && <p style={{ marginTop: 10, fontSize: '0.85rem', color: recalcResult.startsWith('âœ“') ? 'var(--sage)' : 'var(--terracotta)' }}>{recalcResult}</p>}
               </div>
 
             </div>
@@ -4439,13 +3509,13 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         <section className="profile-section profile-section--collapsible">
           <button className="profile-settings-toggle" onClick={() => setComingSoonOpen(o => !o)}>
             <span className="profile-settings-toggle__title"><Icon name="zap" size={15} strokeWidth={2} /> Coming Soon</span>
-            <span className={`profile-settings-toggle__arrow ${comingSoonOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
+            <span className={`profile-settings-toggle__arrow ${comingSoonOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
           </button>
           {comingSoonOpen && (
             <div className="profile-settings-body">
 
               <div className="settings-section">
-                <h4 className="settings-section__title">⚖️ Recipe Proportions</h4>
+                <h4 className="settings-section__title">âš–ï¸ Recipe Proportions</h4>
                 <p className="settings-section__hint">
                   Adjust any one ingredient's amount and the rest of the recipe scales automatically
                   while keeping whole-unit ingredients (like eggs) sensibly rounded. Calorie and
@@ -4455,30 +3525,30 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
               </div>
 
               <div className="settings-section">
-                <h4 className="settings-section__title">💬 Ingredient Reasoning on Hover</h4>
+                <h4 className="settings-section__title">ðŸ’¬ Ingredient Reasoning on Hover</h4>
                 <p className="settings-section__hint">
                   Hover over any ingredient in a recipe to see a short cooking note explaining why
-                  that quantity or ratio was chosen — things like "balances acidity" or "adds depth
+                  that quantity or ratio was chosen â€” things like "balances acidity" or "adds depth
                   without overpowering." Purely culinary context, no dietary or allergy info.
                 </p>
                 <span className="roadmap-badge">Planned</span>
               </div>
 
               <div className="settings-section">
-                <h4 className="settings-section__title">🔢 Accurate Calorie Tracking</h4>
+                <h4 className="settings-section__title">ðŸ”¢ Accurate Calorie Tracking</h4>
                 <p className="settings-section__hint">
                   After cooking, log exactly how much of each high-calorie ingredient you actually
-                  used and get an adjusted nutrition breakdown — useful when you deviate from the
+                  used and get an adjusted nutrition breakdown â€” useful when you deviate from the
                   recipe (e.g. used less oil, added extra cheese).
                 </p>
                 <span className="roadmap-badge">Planned</span>
               </div>
 
               <div className="settings-section">
-                <h4 className="settings-section__title">🖼️ Local Image Upload</h4>
+                <h4 className="settings-section__title">ðŸ–¼ï¸ Local Image Upload</h4>
                 <p className="settings-section__hint">
                   Upload a photo directly from your device to use as a recipe cover image, stored
-                  as a base-64 string in the database — no external hosting or URL required.
+                  as a base-64 string in the database â€” no external hosting or URL required.
                 </p>
                 <span className="roadmap-badge">Planned</span>
               </div>
@@ -4493,7 +3563,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         <section className="profile-section profile-section--collapsible">
           <button className="profile-settings-toggle" onClick={() => setBugReportOpen(o => !o)}>
             <span className="profile-settings-toggle__title"><Icon name="alertTriangle" size={15} strokeWidth={2} /> Bug Reports <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--warm-gray)', marginLeft: 4 }}>({bugList.length})</span></span>
-            <span className={`profile-settings-toggle__arrow ${bugReportOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
+            <span className={`profile-settings-toggle__arrow ${bugReportOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
           </button>
           {bugReportOpen && (
             <div className="profile-settings-body">
@@ -4532,7 +3602,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                     }}
                   >+ Add</button>
                 </div>
-                {bugSubmitted && <p style={{ fontSize: 12, color: 'var(--sage)', marginTop: 6 }}>✓ Logged!</p>}
+                {bugSubmitted && <p style={{ fontSize: 12, color: 'var(--sage)', marginTop: 6 }}>âœ“ Logged!</p>}
               </div>
               {bugList.length > 0 && (
                 <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -4567,14 +3637,14 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                           cursor: 'pointer', fontSize: 11, fontWeight: 700,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}
-                      >{bug.done ? '✓' : ''}</button>
+                      >{bug.done ? 'âœ“' : ''}</button>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: 13, color: 'var(--charcoal)', margin: 0, textDecoration: bug.done ? 'line-through' : 'none', wordBreak: 'break-word' }}>{bug.text}</p>
                         <p style={{ fontSize: 11, color: 'var(--warm-gray)', margin: '2px 0 0' }}>{bug.date}</p>
                       </div>
                       <button className="editor-remove-btn" title="Delete"
                         onClick={() => { const next = bugList.filter(b => b.id !== bug.id); setBugList(next); LS.set('bugReports', next); }}
-                      >✕</button>
+                      >âœ•</button>
                     </div>
                   ))}
                 </div>
@@ -4591,7 +3661,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       <section className="profile-section profile-section--settings">
         <button className="profile-settings-toggle" onClick={() => setSettingsOpen(o => !o)}>
           <span className="profile-settings-toggle__title"><Icon name="settings" size={15} strokeWidth={2} /> Settings</span>
-          <span className={`profile-settings-toggle__arrow ${settingsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
+          <span className={`profile-settings-toggle__arrow ${settingsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
         </button>
 
         {settingsOpen && (
@@ -4652,18 +3722,18 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                             disabled={atMax}
                             style={{ opacity: atMax ? 0.4 : 1 }}
                           >
-                            {isOn && <span className="chip__check">✓</span>}
+                            {isOn && <span className="chip__check">âœ“</span>}
                             <Icon name={icon} size={13} strokeWidth={2} /> {label}
                           </button>
                         );
                       })}
                       <button className="chip chip--selected" disabled style={{ opacity: 0.6 }}>
-                        <span className="chip__check">✓</span>
+                        <span className="chip__check">âœ“</span>
                         <Icon name="user" size={13} strokeWidth={2} /> Profile
                       </button>
                     </div>
                     <p style={{ fontSize: 12, color: 'var(--warm-gray)', marginTop: 8 }}>
-                      {selected.length}/4 selected · Profile is always shown
+                      {selected.length}/4 selected Â· Profile is always shown
                     </p>
                   </div>
                 );
@@ -4676,7 +3746,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
               <div className="picker__chips" style={{ marginTop: 10, flexWrap: 'wrap' }}>
                 {DIETARY_OPTIONS.map(d => (
                   <button key={d} className={`chip ${dietaryFilters.includes(d) ? 'chip--selected' : ''}`} onClick={() => toggleDiet(d)}>
-                    {dietaryFilters.includes(d) && <span className="chip__check">✓</span>}{d}
+                    {dietaryFilters.includes(d) && <span className="chip__check">âœ“</span>}{d}
                   </button>
                 ))}
               </div>
@@ -4746,12 +3816,12 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
 
 // Unit conversion to a common base (grams for weight, ml for volume)
 const UNIT_CONVERSIONS = {
-  // weight → grams
+  // weight â†’ grams
   g: 1, gram: 1, grams: 1,
   kg: 1000, kilogram: 1000, kilograms: 1000,
   oz: 28.3495, ounce: 28.3495, ounces: 28.3495,
   lb: 453.592, pound: 453.592, pounds: 453.592,
-  // volume → ml
+  // volume â†’ ml
   ml: 1, milliliter: 1, milliliters: 1,
   l: 1000, liter: 1000, liters: 1000, litre: 1000, litres: 1000,
   tsp: 4.92892, teaspoon: 4.92892, teaspoons: 4.92892,
@@ -4815,7 +3885,7 @@ const consolidateItems = (items) => {
   return Object.values(map);
 };
 
-// ─── Grocery List Tab ────────────────────────────────────────────────────────
+// â”€â”€â”€ Grocery List Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients, setFridgeIngredients, setPantryStaples }) => {
   const [categories, setCategories] = useState([]);
   const [recipeNames, setRecipeNames] = useState([]);
@@ -4897,7 +3967,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
       lines.push(`\n${cat.emoji} ${cat.name}`);
       items.forEach(item => {
         const inKitchen = allMyIngredients.has(item.name.toLowerCase().trim());
-        const tick = checked.has(`${cat.name}-${item.name}`) || inKitchen ? '✓' : '○';
+        const tick = checked.has(`${cat.name}-${item.name}`) || inKitchen ? 'âœ“' : 'â—‹';
         const amount = [item.amount, item.unit].filter(Boolean).join(' ');
         const extra = item._extra ? ` + ${item._extra}` : '';
         lines.push(`  ${tick} ${amount}${extra} ${item.name}${item.prep_note ? ` (${item.prep_note})` : ''}`);
@@ -4940,7 +4010,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
         <div className="grocery-empty">
           <div className="grocery-empty__icon"><Icon name="timer" size={40} color="var(--warm-gray)" strokeWidth={1.5} /></div>
           <h3 className="grocery-empty__title">No recipes in Make Soon</h3>
-          <p className="grocery-empty__sub">Tap <span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',margin:'0 2px'}}><Icon name="timer" size={13} strokeWidth={2} /></span> on any recipe to add it to Make Soon — your grocery list will build automatically.</p>
+          <p className="grocery-empty__sub">Tap <span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',margin:'0 2px'}}><Icon name="timer" size={13} strokeWidth={2} /></span> on any recipe to add it to Make Soon â€” your grocery list will build automatically.</p>
         </div>
       )}
 
@@ -4957,7 +4027,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
           </div>
           {inKitchenCount > 0 && (
             <div className="grocery-kitchen-banner">
-              <span>✓ {inKitchenCount} of {totalItems} ingredients already in your kitchen</span>
+              <span>âœ“ {inKitchenCount} of {totalItems} ingredients already in your kitchen</span>
             </div>
           )}
           <div className="grocery-list">
@@ -4986,7 +4056,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
                           }}
                         >
                           <div className={`grocery-item__checkbox ${isChecked ? 'grocery-item__checkbox--checked' : ''}`}>
-                            {isChecked && '✓'}
+                            {isChecked && 'âœ“'}
                           </div>
                           <div className="grocery-item__body">
                             <span className="grocery-item__name">
@@ -4995,9 +4065,9 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
                               {' '}{item.name}
                             </span>
                             {item.prep_note && <span className="grocery-item__note">{item.prep_note}</span>}
-                            {inKitchen && <span className="grocery-item__kitchen-tag">in kitchen · tap to remove</span>}
-                            {!inKitchen && !isChecked && <span className="grocery-item__tap-hint">tap to check off → adds to kitchen</span>}
-                            {isChecked && !inKitchen && <span className="grocery-item__tap-hint">tap to uncheck → removes from kitchen</span>}
+                            {inKitchen && <span className="grocery-item__kitchen-tag">in kitchen Â· tap to remove</span>}
+                            {!inKitchen && !isChecked && <span className="grocery-item__tap-hint">tap to check off â†’ adds to kitchen</span>}
+                            {isChecked && !inKitchen && <span className="grocery-item__tap-hint">tap to uncheck â†’ removes from kitchen</span>}
                             {item.recipes?.length > 1 && !inKitchen && (
                               <span className="grocery-item__recipes">for {item.recipes.join(', ')}</span>
                             )}
@@ -5098,7 +4168,7 @@ const NoteFormModal = ({ note, onSave, onClose, authFetch }) => {
       <div className="create-modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title">{isNew ? 'Add Cooking Note' : 'Edit Note'}</h2>
-          <button className="ing-modal__close" onClick={onClose}>✕</button>
+          <button className="ing-modal__close" onClick={onClose}>âœ•</button>
         </div>
         <div className="create-modal__body" style={{ gap: 14 }}>
           <div className="create-modal__field">
@@ -5110,7 +4180,7 @@ const NoteFormModal = ({ note, onSave, onClose, authFetch }) => {
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
               {NOTE_TYPES.map(t => (
                 <button key={t} className={`chip ${form.type === t ? 'chip--selected' : ''}`} onClick={() => set('type', t)}>
-                  {form.type === t && <span className="chip__check">✓</span>}<Icon name={NOTE_TYPE_META[t].emoji} size={13} strokeWidth={2} /> {NOTE_TYPE_META[t].label}
+                  {form.type === t && <span className="chip__check">âœ“</span>}<Icon name={NOTE_TYPE_META[t].emoji} size={13} strokeWidth={2} /> {NOTE_TYPE_META[t].label}
                 </button>
               ))}
             </div>
@@ -5120,7 +4190,7 @@ const NoteFormModal = ({ note, onSave, onClose, authFetch }) => {
             <textarea className="editor-textarea" value={form.body} onChange={e => handleBodyChange(e.target.value)} placeholder="Describe the rule, technique, or tip..." rows={4} style={{ resize: 'vertical' }} />
           </div>
           <div className="create-modal__field">
-            <label className="create-modal__field-label">Tooltip keywords <span style={{opacity:0.6, fontWeight:400}}>auto-generated · edit freely</span></label>
+            <label className="create-modal__field-label">Tooltip keywords <span style={{opacity:0.6, fontWeight:400}}>auto-generated Â· edit freely</span></label>
             <input className="editor-input" value={form.keywords} onChange={e => set('keywords', e.target.value)} placeholder="e.g. pasta, salt, water, boil" />
             <p className="create-modal__field-hint" style={{ marginTop: 4 }}>These words trigger this note as a tooltip on recipe steps.</p>
           </div>
@@ -5132,7 +4202,7 @@ const NoteFormModal = ({ note, onSave, onClose, authFetch }) => {
         </div>
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : isNew ? '+ Add Note' : '✓ Save'}</button>
+          <button className="btn btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : isNew ? '+ Add Note' : 'âœ“ Save'}</button>
         </div>
       </div>
     </div>
@@ -5147,11 +4217,11 @@ const NoteCard = ({ note, isAdmin, onEdit, onDelete }) => {
       <div className="cn-card__header" onClick={() => setExpanded(e => !e)}>
         <span className="cn-card__type-badge"><Icon name={meta.emoji} size={13} strokeWidth={2} /></span>
         <span className="cn-card__title">{note.title}</span>
-        <span className="cn-card__chevron">{expanded ? '▴' : '▾'}</span>
+        <span className="cn-card__chevron">{expanded ? 'â–´' : 'â–¾'}</span>
         {isAdmin && (
           <div className="cn-card__actions" onClick={e => e.stopPropagation()}>
-            <button className="cn-card__action-btn" onClick={onEdit} title="Edit">✎</button>
-            <button className="cn-card__action-btn cn-card__action-btn--del" onClick={onDelete} title="Delete">✕</button>
+            <button className="cn-card__action-btn" onClick={onEdit} title="Edit">âœŽ</button>
+            <button className="cn-card__action-btn cn-card__action-btn--del" onClick={onDelete} title="Delete">âœ•</button>
           </div>
         )}
       </div>
@@ -5175,7 +4245,7 @@ const NoteCard = ({ note, isAdmin, onEdit, onDelete }) => {
   );
 };
 
-// ─── Cooking Notes Tab ───────────────────────────────────────────────────────
+// â”€â”€â”€ Cooking Notes Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const CookingNotesTab = ({ notes, setNotes, authFetch, isAdmin }) => {
   const [editingNote, setEditingNote] = useState(null); // null = closed, false = new, obj = editing
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -5291,7 +4361,7 @@ const CookingNotesTab = ({ notes, setNotes, authFetch, isAdmin }) => {
 // --- Site Footer ------------------------------------------------------------
 const GITHUB_REPO = 'kavyasomala/RecipeApp'; // update with actual repo path
 
-// ─── Site Footer ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Site Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SiteFooter = ({ onNav }) => {
   const [lastUpdated, setLastUpdated] = useState(null);
 
@@ -5306,7 +4376,7 @@ const SiteFooter = ({ onNav }) => {
   }, []);
 
   const fmt = (d) => d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) +
-    ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    ' Â· ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
   return (
     <footer className="site-footer">
@@ -5414,7 +4484,7 @@ const AddReferenceModal = ({ onSave, onClose, cookbookTitle = '', authFetch }) =
       <div className="create-modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title"><Icon name="bookMarked" size={18} strokeWidth={2} /> Add Reference</h2>
-          <button className="ing-modal__close" onClick={onClose}>✕</button>
+          <button className="ing-modal__close" onClick={onClose}>âœ•</button>
         </div>
         <div className="create-modal__body" style={{ gap: 14 }}>
           {/* Name + Page */}
@@ -5466,7 +4536,7 @@ const AddReferenceModal = ({ onSave, onClose, cookbookTitle = '', authFetch }) =
             <div className="picker__chips" style={{ marginTop:6 }}>
               {ALL_CUISINES.map(c => (
                 <button key={c} className={`chip ${cuisine === c ? 'chip--selected' : ''}`} onClick={() => setCuisine(p => p === c ? '' : c)} type="button">
-                  {cuisine === c && <span className="chip__check">✓</span>}{c}
+                  {cuisine === c && <span className="chip__check">âœ“</span>}{c}
                 </button>
               ))}
             </div>
@@ -5483,7 +4553,7 @@ const AddReferenceModal = ({ onSave, onClose, cookbookTitle = '', authFetch }) =
                 { key: 'incomplete',     label: 'Incomplete' },
               ].map(({ key, label }) => (
                 <button key={key} className={`chip ${status === key ? 'chip--selected' : ''}`} onClick={() => setStatus(p => p === key ? '' : key)} type="button">
-                  {status === key && <span className="chip__check">✓</span>}{label}
+                  {status === key && <span className="chip__check">âœ“</span>}{label}
                 </button>
               ))}
             </div>
@@ -5495,7 +4565,7 @@ const AddReferenceModal = ({ onSave, onClose, cookbookTitle = '', authFetch }) =
             <div className="picker__chips" style={{ marginTop:6 }}>
               {TAG_FILTERS.map(({ key, label }) => (
                 <button key={key} className={`chip ${tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggle(key)} type="button">
-                  {tags.includes(key) && <span className="chip__check">✓</span>}{label}
+                  {tags.includes(key) && <span className="chip__check">âœ“</span>}{label}
                 </button>
               ))}
             </div>
@@ -5528,7 +4598,7 @@ const QuickAddModal = ({ onSave, onClose }) => {
       <div className="create-modal" style={{ maxWidth:560 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title"><Icon name="zap" size={18} strokeWidth={2} /> Quick Add</h2>
-          <button className="ing-modal__close" onClick={onClose}>✕</button>
+          <button className="ing-modal__close" onClick={onClose}>âœ•</button>
         </div>
         <div className="create-modal__body" style={{ gap:8 }}>
           <p style={{ fontSize:13, color:'var(--warm-gray)', marginBottom:4 }}>Add multiple recipes at once -- leave rows blank to skip.</p>
@@ -5539,14 +4609,14 @@ const QuickAddModal = ({ onSave, onClose }) => {
             <div key={row.id} style={{ display:'flex', gap:8, alignItems:'center' }}>
               <input className="editor-input" style={{ flex:3 }} value={row.name} onChange={e => upd(row.id,'name',e.target.value)} placeholder={`Recipe ${i+1}`} />
               <input className="editor-input" style={{ width:90 }} value={row.page} onChange={e => upd(row.id,'page',e.target.value)} placeholder="Page #" />
-              {rows.length > 1 && <button className="editor-remove-btn" onClick={() => rmRow(row.id)}>✕</button>}
+              {rows.length > 1 && <button className="editor-remove-btn" onClick={() => rmRow(row.id)}>âœ•</button>}
             </div>
           ))}
           <button className="btn btn--ghost editor-add-btn" onClick={addRow} style={{ marginTop:4 }}>+ Add row</button>
         </div>
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn--primary" onClick={save} disabled={!valid.length}>✓ Add {valid.length || ''} Recipes</button>
+          <button className="btn btn--primary" onClick={save} disabled={!valid.length}>âœ“ Add {valid.length || ''} Recipes</button>
         </div>
       </div>
     </div>
@@ -5609,7 +4679,6 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
     if (!details.name.trim()) { setSaveError('Recipe name is required.'); return; }
     setSaving(true); setSaveError(null);
     try {
-      const nutrition = calcNutrition(ings, allIngredients);
       // Flatten groups
       let grp = '';
       const flatIngs = ings.map(i => {
@@ -5621,9 +4690,6 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
         details: {
           name: details.name, cuisine: details.cuisine, time: details.time,
           servings: details.servings,
-          calories: nutrition.calories,
-          protein: nutrition.protein,
-          fiber: nutrition.fiber,
           cover_image_url: details.cover_image_url,
           cookbook: details.cookbook, page_number: details.reference,
           status: details.status, recipe_incomplete: details.recipe_incomplete, tags: details.tags,
@@ -5658,7 +4724,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
       <div className="create-modal" onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title"><Icon name="shuffle" size={18} strokeWidth={2} /> Convert to Recipe</h2>
-          <button className="ing-modal__close" onClick={onClose}>✕</button>
+          <button className="ing-modal__close" onClick={onClose}>âœ•</button>
         </div>
 
         <div className="create-modal__body">
@@ -5704,7 +4770,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
               {ALL_CUISINES.map(c => (
                 <button key={c} className={`chip ${details.cuisine === c ? 'chip--selected' : ''}`}
                   onClick={() => setDetail('cuisine', details.cuisine === c ? '' : c)} type="button">
-                  {details.cuisine === c && <span className="chip__check">✓</span>}{c}
+                  {details.cuisine === c && <span className="chip__check">âœ“</span>}{c}
                 </button>
               ))}
             </div>
@@ -5716,7 +4782,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
             <div className="picker__chips" style={{ marginTop: 6 }}>
               {TAG_FILTERS.map(({ key, label }) => (
                 <button key={key} className={`chip ${details.tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggleTag(key)}>
-                  {details.tags.includes(key) && <span className="chip__check">✓</span>}{label}
+                  {details.tags.includes(key) && <span className="chip__check">âœ“</span>}{label}
                 </button>
               ))}
             </div>
@@ -5733,7 +4799,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
               ].map(({ key, label }) => (
                 <button key={key} className={`chip ${details.status === key ? 'chip--selected' : ''}`}
                   onClick={() => setDetail('status', details.status === key ? '' : key)} type="button">
-                  {details.status === key && <span className="chip__check">✓</span>}{label}
+                  {details.status === key && <span className="chip__check">âœ“</span>}{label}
                 </button>
               ))}
             </div>
@@ -5799,7 +4865,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
                         <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
                         <span className="rp2__ed-timer-row__sep">s</span>
                       </div>
-                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
                     </div>
                   );
                   const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
@@ -5810,7 +4876,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
                         <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                         <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                       </div>
-                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
                       {item._showTip && createPortal((() => {
                         const ar = item._tipAnchor; const pw = 300, ph = 160;
                         const vw = window.innerWidth, vh = window.innerHeight;
@@ -5832,7 +4898,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
             {notesList.map(note => (
               <div key={note._id} className="editor-note-row">
                 <input className="editor-input" value={note.text || ''} onChange={e => updateNote(note._id, e.target.value)} placeholder="e.g. Great with oat milk instead of dairy" />
-                <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>✕</button>
+                <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>âœ•</button>
               </div>
             ))}
             <button className="btn btn--ghost editor-add-btn" onClick={addNote}>+ Add Note</button>
@@ -5877,7 +4943,7 @@ const CookbookEditModal = ({ cookbook, onSave, onClose }) => {
       <div className="create-modal" style={{ maxWidth:520 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title">{isNew ? <><Icon name="bookOpen" size={18} strokeWidth={2} /> Add Cookbook</> : `Edit "${cookbook.title}"`}</h2>
-          <button className="ing-modal__close" onClick={onClose}>✕</button>
+          <button className="ing-modal__close" onClick={onClose}>âœ•</button>
         </div>
         <div className="create-modal__body" style={{ gap:16 }}>
           <div className="create-modal__img-row">
@@ -5911,7 +4977,7 @@ const CookbookEditModal = ({ cookbook, onSave, onClose }) => {
         </div>
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn--primary" onClick={save} disabled={!form.title.trim()}>{isNew ? '+ Add Cookbook' : '✓ Save Changes'}</button>
+          <button className="btn btn--primary" onClick={save} disabled={!form.title.trim()}>{isNew ? '+ Add Cookbook' : 'âœ“ Save Changes'}</button>
         </div>
       </div>
     </div>
@@ -5942,7 +5008,7 @@ const CbEntry = ({ entry, linked, entryTags, idx, onOpenRecipe, onMarkCooked, on
       {/* Name col -- plain text, never a link */}
       <div className="cbentry__name-col">
         <span className="cbentry__name">{entry.name}</span>
-        {linked && <span className="cookbook-recipe-entry__saved-badge">✓ Saved</span>}
+        {linked && <span className="cookbook-recipe-entry__saved-badge">âœ“ Saved</span>}
       </div>
 
       {/* Tags col */}
@@ -5965,7 +5031,7 @@ const CbEntry = ({ entry, linked, entryTags, idx, onOpenRecipe, onMarkCooked, on
         {/* View button -- for linked recipes */}
         {linked && (
           <button className="cbentry__action cbentry__action--view" onClick={() => onOpenRecipe(linked)} title="Open in Hearth">
-            View →
+            View â†’
           </button>
         )}
 
@@ -5977,7 +5043,7 @@ const CbEntry = ({ entry, linked, entryTags, idx, onOpenRecipe, onMarkCooked, on
               onClick={() => setMenuOpen(o => !o)}
               title="More actions"
             >
-              Actions ▾
+              Actions â–¾
             </button>
             {menuOpen && (
               <div className="cbentry__menu-dropdown">
@@ -6071,9 +5137,9 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
       )}
 
       <div className="cookbook-detail__header">
-        <button className="btn btn--ghost btn--sm" onClick={onBack}>← Cookbooks</button>
+        <button className="btn btn--ghost btn--sm" onClick={onBack}>â† Cookbooks</button>
         <div className="cookbook-detail__actions">
-          <button className="btn btn--ghost btn--sm" onClick={onEdit}>✎ Edit</button>
+          <button className="btn btn--ghost btn--sm" onClick={onEdit}>âœŽ Edit</button>
           <button className="btn btn--ghost btn--sm" style={{ color:'var(--terracotta)' }} onClick={() => setShowDeleteConfirm(true)}><Icon name="trash2" size={14} strokeWidth={2} /> Remove</button>
         </div>
       </div>
@@ -6093,7 +5159,7 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
           {cookbook.recipes.length > 0 && (
             <div className="cbdetail-progress">
               <div className="cbdetail-progress__bar"><div className="cbdetail-progress__fill" style={{ width:`${pct}%` }} /></div>
-              <span className="cbdetail-progress__label">{cookedCount} of {cookbook.recipes.length} cooked · {pct}%</span>
+              <span className="cbdetail-progress__label">{cookedCount} of {cookbook.recipes.length} cooked Â· {pct}%</span>
             </div>
           )}
         </div>
@@ -6113,7 +5179,7 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
 
         <div className="cookbook-search-wrap">
           <input className="editor-input cookbook-search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search recipes in this book..." />
-          {search && <button className="cookbook-search-clear" onClick={() => setSearch('')}>✕</button>}
+          {search && <button className="cookbook-search-clear" onClick={() => setSearch('')}>âœ•</button>}
         </div>
 
         {cookbook.recipes.length === 0 ? (
@@ -6155,7 +5221,7 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
 };
 
 // --- CookbooksTab -------------------------------------------------------------
-// ─── Cookbooks Tab ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Cookbooks Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngredients, setCookingRecipe, cookLog, onRecipeConverted, isAdmin, authFetch }) => {
   const [selectedCookbook, setSelectedCookbook] = useState(null);
   const [showAddModal,     setShowAddModal]     = useState(false);
@@ -6266,7 +5332,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
       <div className="cookbooks-header">
         <div>
           <h2 className="cookbooks-title">My Cookbooks</h2>
-          <p className="cookbooks-subtitle">{cookbooks.length} {cookbooks.length===1?'cookbook':'cookbooks'} · {enrichedCookbooks.reduce((s,c) => s+c.recipes.length, 0)} recipes indexed</p>
+          <p className="cookbooks-subtitle">{cookbooks.length} {cookbooks.length===1?'cookbook':'cookbooks'} Â· {enrichedCookbooks.reduce((s,c) => s+c.recipes.length, 0)} recipes indexed</p>
         </div>
         {isAdmin && <button className="btn btn--primary" onClick={() => setShowAddModal(true)}>+ Add Cookbook</button>}
       </div>
@@ -6274,7 +5340,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
       {cookbooks.length > 0 && (
         <div className="cookbooks-global-search">
           <input className="editor-input" value={globalSearch} onChange={e => setGlobalSearch(e.target.value)} placeholder="Search recipes across all cookbooks..." />
-          {globalSearch && <button className="cookbook-search-clear" onClick={() => setGlobalSearch('')}>✕</button>}
+          {globalSearch && <button className="cookbook-search-clear" onClick={() => setGlobalSearch('')}>âœ•</button>}
         </div>
       )}
 
@@ -6288,10 +5354,10 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
                   <div key={i} className="cbsearch-result">
                     <div className="cbsearch-result__info">
                       <span className="cbsearch-result__name">{e.name}</span>
-                      <span className="cbsearch-result__meta">{e._cbTitle}{e.page ? ` · p. ${e.page}` : ''}</span>
+                      <span className="cbsearch-result__meta">{e._cbTitle}{e.page ? ` Â· p. ${e.page}` : ''}</span>
                     </div>
                     <div className="cbsearch-result__actions">
-                      {linked && <button className="btn btn--ghost btn--sm" onClick={() => onOpenRecipe(linked)}>View →</button>}
+                      {linked && <button className="btn btn--ghost btn--sm" onClick={() => onOpenRecipe(linked)}>View â†’</button>}
                       <button className="btn btn--ghost btn--sm" onClick={() => { setGlobalSearch(''); setSelectedCookbook(enrichedCookbooks.find(c => c.id===e._cbId)); }}>Open cookbook</button>
                     </div>
                   </div>
@@ -6324,7 +5390,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
                   {cb.author && <p className="cookbook-card__author">{cb.author}</p>}
                   <div className="cookbook-card__stats">
                     <span className="cookbook-card__stat">{cb.recipes?.length||0} recipes</span>
-                    {cb.savedCount > 0 && <span className="cookbook-card__stat cookbook-card__stat--saved">✓ {cb.savedCount} saved</span>}
+                    {cb.savedCount > 0 && <span className="cookbook-card__stat cookbook-card__stat--saved">âœ“ {cb.savedCount} saved</span>}
                   </div>
                   {cb.recipes.length > 0 && (
                     <div className="cbcard-progress">
@@ -6347,7 +5413,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
 };
 
 // --- Add Recipe Tab ---------------------------------------------------------
-// ─── Add Recipe Tab ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Add Recipe Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) => {
   const apiFetch = authFetch || fetch;
   const sensors = DRAG_SENSORS();
@@ -6404,9 +5470,6 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
     if (!details.name.trim()) { setSaveError('Recipe name is required.'); return; }
     setSaving(true); setSaveError(null);
 
-    // Auto-calculate nutrition from ingredients
-    const _nutrition = calcNutrition(ings, allIngredients);
-
     try {
       // Flatten grouped ingredients
       let grp = '';
@@ -6419,9 +5482,6 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
         details: {
           name: details.name, cuisine: details.cuisine, time: details.time,
           servings: details.servings,
-          calories: _nutrition?.calories ?? null,
-          protein: _nutrition?.protein ?? null,
-          fiber: _nutrition?.fiber ?? null,
           cover_image_url: details.cover_image_url,
           cookbook: details.cookbook, page_number: details.reference,
           status: details.status, recipe_incomplete: details.recipe_incomplete, tags: details.tags,
@@ -6466,7 +5526,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
           <span className="add-tab__card-icon"><Icon name="note" size={28} strokeWidth={1.5} /></span>
           <h3 className="add-tab__card-title">Add Manually</h3>
           <p className="add-tab__card-desc">Type in the name, ingredients, steps, and notes yourself</p>
-          <span className="add-tab__card-cta">Get started →</span>
+          <span className="add-tab__card-cta">Get started â†’</span>
         </button>
       </div>
 
@@ -6478,7 +5538,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
             {/* Modal header */}
             <div className="create-modal__header">
               <h2 className="create-modal__title"><Icon name="note" size={18} strokeWidth={2} /> New Recipe</h2>
-              <button className="ing-modal__close" onClick={closeModal}>✕</button>
+              <button className="ing-modal__close" onClick={closeModal}>âœ•</button>
             </div>
 
             <div className="create-modal__body">
@@ -6525,7 +5585,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                   {ALL_CUISINES.map(c => (
                     <button key={c} className={`chip ${details.cuisine === c ? 'chip--selected' : ''}`}
                       onClick={() => setDetail('cuisine', details.cuisine === c ? '' : c)} type="button">
-                      {details.cuisine === c && <span className="chip__check">✓</span>}{c}
+                      {details.cuisine === c && <span className="chip__check">âœ“</span>}{c}
                     </button>
                   ))}
                 </div>
@@ -6537,7 +5597,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                 <div className="picker__chips" style={{ marginTop: 6 }}>
                   {TAG_FILTERS.map(({ key, label }) => (
                     <button key={key} className={`chip ${details.tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggleTag(key)} type="button">
-                      {details.tags.includes(key) && <span className="chip__check">✓</span>}{label}
+                      {details.tags.includes(key) && <span className="chip__check">âœ“</span>}{label}
                     </button>
                   ))}
                 </div>
@@ -6557,7 +5617,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                     <button key={key}
                       className={`chip ${details.status === key ? 'chip--selected' : ''}`}
                       onClick={() => setDetail('status', key)} type="button">
-                      {details.status === key && <span className="chip__check">✓</span>}{label}
+                      {details.status === key && <span className="chip__check">âœ“</span>}{label}
                     </button>
                   ))}
                 </div>
@@ -6638,7 +5698,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                             <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
                             <span className="rp2__ed-timer-row__sep">s</span>
                           </div>
-                          <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                          <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
                         </div>
                       );
                       const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
@@ -6649,7 +5709,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                             <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                             <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                           </div>
-                          <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
+                          <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
                           {item._showTip && createPortal((() => {
                             const ar = item._tipAnchor; const pw = 300, ph = 160;
                             const vw = window.innerWidth, vh = window.innerHeight;
@@ -6671,7 +5731,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                 {notesList.map(note => (
                   <div key={note._id} className="editor-note-row">
                     <input className="editor-input" value={note.text || ''} onChange={e => updateNote(note._id, e.target.value)} placeholder="e.g. Great with oat milk instead of dairy" />
-                    <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>✕</button>
+                    <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>âœ•</button>
                   </div>
                 ))}
                 <button className="btn btn--ghost editor-add-btn" onClick={addNote}>+ Add Note</button>
@@ -6696,7 +5756,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
             <div className="create-modal__footer">
               <button className="btn btn--ghost" onClick={closeModal}>Cancel</button>
               <button className="btn btn--primary" onClick={save} disabled={saving}>
-                {saving ? 'Creating...' : '✓ Create Recipe'}
+                {saving ? 'Creating...' : 'âœ“ Create Recipe'}
               </button>
             </div>
           </div>
@@ -6707,7 +5767,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
 };
 
 // --- Login Modal -------------------------------------------------------------
-// ─── Login Modal ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Login Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const LoginModal = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -6757,7 +5817,7 @@ const LoginModal = ({ onLogin }) => {
             <input
               className="login-modal__input"
               type="password"
-              placeholder="••••••••"
+              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
               value={password}
               onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
@@ -6791,7 +5851,7 @@ const CreateUserModal = ({ onClose, authFetch }) => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create user');
-      setSuccess(`Account created for ${data.user.username} ✓`);
+      setSuccess(`Account created for ${data.user.username} âœ“`);
       setUsername(''); setPassword('');
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   };
@@ -6801,7 +5861,7 @@ const CreateUserModal = ({ onClose, authFetch }) => {
       <div className="create-user-modal" onClick={e => e.stopPropagation()}>
         <div className="create-user-modal__header">
           <span className="create-user-modal__title"><Icon name="userCircle" size={18} strokeWidth={2} /> Create Account</span>
-          <button className="ing-modal__close" onClick={onClose}>✕</button>
+          <button className="ing-modal__close" onClick={onClose}>âœ•</button>
         </div>
         <div className="login-modal__body">
           {error && <div className="login-modal__error">{error}</div>}
@@ -6824,7 +5884,7 @@ const CreateUserModal = ({ onClose, authFetch }) => {
 };
 
 // --- Main App ----------------------------------------------------------------
-// ─── Main App ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AppInner() {
   // --- Auth ------------------------------------------------------------------
   const [authToken, setAuthToken] = useState(() => LS.get('authToken', null));
@@ -6919,7 +5979,7 @@ function AppInner() {
   const appScrollRef = useRef(null); // ref to the scrollable app__scroll wrapper
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  // Scroll-to-top detection — listen on app__scroll, not window
+  // Scroll-to-top detection â€” listen on app__scroll, not window
   useEffect(() => {
     const el = appScrollRef.current;
     if (!el) return;
@@ -6942,7 +6002,7 @@ function AppInner() {
     if (!appleLink) { appleLink = document.createElement('link'); appleLink.rel = 'apple-touch-icon'; document.head.appendChild(appleLink); }
     appleLink.href = `${process.env.PUBLIC_URL || ''}/hearth-icon.png`;
 
-    // Prevent pinch-zoom and page shake on mobile — set viewport meta
+    // Prevent pinch-zoom and page shake on mobile â€” set viewport meta
     let viewport = document.querySelector("meta[name='viewport']");
     if (!viewport) { viewport = document.createElement('meta'); viewport.name = 'viewport'; document.head.appendChild(viewport); }
     viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
@@ -7080,7 +6140,7 @@ function AppInner() {
         if (soonRes.ok) { const d = await soonRes.json(); setMakeSoonIds(d.makeSoon || []); }
         // Re-fetch cooking notes with auth
         try { const r = await authFetch(`${API}/api/cooking-notes`); if (r.ok) { const d = await r.json(); setCookingNotes(d.notes || []); } } catch {}
-        // Load kitchen from API — ALWAYS overrides localStorage so devices stay in sync
+        // Load kitchen from API â€” ALWAYS overrides localStorage so devices stay in sync
         try {
           const kitRes = await authFetch(`${API}/api/user/kitchen`);
           if (kitRes.ok) {
@@ -7164,7 +6224,7 @@ function AppInner() {
       };
       list = list.filter(r => {
         const mins = parseMinutes(r.time);
-        // Exclude recipes with no time set — we can't confirm they're under the limit
+        // Exclude recipes with no time set â€” we can't confirm they're under the limit
         if (mins === null) return false;
         return mins <= maxMinutes;
       });
@@ -7210,7 +6270,7 @@ function AppInner() {
 
   if (error) return (
     <div className="error-screen">
-      <div className="error-icon">⚠️</div>
+      <div className="error-icon">âš ï¸</div>
       <h2>Couldn't connect to the server</h2>
       <p>{error}</p>
       <p className="error-hint">Make sure your backend is running and your .env is configured.</p>
@@ -7247,7 +6307,7 @@ function AppInner() {
                 </button>
               </>
             ) : (
-              /* Search bar open — shown from any page */
+              /* Search bar open â€” shown from any page */
               <div className="app-header__mobile-search-bar" style={{position:'relative'}}>
                 <Icon name="search" size={14} strokeWidth={2} color="var(--warm-gray)" />
                 <input
@@ -7275,10 +6335,10 @@ function AppInner() {
                   }}
                 />
                 {mobileSearchQuery && (
-                  <button className="app-header__mobile-search-clear" onClick={() => { setMobileSearchQuery(''); setMobileSearchSubmitted(false); setLibrarySearch(''); }}>✕</button>
+                  <button className="app-header__mobile-search-clear" onClick={() => { setMobileSearchQuery(''); setMobileSearchSubmitted(false); setLibrarySearch(''); }}>âœ•</button>
                 )}
                 {!mobileSearchQuery && (
-                  <button className="app-header__mobile-search-clear" onClick={() => { setMobileSearchOpen(false); setMobileSearchQuery(''); setLibrarySearch(''); }}>✕</button>
+                  <button className="app-header__mobile-search-clear" onClick={() => { setMobileSearchOpen(false); setMobileSearchQuery(''); setLibrarySearch(''); }}>âœ•</button>
                 )}
                 {/* Autocomplete dropdown with images */}
                 {mobileSearchQuery && !mobileSearchSubmitted && (() => {
@@ -7299,7 +6359,7 @@ function AppInner() {
                             : <div className="mobile-search-dropdown__item-img-placeholder"><Icon name="image" size={16} color="var(--ash)" strokeWidth={1.5} /></div>}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div className="mobile-search-dropdown__item-name">{r.name}</div>
-                            {(r.cuisine || r.time) && <div className="mobile-search-dropdown__item-meta">{[r.cuisine, r.time].filter(Boolean).join(' · ')}</div>}
+                            {(r.cuisine || r.time) && <div className="mobile-search-dropdown__item-meta">{[r.cuisine, r.time].filter(Boolean).join(' Â· ')}</div>}
                           </div>
                         </button>
                       ))}
@@ -7343,7 +6403,7 @@ function AppInner() {
             <span className={`mobile-menu-btn__bar ${mobileNavOpen ? 'mobile-menu-btn__bar--open-3' : ''}`} />
           </button>
         </div>
-        {/* Mobile nav overlay — floats over content, does not push page down */}
+        {/* Mobile nav overlay â€” floats over content, does not push page down */}
         {mobileNavOpen && (
           <>
             {/* Backdrop to close on tap-outside */}
@@ -7512,7 +6572,7 @@ function AppInner() {
           {/* -- Left column -- */}
           <div className="home-main">
 
-            {/* -- ⏱ Make Soon -- */}
+            {/* -- â± Make Soon -- */}
             {(() => {
               const makeSoonRecipes = recipes.filter(r => makeSoonIds.includes(r.id));
               return (
@@ -7520,7 +6580,7 @@ function AppInner() {
                   <div className="home-section__header">
                     <h2 className="home-section__title">Make Soon</h2>
                     {makeSoonIds.length > 0 && (
-                      <button className="btn btn--ghost btn--sm home-section__view-all" onClick={() => { setActiveTags([]); setActiveCuisines([]); setActiveProgresses(['__makesoon']); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>View all →</button>
+                      <button className="btn btn--ghost btn--sm home-section__view-all" onClick={() => { setActiveTags([]); setActiveCuisines([]); setActiveProgresses(['__makesoon']); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>View all â†’</button>
                     )}
                   </div>
                   {makeSoonIds.length === 0 ? (
@@ -7530,7 +6590,7 @@ function AppInner() {
                         <p className="home-empty-cta__title">Plan your week</p>
                         <p className="home-empty-cta__sub">Tap <span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',margin:'0 2px'}}><Icon name="timer" size={13} strokeWidth={2} /></span> on any recipe to add it here</p>
                       </div>
-                      <span className="home-empty-cta__arrow">→</span>
+                      <span className="home-empty-cta__arrow">â†’</span>
                     </div>
                   ) : (
                     <HScrollRow count={makeSoonRecipes.length}>
@@ -7554,9 +6614,9 @@ function AppInner() {
                   <div className="home-section__header">
                     <h2 className="home-section__title">What can I make?</h2>
                     {allMyIngredients.size > 0 ? (
-                      <button className="btn btn--ghost btn--sm home-section__view-all" onClick={() => { setActiveProgresses(['__makesoon']); setActiveTags([]); setActiveCuisines([]); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>View all →</button>
+                      <button className="btn btn--ghost btn--sm home-section__view-all" onClick={() => { setActiveProgresses(['__makesoon']); setActiveTags([]); setActiveCuisines([]); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>View all â†’</button>
                     ) : (
-                      <button className="btn btn--ghost btn--sm" onClick={() => setView('kitchen')}>Set ingredients →</button>
+                      <button className="btn btn--ghost btn--sm" onClick={() => setView('kitchen')}>Set ingredients â†’</button>
                     )}
                   </div>
                   {allMyIngredients.size === 0 ? (
@@ -7566,7 +6626,7 @@ function AppInner() {
                         <p className="home-empty-cta__title">Add your kitchen &amp; pantry ingredients</p>
                         <p className="home-empty-cta__sub">We'll show you what you can cook right now</p>
                       </div>
-                      <span className="home-empty-cta__arrow">→</span>
+                      <span className="home-empty-cta__arrow">â†’</span>
                     </div>
                   ) : goodMatches.length > 0 ? (
                     <HScrollRow count={goodMatches.length}>
@@ -7606,7 +6666,7 @@ function AppInner() {
               {mobileSearchSubmitted && mobileSearchQuery ? (
                 <div className="recipes-page-header__search-results">
                   <h1 className="recipes-page-header__title">Search results for <em>"{mobileSearchQuery}"</em></h1>
-                  <button className="recipes-page-header__clear" onClick={() => { setMobileSearchQuery(''); setMobileSearchSubmitted(false); setLibrarySearch(''); }}>✕ Clear</button>
+                  <button className="recipes-page-header__clear" onClick={() => { setMobileSearchQuery(''); setMobileSearchSubmitted(false); setLibrarySearch(''); }}>âœ• Clear</button>
                 </div>
               ) : (
                 <h1 className="recipes-page-header__title">All Recipes</h1>
@@ -7626,7 +6686,7 @@ function AppInner() {
                     onChange={e => setLibrarySearch(e.target.value)}
                   />
                   {librarySearch && (
-                    <button className="filter-bar__clear-x" onClick={() => setLibrarySearch('')}>✕</button>
+                    <button className="filter-bar__clear-x" onClick={() => setLibrarySearch('')}>âœ•</button>
                   )}
                 </div>
                 <button
@@ -7644,11 +6704,11 @@ function AppInner() {
                     className={`filters-toggle-btn ${filtersOpen ? 'filters-toggle-btn--open' : ''} ${hasActiveFilters ? 'filters-toggle-btn--active' : ''}`}
                     onClick={() => setFiltersOpen(o => !o)}
                   >
-                    <><Icon name="sliders" size={14} strokeWidth={2} /> Filters{activeCount > 0 ? ` · ${activeCount}` : ''}</>
-                    <span className="filters-toggle-btn__arrow">{filtersOpen ? '▴' : '▾'}</span>
+                    <><Icon name="sliders" size={14} strokeWidth={2} /> Filters{activeCount > 0 ? ` Â· ${activeCount}` : ''}</>
+                    <span className="filters-toggle-btn__arrow">{filtersOpen ? 'â–´' : 'â–¾'}</span>
                   </button>
                   {hasActiveFilters && (
-                    <button className="filter-bar__reset" onClick={clearAllFilters}>✕ Clear</button>
+                    <button className="filter-bar__reset" onClick={clearAllFilters}>âœ• Clear</button>
                   )}
                 </div>
                 <button
@@ -7664,11 +6724,11 @@ function AppInner() {
                   className={`filters-toggle-btn ${filtersOpen ? 'filters-toggle-btn--open' : ''} ${hasActiveFilters ? 'filters-toggle-btn--active' : ''}`}
                   onClick={() => setFiltersOpen(o => !o)}
                 >
-                  <><Icon name="sliders" size={14} strokeWidth={2} /> Filters{activeCount > 0 ? ` · ${activeCount}` : ''}</>
-                  <span className="filters-toggle-btn__arrow">{filtersOpen ? '▴' : '▾'}</span>
+                  <><Icon name="sliders" size={14} strokeWidth={2} /> Filters{activeCount > 0 ? ` Â· ${activeCount}` : ''}</>
+                  <span className="filters-toggle-btn__arrow">{filtersOpen ? 'â–´' : 'â–¾'}</span>
                 </button>
                 {hasActiveFilters && (
-                  <button className="filter-bar__reset" onClick={clearAllFilters}>✕ Clear</button>
+                  <button className="filter-bar__reset" onClick={clearAllFilters}>âœ• Clear</button>
                 )}
               </div>
             </div>
@@ -7742,7 +6802,7 @@ function AppInner() {
                           onClick={() => setCalDir(d)}>{d}</button>
                       ))}
                     </div>
-                    {maxCalories !== null && <button className="filter-panel__clear-slider" onClick={() => setMaxCalories(null)}>✕ clear</button>}
+                    {maxCalories !== null && <button className="filter-panel__clear-slider" onClick={() => setMaxCalories(null)}>âœ• clear</button>}
                   </div>
                   <div className="filter-panel__slider-wrap">
                     <span className="filter-panel__slider-edge">100</span>
@@ -7768,7 +6828,7 @@ function AppInner() {
                 <div className="filter-panel__group filter-panel__group--slider">
                   <div className="filter-panel__slider-header">
                     <span className="filter-panel__label">Time</span>
-                    {maxMinutes !== null && <button className="filter-panel__clear-slider" onClick={() => setMaxMinutes(null)}>✕ clear</button>}
+                    {maxMinutes !== null && <button className="filter-panel__clear-slider" onClick={() => setMaxMinutes(null)}>âœ• clear</button>}
                   </div>
                   <div className="filter-panel__slider-wrap">
                     <span className="filter-panel__slider-edge">10m</span>
@@ -7795,12 +6855,12 @@ function AppInner() {
             {/* Active filter pills */}
             {hasActiveFilters && (
               <div className="active-filter-pills">
-                {activeCuisines.map(c => <span key={c} className="active-filter-pill">{CUISINE_ICON[c] && <Icon name={CUISINE_ICON[c]} size={12} strokeWidth={2} />} {c} <button onClick={() => toggleCuisine(c)}>✕</button></span>)}
-                {activeTags.map(k => <span key={k} className="active-filter-pill">{TAG_FILTERS.find(f => f.key === k)?.label} <button onClick={() => toggleTag(k)}>✕</button></span>)}
-                {activeProgresses.map(k => <span key={k} className="active-filter-pill">{PROGRESS_FILTERS.find(f => f.key === k)?.label} <button onClick={() => toggleProgress(k)}>✕</button></span>)}
-                {activeCookbooks.map(k => <span key={k} className="active-filter-pill">{k === '__uncategorized' ? 'No cookbook' : k} <button onClick={() => toggleCookbook(k)}>✕</button></span>)}
-                {maxCalories !== null && <span className="active-filter-pill">{calDir} {maxCalories} kcal <button onClick={() => setMaxCalories(null)}>✕</button></span>}
-                {maxMinutes !== null && <span className="active-filter-pill">under {maxMinutes} min <button onClick={() => setMaxMinutes(null)}>✕</button></span>}
+                {activeCuisines.map(c => <span key={c} className="active-filter-pill">{CUISINE_ICON[c] && <Icon name={CUISINE_ICON[c]} size={12} strokeWidth={2} />} {c} <button onClick={() => toggleCuisine(c)}>âœ•</button></span>)}
+                {activeTags.map(k => <span key={k} className="active-filter-pill">{TAG_FILTERS.find(f => f.key === k)?.label} <button onClick={() => toggleTag(k)}>âœ•</button></span>)}
+                {activeProgresses.map(k => <span key={k} className="active-filter-pill">{PROGRESS_FILTERS.find(f => f.key === k)?.label} <button onClick={() => toggleProgress(k)}>âœ•</button></span>)}
+                {activeCookbooks.map(k => <span key={k} className="active-filter-pill">{k === '__uncategorized' ? 'No cookbook' : k} <button onClick={() => toggleCookbook(k)}>âœ•</button></span>)}
+                {maxCalories !== null && <span className="active-filter-pill">{calDir} {maxCalories} kcal <button onClick={() => setMaxCalories(null)}>âœ•</button></span>}
+                {maxMinutes !== null && <span className="active-filter-pill">under {maxMinutes} min <button onClick={() => setMaxMinutes(null)}>âœ•</button></span>}
               </div>
             )}
 
@@ -7853,7 +6913,7 @@ function AppInner() {
                                 ? <img className="rlt__thumb" src={r.coverImage} alt="" loading="lazy" />
                                 : <span className="rlt__thumb rlt__thumb--placeholder"><Icon name="image" size={20} color="var(--ash)" strokeWidth={1.5} /></span>}
                               <span className="rlt__name">{r.name}</span>
-                              {canMakeNow && <span className="rlt__ready">✓</span>}
+                              {canMakeNow && <span className="rlt__ready">âœ“</span>}
                             </span>
                             <span className="rlt__col rlt__col--cuisine">{r.cuisine || <span className="rlt__empty">--</span>}</span>
                             <span className="rlt__col rlt__col--tags">
@@ -7888,7 +6948,7 @@ function AppInner() {
                   )}
                   {totalPages > 1 && (
                     <div className="pager">
-                      <button className="pager__btn" onClick={() => setLibraryPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>← Prev</button>
+                      <button className="pager__btn" onClick={() => setLibraryPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>â† Prev</button>
                       <div className="pager__pages">
                         {(() => {
                           const pages = [];
@@ -7909,7 +6969,7 @@ function AppInner() {
                           return pages;
                         })()}
                       </div>
-                      <button className="pager__btn" onClick={() => setLibraryPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>Next →</button>
+                      <button className="pager__btn" onClick={() => setLibraryPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>Next â†’</button>
                     </div>
                   )}
                   <p className="recipes-total-count">{libraryRecipes.length} of {recipes.length} recipe{recipes.length !== 1 ? 's' : ''}</p>
@@ -8012,7 +7072,7 @@ function AppInner() {
       )}
       </div>{/* end app__scroll */}
 
-      {/* -- Mobile bottom tab bar — outside scroll area so keyboard never moves it -- */}
+      {/* -- Mobile bottom tab bar â€” outside scroll area so keyboard never moves it -- */}
       <nav className="mobile-tab-bar">
         {[
           { key: 'home',      icon: 'home',      label: 'Home'      },
