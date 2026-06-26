@@ -799,10 +799,10 @@ body {
 
 /* ─── Home Two-Column Layout ─────────────────────────────────────────────── */
 .home-view {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 24px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 760px;
 }
 .home-main { min-width: 0; }
 .home-sidebar { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 16px; }
@@ -869,7 +869,6 @@ body {
 .quick-action__arrow { color: var(--ash); flex-shrink: 0; display: flex; align-items: center; }
 
 @media (max-width: 860px) {
-  .home-view { grid-template-columns: 1fr; }
   .home-sidebar { position: static; }
 }
 
@@ -1637,6 +1636,17 @@ body {
 
 /* ─── Empty hint ─────────────────────────────────────────────────────────── */
 .rp2__empty-hint { font-size: 13px; color: var(--warm-gray); padding: 8px 0; font-style: italic; }
+
+/* ── Recipe section empty state ── */
+.rp2__empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 36px 20px; text-align: center;
+  background: var(--parchment); border: 1.5px dashed var(--border);
+  border-radius: 12px; margin: 4px 0;
+}
+.rp2__empty-state p {
+  font-size: 14px; color: var(--warm-gray); margin: 0; font-style: italic;
+}
 
 /* ─── Recipe card — cuisine tag inline with title ────────────────────────── */
 .recipe-card__cuisine-tag {
@@ -8055,22 +8065,22 @@ html, body {
 .kitchen-section {
   background: var(--warm-white);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  margin-bottom: 12px;
+  border-radius: 16px;
+  margin-bottom: 16px;
   overflow: hidden;
 }
 .kitchen-section__header {
-  display: flex; align-items: center; gap: 12px;
-  padding: 16px 18px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 20px 22px;
 }
 .kitchen-section__header--btn {
   width: 100%; background: none; border: none; cursor: pointer;
   text-align: left;
 }
 .kitchen-section__header--btn:hover { background: var(--bg-hover, rgba(0,0,0,0.02)); }
-.kitchen-section__emoji { font-size: 1.4rem; flex-shrink: 0; }
-.kitchen-section__title { font-size: 1rem; font-weight: 600; margin: 0 0 1px; }
-.kitchen-section__sub { font-size: 0.8rem; color: var(--warm-gray); margin: 0; }
+.kitchen-section__emoji { font-size: 1.4rem; flex-shrink: 0; display: none; }
+.kitchen-section__title { font-size: 1.05rem; font-weight: 700; margin: 0 0 2px; }
+.kitchen-section__sub { font-size: 0.82rem; color: var(--warm-gray); margin: 0; line-height: 1.4; }
 .kitchen-section__arrow {
   margin-left: auto; font-size: 1rem; color: var(--warm-gray);
   transition: transform 0.2s; flex-shrink: 0;
@@ -8079,13 +8089,13 @@ html, body {
 
 /* ── Active fridge chips ── */
 .kitchen-active-chips {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  padding: 0 18px 14px;
+  display: flex; flex-wrap: wrap; gap: 10px;
+  padding: 0 22px 18px;
 }
 
 /* ── Chips (fridge suggestions + active items) ── */
 .kitchen-chip {
-  padding: 6px 12px; border-radius: 20px; font-size: 0.85rem;
+  padding: 8px 14px; border-radius: 20px; font-size: 0.875rem;
   border: 1.5px solid var(--border); background: var(--bg);
   cursor: pointer; transition: all 0.15s; color: var(--text);
 }
@@ -8098,7 +8108,7 @@ html, body {
 .kitchen-chip__check { margin-left: 4px; font-size: 0.75rem; }
 
 /* ── Fridge text input ── */
-.kitchen-fridge-input-wrap { position: relative; padding: 0 18px 18px; }
+.kitchen-fridge-input-wrap { position: relative; padding: 0 22px 22px; }
 .kitchen-fridge-input-row { display: flex; gap: 8px; align-items: center; }
 .kitchen-fridge-input {
   flex: 1; padding: 10px 14px; border-radius: 10px;
@@ -8125,16 +8135,17 @@ html, body {
 }
 
 /* ── Pantry / Staples checklist ── */
-.kitchen-checklist { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 18px; }
-.kitchen-checklist__group { display: flex; flex-direction: column; gap: 10px; }
+.kitchen-checklist { padding: 0 22px 22px; display: flex; flex-direction: column; gap: 24px; }
+.kitchen-checklist__group { display: flex; flex-direction: column; gap: 12px; }
 .kitchen-checklist__group-label {
-  font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.05em; color: var(--warm-gray); margin: 0;
+  font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--warm-gray); margin: 0;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
 }
-.kitchen-checklist__items { display: flex; flex-wrap: wrap; gap: 8px; }
-.kitchen-check-item { display: flex; align-items: center; gap: 7px; cursor: pointer; }
-.kitchen-check-item__input { accent-color: var(--terracotta); width: 15px; height: 15px; cursor: pointer; }
-.kitchen-check-item__label { font-size: 0.88rem; color: var(--text); }
+.kitchen-checklist__items { display: flex; flex-wrap: wrap; gap: 10px; }
+.kitchen-check-item { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 2px 0; }
+.kitchen-check-item__input { accent-color: var(--terracotta); width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+.kitchen-check-item__label { font-size: 0.9rem; color: var(--text); }
 
 .kitchen-checklist__spice-toggle {
   display: flex; align-items: center; justify-content: space-between;
@@ -8146,17 +8157,17 @@ html, body {
 /* ── Responsive ── */
 @media (max-width: 600px) {
   .kitchen-view { padding: 0 0 100px; }
-  .kitchen-section__header { padding: 14px 14px; }
-  .kitchen-active-chips { padding: 0 14px 12px; }
-  .kitchen-fridge-input-wrap { padding: 0 14px 14px; }
-  .kitchen-checklist { padding: 0 14px 14px; }
+  .kitchen-section__header { padding: 16px 16px; }
+  .kitchen-active-chips { padding: 0 16px 14px; }
+  .kitchen-fridge-input-wrap { padding: 0 16px 16px; }
+  .kitchen-checklist { padding: 0 16px 16px; }
   .kitchen-suggestions { padding: 10px; }
 }
 
 /* ── Not-in-stock chips ── */
 .kitchen-not-in-stock {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  padding: 4px 18px 18px;
+  display: flex; flex-wrap: wrap; gap: 10px;
+  padding: 4px 22px 22px;
 }
 .kitchen-chip--missing {
   border-color: var(--border); background: var(--bg);
