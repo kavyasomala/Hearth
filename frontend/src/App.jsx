@@ -221,6 +221,7 @@ const DRAG_SENSORS = () => useSensors(
   useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
 );
 import './App.css';
+import KitchenTab from './KitchenTab';
 
 // --- Error Boundary --------------------------------------------------------
 class ErrorBoundary extends React.Component {
@@ -7061,9 +7062,10 @@ function AppInner() {
       const { recipes: recipeData } = await recipeRes.json();
       if (notesRes.ok) { const d = await notesRes.json(); setCookingNotes(d.notes || []); }
       if (cbRes.ok) { const d = await cbRes.json(); setCookbooks(d.cookbooks || d || []); }
-      // Derive ingredient list from recipes for autocomplete (no separate ingredients endpoint)
-      const ingNames = [...new Set(recipeData.flatMap(r => r.ingredients || []))].sort();
-      setAllIngredients(ingNames.map(name => ({ name })));
+      // Autocomplete pool: kitchen items first (exact match guaranteed), then recipe ingredients
+      // Kitchen items are loaded separately via /api/user/kitchen after this block
+      const recipeIngNames = [...new Set(recipeData.flatMap(r => r.ingredients || []))].sort();
+      setAllIngredients(recipeIngNames.map(name => ({ name })));
       setRecipes(recipeData);
 
       // Load user-specific data if logged in
@@ -7104,10 +7106,16 @@ function AppInner() {
 
   const matches = useMemo(() => {
     if (allMyIngredients.size === 0) return [];
+    const kitchenArr = [...allMyIngredients]; // array for substring checks
+    // Substring match: "chicken" in kitchen matches "chicken thighs" in recipe, and vice versa
+    const hasMatch = (recipeIng) => {
+      const r = recipeIng.toLowerCase().trim();
+      return kitchenArr.some(k => r.includes(k) || k.includes(r));
+    };
     const m = recipes.map(recipe => {
       const recipeIngredients = recipe.ingredients || [];
-      const have = recipeIngredients.filter(i => allMyIngredients.has(i));
-      const missing = recipeIngredients.filter(i => !allMyIngredients.has(i));
+      const have    = recipeIngredients.filter(i => hasMatch(i));
+      const missing = recipeIngredients.filter(i => !hasMatch(i));
       const matchScore = recipeIngredients.length === 0 ? 0 : have.length / recipeIngredients.length;
       return { id: recipe.id, have, missing, matchScore, canMake: missing.length === 0 && recipeIngredients.length > 0 };
     });
@@ -7492,7 +7500,7 @@ function AppInner() {
       )}
 
       {view === 'kitchen' && (
-        <FridgeTab allIngredients={allIngredients} setAllIngredients={setAllIngredients} fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} authFetch={authFetch} recipes={recipes} />
+        <KitchenTab fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} recipes={recipes} />
       )}
 
       {/* ======================================================
