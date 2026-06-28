@@ -5,6 +5,8 @@ import { Icon } from './icons';
 import { API, PROGRESS_FILTERS, GEO_CUISINES, CUISINE_ICON, TAG_FILTERS } from './constants';
 import { LS, toNum, checkDietaryConflicts } from './utils';
 import { ErrorBoundary, HScrollRow } from './components/ui';
+import RecipeCard from './components/RecipeCard';
+import MarkCookedModal from './components/MarkCookedModal';
 import KitchenTab from './KitchenTab';
 import RecipePage from './pages/RecipePage';
 import RecipeEditor from './pages/RecipeEditor';
