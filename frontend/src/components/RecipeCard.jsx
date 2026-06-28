@@ -46,12 +46,12 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {match.missing.map(n => (
-                            <span key={n} style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Â· {n}</span>
+                            <span key={n} style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>· {n}</span>
                           ))}
                         </div>
                       </>
                     ) : (
-                      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: 0 }}>âœ“ You have everything!</p>
+                      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: 0 }}>✓ You have everything!</p>
                     )}
                   </div>
                 </>

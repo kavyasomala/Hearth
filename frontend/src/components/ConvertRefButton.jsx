@@ -80,7 +80,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
       <div className="create-modal" onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title"><Icon name="shuffle" size={18} strokeWidth={2} /> Convert to Full Recipe</h2>
-          <button className="ing-modal__close" onClick={() => setShowModal(false)}>âœ•</button>
+          <button className="ing-modal__close" onClick={() => setShowModal(false)}>✕</button>
         </div>
         <div className="create-modal__body">
           {/* Name */}
@@ -97,14 +97,14 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
           <div className="create-modal__field">
             <label className="create-modal__field-label"><Icon name="mapPin" size={13} strokeWidth={2} /> Cuisine</label>
             <div className="picker__chips" style={{ marginTop:6 }}>
-              {ALL_CUISINES.map(c => <button key={c} className={`chip ${details.cuisine===c?'chip--selected':''}`} onClick={() => setDetail('cuisine', details.cuisine===c?'':c)} type="button">{details.cuisine===c&&<span className="chip__check">âœ“</span>}{c}</button>)}
+              {ALL_CUISINES.map(c => <button key={c} className={`chip ${details.cuisine===c?'chip--selected':''}`} onClick={() => setDetail('cuisine', details.cuisine===c?'':c)} type="button">{details.cuisine===c&&<span className="chip__check">✓</span>}{c}</button>)}
             </div>
           </div>
           {/* Tags */}
           <div className="create-modal__field">
             <label className="create-modal__field-label"><Icon name="tag" size={13} strokeWidth={2} /> Tags</label>
             <div className="picker__chips" style={{ marginTop:6 }}>
-              {TAG_FILTERS.map(({ key, label }) => <button key={key} className={`chip ${details.tags.includes(key)?'chip--selected':''}`} onClick={() => toggleTag(key)} type="button">{details.tags.includes(key)&&<span className="chip__check">âœ“</span>}{label}</button>)}
+              {TAG_FILTERS.map(({ key, label }) => <button key={key} className={`chip ${details.tags.includes(key)?'chip--selected':''}`} onClick={() => toggleTag(key)} type="button">{details.tags.includes(key)&&<span className="chip__check">✓</span>}{label}</button>)}
             </div>
           </div>
           {/* Ingredients */}
@@ -142,7 +142,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
                         <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setSteps(prev => prev.map(s => s._id===item._id?{...s,s:e.target.value}:s))} placeholder="0" />
                         <span className="rp2__ed-timer-row__sep">s</span>
                       </div>
-                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
+                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                     </div>
                   );
                   const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
@@ -153,7 +153,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
                         <button className="rp2__ed-add-timer-btn" onClick={() => { const i = steps.findIndex(s => s._id===item._id); const t={_id:`timer-${'{'}Date.now(){'}'}`,_isTimer:true,h:'',m:'',s:''}; const n=[...steps]; n.splice(i+1,0,t); setSteps(n); }} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                         <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                       </div>
-                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
+                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                       {item._showTip && createPortal((() => {
                         const ar = item._tipAnchor; const pw = 300, ph = 160;
                         const vw = window.innerWidth, vh = window.innerHeight;
@@ -174,7 +174,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
             {notesList.map(note => (
               <div key={note._id} className="editor-note-row">
                 <input className="editor-input" value={note.text||''} onChange={e => updateNote(note._id, e.target.value)} placeholder="e.g. Great with oat milk instead of dairy" />
-                <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>âœ•</button>
+                <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>✕</button>
               </div>
             ))}
             <button className="btn btn--ghost editor-add-btn" onClick={() => setNotesList(prev => [...prev, { _id:`note-${Date.now()}`,text:'' }])}>+ Add Note</button>
@@ -190,7 +190,7 @@ const ConvertRefButton = ({ recipe, allIngredients, cookbooks, onConverted, auth
   );
 };
 
-// --- Auto-growing textarea (ghost-div approach â€” immune to drag collapsing) ---
+// --- Auto-growing textarea (ghost-div approach — immune to drag collapsing) ---
 // A hidden "ghost" div with identical text determines the correct height.
 // The textarea reads that height via a CSS custom property on the wrapper.
 // Because value never changes during a dnd-kit drag, height stays locked.

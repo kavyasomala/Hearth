@@ -11,7 +11,7 @@ import RecipeCard from '../components/RecipeCard';
 
 const GITHUB_REPO = 'kavyasomala/RecipeApp'; // update with actual repo path
 
-// â”€â”€â”€ Site Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Site Footer ─────────────────────────────────────────────────────────────
 const SiteFooter = ({ onNav }) => {
   const [lastUpdated, setLastUpdated] = useState(null);
 
@@ -26,7 +26,7 @@ const SiteFooter = ({ onNav }) => {
   }, []);
 
   const fmt = (d) => d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) +
-    ' Â· ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
   return (
     <footer className="site-footer">
@@ -134,7 +134,7 @@ const AddReferenceModal = ({ onSave, onClose, cookbookTitle = '', authFetch }) =
       <div className="create-modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title"><Icon name="bookMarked" size={18} strokeWidth={2} /> Add Reference</h2>
-          <button className="ing-modal__close" onClick={onClose}>âœ•</button>
+          <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
         <div className="create-modal__body" style={{ gap: 14 }}>
           {/* Name + Page */}
@@ -186,7 +186,7 @@ const AddReferenceModal = ({ onSave, onClose, cookbookTitle = '', authFetch }) =
             <div className="picker__chips" style={{ marginTop:6 }}>
               {ALL_CUISINES.map(c => (
                 <button key={c} className={`chip ${cuisine === c ? 'chip--selected' : ''}`} onClick={() => setCuisine(p => p === c ? '' : c)} type="button">
-                  {cuisine === c && <span className="chip__check">âœ“</span>}{c}
+                  {cuisine === c && <span className="chip__check">✓</span>}{c}
                 </button>
               ))}
             </div>
@@ -203,7 +203,7 @@ const AddReferenceModal = ({ onSave, onClose, cookbookTitle = '', authFetch }) =
                 { key: 'incomplete',     label: 'Incomplete' },
               ].map(({ key, label }) => (
                 <button key={key} className={`chip ${status === key ? 'chip--selected' : ''}`} onClick={() => setStatus(p => p === key ? '' : key)} type="button">
-                  {status === key && <span className="chip__check">âœ“</span>}{label}
+                  {status === key && <span className="chip__check">✓</span>}{label}
                 </button>
               ))}
             </div>
@@ -215,7 +215,7 @@ const AddReferenceModal = ({ onSave, onClose, cookbookTitle = '', authFetch }) =
             <div className="picker__chips" style={{ marginTop:6 }}>
               {TAG_FILTERS.map(({ key, label }) => (
                 <button key={key} className={`chip ${tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggle(key)} type="button">
-                  {tags.includes(key) && <span className="chip__check">âœ“</span>}{label}
+                  {tags.includes(key) && <span className="chip__check">✓</span>}{label}
                 </button>
               ))}
             </div>
@@ -248,7 +248,7 @@ const QuickAddModal = ({ onSave, onClose }) => {
       <div className="create-modal" style={{ maxWidth:560 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title"><Icon name="zap" size={18} strokeWidth={2} /> Quick Add</h2>
-          <button className="ing-modal__close" onClick={onClose}>âœ•</button>
+          <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
         <div className="create-modal__body" style={{ gap:8 }}>
           <p style={{ fontSize:13, color:'var(--warm-gray)', marginBottom:4 }}>Add multiple recipes at once -- leave rows blank to skip.</p>
@@ -259,14 +259,14 @@ const QuickAddModal = ({ onSave, onClose }) => {
             <div key={row.id} style={{ display:'flex', gap:8, alignItems:'center' }}>
               <input className="editor-input" style={{ flex:3 }} value={row.name} onChange={e => upd(row.id,'name',e.target.value)} placeholder={`Recipe ${i+1}`} />
               <input className="editor-input" style={{ width:90 }} value={row.page} onChange={e => upd(row.id,'page',e.target.value)} placeholder="Page #" />
-              {rows.length > 1 && <button className="editor-remove-btn" onClick={() => rmRow(row.id)}>âœ•</button>}
+              {rows.length > 1 && <button className="editor-remove-btn" onClick={() => rmRow(row.id)}>✕</button>}
             </div>
           ))}
           <button className="btn btn--ghost editor-add-btn" onClick={addRow} style={{ marginTop:4 }}>+ Add row</button>
         </div>
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn--primary" onClick={save} disabled={!valid.length}>âœ“ Add {valid.length || ''} Recipes</button>
+          <button className="btn btn--primary" onClick={save} disabled={!valid.length}>✓ Add {valid.length || ''} Recipes</button>
         </div>
       </div>
     </div>
@@ -374,7 +374,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
       <div className="create-modal" onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title"><Icon name="shuffle" size={18} strokeWidth={2} /> Convert to Recipe</h2>
-          <button className="ing-modal__close" onClick={onClose}>âœ•</button>
+          <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
 
         <div className="create-modal__body">
@@ -420,7 +420,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
               {ALL_CUISINES.map(c => (
                 <button key={c} className={`chip ${details.cuisine === c ? 'chip--selected' : ''}`}
                   onClick={() => setDetail('cuisine', details.cuisine === c ? '' : c)} type="button">
-                  {details.cuisine === c && <span className="chip__check">âœ“</span>}{c}
+                  {details.cuisine === c && <span className="chip__check">✓</span>}{c}
                 </button>
               ))}
             </div>
@@ -432,7 +432,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
             <div className="picker__chips" style={{ marginTop: 6 }}>
               {TAG_FILTERS.map(({ key, label }) => (
                 <button key={key} className={`chip ${details.tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggleTag(key)}>
-                  {details.tags.includes(key) && <span className="chip__check">âœ“</span>}{label}
+                  {details.tags.includes(key) && <span className="chip__check">✓</span>}{label}
                 </button>
               ))}
             </div>
@@ -449,7 +449,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
               ].map(({ key, label }) => (
                 <button key={key} className={`chip ${details.status === key ? 'chip--selected' : ''}`}
                   onClick={() => setDetail('status', details.status === key ? '' : key)} type="button">
-                  {details.status === key && <span className="chip__check">âœ“</span>}{label}
+                  {details.status === key && <span className="chip__check">✓</span>}{label}
                 </button>
               ))}
             </div>
@@ -515,7 +515,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
                         <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
                         <span className="rp2__ed-timer-row__sep">s</span>
                       </div>
-                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
+                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                     </div>
                   );
                   const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
@@ -526,7 +526,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
                         <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                         <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                       </div>
-                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
+                      <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                       {item._showTip && createPortal((() => {
                         const ar = item._tipAnchor; const pw = 300, ph = 160;
                         const vw = window.innerWidth, vh = window.innerHeight;
@@ -548,7 +548,7 @@ const ConvertRecipeModal = ({ entry, cookbookTitle, allIngredients = [], onConve
             {notesList.map(note => (
               <div key={note._id} className="editor-note-row">
                 <input className="editor-input" value={note.text || ''} onChange={e => updateNote(note._id, e.target.value)} placeholder="e.g. Great with oat milk instead of dairy" />
-                <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>âœ•</button>
+                <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>✕</button>
               </div>
             ))}
             <button className="btn btn--ghost editor-add-btn" onClick={addNote}>+ Add Note</button>
@@ -593,7 +593,7 @@ const CookbookEditModal = ({ cookbook, onSave, onClose }) => {
       <div className="create-modal" style={{ maxWidth:520 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title">{isNew ? <><Icon name="bookOpen" size={18} strokeWidth={2} /> Add Cookbook</> : `Edit "${cookbook.title}"`}</h2>
-          <button className="ing-modal__close" onClick={onClose}>âœ•</button>
+          <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
         <div className="create-modal__body" style={{ gap:16 }}>
           <div className="create-modal__img-row">
@@ -627,7 +627,7 @@ const CookbookEditModal = ({ cookbook, onSave, onClose }) => {
         </div>
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn--primary" onClick={save} disabled={!form.title.trim()}>{isNew ? '+ Add Cookbook' : 'âœ“ Save Changes'}</button>
+          <button className="btn btn--primary" onClick={save} disabled={!form.title.trim()}>{isNew ? '+ Add Cookbook' : '✓ Save Changes'}</button>
         </div>
       </div>
     </div>
@@ -658,7 +658,7 @@ const CbEntry = ({ entry, linked, entryTags, idx, onOpenRecipe, onMarkCooked, on
       {/* Name col -- plain text, never a link */}
       <div className="cbentry__name-col">
         <span className="cbentry__name">{entry.name}</span>
-        {linked && <span className="cookbook-recipe-entry__saved-badge">âœ“ Saved</span>}
+        {linked && <span className="cookbook-recipe-entry__saved-badge">✓ Saved</span>}
       </div>
 
       {/* Tags col */}
@@ -681,7 +681,7 @@ const CbEntry = ({ entry, linked, entryTags, idx, onOpenRecipe, onMarkCooked, on
         {/* View button -- for linked recipes */}
         {linked && (
           <button className="cbentry__action cbentry__action--view" onClick={() => onOpenRecipe(linked)} title="Open in Hearth">
-            View â†’
+            View →
           </button>
         )}
 
@@ -693,7 +693,7 @@ const CbEntry = ({ entry, linked, entryTags, idx, onOpenRecipe, onMarkCooked, on
               onClick={() => setMenuOpen(o => !o)}
               title="More actions"
             >
-              Actions â–¾
+              Actions ▾
             </button>
             {menuOpen && (
               <div className="cbentry__menu-dropdown">
@@ -789,7 +789,7 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
       <div className="cookbook-detail__header">
         <button className="btn btn--ghost btn--sm" onClick={onBack}>â† Cookbooks</button>
         <div className="cookbook-detail__actions">
-          <button className="btn btn--ghost btn--sm" onClick={onEdit}>âœŽ Edit</button>
+          <button className="btn btn--ghost btn--sm" onClick={onEdit}>✎ Edit</button>
           <button className="btn btn--ghost btn--sm" style={{ color:'var(--terracotta)' }} onClick={() => setShowDeleteConfirm(true)}><Icon name="trash2" size={14} strokeWidth={2} /> Remove</button>
         </div>
       </div>
@@ -809,7 +809,7 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
           {cookbook.recipes.length > 0 && (
             <div className="cbdetail-progress">
               <div className="cbdetail-progress__bar"><div className="cbdetail-progress__fill" style={{ width:`${pct}%` }} /></div>
-              <span className="cbdetail-progress__label">{cookedCount} of {cookbook.recipes.length} cooked Â· {pct}%</span>
+              <span className="cbdetail-progress__label">{cookedCount} of {cookbook.recipes.length} cooked · {pct}%</span>
             </div>
           )}
         </div>
@@ -829,7 +829,7 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
 
         <div className="cookbook-search-wrap">
           <input className="editor-input cookbook-search-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search recipes in this book..." />
-          {search && <button className="cookbook-search-clear" onClick={() => setSearch('')}>âœ•</button>}
+          {search && <button className="cookbook-search-clear" onClick={() => setSearch('')}>✕</button>}
         </div>
 
         {cookbook.recipes.length === 0 ? (
@@ -871,7 +871,7 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
 };
 
 // --- CookbooksTab -------------------------------------------------------------
-// â”€â”€â”€ Cookbooks Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Cookbooks Tab ───────────────────────────────────────────────────────────
 const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngredients, setCookingRecipe, cookLog, onRecipeConverted, isAdmin, authFetch }) => {
   const [selectedCookbook, setSelectedCookbook] = useState(null);
   const [showAddModal,     setShowAddModal]     = useState(false);
@@ -982,7 +982,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
       <div className="cookbooks-header">
         <div>
           <h2 className="cookbooks-title">My Cookbooks</h2>
-          <p className="cookbooks-subtitle">{cookbooks.length} {cookbooks.length===1?'cookbook':'cookbooks'} Â· {enrichedCookbooks.reduce((s,c) => s+c.recipes.length, 0)} recipes indexed</p>
+          <p className="cookbooks-subtitle">{cookbooks.length} {cookbooks.length===1?'cookbook':'cookbooks'} · {enrichedCookbooks.reduce((s,c) => s+c.recipes.length, 0)} recipes indexed</p>
         </div>
         {isAdmin && <button className="btn btn--primary" onClick={() => setShowAddModal(true)}>+ Add Cookbook</button>}
       </div>
@@ -990,7 +990,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
       {cookbooks.length > 0 && (
         <div className="cookbooks-global-search">
           <input className="editor-input" value={globalSearch} onChange={e => setGlobalSearch(e.target.value)} placeholder="Search recipes across all cookbooks..." />
-          {globalSearch && <button className="cookbook-search-clear" onClick={() => setGlobalSearch('')}>âœ•</button>}
+          {globalSearch && <button className="cookbook-search-clear" onClick={() => setGlobalSearch('')}>✕</button>}
         </div>
       )}
 
@@ -1004,10 +1004,10 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
                   <div key={i} className="cbsearch-result">
                     <div className="cbsearch-result__info">
                       <span className="cbsearch-result__name">{e.name}</span>
-                      <span className="cbsearch-result__meta">{e._cbTitle}{e.page ? ` Â· p. ${e.page}` : ''}</span>
+                      <span className="cbsearch-result__meta">{e._cbTitle}{e.page ? ` · p. ${e.page}` : ''}</span>
                     </div>
                     <div className="cbsearch-result__actions">
-                      {linked && <button className="btn btn--ghost btn--sm" onClick={() => onOpenRecipe(linked)}>View â†’</button>}
+                      {linked && <button className="btn btn--ghost btn--sm" onClick={() => onOpenRecipe(linked)}>View →</button>}
                       <button className="btn btn--ghost btn--sm" onClick={() => { setGlobalSearch(''); setSelectedCookbook(enrichedCookbooks.find(c => c.id===e._cbId)); }}>Open cookbook</button>
                     </div>
                   </div>
@@ -1040,7 +1040,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
                   {cb.author && <p className="cookbook-card__author">{cb.author}</p>}
                   <div className="cookbook-card__stats">
                     <span className="cookbook-card__stat">{cb.recipes?.length||0} recipes</span>
-                    {cb.savedCount > 0 && <span className="cookbook-card__stat cookbook-card__stat--saved">âœ“ {cb.savedCount} saved</span>}
+                    {cb.savedCount > 0 && <span className="cookbook-card__stat cookbook-card__stat--saved">✓ {cb.savedCount} saved</span>}
                   </div>
                   {cb.recipes.length > 0 && (
                     <div className="cbcard-progress">
@@ -1063,7 +1063,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
 };
 
 // --- Add Recipe Tab ---------------------------------------------------------
-// â”€â”€â”€ Add Recipe Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Add Recipe Tab ──────────────────────────────────────────────────────────
 
 export { SiteFooter };
 export default CookbooksTab;

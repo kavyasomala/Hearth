@@ -84,7 +84,7 @@ const NoteFormModal = ({ note, onSave, onClose, authFetch }) => {
       <div className="create-modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
         <div className="create-modal__header">
           <h2 className="create-modal__title">{isNew ? 'Add Cooking Note' : 'Edit Note'}</h2>
-          <button className="ing-modal__close" onClick={onClose}>âœ•</button>
+          <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
         <div className="create-modal__body" style={{ gap: 14 }}>
           <div className="create-modal__field">
@@ -96,7 +96,7 @@ const NoteFormModal = ({ note, onSave, onClose, authFetch }) => {
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
               {NOTE_TYPES.map(t => (
                 <button key={t} className={`chip ${form.type === t ? 'chip--selected' : ''}`} onClick={() => set('type', t)}>
-                  {form.type === t && <span className="chip__check">âœ“</span>}<Icon name={NOTE_TYPE_META[t].emoji} size={13} strokeWidth={2} /> {NOTE_TYPE_META[t].label}
+                  {form.type === t && <span className="chip__check">✓</span>}<Icon name={NOTE_TYPE_META[t].emoji} size={13} strokeWidth={2} /> {NOTE_TYPE_META[t].label}
                 </button>
               ))}
             </div>
@@ -106,7 +106,7 @@ const NoteFormModal = ({ note, onSave, onClose, authFetch }) => {
             <textarea className="editor-textarea" value={form.body} onChange={e => handleBodyChange(e.target.value)} placeholder="Describe the rule, technique, or tip..." rows={4} style={{ resize: 'vertical' }} />
           </div>
           <div className="create-modal__field">
-            <label className="create-modal__field-label">Tooltip keywords <span style={{opacity:0.6, fontWeight:400}}>auto-generated Â· edit freely</span></label>
+            <label className="create-modal__field-label">Tooltip keywords <span style={{opacity:0.6, fontWeight:400}}>auto-generated · edit freely</span></label>
             <input className="editor-input" value={form.keywords} onChange={e => set('keywords', e.target.value)} placeholder="e.g. pasta, salt, water, boil" />
             <p className="create-modal__field-hint" style={{ marginTop: 4 }}>These words trigger this note as a tooltip on recipe steps.</p>
           </div>
@@ -118,7 +118,7 @@ const NoteFormModal = ({ note, onSave, onClose, authFetch }) => {
         </div>
         <div className="create-modal__footer">
           <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : isNew ? '+ Add Note' : 'âœ“ Save'}</button>
+          <button className="btn btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : isNew ? '+ Add Note' : '✓ Save'}</button>
         </div>
       </div>
     </div>
@@ -133,11 +133,11 @@ const NoteCard = ({ note, isAdmin, onEdit, onDelete }) => {
       <div className="cn-card__header" onClick={() => setExpanded(e => !e)}>
         <span className="cn-card__type-badge"><Icon name={meta.emoji} size={13} strokeWidth={2} /></span>
         <span className="cn-card__title">{note.title}</span>
-        <span className="cn-card__chevron">{expanded ? 'â–´' : 'â–¾'}</span>
+        <span className="cn-card__chevron">{expanded ? '▴' : '▾'}</span>
         {isAdmin && (
           <div className="cn-card__actions" onClick={e => e.stopPropagation()}>
-            <button className="cn-card__action-btn" onClick={onEdit} title="Edit">âœŽ</button>
-            <button className="cn-card__action-btn cn-card__action-btn--del" onClick={onDelete} title="Delete">âœ•</button>
+            <button className="cn-card__action-btn" onClick={onEdit} title="Edit">✎</button>
+            <button className="cn-card__action-btn cn-card__action-btn--del" onClick={onDelete} title="Delete">✕</button>
           </div>
         )}
       </div>
@@ -161,7 +161,7 @@ const NoteCard = ({ note, isAdmin, onEdit, onDelete }) => {
   );
 };
 
-// â”€â”€â”€ Cooking Notes Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Cooking Notes Tab ───────────────────────────────────────────────────────
 const CookingNotesTab = ({ notes, setNotes, authFetch, isAdmin }) => {
   const [editingNote, setEditingNote] = useState(null); // null = closed, false = new, obj = editing
   const [deleteTarget, setDeleteTarget] = useState(null);
