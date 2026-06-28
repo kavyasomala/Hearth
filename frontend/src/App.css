@@ -802,7 +802,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0;
-  max-width: 760px;
 }
 .home-main { min-width: 0; }
 .home-sidebar { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 16px; }
@@ -8052,7 +8051,7 @@ html, body {
    KitchenTab — new three-section kitchen tracker
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.kitchen-view { max-width: 720px; margin: 0 auto; padding: 0 0 80px; }
+.kitchen-view { padding: 0 0 80px; }
 
 .kitchen-header {
   display: flex; align-items: center; justify-content: space-between;
