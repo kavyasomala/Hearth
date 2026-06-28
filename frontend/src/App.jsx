@@ -13,7 +13,7 @@ import RecipeEditor from './pages/RecipeEditor';
 import ProfileTab from './tabs/ProfileTab';
 import GroceryListTab from './tabs/GroceryListTab';
 import CookingNotesTab from './tabs/CookingNotesTab';
-import CookbooksTab from './tabs/CookbooksTab';
+import CookbooksTab, { SiteFooter } from './tabs/CookbooksTab';
 import AddRecipeTab from './tabs/AddRecipeTab';
 
 
