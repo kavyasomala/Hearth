@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Icon } from '../icons';
 import { API } from '../constants';
 import { haptic, pluralizeIng, consolidateItems } from '../utils';
