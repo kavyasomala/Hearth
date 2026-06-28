@@ -269,4 +269,57 @@ const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
   );
 };
 
-export { IngredientAutocomplete, UnitAutocomplete, SortableItem, StepSortableItem, StepGroupRow, IngFlatRow, IngGroupRow };
+const CookbookAutocomplete = ({ value, onChange, cookbooks = [] }) => {
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
+  const wrapperRef = useRef(null);
+
+  const suggestions = useMemo(() => {
+    const val = value ?? '';
+    if (!val.trim()) return cookbooks.slice(0, 6).map(c => c.title);
+    const q = val.toLowerCase();
+    return cookbooks
+      .map(c => c.title)
+      .filter(t => t.toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [value, cookbooks]);
+
+  useEffect(() => { setHighlighted(0); }, [suggestions]);
+  useEffect(() => {
+    const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const select = (t) => { onChange(t); setOpen(false); };
+  const onKeyDown = (e) => {
+    if (!open || !suggestions.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, suggestions.length - 1)); }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
+    if (e.key === 'Enter' && suggestions[highlighted]) { e.preventDefault(); select(suggestions[highlighted]); }
+    if (e.key === 'Escape') setOpen(false);
+  };
+
+  return (
+    <div className="ing-ac-wrap" ref={wrapperRef}>
+      <input className="editor-input" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onKeyDown={onKeyDown} placeholder="e.g. Ottolenghi Simple" autoComplete="off" />
+      {open && suggestions.length > 0 && (
+        <ul className="ing-ac-dropdown">
+          {suggestions.map((t, i) => {
+            const q = (value ?? '').toLowerCase();
+            const idx = t.toLowerCase().indexOf(q);
+            return (
+              <li key={t} className={`ing-ac-option ${i === highlighted ? 'ing-ac-option--active' : ''}`} onMouseDown={() => select(t)} onMouseEnter={() => setHighlighted(i)}>
+                {idx >= 0 && q ? (<>{t.slice(0, idx)}<strong>{t.slice(idx, idx + q.length)}</strong>{t.slice(idx + q.length)}</>) : t}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+// --- Profile Tab -------------------------------------------------------------
+
+export { IngredientAutocomplete, UnitAutocomplete, SortableItem, StepSortableItem, StepGroupRow, IngFlatRow, IngGroupRow, CookbookAutocomplete };
