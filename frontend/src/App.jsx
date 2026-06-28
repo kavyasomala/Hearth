@@ -68,7 +68,7 @@ const LoginModal = ({ onLogin }) => {
             <input
               className="login-modal__input"
               type="password"
-              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+              placeholder="••••••••"
               value={password}
               onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
@@ -102,7 +102,7 @@ const CreateUserModal = ({ onClose, authFetch }) => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create user');
-      setSuccess(`Account created for ${data.user.username} âœ“`);
+      setSuccess(`Account created for ${data.user.username} ✓`);
       setUsername(''); setPassword('');
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   };
@@ -112,7 +112,7 @@ const CreateUserModal = ({ onClose, authFetch }) => {
       <div className="create-user-modal" onClick={e => e.stopPropagation()}>
         <div className="create-user-modal__header">
           <span className="create-user-modal__title"><Icon name="userCircle" size={18} strokeWidth={2} /> Create Account</span>
-          <button className="ing-modal__close" onClick={onClose}>âœ•</button>
+          <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
         <div className="login-modal__body">
           {error && <div className="login-modal__error">{error}</div>}
@@ -135,7 +135,7 @@ const CreateUserModal = ({ onClose, authFetch }) => {
 };
 
 // --- Main App ----------------------------------------------------------------
-// â”€â”€â”€ Main App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main App ────────────────────────────────────────────────────────────────
 function AppInner() {
   // --- Auth ------------------------------------------------------------------
   const [authToken, setAuthToken] = useState(() => LS.get('authToken', null));
@@ -230,7 +230,7 @@ function AppInner() {
   const appScrollRef = useRef(null); // ref to the scrollable app__scroll wrapper
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  // Scroll-to-top detection â€” listen on app__scroll, not window
+  // Scroll-to-top detection — listen on app__scroll, not window
   useEffect(() => {
     const el = appScrollRef.current;
     if (!el) return;
@@ -253,7 +253,7 @@ function AppInner() {
     if (!appleLink) { appleLink = document.createElement('link'); appleLink.rel = 'apple-touch-icon'; document.head.appendChild(appleLink); }
     appleLink.href = `${process.env.PUBLIC_URL || ''}/hearth-icon.png`;
 
-    // Prevent pinch-zoom and page shake on mobile â€” set viewport meta
+    // Prevent pinch-zoom and page shake on mobile — set viewport meta
     let viewport = document.querySelector("meta[name='viewport']");
     if (!viewport) { viewport = document.createElement('meta'); viewport.name = 'viewport'; document.head.appendChild(viewport); }
     viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
@@ -391,7 +391,7 @@ function AppInner() {
         if (soonRes.ok) { const d = await soonRes.json(); setMakeSoonIds(d.makeSoon || []); }
         // Re-fetch cooking notes with auth
         try { const r = await authFetch(`${API}/api/cooking-notes`); if (r.ok) { const d = await r.json(); setCookingNotes(d.notes || []); } } catch {}
-        // Load kitchen from API â€” ALWAYS overrides localStorage so devices stay in sync
+        // Load kitchen from API — ALWAYS overrides localStorage so devices stay in sync
         try {
           const kitRes = await authFetch(`${API}/api/user/kitchen`);
           if (kitRes.ok) {
@@ -475,7 +475,7 @@ function AppInner() {
       };
       list = list.filter(r => {
         const mins = parseMinutes(r.time);
-        // Exclude recipes with no time set â€” we can't confirm they're under the limit
+        // Exclude recipes with no time set — we can't confirm they're under the limit
         if (mins === null) return false;
         return mins <= maxMinutes;
       });
@@ -558,7 +558,7 @@ function AppInner() {
                 </button>
               </>
             ) : (
-              /* Search bar open â€” shown from any page */
+              /* Search bar open — shown from any page */
               <div className="app-header__mobile-search-bar" style={{position:'relative'}}>
                 <Icon name="search" size={14} strokeWidth={2} color="var(--warm-gray)" />
                 <input
@@ -586,10 +586,10 @@ function AppInner() {
                   }}
                 />
                 {mobileSearchQuery && (
-                  <button className="app-header__mobile-search-clear" onClick={() => { setMobileSearchQuery(''); setMobileSearchSubmitted(false); setLibrarySearch(''); }}>âœ•</button>
+                  <button className="app-header__mobile-search-clear" onClick={() => { setMobileSearchQuery(''); setMobileSearchSubmitted(false); setLibrarySearch(''); }}>✕</button>
                 )}
                 {!mobileSearchQuery && (
-                  <button className="app-header__mobile-search-clear" onClick={() => { setMobileSearchOpen(false); setMobileSearchQuery(''); setLibrarySearch(''); }}>âœ•</button>
+                  <button className="app-header__mobile-search-clear" onClick={() => { setMobileSearchOpen(false); setMobileSearchQuery(''); setLibrarySearch(''); }}>✕</button>
                 )}
                 {/* Autocomplete dropdown with images */}
                 {mobileSearchQuery && !mobileSearchSubmitted && (() => {
@@ -610,7 +610,7 @@ function AppInner() {
                             : <div className="mobile-search-dropdown__item-img-placeholder"><Icon name="image" size={16} color="var(--ash)" strokeWidth={1.5} /></div>}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div className="mobile-search-dropdown__item-name">{r.name}</div>
-                            {(r.cuisine || r.time) && <div className="mobile-search-dropdown__item-meta">{[r.cuisine, r.time].filter(Boolean).join(' Â· ')}</div>}
+                            {(r.cuisine || r.time) && <div className="mobile-search-dropdown__item-meta">{[r.cuisine, r.time].filter(Boolean).join(' · ')}</div>}
                           </div>
                         </button>
                       ))}
@@ -654,7 +654,7 @@ function AppInner() {
             <span className={`mobile-menu-btn__bar ${mobileNavOpen ? 'mobile-menu-btn__bar--open-3' : ''}`} />
           </button>
         </div>
-        {/* Mobile nav overlay â€” floats over content, does not push page down */}
+        {/* Mobile nav overlay — floats over content, does not push page down */}
         {mobileNavOpen && (
           <>
             {/* Backdrop to close on tap-outside */}
@@ -831,7 +831,7 @@ function AppInner() {
                   <div className="home-section__header">
                     <h2 className="home-section__title">Make Soon</h2>
                     {makeSoonIds.length > 0 && (
-                      <button className="btn btn--ghost btn--sm home-section__view-all" onClick={() => { setActiveTags([]); setActiveCuisines([]); setActiveProgresses(['__makesoon']); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>View all â†’</button>
+                      <button className="btn btn--ghost btn--sm home-section__view-all" onClick={() => { setActiveTags([]); setActiveCuisines([]); setActiveProgresses(['__makesoon']); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>View all →</button>
                     )}
                   </div>
                   {makeSoonIds.length === 0 ? (
@@ -841,7 +841,7 @@ function AppInner() {
                         <p className="home-empty-cta__title">Plan your week</p>
                         <p className="home-empty-cta__sub">Tap <span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',margin:'0 2px'}}><Icon name="timer" size={13} strokeWidth={2} /></span> on any recipe to add it here</p>
                       </div>
-                      <span className="home-empty-cta__arrow">â†’</span>
+                      <span className="home-empty-cta__arrow">→</span>
                     </div>
                   ) : (
                     <HScrollRow count={makeSoonRecipes.length}>
@@ -865,9 +865,9 @@ function AppInner() {
                   <div className="home-section__header">
                     <h2 className="home-section__title">What can I make?</h2>
                     {allMyIngredients.size > 0 ? (
-                      <button className="btn btn--ghost btn--sm home-section__view-all" onClick={() => { setActiveProgresses(['__makesoon']); setActiveTags([]); setActiveCuisines([]); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>View all â†’</button>
+                      <button className="btn btn--ghost btn--sm home-section__view-all" onClick={() => { setActiveProgresses(['__makesoon']); setActiveTags([]); setActiveCuisines([]); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>View all →</button>
                     ) : (
-                      <button className="btn btn--ghost btn--sm" onClick={() => setView('kitchen')}>Set ingredients â†’</button>
+                      <button className="btn btn--ghost btn--sm" onClick={() => setView('kitchen')}>Set ingredients →</button>
                     )}
                   </div>
                   {allMyIngredients.size === 0 ? (
@@ -877,7 +877,7 @@ function AppInner() {
                         <p className="home-empty-cta__title">Add your kitchen &amp; pantry ingredients</p>
                         <p className="home-empty-cta__sub">We'll show you what you can cook right now</p>
                       </div>
-                      <span className="home-empty-cta__arrow">â†’</span>
+                      <span className="home-empty-cta__arrow">→</span>
                     </div>
                   ) : goodMatches.length > 0 ? (
                     <HScrollRow count={goodMatches.length}>
@@ -917,7 +917,7 @@ function AppInner() {
               {mobileSearchSubmitted && mobileSearchQuery ? (
                 <div className="recipes-page-header__search-results">
                   <h1 className="recipes-page-header__title">Search results for <em>"{mobileSearchQuery}"</em></h1>
-                  <button className="recipes-page-header__clear" onClick={() => { setMobileSearchQuery(''); setMobileSearchSubmitted(false); setLibrarySearch(''); }}>âœ• Clear</button>
+                  <button className="recipes-page-header__clear" onClick={() => { setMobileSearchQuery(''); setMobileSearchSubmitted(false); setLibrarySearch(''); }}>✕ Clear</button>
                 </div>
               ) : (
                 <h1 className="recipes-page-header__title">All Recipes</h1>
@@ -937,7 +937,7 @@ function AppInner() {
                     onChange={e => setLibrarySearch(e.target.value)}
                   />
                   {librarySearch && (
-                    <button className="filter-bar__clear-x" onClick={() => setLibrarySearch('')}>âœ•</button>
+                    <button className="filter-bar__clear-x" onClick={() => setLibrarySearch('')}>✕</button>
                   )}
                 </div>
                 <button
@@ -955,11 +955,11 @@ function AppInner() {
                     className={`filters-toggle-btn ${filtersOpen ? 'filters-toggle-btn--open' : ''} ${hasActiveFilters ? 'filters-toggle-btn--active' : ''}`}
                     onClick={() => setFiltersOpen(o => !o)}
                   >
-                    <><Icon name="sliders" size={14} strokeWidth={2} /> Filters{activeCount > 0 ? ` Â· ${activeCount}` : ''}</>
-                    <span className="filters-toggle-btn__arrow">{filtersOpen ? 'â–´' : 'â–¾'}</span>
+                    <><Icon name="sliders" size={14} strokeWidth={2} /> Filters{activeCount > 0 ? ` · ${activeCount}` : ''}</>
+                    <span className="filters-toggle-btn__arrow">{filtersOpen ? '▴' : '▾'}</span>
                   </button>
                   {hasActiveFilters && (
-                    <button className="filter-bar__reset" onClick={clearAllFilters}>âœ• Clear</button>
+                    <button className="filter-bar__reset" onClick={clearAllFilters}>✕ Clear</button>
                   )}
                 </div>
                 <button
@@ -975,11 +975,11 @@ function AppInner() {
                   className={`filters-toggle-btn ${filtersOpen ? 'filters-toggle-btn--open' : ''} ${hasActiveFilters ? 'filters-toggle-btn--active' : ''}`}
                   onClick={() => setFiltersOpen(o => !o)}
                 >
-                  <><Icon name="sliders" size={14} strokeWidth={2} /> Filters{activeCount > 0 ? ` Â· ${activeCount}` : ''}</>
-                  <span className="filters-toggle-btn__arrow">{filtersOpen ? 'â–´' : 'â–¾'}</span>
+                  <><Icon name="sliders" size={14} strokeWidth={2} /> Filters{activeCount > 0 ? ` · ${activeCount}` : ''}</>
+                  <span className="filters-toggle-btn__arrow">{filtersOpen ? '▴' : '▾'}</span>
                 </button>
                 {hasActiveFilters && (
-                  <button className="filter-bar__reset" onClick={clearAllFilters}>âœ• Clear</button>
+                  <button className="filter-bar__reset" onClick={clearAllFilters}>✕ Clear</button>
                 )}
               </div>
             </div>
@@ -1053,7 +1053,7 @@ function AppInner() {
                           onClick={() => setCalDir(d)}>{d}</button>
                       ))}
                     </div>
-                    {maxCalories !== null && <button className="filter-panel__clear-slider" onClick={() => setMaxCalories(null)}>âœ• clear</button>}
+                    {maxCalories !== null && <button className="filter-panel__clear-slider" onClick={() => setMaxCalories(null)}>✕ clear</button>}
                   </div>
                   <div className="filter-panel__slider-wrap">
                     <span className="filter-panel__slider-edge">100</span>
@@ -1079,7 +1079,7 @@ function AppInner() {
                 <div className="filter-panel__group filter-panel__group--slider">
                   <div className="filter-panel__slider-header">
                     <span className="filter-panel__label">Time</span>
-                    {maxMinutes !== null && <button className="filter-panel__clear-slider" onClick={() => setMaxMinutes(null)}>âœ• clear</button>}
+                    {maxMinutes !== null && <button className="filter-panel__clear-slider" onClick={() => setMaxMinutes(null)}>✕ clear</button>}
                   </div>
                   <div className="filter-panel__slider-wrap">
                     <span className="filter-panel__slider-edge">10m</span>
@@ -1106,12 +1106,12 @@ function AppInner() {
             {/* Active filter pills */}
             {hasActiveFilters && (
               <div className="active-filter-pills">
-                {activeCuisines.map(c => <span key={c} className="active-filter-pill">{CUISINE_ICON[c] && <Icon name={CUISINE_ICON[c]} size={12} strokeWidth={2} />} {c} <button onClick={() => toggleCuisine(c)}>âœ•</button></span>)}
-                {activeTags.map(k => <span key={k} className="active-filter-pill">{TAG_FILTERS.find(f => f.key === k)?.label} <button onClick={() => toggleTag(k)}>âœ•</button></span>)}
-                {activeProgresses.map(k => <span key={k} className="active-filter-pill">{PROGRESS_FILTERS.find(f => f.key === k)?.label} <button onClick={() => toggleProgress(k)}>âœ•</button></span>)}
-                {activeCookbooks.map(k => <span key={k} className="active-filter-pill">{k === '__uncategorized' ? 'No cookbook' : k} <button onClick={() => toggleCookbook(k)}>âœ•</button></span>)}
-                {maxCalories !== null && <span className="active-filter-pill">{calDir} {maxCalories} kcal <button onClick={() => setMaxCalories(null)}>âœ•</button></span>}
-                {maxMinutes !== null && <span className="active-filter-pill">under {maxMinutes} min <button onClick={() => setMaxMinutes(null)}>âœ•</button></span>}
+                {activeCuisines.map(c => <span key={c} className="active-filter-pill">{CUISINE_ICON[c] && <Icon name={CUISINE_ICON[c]} size={12} strokeWidth={2} />} {c} <button onClick={() => toggleCuisine(c)}>✕</button></span>)}
+                {activeTags.map(k => <span key={k} className="active-filter-pill">{TAG_FILTERS.find(f => f.key === k)?.label} <button onClick={() => toggleTag(k)}>✕</button></span>)}
+                {activeProgresses.map(k => <span key={k} className="active-filter-pill">{PROGRESS_FILTERS.find(f => f.key === k)?.label} <button onClick={() => toggleProgress(k)}>✕</button></span>)}
+                {activeCookbooks.map(k => <span key={k} className="active-filter-pill">{k === '__uncategorized' ? 'No cookbook' : k} <button onClick={() => toggleCookbook(k)}>✕</button></span>)}
+                {maxCalories !== null && <span className="active-filter-pill">{calDir} {maxCalories} kcal <button onClick={() => setMaxCalories(null)}>✕</button></span>}
+                {maxMinutes !== null && <span className="active-filter-pill">under {maxMinutes} min <button onClick={() => setMaxMinutes(null)}>✕</button></span>}
               </div>
             )}
 
@@ -1164,7 +1164,7 @@ function AppInner() {
                                 ? <img className="rlt__thumb" src={r.coverImage} alt="" loading="lazy" />
                                 : <span className="rlt__thumb rlt__thumb--placeholder"><Icon name="image" size={20} color="var(--ash)" strokeWidth={1.5} /></span>}
                               <span className="rlt__name">{r.name}</span>
-                              {canMakeNow && <span className="rlt__ready">âœ“</span>}
+                              {canMakeNow && <span className="rlt__ready">✓</span>}
                             </span>
                             <span className="rlt__col rlt__col--cuisine">{r.cuisine || <span className="rlt__empty">--</span>}</span>
                             <span className="rlt__col rlt__col--tags">
@@ -1220,7 +1220,7 @@ function AppInner() {
                           return pages;
                         })()}
                       </div>
-                      <button className="pager__btn" onClick={() => setLibraryPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>Next â†’</button>
+                      <button className="pager__btn" onClick={() => setLibraryPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>Next →</button>
                     </div>
                   )}
                   <p className="recipes-total-count">{libraryRecipes.length} of {recipes.length} recipe{recipes.length !== 1 ? 's' : ''}</p>
@@ -1323,7 +1323,7 @@ function AppInner() {
       )}
       </div>{/* end app__scroll */}
 
-      {/* -- Mobile bottom tab bar â€” outside scroll area so keyboard never moves it -- */}
+      {/* -- Mobile bottom tab bar — outside scroll area so keyboard never moves it -- */}
       <nav className="mobile-tab-bar">
         {[
           { key: 'home',      icon: 'home',      label: 'Home'      },

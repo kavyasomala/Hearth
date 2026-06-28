@@ -110,7 +110,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
         <div className="rp2__hero-overlay">
           <div className="rp2__hero-topbar">
             <button className="rp2__hero-btn" onClick={onBack}>â† Cancel</button>
-            <button className="rp2__hero-btn rp2__hero-btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'âœ“ Save'}</button>
+            <button className="rp2__hero-btn rp2__hero-btn--primary" onClick={save} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
           </div>
           <div className="rp2__hero-bottom">
             <div className="rp2__hero-tags">{details.cuisine && <span className="rp2__tag">{details.cuisine}</span>}</div>
@@ -123,7 +123,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
       </div>
 
       {saveError && <p className="editor-error" style={{margin:'8px 24px 0'}}><Icon name="alertTriangle" size={14} strokeWidth={2} /> {saveError}</p>}
-      {saveSuccess && <p className="editor-success" style={{margin:'8px 24px 0'}}>âœ“ Saved successfully</p>}
+      {saveSuccess && <p className="editor-success" style={{margin:'8px 24px 0'}}>✓ Saved successfully</p>}
 
       <div className="rp2__header ed-name-row">
         <input className="ed-title-input" value={details.name} onChange={e => setDetail('name', e.target.value)} placeholder="Recipe name..." />
@@ -162,8 +162,8 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
                   <IngredientAutocomplete value={ing.name} onChange={v => updateIng(ing._id, 'name', v)} allIngredients={allIngredients.filter(Boolean)} />
                   <input className="editor-input editor-input--sm" value={ing.group_label || ''} onChange={e => updateIng(ing._id, 'group_label', e.target.value)} placeholder="e.g. Sauce" list="group-labels" />
                   <input className="editor-input" value={ing.prep_note || ''} onChange={e => updateIng(ing._id, 'prep_note', e.target.value)} placeholder="finely chopped" />
-                  <button className={`editor-optional-btn ${ing.optional ? 'editor-optional-btn--on' : ''}`} onClick={() => updateIng(ing._id, 'optional', !ing.optional)} title="Mark as optional">{ing.optional ? 'âœ“' : 'â—‹'}</button>
-                  <button className="editor-remove-btn" onClick={() => removeIng(ing._id)}>âœ•</button>
+                  <button className={`editor-optional-btn ${ing.optional ? 'editor-optional-btn--on' : ''}`} onClick={() => updateIng(ing._id, 'optional', !ing.optional)} title="Mark as optional">{ing.optional ? '✓' : '○'}</button>
+                  <button className="editor-remove-btn" onClick={() => removeIng(ing._id)}>✕</button>
                 </div>
               </SortableItem>
             ))}
@@ -189,7 +189,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
                       <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
                       <span className="rp2__ed-timer-row__sep">s</span>
                     </div>
-                    <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
+                    <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                   </div>
                 );
               }
@@ -201,7 +201,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
                     <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                     <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                   </div>
-                  <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
+                  <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                   {item._showTip && createPortal((() => {
                     const ar = item._tipAnchor; const pw = 300, ph = 160;
                     const vw = window.innerWidth, vh = window.innerHeight;
@@ -222,7 +222,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
         {notesList.map(note => (
           <div key={note._id} className="editor-note-row">
             <input className="editor-input" value={note.text || ''} onChange={e => updateNote(note._id, e.target.value)} placeholder="e.g. Works great with tofu instead of chicken" />
-            <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>âœ•</button>
+            <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>✕</button>
           </div>
         ))}
         <button className="btn btn--ghost editor-add-btn" onClick={addNote}>+ Add Note</button>
@@ -230,7 +230,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
 
       <div className="editor-save-bar">
         {saveError && <p className="editor-error"><Icon name="alertTriangle" size={14} strokeWidth={2} /> {saveError}</p>}
-        {saveSuccess && <p className="editor-success">âœ“ Saved successfully</p>}
+        {saveSuccess && <p className="editor-success">✓ Saved successfully</p>}
         <button className="btn btn--primary btn--large" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
       </div>
     </main>

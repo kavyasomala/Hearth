@@ -125,7 +125,7 @@ const SortableItem = ({ id, children }) => {
   };
   return (
     <div ref={setNodeRef} style={style} className={`sortable-item ${isDragging ? 'sortable-item--dragging' : ''}`}>
-      <div className="sortable-handle" {...attributes} {...listeners}>â ¿</div>
+      <div className="sortable-handle" {...attributes} {...listeners}>⠿</div>
       {children}
     </div>
   );
@@ -142,7 +142,7 @@ const StepSortableItem = ({ id, stepNum, grouped, children, onSnap, onUnsnap, ca
   };
   return (
     <div ref={setNodeRef} style={style} className={`step-sortable-row ${grouped ? 'step-sortable-row--grouped' : ''} ${isDragging ? 'step-sortable-row--dragging' : ''}`}>
-      {/* Snap/unsnap tab â€” only shown when relevant */}
+      {/* Snap/unsnap tab — only shown when relevant */}
       {grouped ? (
         <button
           className="step-snap-btn step-snap-btn--out"
@@ -179,17 +179,17 @@ const StepGroupRow = ({ grp, onLabelChange, onRemove, onAddStep }) => {
   };
   return (
     <div className="step-group-row" ref={setNodeRef} style={style}>
-      <span className="step-group-row__drag" {...attributes} {...listeners}>â ¿</span>
+      <span className="step-group-row__drag" {...attributes} {...listeners}>⠿</span>
       <input
         className="step-group-row__label-input"
         value={grp.name}
         onChange={e => onLabelChange(e.target.value)}
-        placeholder="Group name (e.g. For the sauce, Marinade)â€¦"
+        placeholder="Group name (e.g. For the sauce, Marinade)…"
       />
       {onAddStep && (
-        <button className="ing-group-row__add-btn" onClick={onAddStep} title="Add step to this group">ï¼‹</button>
+        <button className="ing-group-row__add-btn" onClick={onAddStep} title="Add step to this group">＋</button>
       )}
-      <button className="editor-remove-btn" onClick={onRemove} title="Remove group">âœ•</button>
+      <button className="editor-remove-btn" onClick={onRemove} title="Remove group">✕</button>
     </div>
   );
 };
@@ -205,7 +205,7 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
   };
   return (
     <div className="ing-flat-row" ref={setNodeRef} style={style}>
-      {/* Invisible full-row drag handle â€” long press activates on mobile */}
+      {/* Invisible full-row drag handle — long press activates on mobile */}
       <span 
         className="ing-flat-row__drag" 
         {...attributes} 
@@ -222,7 +222,7 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
           flexShrink: 0,
           transition: 'opacity 0.2s',
         }}
-      >Â·Â·</span>
+      >··</span>
       <div className="ing-flat-row__fields">
         {/* Row 1 */}
         <div className="ing-flat-row__row1">
@@ -245,7 +245,7 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
           >
             {ing.optional ? 'optional' : 'required'}
           </button>
-          <button className="editor-remove-btn" onClick={onRemove} tabIndex={-1}>âœ•</button>
+          <button className="editor-remove-btn" onClick={onRemove} tabIndex={-1}>✕</button>
         </div>
       </div>
     </div>
@@ -261,10 +261,10 @@ const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
   };
   return (
     <div className="ing-group-row" ref={setNodeRef} style={style}>
-      <span className="ing-flat-row__drag ing-group-row__drag" {...attributes} {...listeners}>â ¿</span>
+      <span className="ing-flat-row__drag ing-group-row__drag" {...attributes} {...listeners}>⠿</span>
       <input className="ing-group-row__label-input" value={ing.name} onChange={e => onLabelChange(e.target.value)} placeholder="Group name..." />
-      <button className="ing-group-row__add-btn" onClick={onAddIngredient} title="Add ingredient to this group">ï¼‹</button>
-      <button className="editor-remove-btn" onClick={onRemove} title="Remove group">âœ•</button>
+      <button className="ing-group-row__add-btn" onClick={onAddIngredient} title="Add ingredient to this group">＋</button>
+      <button className="editor-remove-btn" onClick={onRemove} title="Remove group">✕</button>
     </div>
   );
 };

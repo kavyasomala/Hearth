@@ -120,7 +120,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
           <span className="add-tab__card-icon"><Icon name="note" size={28} strokeWidth={1.5} /></span>
           <h3 className="add-tab__card-title">Add Manually</h3>
           <p className="add-tab__card-desc">Type in the name, ingredients, steps, and notes yourself</p>
-          <span className="add-tab__card-cta">Get started â†’</span>
+          <span className="add-tab__card-cta">Get started →</span>
         </button>
       </div>
 
@@ -132,7 +132,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
             {/* Modal header */}
             <div className="create-modal__header">
               <h2 className="create-modal__title"><Icon name="note" size={18} strokeWidth={2} /> New Recipe</h2>
-              <button className="ing-modal__close" onClick={closeModal}>âœ•</button>
+              <button className="ing-modal__close" onClick={closeModal}>✕</button>
             </div>
 
             <div className="create-modal__body">
@@ -179,7 +179,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                   {ALL_CUISINES.map(c => (
                     <button key={c} className={`chip ${details.cuisine === c ? 'chip--selected' : ''}`}
                       onClick={() => setDetail('cuisine', details.cuisine === c ? '' : c)} type="button">
-                      {details.cuisine === c && <span className="chip__check">âœ“</span>}{c}
+                      {details.cuisine === c && <span className="chip__check">✓</span>}{c}
                     </button>
                   ))}
                 </div>
@@ -191,7 +191,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                 <div className="picker__chips" style={{ marginTop: 6 }}>
                   {TAG_FILTERS.map(({ key, label }) => (
                     <button key={key} className={`chip ${details.tags.includes(key) ? 'chip--selected' : ''}`} onClick={() => toggleTag(key)} type="button">
-                      {details.tags.includes(key) && <span className="chip__check">âœ“</span>}{label}
+                      {details.tags.includes(key) && <span className="chip__check">✓</span>}{label}
                     </button>
                   ))}
                 </div>
@@ -211,7 +211,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                     <button key={key}
                       className={`chip ${details.status === key ? 'chip--selected' : ''}`}
                       onClick={() => setDetail('status', key)} type="button">
-                      {details.status === key && <span className="chip__check">âœ“</span>}{label}
+                      {details.status === key && <span className="chip__check">✓</span>}{label}
                     </button>
                   ))}
                 </div>
@@ -292,7 +292,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                             <input className="editor-input editor-input--sm rp2__ed-timer-row__num" type="number" min="0" max="59" value={item.s} onChange={e => setSteps(prev => prev.map(s => s._id === item._id ? {...s, s: e.target.value} : s))} placeholder="0" />
                             <span className="rp2__ed-timer-row__sep">s</span>
                           </div>
-                          <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
+                          <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                         </div>
                       );
                       const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
@@ -303,7 +303,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                             <button className="rp2__ed-add-timer-btn" onClick={() => addTimerAfterStep(item._id)} title="Add timer"><Icon name="timer" size={13} strokeWidth={2} /></button>
                             <button className="rp2__ed-add-timer-btn" onClick={e => { e.stopPropagation(); setSteps(prev => prev.map(s => s._id === item._id ? { ...s, _showTip: !s._showTip, _tipAnchor: e.currentTarget.getBoundingClientRect() } : s)); }} title="Add tip" style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                           </div>
-                          <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>âœ•</button>
+                          <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                           {item._showTip && createPortal((() => {
                             const ar = item._tipAnchor; const pw = 300, ph = 160;
                             const vw = window.innerWidth, vh = window.innerHeight;
@@ -325,7 +325,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                 {notesList.map(note => (
                   <div key={note._id} className="editor-note-row">
                     <input className="editor-input" value={note.text || ''} onChange={e => updateNote(note._id, e.target.value)} placeholder="e.g. Great with oat milk instead of dairy" />
-                    <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>âœ•</button>
+                    <button className="editor-remove-btn" onClick={() => removeNote(note._id)}>✕</button>
                   </div>
                 ))}
                 <button className="btn btn--ghost editor-add-btn" onClick={addNote}>+ Add Note</button>
@@ -350,7 +350,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
             <div className="create-modal__footer">
               <button className="btn btn--ghost" onClick={closeModal}>Cancel</button>
               <button className="btn btn--primary" onClick={save} disabled={saving}>
-                {saving ? 'Creating...' : 'âœ“ Create Recipe'}
+                {saving ? 'Creating...' : '✓ Create Recipe'}
               </button>
             </div>
           </div>
@@ -361,6 +361,6 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
 };
 
 // --- Login Modal -------------------------------------------------------------
-// â”€â”€â”€ Login Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Login Modal ─────────────────────────────────────────────────────────────
 
 export default AddRecipeTab;

@@ -60,7 +60,7 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
     endTimeRef.current = null;
   };
 
-  // rAF loop â€” reads from wall clock, works even after tab becomes hidden then visible
+  // rAF loop — reads from wall clock, works even after tab becomes hidden then visible
   useEffect(() => {
     if (timerState !== 'running') {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -111,7 +111,7 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
 
   return (
     <li className={`rp2__step ${done ? 'rp2__step--done' : ''} ${isCurrent ? 'rp2__step--current' : ''} ${enlarge ? 'rp2__step--enlarged' : ''} ${grouped ? 'rp2__step--grouped' : ''}`} onClick={onToggle}>
-      <div className="rp2__step-num">{done ? 'âœ“' : step.step_number}</div>
+      <div className="rp2__step-num">{done ? '✓' : step.step_number}</div>
       <div className="rp2__step-content">
         <div className="rp2__step-body-row">
           <p className="rp2__step-body">{cleanStepBody}</p>
@@ -121,7 +121,7 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
                 <button
                   className={`rp2__step-hint-btn ${showTips ? 'rp2__step-hint-btn--active' : ''}`}
                   onClick={e => { e.stopPropagation(); setShowTips(v => !v); }}
-                  title={[...(manualTip ? ['Tip'] : []), ...matchedNotes.map(n => n.title)].join(' Â· ')}
+                  title={[...(manualTip ? ['Tip'] : []), ...matchedNotes.map(n => n.title)].join(' · ')}
                 ><Icon name="lightbulb" size={13} strokeWidth={2} />{(matchedNotes.length + (manualTip ? 1 : 0)) > 1 && <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 2 }}>{matchedNotes.length + (manualTip ? 1 : 0)}</span>}</button>
                 {showTips && (
                   <div className="rp2__step-hint-popover" onClick={e => e.stopPropagation()}>
@@ -156,12 +156,12 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
             )}
             <div className="rp2__step-timer__controls">
               <span className={`rp2__step-timer__display ${timerState === 'done' ? 'rp2__step-timer__display--done' : ''}`}>
-                {timerState === 'done' ? 'âœ“ Done!' : fmtTime(remaining)}
+                {timerState === 'done' ? '✓ Done!' : fmtTime(remaining)}
               </span>
               {timerState === 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}><Icon name="arrowRight" size={12} strokeWidth={2.5} /> Start</button>}
               {timerState === 'running' && <button className="rp2__step-timer__btn rp2__step-timer__btn--pause" onClick={pauseTimer}><Icon name="clock" size={12} strokeWidth={2.5} /> Pause</button>}
               {timerState === 'paused' && <button className="rp2__step-timer__btn rp2__step-timer__btn--start" onClick={startTimer}><Icon name="arrowRight" size={12} strokeWidth={2.5} /> Resume</button>}
-              {timerState !== 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--reset" onClick={resetTimer}>â†º</button>}
+              {timerState !== 'idle' && <button className="rp2__step-timer__btn rp2__step-timer__btn--reset" onClick={resetTimer}>↺</button>}
             </div>
           </div>
         )}
@@ -191,15 +191,15 @@ const SortableNoteRow = ({ note, onUpdate, onRemove }) => {
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.45 : 1 };
   return (
     <div ref={setNodeRef} style={style} className="rp2__ed-note-row">
-      <span style={{ cursor: 'grab', fontSize: 16, color: 'var(--ash)', flexShrink: 0, userSelect: 'none', touchAction: 'none' }} {...attributes} {...listeners}>â ¿</span>
+      <span style={{ cursor: 'grab', fontSize: 16, color: 'var(--ash)', flexShrink: 0, userSelect: 'none', touchAction: 'none' }} {...attributes} {...listeners}>⠿</span>
       <input className="editor-input" style={{ flex: 1 }} value={note.text} onChange={e => onUpdate(e.target.value)} placeholder="Add a tip or note..." />
-      <button className="editor-remove-btn" onClick={onRemove}>âœ•</button>
+      <button className="editor-remove-btn" onClick={onRemove}>✕</button>
     </div>
   );
 };
 
 // --- Recipe Page -------------------------------------------------------------
-// â”€â”€â”€ Recipe Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Recipe Page ─────────────────────────────────────────────────────────────
 const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [] }) => {
   const apiFetch = authFetch || fetch;
   const [checkedIngredients, setCheckedIngredients] = useState(new Set());
@@ -424,9 +424,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           newGroupLabel = item.name || null;
           break;
         }
-        // Hit a regular step â€” check if IT is grouped under a header
+        // Hit a regular step — check if IT is grouped under a header
         if (item.group_label) {
-          // The step above is grouped â€” the dragged step is also in that group
+          // The step above is grouped — the dragged step is also in that group
           newGroupLabel = item.group_label;
         }
         break;
@@ -557,7 +557,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 ><Icon name="timer" size={16} strokeWidth={2} /></button>
                 {isAdmin && <div className="rp2__photo-btn-wrap">
                   <button className="rp2__hero-btn rp2__hero-soon rp2__hero-btn--photo"
-                    onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Change photo link">âœŽ
+                    onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Change photo link">✎
                   </button>
                   {isEdit('image') && (
                     <div className="rp2__img-popover-down">
@@ -566,8 +566,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                         onChange={e => setDraftImageInput(e.target.value)} placeholder="https://..."
                         onKeyDown={e => { if (e.key === 'Enter') saveSection('image'); if (e.key === 'Escape') cancelEdit(); }} />
                       <div className="rp2__dark-pop-actions">
-                        <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '...' : 'âœ“ Save'}</button>
-                        <button className="rp2__dark-cancel" onClick={cancelEdit}>âœ• Cancel</button>
+                        <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
+                        <button className="rp2__dark-cancel" onClick={cancelEdit}>✕ Cancel</button>
                       </div>
                     </div>
                   )}
@@ -590,7 +590,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             )}
             {isAdmin && <div className="rp2__photo-btn-wrap">
               <button className="rp2__hero-btn rp2__hero-soon rp2__hero-btn--photo"
-                onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Change photo link">âœŽ
+                onClick={e => { e.stopPropagation(); startEdit(isEdit('image') ? null : 'image'); }} title="Change photo link">✎
               </button>
               {isEdit('image') && (
                 <div className="rp2__img-popover-down">
@@ -599,8 +599,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     onChange={e => setDraftImageInput(e.target.value)} placeholder="https://..."
                     onKeyDown={e => { if (e.key === 'Enter') saveSection('image'); if (e.key === 'Escape') cancelEdit(); }} />
                   <div className="rp2__dark-pop-actions">
-                    <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '...' : 'âœ“ Save'}</button>
-                    <button className="rp2__dark-cancel" onClick={cancelEdit}>âœ• Cancel</button>
+                    <button className="rp2__dark-save" onClick={() => saveSection('image')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
+                    <button className="rp2__dark-cancel" onClick={cancelEdit}>✕ Cancel</button>
                   </div>
                 </div>
               )}
@@ -661,7 +661,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 </div>
               )}
 
-              {/* Combined edit popover â€” opens from either chip */}
+              {/* Combined edit popover — opens from either chip */}
               {isEdit('meta-tags') && (
                 <div className="rp2__hero-tag-wrap">
                   <div className="rp2__hero-dark-popover" style={{ minWidth: 340 }}>
@@ -700,9 +700,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
 
                     <div className="rp2__dark-pop-actions">
                       <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>
-                        {saving ? '...' : 'âœ“ Save'}
+                        {saving ? '...' : '✓ Save'}
                       </button>
-                      <button className="rp2__dark-cancel" onClick={cancelEdit}>âœ•</button>
+                      <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
                     </div>
                   </div>
                 </div>
@@ -728,8 +728,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       placeholder="e.g. 45 mins"
                       onKeyDown={e => { if (e.key === 'Enter') saveSection('meta'); if (e.key === 'Escape') cancelEdit(); }} />
                     <div className="rp2__dark-pop-actions">
-                      <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : 'âœ“ Save'}</button>
-                      <button className="rp2__dark-cancel" onClick={cancelEdit}>âœ•</button>
+                      <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
+                      <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
                     </div>
                   </div>
                 )}
@@ -750,8 +750,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       placeholder="e.g. 4"
                       onKeyDown={e => { if (e.key === 'Enter') saveSection('meta'); if (e.key === 'Escape') cancelEdit(); }} />
                     <div className="rp2__dark-pop-actions">
-                      <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : 'âœ“ Save'}</button>
-                      <button className="rp2__dark-cancel" onClick={cancelEdit}>âœ•</button>
+                      <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
+                      <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
                     </div>
                   </div>
                 )}
@@ -864,11 +864,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 <div className="ing-modal__header-actions">
                   {isEdit('ingredients') ? (
                     <>
-                      <button className="ing-modal__save-btn" onClick={async () => { await saveSection('ingredients'); setShowIngredientsModal(false); }} disabled={saving}>{saving ? '...' : 'âœ“ Save'}</button>
-                      <button className="ing-modal__close" onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}>âœ•</button>
+                      <button className="ing-modal__save-btn" onClick={async () => { await saveSection('ingredients'); setShowIngredientsModal(false); }} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
+                      <button className="ing-modal__close" onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}>✕</button>
                     </>
                   ) : (
-                    <button className="ing-modal__close" onClick={() => setShowIngredientsModal(false)}>âœ•</button>
+                    <button className="ing-modal__close" onClick={() => setShowIngredientsModal(false)}>✕</button>
                   )}
                 </div>
               </div>
@@ -944,7 +944,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         <div className="rp2__ingredients">
           <div className="rp2__section-title-row">
             <h2 className="rp2__section-title rp2__section-title--sm">Ingredients</h2>
-            {isAdmin && <button className="section-pencil" onClick={e => { startEdit('ingredients'); setShowIngredientsModal(true); }} title="Edit ingredients">âœŽ</button>}
+            {isAdmin && <button className="section-pencil" onClick={e => { startEdit('ingredients'); setShowIngredientsModal(true); }} title="Edit ingredients">✎</button>}
           </div>
 
           {ingredientGroups.length > 0
@@ -998,7 +998,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             </div>
           )}
 
-          {/* Inline editor â€” desktop and mobile */}
+          {/* Inline editor — desktop and mobile */}
           {isEdit('instructions') ? (
             <div className="rp2__inline-editor">
               <DndContext sensors={rpSensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onDraftStepDragEnd}>
@@ -1012,7 +1012,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                         let insertIdx = idx;
                         for (let j = idx + 1; j < draftSteps.length; j++) {
                           const s = draftSteps[j];
-                          if (s._isGroup) break; // next group header â€” stop
+                          if (s._isGroup) break; // next group header — stop
                           if (!s._isTimer && s.group_label !== grpName) break; // step not in this group
                           insertIdx = j;
                         }
@@ -1068,12 +1068,12 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                               }
                               return next;
                             });
-                          }}>âœ•</button>
+                          }}>✕</button>
                         </div>
                       );
                     }
 
-                    // Regular step â€” snap/unsnap into nearest group above
+                    // Regular step — snap/unsnap into nearest group above
                     const isGrouped = !!item.group_label;
                     const stepNum = draftSteps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
 
@@ -1115,7 +1115,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                             style={{ color: item._tip ? 'var(--terracotta)' : undefined, opacity: item._tip ? 1 : undefined }}
                           ><Icon name="lightbulb" size={13} strokeWidth={2} /></button>
                         </div>
-                        <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>âœ•</button>
+                        <button className="editor-remove-btn" onClick={() => removeDraftStep(item._id)}>✕</button>
                         {/* Tip popup portal */}
                         {item._showTip && createPortal((() => {
                           const ar = item._tipAnchor;
@@ -1166,7 +1166,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               ? (() => {
                   const sorted = [...instructions].sort((a, b) => a.step_number - b.step_number);
                   const sortedUndone = sorted.filter(s => !doneSteps.has(s.step_number));
-                  // Group steps â€” ungrouped steps interleaved with grouped sections
+                  // Group steps — ungrouped steps interleaved with grouped sections
                   const sections = [];
                   for (const step of sorted) {
                     const lbl = step.group_label || '';
@@ -1223,11 +1223,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   <span className="section-pencil-wrap">
                     {isEdit('notes') && !showNotesModal ? (
                       <>
-                        <button className="section-pencil section-pencil--confirm" onClick={() => saveSection('notes')} disabled={saving} title={saving ? 'Saving...' : 'Save'}>{saving ? '...' : 'âœ“'}</button>
-                        <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowNotesModal(false); }} title="Cancel">âœ•</button>
+                        <button className="section-pencil section-pencil--confirm" onClick={() => saveSection('notes')} disabled={saving} title={saving ? 'Saving...' : 'Save'}>{saving ? '...' : '✓'}</button>
+                        <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowNotesModal(false); }} title="Cancel">✕</button>
                       </>
                     ) : (
-                      <button className="section-pencil" onClick={e => { e.stopPropagation(); startEdit('notes'); if (window.innerWidth <= 640) { setNotesAnchorRect(e.currentTarget.getBoundingClientRect()); setShowNotesModal(true); } }} title="Edit">âœŽ</button>
+                      <button className="section-pencil" onClick={e => { e.stopPropagation(); startEdit('notes'); if (window.innerWidth <= 640) { setNotesAnchorRect(e.currentTarget.getBoundingClientRect()); setShowNotesModal(true); } }} title="Edit">✎</button>
                     )}
                   </span>
                 )}
@@ -1263,7 +1263,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 </div>
               )}
 
-              {/* Notes popover â€” portal anchored near the pencil icon */}
+              {/* Notes popover — portal anchored near the pencil icon */}
               {showNotesModal && isEdit('notes') && createPortal((() => {
                 const pw = 360, ph = 400;
                 const vw = window.innerWidth, vh = window.innerHeight;
@@ -1286,20 +1286,20 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     <div className="anchored-popover create-modal" style={{ position: 'fixed', top, left, width: w, maxHeight: ph, zIndex: 9000 }} onClick={e => e.stopPropagation()}>
                       <div className="create-modal__header">
                         <h2 className="create-modal__title"><Icon name="note" size={18} strokeWidth={2} /> Notes &amp; Tips</h2>
-                        <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>âœ•</button>
+                        <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>✕</button>
                       </div>
                       <div className="create-modal__body" style={{ gap: 10, overflowY: 'auto', maxHeight: ph - 120 }}>
                         {draftNotes.map((n, idx) => (
                           <div key={n._id} className="rp2__ed-note-row">
                             <input className="editor-input" style={{ flex: 1, fontSize: 16 }} value={n.text} onChange={e => updateDraftNote(n._id, e.target.value)} placeholder="Add a tip or note..." autoFocus={idx === 0} />
-                            <button className="editor-remove-btn" onClick={() => removeDraftNote(n._id)}>âœ•</button>
+                            <button className="editor-remove-btn" onClick={() => removeDraftNote(n._id)}>✕</button>
                           </div>
                         ))}
                         <button className="btn btn--ghost editor-add-btn" onClick={addDraftNote}>+ Add Note</button>
                       </div>
                       <div className="create-modal__footer">
                         <button className="btn btn--ghost" onClick={() => { cancelEdit(); setShowNotesModal(false); }}>Cancel</button>
-                        <button className="btn btn--primary" onClick={async () => { await saveSection('notes'); setShowNotesModal(false); }} disabled={saving}>{saving ? 'Saving...' : 'âœ“ Save'}</button>
+                        <button className="btn btn--primary" onClick={async () => { await saveSection('notes'); setShowNotesModal(false); }} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
                       </div>
                     </div>
                   </>
@@ -1315,11 +1315,11 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   <span className="section-pencil-wrap">
                     {isEdit('cookbook') && !showCookbookModal ? (
                       <>
-                        <button className="section-pencil section-pencil--confirm" onClick={() => saveSection('cookbook')} disabled={saving} title={saving ? 'Saving...' : 'Save'}>{saving ? '...' : 'âœ“'}</button>
-                        <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowCookbookModal(false); }} title="Cancel">âœ•</button>
+                        <button className="section-pencil section-pencil--confirm" onClick={() => saveSection('cookbook')} disabled={saving} title={saving ? 'Saving...' : 'Save'}>{saving ? '...' : '✓'}</button>
+                        <button className="section-pencil section-pencil--cancel" onClick={() => { cancelEdit(); setShowCookbookModal(false); }} title="Cancel">✕</button>
                       </>
                     ) : (
-                      <button className="section-pencil" onClick={e => { e.stopPropagation(); startEdit('cookbook'); if (window.innerWidth <= 640) { setCookbookAnchorRect(e.currentTarget.getBoundingClientRect()); setShowCookbookModal(true); } }} title="Edit">âœŽ</button>
+                      <button className="section-pencil" onClick={e => { e.stopPropagation(); startEdit('cookbook'); if (window.innerWidth <= 640) { setCookbookAnchorRect(e.currentTarget.getBoundingClientRect()); setShowCookbookModal(true); } }} title="Edit">✎</button>
                     )}
                   </span>
                 )}
@@ -1332,7 +1332,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   {recipe.reference && <span className="rp2__cookbook-text__page">Page {recipe.reference}</span>}
                 </div>
               ) : (
-                <p className="rp2__empty-hint">No reference yet. Click âœŽ to add.</p>
+                <p className="rp2__empty-hint">No reference yet. Click ✎ to add.</p>
               ))}
 
               {/* Desktop inline edit (fallback when modal not open) */}
@@ -1343,7 +1343,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 </div>
               )}
 
-              {/* Cookbook popover â€” portal anchored near the pencil icon */}
+              {/* Cookbook popover — portal anchored near the pencil icon */}
               {showCookbookModal && isEdit('cookbook') && createPortal((() => {
                 const pw = 320, ph = 260;
                 const vw = window.innerWidth, vh = window.innerHeight;
@@ -1366,7 +1366,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     <div className="anchored-popover create-modal" style={{ position: 'fixed', top, left, width: w, zIndex: 9000 }} onClick={e => e.stopPropagation()}>
                       <div className="create-modal__header">
                         <h2 className="create-modal__title"><Icon name="bookMarked" size={18} strokeWidth={2} /> Cookbook</h2>
-                        <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>âœ•</button>
+                        <button className="ing-modal__close" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>✕</button>
                       </div>
                       <div className="create-modal__body" style={{ gap: 14 }}>
                         <div className="create-modal__field">
@@ -1380,7 +1380,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       </div>
                       <div className="create-modal__footer">
                         <button className="btn btn--ghost" onClick={() => { cancelEdit(); setShowCookbookModal(false); }}>Cancel</button>
-                        <button className="btn btn--primary" onClick={async () => { await saveSection('cookbook'); setShowCookbookModal(false); }} disabled={saving}>{saving ? 'Saving...' : 'âœ“ Save'}</button>
+                        <button className="btn btn--primary" onClick={async () => { await saveSection('cookbook'); setShowCookbookModal(false); }} disabled={saving}>{saving ? 'Saving...' : '✓ Save'}</button>
                       </div>
                     </div>
                   </>

@@ -36,7 +36,7 @@ const AddFriendModal = ({ onClose, onCreated, authFetch }) => {
         style={{ background: 'var(--warm-white)', borderRadius: 16, padding: '24px 22px', width: '100%', maxWidth: 320, boxShadow: '0 8px 40px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
           <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700, color: 'var(--charcoal)' }}><Icon name="users" size={18} strokeWidth={2} /> Add a Friend</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--warm-gray)', lineHeight: 1, padding: '2px 4px' }}>Ã—</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--warm-gray)', lineHeight: 1, padding: '2px 4px' }}>×</button>
         </div>
         {error && <div style={{ background: '#fff0ee', border: '1px solid #f5c2b8', borderRadius: 8, padding: '7px 10px', fontSize: '0.8rem', color: 'var(--terracotta-dark, #b84a2e)' }}>{error}</div>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -74,7 +74,7 @@ const AddFriendModal = ({ onClose, onCreated, authFetch }) => {
   );
 };
 
-// â”€â”€â”€ Profile Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Profile Tab ─────────────────────────────────────────────────────────────
 
 const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser, onLogout, onAuthUserUpdate, darkMode = false, setDarkMode, tabBarTabs, setTabBarTabs }) => {
   const apiFetch = authFetch || fetch;
@@ -229,7 +229,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         <AddFriendModal
           authFetch={authFetch}
           onClose={() => setShowAddFriend(false)}
-          onCreated={(uname) => { setAddFriendSuccess(`Account created for ${uname} âœ“`); loadUsers(); setTimeout(() => setAddFriendSuccess(''), 4000); }}
+          onCreated={(uname) => { setAddFriendSuccess(`Account created for ${uname} ✓`); loadUsers(); setTimeout(() => setAddFriendSuccess(''), 4000); }}
         />
       )}
       {/* -- User header -- */}
@@ -247,7 +247,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                 onKeyDown={e => { if (e.key === 'Enter') handleSaveDisplayName(); if (e.key === 'Escape') setEditingDisplayName(false); }}
               />
               <button onClick={handleSaveDisplayName} disabled={savingDisplayName} className="display-name-save-btn">
-                {savingDisplayName ? '...' : 'âœ“ Save'}
+                {savingDisplayName ? '...' : '✓ Save'}
               </button>
               <button onClick={() => setEditingDisplayName(false)} className="display-name-cancel-btn">
                 Cancel
@@ -257,12 +257,12 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <h2 className="profile-header__title" style={{ margin: 0 }}>{authUser?.display_name || authUser?.username || 'Your Kitchen'}</h2>
               <button onClick={() => { setDraftDisplayName(authUser?.display_name || ''); setEditingDisplayName(true); }}
-                style={{ background: 'none', border: 'none', color: 'var(--warm-gray)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', lineHeight: 1 }} title="Edit display name">âœŽ</button>
+                style={{ background: 'none', border: 'none', color: 'var(--warm-gray)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', lineHeight: 1 }} title="Edit display name">✎</button>
             </div>
           )}
           <p className="profile-header__sub" style={{ marginTop: 2 }}>
-            {authUser?.display_name ? <span style={{ color: 'var(--warm-gray)', fontSize: '0.8rem' }}>@{authUser.username} Â· </span> : null}
-            {totalRecipes} recipes Â· {cookHistory.length} times cooked{isAdmin ? ' Â· admin' : ''}
+            {authUser?.display_name ? <span style={{ color: 'var(--warm-gray)', fontSize: '0.8rem' }}>@{authUser.username} · </span> : null}
+            {totalRecipes} recipes · {cookHistory.length} times cooked{isAdmin ? ' · admin' : ''}
           </p>
         </div>
         <button onClick={onLogout} style={{ background: 'none', border: '1.5px solid var(--border)', borderRadius: 999, padding: '6px 16px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--warm-gray)', cursor: 'pointer', flexShrink: 0 }}>
@@ -277,11 +277,11 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
           <div className="profile-settings-toggle__right">
             {cookHistory.length > 0 && historyOpen && (
               <div className="history-view-toggle" onClick={e => e.stopPropagation()}>
-                <button className={`history-view-toggle__btn ${historyView==='timeline'?'history-view-toggle__btn--on':''}`} onClick={() => setHistoryView('timeline')} title="Timeline view">â˜°</button>
-                <button className={`history-view-toggle__btn ${historyView==='calendar'?'history-view-toggle__btn--on':''}`} onClick={() => setHistoryView('calendar')} title="Calendar view">â–¦</button>
+                <button className={`history-view-toggle__btn ${historyView==='timeline'?'history-view-toggle__btn--on':''}`} onClick={() => setHistoryView('timeline')} title="Timeline view">☰</button>
+                <button className={`history-view-toggle__btn ${historyView==='calendar'?'history-view-toggle__btn--on':''}`} onClick={() => setHistoryView('calendar')} title="Calendar view">▦</button>
               </div>
             )}
-            <span className={`profile-settings-toggle__arrow ${historyOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
+            <span className={`profile-settings-toggle__arrow ${historyOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
           </div>
         </button>
 
@@ -319,7 +319,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                                 <p className="cook-timeline__date">{d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
                                 {entry.rating > 0 && (
                                   <div className="cook-timeline__rating">
-                                    {'â˜…'.repeat(entry.rating)}<span className="cook-timeline__rating-empty">{'â˜…'.repeat(5 - entry.rating)}</span>
+                                    {'★'.repeat(entry.rating)}<span className="cook-timeline__rating-empty">{'★'.repeat(5 - entry.rating)}</span>
                                     <span className="cook-timeline__rating-label">{STAR_LABELS[entry.rating]}</span>
                                   </div>
                                 )}
@@ -336,9 +336,9 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
             ) : (
               <div className="cook-calendar cook-calendar--gcal">
                 <div className="cook-calendar__nav">
-                  <button className="cook-calendar__nav-btn" onClick={prevMonth}>â€¹</button>
+                  <button className="cook-calendar__nav-btn" onClick={prevMonth}>‹</button>
                   <span className="cook-calendar__month-label">{MONTH_NAMES[calendarDate.month]} {calendarDate.year}</span>
-                  <button className="cook-calendar__nav-btn" onClick={nextMonth}>â€º</button>
+                  <button className="cook-calendar__nav-btn" onClick={nextMonth}>›</button>
                 </div>
                 <div className="cook-calendar__gcal-grid">
                   {DAY_NAMES.map(d => <div key={d} className="cook-calendar__gcal-day-header">{d}</div>)}
@@ -372,7 +372,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       <section className="profile-section profile-section--collapsible">
         <button className="profile-settings-toggle" onClick={() => setAttemptsOpen(o => !o)}>
           <span className="profile-settings-toggle__title"><Icon name="repeat" size={15} strokeWidth={2} /> Recipe Attempts</span>
-          <span className={`profile-settings-toggle__arrow ${attemptsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
+          <span className={`profile-settings-toggle__arrow ${attemptsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
         </button>
         {attemptsOpen && (
           <div className="profile-attempts">
@@ -412,7 +412,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         <section className="profile-section profile-section--collapsible">
           <button className="profile-settings-toggle" onClick={() => setSharingOpen(o => !o)}>
             <span className="profile-settings-toggle__title"><Icon name="users" size={15} strokeWidth={2} /> Sharing Options</span>
-            <span className={`profile-settings-toggle__arrow ${sharingOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
+            <span className={`profile-settings-toggle__arrow ${sharingOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
           </button>
           {sharingOpen && (
             <div className="profile-settings-body">
@@ -468,7 +468,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                               </button>
                             </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--warm-gray)' }}>
-                              {u.display_name ? `@${u.username} Â· ` : ''}<span style={{ textTransform: 'capitalize' }}>{u.role}</span>
+                              {u.display_name ? `@${u.username} · ` : ''}<span style={{ textTransform: 'capitalize' }}>{u.role}</span>
                             </div>
                           </div>
                           {u.role !== 'admin' && (
@@ -507,7 +507,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         <section className="profile-section profile-section--collapsible" style={{ marginBottom: 12 }}>
           <button className="profile-settings-toggle" onClick={() => setAdminToolsOpen(o => !o)}>
             <span className="profile-settings-toggle__title"><Icon name="tool" size={15} strokeWidth={2} /> Admin Tools</span>
-            <span className={`profile-settings-toggle__arrow ${adminToolsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
+            <span className={`profile-settings-toggle__arrow ${adminToolsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
           </button>
           {adminToolsOpen && (
             <div className="profile-settings-body">
@@ -526,12 +526,12 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                       const res = await apiFetch(`${API}/api/admin/recalculate-nutrition`, { method: 'POST' });
                       const data = await res.json();
                       if (!res.ok) throw new Error(data.error || 'Failed');
-                      setRecalcResult(`âœ“ Done -- updated ${data.updated} of ${data.total} recipes`);
+                      setRecalcResult(`✓ Done -- updated ${data.updated} of ${data.total} recipes`);
                     } catch (e) { setRecalcResult(`âš ï¸ ${e.message}`); }
                     setRecalcRunning(false);
                   }}
                 >{recalcRunning ? 'Running...' : 'Recalculate All Nutrition'}</button>
-                {recalcResult && <p style={{ marginTop: 10, fontSize: '0.85rem', color: recalcResult.startsWith('âœ“') ? 'var(--sage)' : 'var(--terracotta)' }}>{recalcResult}</p>}
+                {recalcResult && <p style={{ marginTop: 10, fontSize: '0.85rem', color: recalcResult.startsWith('✓') ? 'var(--sage)' : 'var(--terracotta)' }}>{recalcResult}</p>}
               </div>
 
             </div>
@@ -544,7 +544,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         <section className="profile-section profile-section--collapsible">
           <button className="profile-settings-toggle" onClick={() => setComingSoonOpen(o => !o)}>
             <span className="profile-settings-toggle__title"><Icon name="zap" size={15} strokeWidth={2} /> Coming Soon</span>
-            <span className={`profile-settings-toggle__arrow ${comingSoonOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
+            <span className={`profile-settings-toggle__arrow ${comingSoonOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
           </button>
           {comingSoonOpen && (
             <div className="profile-settings-body">
@@ -560,20 +560,20 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
               </div>
 
               <div className="settings-section">
-                <h4 className="settings-section__title">ðŸ’¬ Ingredient Reasoning on Hover</h4>
+                <h4 className="settings-section__title">💬 Ingredient Reasoning on Hover</h4>
                 <p className="settings-section__hint">
                   Hover over any ingredient in a recipe to see a short cooking note explaining why
-                  that quantity or ratio was chosen â€” things like "balances acidity" or "adds depth
+                  that quantity or ratio was chosen — things like "balances acidity" or "adds depth
                   without overpowering." Purely culinary context, no dietary or allergy info.
                 </p>
                 <span className="roadmap-badge">Planned</span>
               </div>
 
               <div className="settings-section">
-                <h4 className="settings-section__title">ðŸ”¢ Accurate Calorie Tracking</h4>
+                <h4 className="settings-section__title">🔢 Accurate Calorie Tracking</h4>
                 <p className="settings-section__hint">
                   After cooking, log exactly how much of each high-calorie ingredient you actually
-                  used and get an adjusted nutrition breakdown â€” useful when you deviate from the
+                  used and get an adjusted nutrition breakdown — useful when you deviate from the
                   recipe (e.g. used less oil, added extra cheese).
                 </p>
                 <span className="roadmap-badge">Planned</span>
@@ -583,7 +583,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                 <h4 className="settings-section__title">ðŸ–¼ï¸ Local Image Upload</h4>
                 <p className="settings-section__hint">
                   Upload a photo directly from your device to use as a recipe cover image, stored
-                  as a base-64 string in the database â€” no external hosting or URL required.
+                  as a base-64 string in the database — no external hosting or URL required.
                 </p>
                 <span className="roadmap-badge">Planned</span>
               </div>
@@ -598,7 +598,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         <section className="profile-section profile-section--collapsible">
           <button className="profile-settings-toggle" onClick={() => setBugReportOpen(o => !o)}>
             <span className="profile-settings-toggle__title"><Icon name="alertTriangle" size={15} strokeWidth={2} /> Bug Reports <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--warm-gray)', marginLeft: 4 }}>({bugList.length})</span></span>
-            <span className={`profile-settings-toggle__arrow ${bugReportOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
+            <span className={`profile-settings-toggle__arrow ${bugReportOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
           </button>
           {bugReportOpen && (
             <div className="profile-settings-body">
@@ -637,7 +637,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                     }}
                   >+ Add</button>
                 </div>
-                {bugSubmitted && <p style={{ fontSize: 12, color: 'var(--sage)', marginTop: 6 }}>âœ“ Logged!</p>}
+                {bugSubmitted && <p style={{ fontSize: 12, color: 'var(--sage)', marginTop: 6 }}>✓ Logged!</p>}
               </div>
               {bugList.length > 0 && (
                 <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -672,14 +672,14 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                           cursor: 'pointer', fontSize: 11, fontWeight: 700,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}
-                      >{bug.done ? 'âœ“' : ''}</button>
+                      >{bug.done ? '✓' : ''}</button>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: 13, color: 'var(--charcoal)', margin: 0, textDecoration: bug.done ? 'line-through' : 'none', wordBreak: 'break-word' }}>{bug.text}</p>
                         <p style={{ fontSize: 11, color: 'var(--warm-gray)', margin: '2px 0 0' }}>{bug.date}</p>
                       </div>
                       <button className="editor-remove-btn" title="Delete"
                         onClick={() => { const next = bugList.filter(b => b.id !== bug.id); setBugList(next); LS.set('bugReports', next); }}
-                      >âœ•</button>
+                      >✕</button>
                     </div>
                   ))}
                 </div>
@@ -696,7 +696,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       <section className="profile-section profile-section--settings">
         <button className="profile-settings-toggle" onClick={() => setSettingsOpen(o => !o)}>
           <span className="profile-settings-toggle__title"><Icon name="settings" size={15} strokeWidth={2} /> Settings</span>
-          <span className={`profile-settings-toggle__arrow ${settingsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>â–¾</span>
+          <span className={`profile-settings-toggle__arrow ${settingsOpen ? 'profile-settings-toggle__arrow--open' : ''}`}>▾</span>
         </button>
 
         {settingsOpen && (
@@ -757,18 +757,18 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                             disabled={atMax}
                             style={{ opacity: atMax ? 0.4 : 1 }}
                           >
-                            {isOn && <span className="chip__check">âœ“</span>}
+                            {isOn && <span className="chip__check">✓</span>}
                             <Icon name={icon} size={13} strokeWidth={2} /> {label}
                           </button>
                         );
                       })}
                       <button className="chip chip--selected" disabled style={{ opacity: 0.6 }}>
-                        <span className="chip__check">âœ“</span>
+                        <span className="chip__check">✓</span>
                         <Icon name="user" size={13} strokeWidth={2} /> Profile
                       </button>
                     </div>
                     <p style={{ fontSize: 12, color: 'var(--warm-gray)', marginTop: 8 }}>
-                      {selected.length}/4 selected Â· Profile is always shown
+                      {selected.length}/4 selected · Profile is always shown
                     </p>
                   </div>
                 );
@@ -781,7 +781,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
               <div className="picker__chips" style={{ marginTop: 10, flexWrap: 'wrap' }}>
                 {DIETARY_OPTIONS.map(d => (
                   <button key={d} className={`chip ${dietaryFilters.includes(d) ? 'chip--selected' : ''}`} onClick={() => toggleDiet(d)}>
-                    {dietaryFilters.includes(d) && <span className="chip__check">âœ“</span>}{d}
+                    {dietaryFilters.includes(d) && <span className="chip__check">✓</span>}{d}
                   </button>
                 ))}
               </div>

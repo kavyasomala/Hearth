@@ -84,7 +84,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
       lines.push(`\n${cat.emoji} ${cat.name}`);
       items.forEach(item => {
         const inKitchen = allMyIngredients.has(item.name.toLowerCase().trim());
-        const tick = checked.has(`${cat.name}-${item.name}`) || inKitchen ? 'âœ“' : 'â—‹';
+        const tick = checked.has(`${cat.name}-${item.name}`) || inKitchen ? '✓' : '○';
         const amount = [item.amount, item.unit].filter(Boolean).join(' ');
         const extra = item._extra ? ` + ${item._extra}` : '';
         lines.push(`  ${tick} ${amount}${extra} ${item.name}${item.prep_note ? ` (${item.prep_note})` : ''}`);
@@ -127,7 +127,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
         <div className="grocery-empty">
           <div className="grocery-empty__icon"><Icon name="timer" size={40} color="var(--warm-gray)" strokeWidth={1.5} /></div>
           <h3 className="grocery-empty__title">No recipes in Make Soon</h3>
-          <p className="grocery-empty__sub">Tap <span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',margin:'0 2px'}}><Icon name="timer" size={13} strokeWidth={2} /></span> on any recipe to add it to Make Soon â€” your grocery list will build automatically.</p>
+          <p className="grocery-empty__sub">Tap <span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',margin:'0 2px'}}><Icon name="timer" size={13} strokeWidth={2} /></span> on any recipe to add it to Make Soon — your grocery list will build automatically.</p>
         </div>
       )}
 
@@ -144,7 +144,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
           </div>
           {inKitchenCount > 0 && (
             <div className="grocery-kitchen-banner">
-              <span>âœ“ {inKitchenCount} of {totalItems} ingredients already in your kitchen</span>
+              <span>✓ {inKitchenCount} of {totalItems} ingredients already in your kitchen</span>
             </div>
           )}
           <div className="grocery-list">
@@ -173,7 +173,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
                           }}
                         >
                           <div className={`grocery-item__checkbox ${isChecked ? 'grocery-item__checkbox--checked' : ''}`}>
-                            {isChecked && 'âœ“'}
+                            {isChecked && '✓'}
                           </div>
                           <div className="grocery-item__body">
                             <span className="grocery-item__name">
@@ -182,9 +182,9 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
                               {' '}{item.name}
                             </span>
                             {item.prep_note && <span className="grocery-item__note">{item.prep_note}</span>}
-                            {inKitchen && <span className="grocery-item__kitchen-tag">in kitchen Â· tap to remove</span>}
-                            {!inKitchen && !isChecked && <span className="grocery-item__tap-hint">tap to check off â†’ adds to kitchen</span>}
-                            {isChecked && !inKitchen && <span className="grocery-item__tap-hint">tap to uncheck â†’ removes from kitchen</span>}
+                            {inKitchen && <span className="grocery-item__kitchen-tag">in kitchen · tap to remove</span>}
+                            {!inKitchen && !isChecked && <span className="grocery-item__tap-hint">tap to check off → adds to kitchen</span>}
+                            {isChecked && !inKitchen && <span className="grocery-item__tap-hint">tap to uncheck → removes from kitchen</span>}
                             {item.recipes?.length > 1 && !inKitchen && (
                               <span className="grocery-item__recipes">for {item.recipes.join(', ')}</span>
                             )}

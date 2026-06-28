@@ -14,11 +14,11 @@ const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpda
   // Ingredient actions: 'remove' | 'keep' | null (undecided)
   const [ingActions, setIngActions] = useState({});
 
-// Perishable ingredient categories â€” used in post-cook cleanup to suggest removal
+// Perishable ingredient categories — used in post-cook cleanup to suggest removal
 const PERISHABLE_CATEGORY_MAP = {
   produce: ['onion','garlic','ginger','tomato','lemon','lime','spinach','carrot','celery',
     'potato','bell pepper','cucumber','zucchini','broccoli','cauliflower','mushroom','avocado',
-    'lettuce','kale','cabbage','spring onion','scallion','shallot','chilli','chili','jalapeÃ±o',
+    'lettuce','kale','cabbage','spring onion','scallion','shallot','chilli','chili','jalapeño',
     'leek','asparagus','eggplant','sweet potato','pumpkin','butternut squash','beetroot','radish',
     'green beans','peas','corn','coriander','cilantro','parsley','basil','mint','thyme','rosemary',
     'dill','chives','bay leaves','lemongrass','orange','apple','banana','mango','berry','strawberry',
@@ -124,7 +124,7 @@ const perishableCatOf = (name) => {
                   <button key={n}
                     className={`cooked-modal__star ${n <= displayRating ? 'cooked-modal__star--on' : ''}`}
                     onMouseEnter={() => setHoverRating(n)} onMouseLeave={() => setHoverRating(0)}
-                    onClick={() => setRating(r => r === n ? 0 : n)} type="button">â˜…</button>
+                    onClick={() => setRating(r => r === n ? 0 : n)} type="button">★</button>
                 ))}
                 {displayRating > 0 && <span className="cooked-modal__rating-label">{RATING_LABELS[displayRating]}</span>}
               </div>
@@ -142,7 +142,7 @@ const perishableCatOf = (name) => {
           <div className="create-modal__footer">
             <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
             <button className="btn btn--primary cooked-modal__save-btn" onClick={saveLog} disabled={saving}>
-              {saving ? 'Saving...' : perishableIngs.length > 0 ? 'Next â†’' : 'âœ“ Save'}
+              {saving ? 'Saving...' : perishableIngs.length > 0 ? 'Next →' : '✓ Save'}
             </button>
           </div>
         </>)}
@@ -172,12 +172,12 @@ const perishableCatOf = (name) => {
                           <button
                             className={`cooked-cleanup__btn cooked-cleanup__btn--keep ${action === 'keep' ? 'cooked-cleanup__btn--active' : ''}`}
                             onClick={() => setAction(ing.name, 'keep')} type="button">
-                            âœ“ Keep
+                            ✓ Keep
                           </button>
                           <button
                             className={`cooked-cleanup__btn cooked-cleanup__btn--remove ${action === 'remove' ? 'cooked-cleanup__btn--active' : ''}`}
                             onClick={() => setAction(ing.name, 'remove')} type="button">
-                            âœ• Used up
+                            ✕ Used up
                           </button>
                         </div>
                       </div>
@@ -189,7 +189,7 @@ const perishableCatOf = (name) => {
           </div>
           <div className="create-modal__footer">
             <button className="btn btn--ghost" onClick={() => onSave({ toRemove: [] })}>Skip</button>
-            <button className="btn btn--primary" onClick={finishCleanup}>âœ“ Update Kitchen</button>
+            <button className="btn btn--primary" onClick={finishCleanup}>✓ Update Kitchen</button>
           </div>
         </>)}
 
