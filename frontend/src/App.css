@@ -8051,7 +8051,7 @@ html, body {
    KitchenTab — new three-section kitchen tracker
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.kitchen-view { padding: 0 0 80px; }
+.kitchen-view { padding: 20px 24px 80px; }
 
 .kitchen-header {
   display: flex; align-items: center; justify-content: space-between;
