@@ -8181,10 +8181,13 @@ html, body {
 }
 .kitchen-pill-wrap:hover .kitchen-chip--active .kitchen-pill-remove,
 .kitchen-chip--active + 
-/* ─── Kitchen pill system ──────────────────────────────────────────────────── */
-.kitchen-pill-group { display: flex; flex-direction: column; gap: 12px; }
-
 /* Two-zone pill: left zone toggles active, right zone (×) deletes from list */
+.kpill--active .kpill--active /* Suggestion pills — same structure but smaller padding, no toggle semantics */
+
+/* ─── Kitchen pill system ─────────────────────────────────────────────────── */
+.kitchen-pill-group { display: flex; flex-direction: column; gap: 14px; }
+
+/* Two-zone pill: left = toggle active, right = × delete from list */
 .kpill {
   display: inline-flex; align-items: stretch;
   border-radius: 20px; border: 1.5px solid var(--border);
@@ -8201,22 +8204,19 @@ html, body {
 }
 .kpill--active .kpill__label { color: white; }
 .kpill:not(.kpill--active):hover .kpill__label { color: var(--terracotta); }
-
 .kpill__check { font-size: 0.75rem; }
 
+/* × always rendered, very faint when not hovered — no layout shift */
 .kpill__delete {
   padding: 7px 10px 7px 2px; background: none; border: none;
   cursor: pointer; font-size: 0.8rem; line-height: 1;
-  color: var(--warm-gray); opacity: 0; transition: opacity .15s;
+  color: var(--warm-gray); opacity: 0.15; transition: opacity .15s, color .15s;
 }
-.kpill:hover .kpill__delete { opacity: 0.7; }
+.kpill:hover .kpill__delete { opacity: 0.6; }
 .kpill:hover .kpill__delete:hover { opacity: 1; color: var(--terracotta); }
-.kpill--active .kpill__delete { color: rgba(255,255,255,0.6); }
-.kpill--active:hover .kpill__delete:hover { color: white; opacity: 1; }
-
-/* Suggestion pills — same structure but smaller padding, no toggle semantics */
-.kpill--suggestion .kpill__label { padding: 6px 4px 6px 12px; }
-.kpill--suggestion .kpill__delete { padding: 6px 9px 6px 2px; }
+.kpill--active .kpill__delete { color: white; opacity: 0.25; }
+.kpill--active:hover .kpill__delete { opacity: 0.7; }
+.kpill--active:hover .kpill__delete:hover { opacity: 1; }
 
 .kitchen-chip--add {
   border-style: dashed; color: var(--warm-gray); background: transparent;
@@ -8230,12 +8230,48 @@ html, body {
   padding: 6px 12px; font-size: 0.875rem; font-family: var(--font-body);
   color: var(--charcoal); background: var(--warm-white); outline: none; width: 150px;
 }
-.kitchen-custom-input--sm { width: 120px; font-size: 0.8rem; padding: 5px 10px; }
 .kitchen-custom-add-btn {
   padding: 6px 14px; border-radius: 20px; font-size: 0.875rem;
   background: var(--terracotta); color: white; border: none; cursor: pointer;
 }
 
-.kitchen-suggestions__empty {
-  padding: 8px 14px; font-size: 0.85rem; color: var(--warm-gray); margin: 0;
+/* Group label — more breathing room above the pills */
+.kitchen-checklist__group-label {
+  padding-bottom: 10px; margin-bottom: 4px;
 }
+
+/* Fridge expanded panel */
+.kitchen-fridge-expanded { padding: 0 0 20px; display: flex; flex-direction: column; gap: 20px; }
+.kitchen-fridge-search-wrap { position: relative; }
+.kitchen-fridge-groups { display: flex; flex-direction: column; gap: 24px; }
+
+.kitchen-suggestions--search {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--warm-white); border: 1.5px solid var(--border);
+  border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  z-index: 200; padding: 12px 0; max-height: 320px; overflow-y: auto;
+}
+
+/* Uncategorized section */
+.kitchen-uncategorized-hint {
+  font-size: 0.8rem; color: var(--warm-gray); margin: -8px 0 4px;
+}
+.kitchen-uncat-wrap { position: relative; display: inline-block; }
+.kitchen-chip--uncat {
+  border-color: var(--border); background: var(--bg);
+  color: var(--warm-gray); border-style: dashed;
+}
+.kitchen-chip--uncat:hover { border-color: var(--terracotta); color: var(--terracotta); }
+.kitchen-chip__arrow { font-size: 0.65rem; margin-left: 4px; }
+.kitchen-uncat-picker {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 100;
+  background: var(--warm-white); border: 1.5px solid var(--border);
+  border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.1);
+  overflow: hidden; min-width: 160px;
+}
+.kitchen-uncat-option {
+  display: block; width: 100%; padding: 8px 14px; background: none;
+  border: none; text-align: left; font-size: 0.875rem; cursor: pointer;
+  color: var(--charcoal); font-family: var(--font-body);
+}
+.kitchen-uncat-option:hover { background: var(--parchment); color: var(--terracotta); }
