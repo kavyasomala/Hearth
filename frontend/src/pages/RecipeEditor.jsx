@@ -20,6 +20,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
     cuisine: recipe?.cuisine || '',
     time: recipe?.time || '',
     servings: recipe?.servings || '',
+    calories: recipe?.calories || '',
     cover_image_url: recipe?.coverImage || '',
   });
 
@@ -117,6 +118,7 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
             <div className="rp2__hero-pills">
               {details.time && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="clock" size={13} strokeWidth={2} /></span>{details.time}</span>}
               {details.servings && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="utensils" size={13} strokeWidth={2} /></span>{details.servings} srv</span>}
+              {details.calories && <span className="rp2__pill"><span className="rp2__pill-icon"><Icon name="flame" size={13} strokeWidth={2} /></span>{details.calories} cal</span>}
             </div>
           </div>
         </div>
@@ -145,6 +147,10 @@ const RecipeEditor = ({ recipe, bodyIngredients, instructions, notes, allIngredi
         <label className="ed-meta-field">
           <span className="ed-meta-label"><Icon name="utensils" size={13} strokeWidth={2} /> Servings</span>
           <input className="editor-input ed-meta-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" />
+        </label>
+        <label className="ed-meta-field">
+          <span className="ed-meta-label"><Icon name="flame" size={13} strokeWidth={2} /> Calories</span>
+          <input className="editor-input ed-meta-input" value={details.calories} onChange={e => setDetail('calories', e.target.value)} placeholder="450" />
         </label>
       </div>
 

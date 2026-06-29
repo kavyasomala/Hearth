@@ -8241,7 +8241,7 @@ html, body {
 }
 
 /* Fridge expanded panel */
-.kitchen-fridge-expanded { padding: 0 0 20px; display: flex; flex-direction: column; gap: 20px; }
+.kitchen-fridge-expanded { padding: 0 22px 22px; display: flex; flex-direction: column; gap: 20px; }
 .kitchen-fridge-search-wrap { position: relative; }
 .kitchen-fridge-groups { display: flex; flex-direction: column; gap: 24px; }
 
@@ -8275,3 +8275,7 @@ html, body {
   color: var(--charcoal); font-family: var(--font-body);
 }
 .kitchen-uncat-option:hover { background: var(--parchment); color: var(--terracotta); }
+
+@media (max-width: 640px) {
+  .kitchen-fridge-expanded { padding: 0 16px 16px; }
+}
