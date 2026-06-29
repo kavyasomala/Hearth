@@ -7522,7 +7522,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     border-top: 1px solid var(--border);
     box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
     z-index: 200;
-    /* No padding-bottom here — lives on btn-inner instead */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
 
@@ -8072,7 +8072,7 @@ html, body {
 }
 .kitchen-section__header--btn {
   width: 100%; background: none; border: none; cursor: pointer;
-  text-align: left;
+  text-align: left; color: var(--charcoal);
 }
 .kitchen-section__header--btn:hover { background: var(--bg-hover, rgba(0,0,0,0.02)); }
 .kitchen-section__emoji { font-size: 1.4rem; flex-shrink: 0; display: none; }
