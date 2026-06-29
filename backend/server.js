@@ -875,5 +875,22 @@ process.on('SIGTERM', async () => {
 
 downloadDBFromDrive().then(() => {
   initDB();
+
+  // If ADMIN_PASSWORD env var is set, upsert the admin account on startup.
+  // Set this in Render env vars to reset your password, then remove it after logging in.
+  const adminPw = process.env.ADMIN_PASSWORD;
+  if (adminPw) {
+    const existing = db.prepare("SELECT id FROM users WHERE username = 'kavya'").get();
+    if (existing) {
+      db.prepare("UPDATE users SET password_hash = ?, role = 'admin' WHERE username = 'kavya'").run(adminPw);
+      console.log('🔑 Admin password reset from ADMIN_PASSWORD env var');
+    } else {
+      const { v4: uuidv4 } = require('uuid');
+      db.prepare("INSERT INTO users (id, username, display_name, password_hash, role) VALUES (?, 'kavya', 'Kavya', ?, 'admin')").run(uuidv4(), adminPw);
+      console.log('🔑 Admin account created from ADMIN_PASSWORD env var');
+    }
+    scheduleUpload();
+  }
+
   app.listen(PORT, () => console.log(`🍳 Hearth API running on port ${PORT}`));
 });
