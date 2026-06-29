@@ -291,78 +291,90 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
 
       {/* ── Fridge & Freezer ─────────────────────────────────────────────────── */}
       <section className="kitchen-section kitchen-section--collapsible">
+        {/* Header — collapses/expands the pill groups only */}
         <button className="kitchen-section__header kitchen-section__header--btn" onClick={() => setFridgeOpen(p => !p)}>
           <div>
             <h3 className="kitchen-section__title">Fridge &amp; Freezer</h3>
             <p className="kitchen-section__sub">
-              {fridgeIngredients.length > 0 ? `${fridgeIngredients.length} item${fridgeIngredients.length !== 1 ? 's' : ''} · drives "What can I make?"` : 'Tap to add what\'s in your fridge'}
+              {fridgeIngredients.length > 0 ? `${fridgeIngredients.length} item${fridgeIngredients.length !== 1 ? 's' : ''} · drives "What can I make?"` : 'Expand to browse or search to add'}
             </p>
           </div>
           <span className={`kitchen-section__arrow ${fridgeOpen ? 'kitchen-section__arrow--open' : ''}`}>▾</span>
         </button>
 
-        {fridgeOpen && (
-          <div className="kitchen-fridge-expanded">
-            {/* Active chips */}
-            {fridgeIngredients.length > 0 && (
-              <div className="kitchen-active-chips">
-                {fridgeIngredients.map(item => (
-                  <button key={item} className="kitchen-chip kitchen-chip--active" onClick={() => toggleFridge(item)}>
-                    {item} <span className="kitchen-chip__remove">✕</span>
+        {/* Search bar — always visible regardless of collapse state */}
+        <div className="kitchen-fridge-search-wrap" ref={searchRef}>
+          <div className="kitchen-fridge-input-row">
+            <input
+              className="kitchen-fridge-input"
+              placeholder="Search ingredients..."
+              value={fridgeSearch}
+              onChange={e => setFridgeSearch(e.target.value)}
+              onFocus={() => setFridgeSearchFocused(true)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); addFridgeFromSearch(); }
+                if (e.key === 'Escape') { setFridgeSearch(''); setFridgeSearchFocused(false); }
+                if (e.key === 'ArrowDown' && showSearchDropdown) e.preventDefault();
+              }}
+            />
+          </div>
+
+          {/* Autocomplete dropdown — clean list style, appears when typing */}
+          {showSearchDropdown && (
+            <ul className="kitchen-fridge-autocomplete">
+              {searchDropdown.map(item => (
+                <li key={item}>
+                  <button
+                    className={`kitchen-fridge-autocomplete__item ${fridgeSet.has(item) ? 'kitchen-fridge-autocomplete__item--active' : ''}`}
+                    onMouseDown={e => { e.preventDefault(); toggleFridge(item); setFridgeSearch(''); setFridgeSearchFocused(false); }}
+                  >
+                    <span className="kitchen-fridge-autocomplete__icon">
+                      {fridgeSet.has(item) ? '✓' : '+'}
+                    </span>
+                    {item}
+                    {fridgeSet.has(item) && <span className="kitchen-fridge-autocomplete__badge">in fridge</span>}
                   </button>
-                ))}
-              </div>
-            )}
-
-            {/* Search bar — dropdown overlay when typing, doesn't affect the pill grid */}
-            <div className="kitchen-fridge-search-wrap" ref={searchRef}>
-              <div className="kitchen-fridge-input-row">
-                <input
-                  className="kitchen-fridge-input"
-                  placeholder="Search to add something specific..."
-                  value={fridgeSearch}
-                  onChange={e => setFridgeSearch(e.target.value)}
-                  onFocus={() => setFridgeSearchFocused(true)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addFridgeFromSearch(); } if (e.key === 'Escape') { setFridgeSearch(''); setFridgeSearchFocused(false); } }}
-                />
-                {fridgeSearch && (
-                  <button className="btn btn--primary btn--sm" onClick={addFridgeFromSearch}>Add</button>
-                )}
-              </div>
-
-              {showSearchDropdown && (
-                <div className="kitchen-suggestions kitchen-suggestions--search">
-                  <div className="kitchen-suggestions__group">
-                    <p className="kitchen-suggestions__label">Matches</p>
-                    <div className="kitchen-suggestions__chips">
-                      {searchDropdown.map(item => (
-                        <button
-                          key={item}
-                          className={`kitchen-chip ${fridgeSet.has(item) ? 'kitchen-chip--active' : ''}`}
-                          onMouseDown={e => { e.preventDefault(); toggleFridge(item); setFridgeSearch(''); setFridgeSearchFocused(false); }}
-                        >
-                          {fridgeSet.has(item) && <span className="kitchen-chip__check">✓ </span>}{item}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Suggestion pill grid — always visible when expanded, search doesn't change this */}
-            <div className="kitchen-fridge-groups">
-              {fridgeConfig.map(group => (
-                <FridgeSuggestionGroup
-                  key={group.label}
-                  group={group}
-                  fridgeSet={fridgeSet}
-                  onToggle={toggleFridge}
-                  onDelete={deleteFridgeSuggestion}
-                  onAdd={addFridgeSuggestion}
-                />
+                </li>
               ))}
-            </div>
+              {fridgeSearch && !searchDropdown.find(i => i === fridgeSearch.toLowerCase().trim()) && (
+                <li>
+                  <button
+                    className="kitchen-fridge-autocomplete__item kitchen-fridge-autocomplete__item--new"
+                    onMouseDown={e => { e.preventDefault(); addFridgeFromSearch(); }}
+                  >
+                    <span className="kitchen-fridge-autocomplete__icon">+</span>
+                    Add "{fridgeSearch.trim()}"
+                  </button>
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+
+        {/* Active chips — always visible */}
+        {fridgeIngredients.length > 0 && (
+          <div className="kitchen-active-chips" style={{padding: '0 22px 12px'}}>
+            {fridgeIngredients.map(item => (
+              <button key={item} className="kitchen-chip kitchen-chip--active" onClick={() => toggleFridge(item)}>
+                {item} <span className="kitchen-chip__remove">✕</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Collapsible pill groups */}
+        {fridgeOpen && (
+          <div className="kitchen-fridge-groups">
+            {fridgeConfig.map(group => (
+              <FridgeSuggestionGroup
+                key={group.label}
+                group={group}
+                fridgeSet={fridgeSet}
+                onToggle={toggleFridge}
+                onDelete={deleteFridgeSuggestion}
+                onAdd={addFridgeSuggestion}
+              />
+            ))}
           </div>
         )}
       </section>

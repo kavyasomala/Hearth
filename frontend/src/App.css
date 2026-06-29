@@ -6816,12 +6816,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .app {
     display: flex !important;
     flex-direction: column !important;
+    /* svh = small viewport height — always excludes iOS Safari bottom bar */
     height: 100vh !important;
+    height: 100svh !important;
     overflow: hidden !important;
-  }
-  /* Use dvh when supported — it correctly excludes browser chrome */
-  @supports (height: 100dvh) {
-    .app { height: 100dvh !important; }
   }
   .app__scroll {
     flex: 1 1 0;
@@ -8279,3 +8277,46 @@ html, body {
 @media (max-width: 640px) {
   .kitchen-fridge-expanded { padding: 0 16px 16px; }
 }
+
+/* ─── Fridge autocomplete dropdown ────────────────────────────────────────── */
+.kitchen-fridge-search-wrap { position: relative; padding: 0 22px 12px; }
+@media (max-width: 640px) { .kitchen-fridge-search-wrap { padding: 0 16px 10px; } }
+
+.kitchen-fridge-autocomplete {
+  position: absolute; top: calc(100% - 8px); left: 22px; right: 22px;
+  background: var(--warm-white); border: 1.5px solid var(--border);
+  border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.13);
+  z-index: 300; overflow: hidden; list-style: none; margin: 0; padding: 6px 0;
+}
+@media (max-width: 640px) {
+  .kitchen-fridge-autocomplete { left: 16px; right: 16px; }
+}
+
+.kitchen-fridge-autocomplete__item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 10px 16px; background: none; border: none;
+  text-align: left; font-size: 0.9rem; font-family: var(--font-body);
+  color: var(--charcoal); cursor: pointer; transition: background .1s;
+}
+.kitchen-fridge-autocomplete__item:hover { background: var(--parchment); }
+
+.kitchen-fridge-autocomplete__icon {
+  width: 20px; text-align: center; font-size: 0.85rem;
+  color: var(--warm-gray); flex-shrink: 0;
+}
+.kitchen-fridge-autocomplete__item--active .kitchen-fridge-autocomplete__icon {
+  color: var(--terracotta); font-weight: 700;
+}
+.kitchen-fridge-autocomplete__item--active { color: var(--terracotta); }
+
+.kitchen-fridge-autocomplete__badge {
+  margin-left: auto; font-size: 0.72rem; color: var(--warm-gray);
+  background: var(--parchment); padding: 2px 8px; border-radius: 99px;
+}
+
+.kitchen-fridge-autocomplete__item--new { color: var(--warm-gray); font-style: italic; }
+.kitchen-fridge-autocomplete__item--new:hover { color: var(--terracotta); background: var(--parchment); }
+
+/* Fridge groups padding when expanded */
+.kitchen-fridge-groups { padding: 4px 22px 22px; display: flex; flex-direction: column; gap: 24px; }
+@media (max-width: 640px) { .kitchen-fridge-groups { padding: 4px 16px 16px; } }
