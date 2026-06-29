@@ -45,7 +45,7 @@ const STAPLES_SECTIONS = [
   },
 ];
 
-const ALL_PRESET_PANTRY = new Set([
+const ALL_PRESET_ITEMS = new Set([
   ...PANTRY_SECTIONS.flatMap(g => g.items),
   ...STAPLES_SECTIONS.flatMap(g => g.items),
 ]);
@@ -57,17 +57,17 @@ const FRIDGE_SUGGESTIONS = [
   { label: 'Freezer', items: ['frozen peas', 'frozen spinach', 'frozen shrimp', 'frozen berries', 'frozen edamame', 'frozen corn', 'bread'] },
 ];
 
-const isPantryItem = (name) => ALL_PRESET_PANTRY.has(name.toLowerCase().trim());
+const isPantryItem = (name) => ALL_PRESET_ITEMS.has(name.toLowerCase().trim());
 
-// ─── PillGroup — a labeled group of tap-to-toggle pills ──────────────────────
+// ─── PillGroup ────────────────────────────────────────────────────────────────
 
-function PillGroup({ label, items, activeSet, onToggle, customItems = [], onAddCustom, onRemoveCustom }) {
-  const [customInput, setCustomInput] = useState('');
+function PillGroup({ label, items, activeSet, onToggle, onAdd }) {
   const [showInput, setShowInput] = useState(false);
+  const [input, setInput]         = useState('');
 
   const handleAdd = () => {
-    const val = customInput.toLowerCase().trim();
-    if (val && onAddCustom) { onAddCustom(val); setCustomInput(''); setShowInput(false); }
+    const val = input.toLowerCase().trim();
+    if (val) { onAdd(val); setInput(''); setShowInput(false); }
   };
 
   return (
@@ -84,23 +84,17 @@ function PillGroup({ label, items, activeSet, onToggle, customItems = [], onAddC
             {item}
           </button>
         ))}
-        {customItems.map(item => (
-          <button
-            key={item}
-            className="kitchen-chip kitchen-chip--active kitchen-chip--custom"
-            onClick={() => onRemoveCustom && onRemoveCustom(item)}
-          >
-            ✓ {item} <span className="kitchen-chip__remove">✕</span>
-          </button>
-        ))}
         {showInput ? (
           <span className="kitchen-custom-input-wrap">
             <input
               className="kitchen-custom-input"
               autoFocus
-              value={customInput}
-              onChange={e => setCustomInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setShowInput(false); setCustomInput(''); } }}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleAdd();
+                if (e.key === 'Escape') { setShowInput(false); setInput(''); }
+              }}
               placeholder="type & press Enter"
             />
             <button className="kitchen-custom-add-btn" onClick={handleAdd}>Add</button>
@@ -130,6 +124,12 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
   const fridgeSet = useMemo(() => new Set(fridgeIngredients.map(s => s.toLowerCase())), [fridgeIngredients]);
   const allTracked = useMemo(() => new Set([...pantrySet, ...fridgeSet]), [pantrySet, fridgeSet]);
 
+  // Custom items = anything in pantryStaples not in any preset list
+  const customItems = useMemo(
+    () => pantryStaples.filter(s => !ALL_PRESET_ITEMS.has(s)),
+    [pantryStaples]
+  );
+
   const recipeIngredientPool = useMemo(() => {
     const names = new Set();
     for (const r of recipes) {
@@ -157,12 +157,6 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     return counts;
   }, [recipes]);
 
-  // Custom items = items in pantryStaples that aren't in any preset list
-  const customPantryItems = useMemo(
-    () => pantryStaples.filter(s => !ALL_PRESET_PANTRY.has(s) && !STAPLES_SECTIONS.flatMap(g => g.items).includes(s)),
-    [pantryStaples]
-  );
-
   // ── Toggles ──────────────────────────────────────────────────────────────
 
   const togglePantry = (item) => {
@@ -170,18 +164,20 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     setPantryStaples(prev => pantrySet.has(lower) ? prev.filter(x => x !== lower) : [...prev, lower]);
   };
 
-  const addCustomPantry = (item) => {
-    if (!pantrySet.has(item)) setPantryStaples(prev => [...prev, item]);
-  };
-
-  const removeCustomPantry = (item) => {
-    setPantryStaples(prev => prev.filter(x => x !== item));
+  const addToPantry = (item) => {
+    const lower = item.toLowerCase().trim();
+    if (lower && !pantrySet.has(lower)) setPantryStaples(prev => [...prev, lower]);
   };
 
   const toggleFridge = (item) => {
     const lower = item.toLowerCase().trim();
     if (!lower) return;
     setFridgeIngredients(prev => fridgeSet.has(lower) ? prev.filter(x => x !== lower) : [...prev, lower]);
+  };
+
+  const addToFridge = (item) => {
+    const lower = item.toLowerCase().trim();
+    if (lower && !fridgeSet.has(lower)) setFridgeIngredients(prev => [...prev, lower]);
   };
 
   const addFromRecipes = (item) => {
@@ -226,12 +222,8 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
 
   const totalTracked = fridgeIngredients.length + pantryStaples.length;
 
-  const pantryCheckedCount = pantryStaples.filter(s =>
-    PANTRY_SECTIONS.flatMap(g => g.items).includes(s) || customPantryItems.includes(s)
-  ).length;
-  const staplesCheckedCount = pantryStaples.filter(s =>
-    STAPLES_SECTIONS.flatMap(g => g.items).includes(s)
-  ).length;
+  const pantryCheckedCount  = pantryStaples.filter(s => PANTRY_SECTIONS.flatMap(g => g.items).includes(s) || customItems.includes(s)).length;
+  const staplesCheckedCount = pantryStaples.filter(s => STAPLES_SECTIONS.flatMap(g => g.items).includes(s)).length;
 
   return (
     <main className="view kitchen-view">
@@ -342,27 +334,40 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
         <button className="kitchen-section__header kitchen-section__header--btn" onClick={() => setPantryOpen(p => !p)}>
           <div>
             <h3 className="kitchen-section__title">Pantry</h3>
-            <p className="kitchen-section__sub">
-              Sauces, oils, condiments · {pantryCheckedCount} marked
-            </p>
+            <p className="kitchen-section__sub">Sauces, oils, condiments · {pantryCheckedCount} marked</p>
           </div>
           <span className={`kitchen-section__arrow ${pantryOpen ? 'kitchen-section__arrow--open' : ''}`}>▾</span>
         </button>
 
         {pantryOpen && (
           <div className="kitchen-checklist">
-            {PANTRY_SECTIONS.map((group, i) => (
+            {PANTRY_SECTIONS.map(group => (
               <PillGroup
                 key={group.label}
                 label={group.label}
                 items={group.items}
                 activeSet={pantrySet}
                 onToggle={togglePantry}
-                customItems={i === PANTRY_SECTIONS.length - 1 ? customPantryItems : []}
-                onAddCustom={i === PANTRY_SECTIONS.length - 1 ? addCustomPantry : undefined}
-                onRemoveCustom={i === PANTRY_SECTIONS.length - 1 ? removeCustomPantry : undefined}
+                onAdd={addToPantry}
               />
             ))}
+            {/* Custom pantry items that don't belong to a preset group */}
+            {customItems.length > 0 && (
+              <div className="kitchen-pill-group">
+                <p className="kitchen-checklist__group-label">My additions</p>
+                <div className="kitchen-checklist__items">
+                  {customItems.map(item => (
+                    <button
+                      key={item}
+                      className="kitchen-chip kitchen-chip--active"
+                      onClick={() => togglePantry(item)}
+                    >
+                      ✓ {item} <span className="kitchen-chip__remove">✕</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -372,9 +377,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
         <button className="kitchen-section__header kitchen-section__header--btn" onClick={() => setStaplesOpen(p => !p)}>
           <div>
             <h3 className="kitchen-section__title">Staples</h3>
-            <p className="kitchen-section__sub">
-              Pasta, rice, canned goods · {staplesCheckedCount} marked
-            </p>
+            <p className="kitchen-section__sub">Pasta, rice, canned goods · {staplesCheckedCount} marked</p>
           </div>
           <span className={`kitchen-section__arrow ${staplesOpen ? 'kitchen-section__arrow--open' : ''}`}>▾</span>
         </button>
@@ -388,6 +391,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
                 items={group.items}
                 activeSet={pantrySet}
                 onToggle={togglePantry}
+                onAdd={addToPantry}
               />
             ))}
           </div>
