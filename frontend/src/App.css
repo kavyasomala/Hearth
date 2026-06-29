@@ -3436,7 +3436,7 @@ body {
 .cookbook-recipe-entry__remove:hover { opacity: 1; }
 
 @media (max-width: 640px) {
-  .cookbooks-tab { padding: 0 16px 48px; }
+  .cookbooks-tab { padding: 16px 16px 48px; }
   .cookbooks-header { padding: 20px 0 16px; flex-wrap: wrap; }
   .cookbooks-title { font-size: 22px; }
   .cookbooks-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
@@ -6861,9 +6861,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     max-width: 100%;
   }
 
-  /* Give all views extra bottom padding so tab bar doesn't obscure content */
+  /* Give all views extra bottom padding so tab bar doesn't obscure content.
+     Tab bar itself handles safe-area-inset-bottom, so we don't add it here. */
   .view, .home-view, .grocery-view, .profile-view, .cn-tab, .cookbooks-tab {
-    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: 100px !important;
   }
 }
 
@@ -7029,18 +7030,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 
 
 
-/* ── GROCERY: fix large gap between header and page top on mobile ── */
+/* ── GROCERY: mobile padding ── */
 @media (max-width: 640px) {
-  /* Remove extra top padding that was causing the space */
-  .grocery-view { padding-top: 0 !important; }
-  .view.grocery-view { padding-top: 0 !important; }
-  /* Remove sticky positioning that was adding margin */
-  .grocery-header {
-    position: static !important;
-    margin: 0 !important;
-    width: 100% !important;
-    top: unset !important;
-  }
+  .view.grocery-view { padding-top: 16px !important; }
+  .grocery-header { position: static !important; margin: 0 !important; width: 100% !important; top: unset !important; }
 }
 
 /* ── HOME: view-all button style ── */
@@ -8153,7 +8146,7 @@ html, body {
 
 /* ── Responsive ── */
 @media (max-width: 600px) {
-  .kitchen-view { padding: 0 0 100px; }
+  .kitchen-view { padding: 16px 0 100px; }
   .kitchen-section__header { padding: 16px 16px; }
   .kitchen-active-chips { padding: 0 16px 14px; }
   .kitchen-fridge-input-wrap { padding: 0 16px 16px; }
