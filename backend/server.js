@@ -37,15 +37,17 @@ const PORT        = process.env.PORT || 3001;
 const driveAuth = new google.auth.JWT({
   email: process.env.GOOGLE_CLIENT_EMAIL,
   key:   (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-  scopes: ['https://www.googleapis.com/auth/drive.file'],
+  scopes: ['https://www.googleapis.com/auth/drive'],
 });
 const drive = google.drive({ version: 'v3', auth: driveAuth });
 
 // Find the DB file in Drive (returns file ID or null)
 async function findDriveFile() {
   const res = await drive.files.list({
-    q:      `name='${DB_FILENAME}' and '${FOLDER_ID}' in parents and trashed=false`,
-    fields: 'files(id)',
+    q:                `name='${DB_FILENAME}' and '${FOLDER_ID}' in parents and trashed=false`,
+    fields:           'files(id)',
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
   });
   return res.data.files[0]?.id ?? null;
 }
@@ -59,7 +61,7 @@ async function downloadDBFromDrive() {
       return;
     }
     const response = await drive.files.get(
-      { fileId, alt: 'media' },
+      { fileId, alt: 'media', supportsAllDrives: true },
       { responseType: 'arraybuffer' }
     );
     fs.writeFileSync(DB_PATH, Buffer.from(response.data));
@@ -82,9 +84,9 @@ async function uploadDBToDrive() {
     const fileId = await findDriveFile();
     const media  = { mimeType: 'application/octet-stream', body: fs.createReadStream(DB_PATH) };
     if (fileId) {
-      await drive.files.update({ fileId, media });
+      await drive.files.update({ fileId, media, supportsAllDrives: true });
     } else {
-      await drive.files.create({ requestBody: { name: DB_FILENAME, parents: [FOLDER_ID] }, media });
+      console.warn('⚠️  hearth.db not found in Drive folder — create it manually in the shared folder so the service account can update it.');
     }
     console.log('✅ DB synced to Drive');
   } catch (err) {
