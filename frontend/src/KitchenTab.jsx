@@ -1,77 +1,55 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 
-// ─── Default lists (first-load only) ─────────────────────────────────────────
+// ─── Defaults ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_STAPLES = [
-  {
-    label: 'Oils & Fats',
-    items: ['olive oil', 'vegetable oil', 'sesame oil', 'coconut oil', 'ghee'],
-  },
-  {
-    label: 'Sauces & Condiments',
-    items: ['soy sauce', 'fish sauce', 'oyster sauce', 'hoisin sauce', 'worcestershire sauce',
-            'hot sauce', 'sriracha', 'ketchup', 'mustard', 'dijon mustard', 'mayonnaise',
-            'tomato paste', 'passata', 'canned tomatoes', 'pesto', 'tahini', 'peanut butter'],
-  },
-  {
-    label: 'Vinegars',
-    items: ['balsamic vinegar', 'rice vinegar', 'apple cider vinegar', 'white vinegar'],
-  },
-  {
-    label: 'Sweeteners & Baking',
-    items: ['honey', 'maple syrup', 'sugar', 'brown sugar', 'flour', 'cornstarch',
-            'baking powder', 'baking soda', 'vanilla extract'],
-  },
-  {
-    label: 'Spices & Herbs',
-    items: ['salt', 'black pepper', 'white pepper', 'cumin', 'coriander', 'turmeric',
-            'paprika', 'smoked paprika', 'chilli flakes', 'cayenne', 'cinnamon', 'nutmeg',
-            'cardamom', 'garlic powder', 'onion powder', 'oregano', 'dried thyme',
-            'dried rosemary', 'dried basil', 'bay leaves', 'garam masala', 'curry powder',
-            'five spice', 'msg'],
-  },
-  {
-    label: 'Grains & Pasta',
-    items: ['white rice', 'brown rice', 'basmati rice', 'pasta', 'spaghetti', 'noodles',
-            'udon', 'ramen', 'couscous', 'quinoa', 'oats', 'breadcrumbs', 'panko', 'tortillas'],
-  },
-  {
-    label: 'Legumes & Canned',
-    items: ['lentils', 'chickpeas', 'black beans', 'kidney beans', 'cannellini beans',
-            'coconut milk', 'chicken stock', 'vegetable stock', 'beef stock'],
-  },
+  { label: 'Oils & Fats', items: ['olive oil', 'vegetable oil', 'sesame oil', 'coconut oil', 'ghee'] },
+  { label: 'Sauces & Condiments', items: ['soy sauce', 'fish sauce', 'oyster sauce', 'hoisin sauce', 'worcestershire sauce', 'hot sauce', 'sriracha', 'ketchup', 'mustard', 'dijon mustard', 'mayonnaise', 'tomato paste', 'passata', 'canned tomatoes', 'pesto', 'tahini', 'peanut butter'] },
+  { label: 'Vinegars', items: ['balsamic vinegar', 'rice vinegar', 'apple cider vinegar', 'white vinegar'] },
+  { label: 'Sweeteners & Baking', items: ['honey', 'maple syrup', 'sugar', 'brown sugar', 'flour', 'cornstarch', 'baking powder', 'baking soda', 'vanilla extract'] },
+  { label: 'Spices & Herbs', items: ['salt', 'black pepper', 'white pepper', 'cumin', 'coriander', 'turmeric', 'paprika', 'smoked paprika', 'chilli flakes', 'cayenne', 'cinnamon', 'nutmeg', 'cardamom', 'garlic powder', 'onion powder', 'oregano', 'dried thyme', 'dried rosemary', 'dried basil', 'bay leaves', 'garam masala', 'curry powder', 'five spice', 'msg'] },
+  { label: 'Grains & Pasta', items: ['white rice', 'brown rice', 'basmati rice', 'pasta', 'spaghetti', 'noodles', 'udon', 'ramen', 'couscous', 'quinoa', 'oats', 'breadcrumbs', 'panko', 'tortillas'] },
+  { label: 'Legumes & Canned', items: ['lentils', 'chickpeas', 'black beans', 'kidney beans', 'cannellini beans', 'coconut milk', 'chicken stock', 'vegetable stock', 'beef stock'] },
 ];
 
-const LS_KEY = 'hearth_staples_config';
-
-function loadConfig() {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return DEFAULT_STAPLES.map(g => ({ label: g.label, items: [...g.items] }));
-}
-
-function saveConfig(config) {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(config)); } catch {}
-}
-
-const FRIDGE_SUGGESTIONS = [
+const DEFAULT_FRIDGE_SUGGESTIONS = [
   { label: 'Produce', items: ['onion', 'garlic', 'ginger', 'lemon', 'lime', 'tomato', 'carrot', 'celery', 'bell pepper', 'spinach', 'potato', 'mushrooms', 'zucchini', 'broccoli', 'cucumber', 'avocado', 'spring onion', 'kale', 'sweet potato'] },
   { label: 'Dairy & Eggs', items: ['eggs', 'milk', 'butter', 'cheddar', 'parmesan', 'feta', 'mozzarella', 'cream', 'sour cream', 'yogurt', 'cream cheese'] },
   { label: 'Meat & Fish', items: ['chicken breast', 'chicken thighs', 'ground beef', 'salmon', 'bacon', 'pork', 'shrimp', 'tuna', 'sausage'] },
   { label: 'Freezer', items: ['frozen peas', 'frozen spinach', 'frozen shrimp', 'frozen berries', 'frozen edamame', 'frozen corn', 'bread'] },
 ];
 
-// ─── PillGroup ────────────────────────────────────────────────────────────────
+function loadLS(key, defaults) {
+  try { const r = localStorage.getItem(key); if (r) return JSON.parse(r); } catch {}
+  return defaults.map(g => ({ label: g.label, items: [...g.items] }));
+}
+function saveLS(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
 
-function PillGroup({ label, items, activeSet, onToggle, onRemoveItem, onAddItem }) {
+const STAPLES_KEY = 'hearth_staples_config';
+const FRIDGE_KEY  = 'hearth_fridge_config';
+
+// ─── StaplePill — toggle active + hover-× to delete from list ────────────────
+
+function StaplePill({ item, active, onToggle, onDelete }) {
+  return (
+    <span className={`kpill ${active ? 'kpill--active' : ''}`}>
+      <button className="kpill__label" onClick={onToggle}>
+        {active && <span className="kpill__check">✓ </span>}{item}
+      </button>
+      <button className="kpill__delete" onClick={onDelete} title="Remove from list">×</button>
+    </span>
+  );
+}
+
+// ─── PillGroup — a labeled row of StaplePills + inline add ───────────────────
+
+function PillGroup({ label, items, activeSet, onToggle, onDelete, onAdd }) {
   const [showInput, setShowInput] = useState(false);
   const [input, setInput]         = useState('');
 
-  const handleAdd = () => {
-    const val = input.toLowerCase().trim();
-    if (val) { onAddItem(label, val); setInput(''); setShowInput(false); }
+  const commit = () => {
+    const v = input.toLowerCase().trim();
+    if (v) { onAdd(label, v); setInput(''); setShowInput(false); }
   };
 
   return (
@@ -79,20 +57,13 @@ function PillGroup({ label, items, activeSet, onToggle, onRemoveItem, onAddItem 
       <p className="kitchen-checklist__group-label">{label}</p>
       <div className="kitchen-checklist__items">
         {items.map(item => (
-          <span key={item} className="kitchen-pill-wrap">
-            <button
-              className={`kitchen-chip kitchen-chip--removable ${activeSet.has(item) ? 'kitchen-chip--active' : ''}`}
-              onClick={() => onToggle(item)}
-            >
-              {activeSet.has(item) && <span className="kitchen-chip__check">✓ </span>}
-              {item}
-            </button>
-            <button
-              className="kitchen-pill-remove"
-              onClick={() => onRemoveItem(label, item)}
-              title="Remove from list"
-            >×</button>
-          </span>
+          <StaplePill
+            key={item}
+            item={item}
+            active={activeSet.has(item)}
+            onToggle={() => onToggle(item)}
+            onDelete={() => onDelete(label, item)}
+          />
         ))}
         {showInput ? (
           <span className="kitchen-custom-input-wrap">
@@ -101,18 +72,13 @@ function PillGroup({ label, items, activeSet, onToggle, onRemoveItem, onAddItem 
               autoFocus
               value={input}
               onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') handleAdd();
-                if (e.key === 'Escape') { setShowInput(false); setInput(''); }
-              }}
+              onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setShowInput(false); setInput(''); } }}
               placeholder="type & press Enter"
             />
-            <button className="kitchen-custom-add-btn" onClick={handleAdd}>Add</button>
+            <button className="kitchen-custom-add-btn" onClick={commit}>Add</button>
           </span>
         ) : (
-          <button className="kitchen-chip kitchen-chip--add" onClick={() => setShowInput(true)}>
-            + add
-          </button>
+          <button className="kitchen-chip kitchen-chip--add" onClick={() => setShowInput(true)}>+ add</button>
         )}
       </div>
     </div>
@@ -123,8 +89,8 @@ function PillGroup({ label, items, activeSet, onToggle, onRemoveItem, onAddItem 
 
 export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, recipes = [] }) {
   const [staplesOpen,  setStaplesOpen]  = useState(false);
-  const [notStockOpen, setNotStockOpen] = useState(true);
-  const [config, setConfig]             = useState(loadConfig);
+  const [staplesConfig, setStaplesConfig] = useState(() => loadLS(STAPLES_KEY, DEFAULT_STAPLES));
+  const [fridgeConfig,  setFridgeConfig]  = useState(() => loadLS(FRIDGE_KEY,  DEFAULT_FRIDGE_SUGGESTIONS));
 
   const [fridgeInput,  setFridgeInput]  = useState('');
   const [inputFocused, setInputFocused] = useState(false);
@@ -133,86 +99,69 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
   const pantrySet = useMemo(() => new Set(pantryStaples.map(s => s.toLowerCase())), [pantryStaples]);
   const fridgeSet = useMemo(() => new Set(fridgeIngredients.map(s => s.toLowerCase())), [fridgeIngredients]);
   const allTracked = useMemo(() => new Set([...pantrySet, ...fridgeSet]), [pantrySet, fridgeSet]);
+  const allStapleItems = useMemo(() => new Set(staplesConfig.flatMap(g => g.items)), [staplesConfig]);
 
-  const updateConfig = useCallback((fn) => {
-    setConfig(prev => {
-      const next = fn(prev);
-      saveConfig(next);
-      return next;
-    });
-  }, []);
-
-  const removeItem = useCallback((groupLabel, item) => {
-    updateConfig(prev => prev.map(g =>
-      g.label === groupLabel ? { ...g, items: g.items.filter(i => i !== item) } : g
-    ));
-    // Also unmark it if it was active
-    setPantryStaples(prev => prev.filter(x => x !== item.toLowerCase()));
-  }, [updateConfig, setPantryStaples]);
-
-  const addItem = useCallback((groupLabel, item) => {
-    const lower = item.toLowerCase().trim();
-    if (!lower) return;
-    updateConfig(prev => prev.map(g =>
-      g.label === groupLabel && !g.items.includes(lower)
-        ? { ...g, items: [...g.items, lower] }
-        : g
-    ));
-    // Auto-mark it as "I have this"
-    setPantryStaples(prev => pantrySet.has(lower) ? prev : [...prev, lower]);
-  }, [updateConfig, setPantryStaples, pantrySet]);
-
+  // Recipe ingredients not yet tracked anywhere
   const recipeIngredientPool = useMemo(() => {
     const names = new Set();
-    for (const r of recipes) {
-      for (const ing of (r.ingredients || [])) names.add(ing.toLowerCase().trim());
-    }
+    for (const r of recipes) for (const ing of (r.ingredients || [])) names.add(ing.toLowerCase().trim());
     return names;
   }, [recipes]);
 
-  const allConfigItems = useMemo(() => new Set(config.flatMap(g => g.items)), [config]);
-
   const notInStock = useMemo(() => {
-    const missing = [];
-    for (const name of recipeIngredientPool) {
-      if (!allTracked.has(name)) missing.push(name);
-    }
-    return missing.sort();
+    const out = [];
+    for (const n of recipeIngredientPool) if (!allTracked.has(n)) out.push(n);
+    return out.sort();
   }, [recipeIngredientPool, allTracked]);
 
-  const recipeCountFor = useMemo(() => {
-    const counts = {};
-    for (const r of recipes) {
-      for (const ing of (r.ingredients || [])) {
-        const n = ing.toLowerCase().trim();
-        counts[n] = (counts[n] || 0) + 1;
-      }
-    }
-    return counts;
-  }, [recipes]);
+  // ── Staples config mutations ──────────────────────────────────────────────
 
-  const togglePantry = (item) => {
+  const updateStaples = useCallback(fn => {
+    setStaplesConfig(prev => { const next = fn(prev); saveLS(STAPLES_KEY, next); return next; });
+  }, []);
+
+  const deleteStapleItem = useCallback((groupLabel, item) => {
+    updateStaples(prev => prev.map(g => g.label === groupLabel ? { ...g, items: g.items.filter(i => i !== item) } : g));
+    setPantryStaples(prev => prev.filter(x => x !== item.toLowerCase()));
+  }, [updateStaples, setPantryStaples]);
+
+  const addStapleItem = useCallback((groupLabel, item) => {
+    const lower = item.toLowerCase().trim();
+    if (!lower) return;
+    updateStaples(prev => prev.map(g =>
+      g.label === groupLabel && !g.items.includes(lower) ? { ...g, items: [...g.items, lower] } : g
+    ));
+    setPantryStaples(prev => pantrySet.has(lower) ? prev : [...prev, lower]);
+  }, [updateStaples, setPantryStaples, pantrySet]);
+
+  const togglePantry = useCallback(item => {
     const lower = item.toLowerCase();
     setPantryStaples(prev => pantrySet.has(lower) ? prev.filter(x => x !== lower) : [...prev, lower]);
-  };
+  }, [pantrySet, setPantryStaples]);
 
-  const toggleFridge = (item) => {
+  // ── Fridge config mutations ───────────────────────────────────────────────
+
+  const updateFridge = useCallback(fn => {
+    setFridgeConfig(prev => { const next = fn(prev); saveLS(FRIDGE_KEY, next); return next; });
+  }, []);
+
+  const deleteFridgeSuggestion = useCallback((groupLabel, item) => {
+    updateFridge(prev => prev.map(g => g.label === groupLabel ? { ...g, items: g.items.filter(i => i !== item) } : g));
+  }, [updateFridge]);
+
+  const addFridgeSuggestion = useCallback((groupLabel, item) => {
+    const lower = item.toLowerCase().trim();
+    if (!lower) return;
+    updateFridge(prev => prev.map(g =>
+      g.label === groupLabel && !g.items.includes(lower) ? { ...g, items: [...g.items, lower] } : g
+    ));
+  }, [updateFridge]);
+
+  const toggleFridge = useCallback(item => {
     const lower = item.toLowerCase().trim();
     if (!lower) return;
     setFridgeIngredients(prev => fridgeSet.has(lower) ? prev.filter(x => x !== lower) : [...prev, lower]);
-  };
-
-  const addFromRecipes = (item) => {
-    const lower = item.toLowerCase().trim();
-    if (allTracked.has(lower)) {
-      setPantryStaples(prev => prev.filter(x => x !== lower));
-      setFridgeIngredients(prev => prev.filter(x => x !== lower));
-    } else if (allConfigItems.has(lower)) {
-      setPantryStaples(prev => [...prev, lower]);
-    } else {
-      setFridgeIngredients(prev => [...prev, lower]);
-    }
-  };
+  }, [fridgeSet, setFridgeIngredients]);
 
   const addFridgeFromInput = () => {
     const val = fridgeInput.toLowerCase().trim();
@@ -221,20 +170,73 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     setFridgeInput('');
   };
 
-  const filteredSuggestions = useMemo(() => {
+  // ── Suggestions dropdown content ──────────────────────────────────────────
+
+  // SuggestionGroup: items shown in dropdown, with hover-× to remove from config
+  function SuggestionGroup({ group }) {
+    const [showAdd, setShowAdd] = useState(false);
+    const [addInput, setAddInput] = useState('');
+
+    const commitAdd = () => {
+      const v = addInput.toLowerCase().trim();
+      if (v) { addFridgeSuggestion(group.label, v); toggleFridge(v); setAddInput(''); setShowAdd(false); }
+    };
+
+    return (
+      <div className="kitchen-suggestions__group">
+        <p className="kitchen-suggestions__label">{group.label}</p>
+        <div className="kitchen-suggestions__chips">
+          {group.items.map(item => (
+            <span key={item} className={`kpill kpill--suggestion ${fridgeSet.has(item) ? 'kpill--active' : ''}`}>
+              <button className="kpill__label" onMouseDown={e => { e.preventDefault(); toggleFridge(item); }}>
+                {fridgeSet.has(item) && <span className="kpill__check">✓ </span>}{item}
+              </button>
+              <button
+                className="kpill__delete"
+                onMouseDown={e => { e.preventDefault(); deleteFridgeSuggestion(group.label, item); }}
+                title="Remove suggestion"
+              >×</button>
+            </span>
+          ))}
+          {showAdd ? (
+            <span className="kitchen-custom-input-wrap">
+              <input
+                className="kitchen-custom-input kitchen-custom-input--sm"
+                autoFocus
+                value={addInput}
+                onChange={e => setAddInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') commitAdd(); if (e.key === 'Escape') { setShowAdd(false); setAddInput(''); } }}
+                onMouseDown={e => e.stopPropagation()}
+                placeholder="type & press Enter"
+              />
+              <button className="kitchen-custom-add-btn" onMouseDown={e => { e.preventDefault(); commitAdd(); }}>Add</button>
+            </span>
+          ) : (
+            <button className="kitchen-chip kitchen-chip--add" onMouseDown={e => { e.preventDefault(); setShowAdd(true); }}>+ add</button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const filteredDropdown = useMemo(() => {
     const q = fridgeInput.toLowerCase().trim();
-    const recipeMatches = q
-      ? [...recipeIngredientPool].filter(n => n.includes(q) && !fridgeSet.has(n))
-      : [];
-    const staticGroups = FRIDGE_SUGGESTIONS.map(group => ({
-      ...group,
-      items: q ? group.items.filter(item => item.includes(q)) : group.items,
+
+    // "Not in stock" from recipes — shown at top when no query, or filtered when searching
+    const notInStockMatches = q
+      ? notInStock.filter(n => n.includes(q))
+      : notInStock;
+
+    // Fridge suggestion groups, filtered by query
+    const suggGroups = fridgeConfig.map(g => ({
+      ...g,
+      items: q ? g.items.filter(i => i.includes(q) && !fridgeSet.has(i)) : g.items,
     })).filter(g => g.items.length > 0);
-    if (recipeMatches.length > 0) {
-      return [{ label: 'From your recipes', items: recipeMatches.slice(0, 10) }, ...staticGroups];
-    }
-    return staticGroups;
-  }, [fridgeInput, recipeIngredientPool, fridgeSet]);
+
+    return { notInStockMatches, suggGroups };
+  }, [fridgeInput, fridgeConfig, fridgeSet, notInStock]);
+
+  const showDropdown = inputFocused || !!fridgeInput;
 
   useEffect(() => {
     const handler = (e) => { if (inputRef.current && !inputRef.current.contains(e.target)) setInputFocused(false); };
@@ -242,8 +244,8 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const totalTracked   = fridgeIngredients.length + pantryStaples.length;
-  const staplesMarked  = pantryStaples.filter(s => allConfigItems.has(s)).length;
+  const totalTracked  = fridgeIngredients.length + pantryStaples.length;
+  const staplesMarked = pantryStaples.filter(s => allStapleItems.has(s)).length;
 
   return (
     <main className="view kitchen-view">
@@ -293,60 +295,44 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
             )}
           </div>
 
-          {(inputFocused || fridgeInput) && filteredSuggestions.length > 0 && (
+          {showDropdown && (
             <div className="kitchen-suggestions">
-              {filteredSuggestions.map(group => (
-                <div key={group.label} className="kitchen-suggestions__group">
-                  <p className="kitchen-suggestions__label">{group.label}</p>
+              {/* Not in stock from recipes */}
+              {filteredDropdown.notInStockMatches.length > 0 && (
+                <div className="kitchen-suggestions__group">
+                  <p className="kitchen-suggestions__label">Not in stock · from your recipes</p>
                   <div className="kitchen-suggestions__chips">
-                    {group.items.map(item => (
+                    {filteredDropdown.notInStockMatches.map(item => (
                       <button
                         key={item}
-                        className={`kitchen-chip ${fridgeSet.has(item) ? 'kitchen-chip--active' : ''}`}
-                        onMouseDown={e => { e.preventDefault(); toggleFridge(item); }}
+                        className="kitchen-chip kitchen-chip--missing"
+                        onMouseDown={e => {
+                          e.preventDefault();
+                          if (allStapleItems.has(item)) setPantryStaples(prev => [...prev, item]);
+                          else setFridgeIngredients(prev => fridgeSet.has(item) ? prev.filter(x => x !== item) : [...prev, item]);
+                        }}
                       >
-                        {fridgeSet.has(item) && <span className="kitchen-chip__check">✓ </span>}
                         {item}
                       </button>
                     ))}
                   </div>
                 </div>
+              )}
+              {/* Editable suggestion groups */}
+              {filteredDropdown.suggGroups.map(group => (
+                <SuggestionGroup key={group.label} group={group} />
               ))}
+              {filteredDropdown.notInStockMatches.length === 0 && filteredDropdown.suggGroups.length === 0 && (
+                <p className="kitchen-suggestions__empty">Press Enter to add "{fridgeInput}"</p>
+              )}
             </div>
           )}
         </div>
 
-        {fridgeIngredients.length === 0 && !inputFocused && !fridgeInput && (
+        {fridgeIngredients.length === 0 && !showDropdown && (
           <p className="kitchen-empty-hint">Tap the box above to add what's in your fridge</p>
         )}
       </section>
-
-      {/* ── Not in stock ─────────────────────────────────────────────────────── */}
-      {notInStock.length > 0 && (
-        <section className="kitchen-section">
-          <button className="kitchen-section__header kitchen-section__header--btn" onClick={() => setNotStockOpen(p => !p)}>
-            <div>
-              <h3 className="kitchen-section__title">Not in stock</h3>
-              <p className="kitchen-section__sub">
-                From your recipes · {notInStock.length} — tap to mark as having
-              </p>
-            </div>
-            <span className={`kitchen-section__arrow ${notStockOpen ? 'kitchen-section__arrow--open' : ''}`}>▾</span>
-          </button>
-          {notStockOpen && (
-            <div className="kitchen-not-in-stock">
-              {notInStock.map(item => (
-                <button key={item} className="kitchen-chip kitchen-chip--missing" onClick={() => addFromRecipes(item)}>
-                  {item}
-                  {recipeCountFor[item] > 1 && (
-                    <span className="kitchen-chip__count">{recipeCountFor[item]}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
 
       {/* ── Staples ──────────────────────────────────────────────────────────── */}
       <section className="kitchen-section kitchen-section--collapsible">
@@ -360,15 +346,15 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
 
         {staplesOpen && (
           <div className="kitchen-checklist">
-            {config.map(group => (
+            {staplesConfig.map(group => (
               <PillGroup
                 key={group.label}
                 label={group.label}
                 items={group.items}
                 activeSet={pantrySet}
                 onToggle={togglePantry}
-                onRemoveItem={removeItem}
-                onAddItem={addItem}
+                onDelete={deleteStapleItem}
+                onAdd={addStapleItem}
               />
             ))}
           </div>
