@@ -8179,46 +8179,63 @@ html, body {
   background: var(--terracotta); color: white;
   font-size: 0.65rem; font-weight: 700; margin-left: 5px;
 }
+.kitchen-pill-wrap:hover .kitchen-chip--active .kitchen-pill-remove,
+.kitchen-chip--active + 
+/* ─── Kitchen pill system ──────────────────────────────────────────────────── */
+.kitchen-pill-group { display: flex; flex-direction: column; gap: 12px; }
+
+/* Two-zone pill: left zone toggles active, right zone (×) deletes from list */
+.kpill {
+  display: inline-flex; align-items: stretch;
+  border-radius: 20px; border: 1.5px solid var(--border);
+  background: var(--bg); transition: border-color .15s, background .15s;
+  overflow: hidden;
+}
+.kpill:hover { border-color: var(--terracotta); }
+.kpill--active { background: var(--terracotta); border-color: var(--terracotta); }
+
+.kpill__label {
+  padding: 7px 6px 7px 14px; background: none; border: none;
+  cursor: pointer; font-size: 0.875rem; color: var(--charcoal);
+  font-family: var(--font-body); white-space: nowrap;
+}
+.kpill--active .kpill__label { color: white; }
+.kpill:not(.kpill--active):hover .kpill__label { color: var(--terracotta); }
+
+.kpill__check { font-size: 0.75rem; }
+
+.kpill__delete {
+  padding: 7px 10px 7px 2px; background: none; border: none;
+  cursor: pointer; font-size: 0.8rem; line-height: 1;
+  color: var(--warm-gray); opacity: 0; transition: opacity .15s;
+}
+.kpill:hover .kpill__delete { opacity: 0.7; }
+.kpill:hover .kpill__delete:hover { opacity: 1; color: var(--terracotta); }
+.kpill--active .kpill__delete { color: rgba(255,255,255,0.6); }
+.kpill--active:hover .kpill__delete:hover { color: white; opacity: 1; }
+
+/* Suggestion pills — same structure but smaller padding, no toggle semantics */
+.kpill--suggestion .kpill__label { padding: 6px 4px 6px 12px; }
+.kpill--suggestion .kpill__delete { padding: 6px 9px 6px 2px; }
+
 .kitchen-chip--add {
-  border-style: dashed; color: var(--warm-gray);
-  background: transparent;
+  border-style: dashed; color: var(--warm-gray); background: transparent;
+  font-size: 0.8rem; padding: 6px 12px;
 }
 .kitchen-chip--add:hover { border-color: var(--terracotta); color: var(--terracotta); }
 
-.kitchen-chip--custom { opacity: 0.9; }
-
-.kitchen-custom-input-wrap {
-  display: inline-flex; align-items: center; gap: 6px;
-}
-
+.kitchen-custom-input-wrap { display: inline-flex; align-items: center; gap: 6px; }
 .kitchen-custom-input {
   border: 1.5px solid var(--terracotta); border-radius: 20px;
   padding: 6px 12px; font-size: 0.875rem; font-family: var(--font-body);
-  color: var(--charcoal); background: var(--warm-white); outline: none;
-  width: 150px;
+  color: var(--charcoal); background: var(--warm-white); outline: none; width: 150px;
 }
-
+.kitchen-custom-input--sm { width: 120px; font-size: 0.8rem; padding: 5px 10px; }
 .kitchen-custom-add-btn {
   padding: 6px 14px; border-radius: 20px; font-size: 0.875rem;
   background: var(--terracotta); color: white; border: none; cursor: pointer;
 }
 
-.kitchen-pill-group { display: flex; flex-direction: column; gap: 12px; }
-.kitchen-pill-wrap {
-  display: inline-flex; align-items: center; position: relative;
+.kitchen-suggestions__empty {
+  padding: 8px 14px; font-size: 0.85rem; color: var(--warm-gray); margin: 0;
 }
-
-.kitchen-chip--removable { padding-right: 22px; }
-
-.kitchen-pill-remove {
-  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-  background: none; border: none; cursor: pointer;
-  font-size: 0.7rem; color: var(--warm-gray); line-height: 1;
-  padding: 0; opacity: 0.5; transition: opacity 0.15s;
-}
-
-.kitchen-pill-wrap:hover .kitchen-pill-remove { opacity: 1; }
-.kitchen-chip--active .kitchen-pill-remove,
-.kitchen-chip--active + .kitchen-pill-remove { color: rgba(255,255,255,0.8); }
-
-
