@@ -4,55 +4,52 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 
 const PANTRY_SECTIONS = [
   {
-    label: 'Oils & Fats', emoji: '🫙',
+    label: 'Oils & Fats',
     items: ['olive oil', 'vegetable oil', 'sesame oil', 'coconut oil', 'ghee'],
   },
   {
-    label: 'Sauces & Condiments', emoji: '🍶',
+    label: 'Sauces & Condiments',
     items: ['soy sauce', 'fish sauce', 'oyster sauce', 'hoisin sauce', 'worcestershire sauce',
             'hot sauce', 'sriracha', 'ketchup', 'mustard', 'dijon mustard', 'mayonnaise',
             'tomato paste', 'passata', 'canned tomatoes', 'pesto', 'tahini', 'peanut butter'],
   },
   {
-    label: 'Vinegars', emoji: '🧪',
+    label: 'Vinegars',
     items: ['balsamic vinegar', 'rice vinegar', 'apple cider vinegar', 'white vinegar'],
   },
   {
-    label: 'Sweeteners & Baking', emoji: '🍯',
+    label: 'Sweeteners & Baking',
     items: ['honey', 'maple syrup', 'sugar', 'brown sugar', 'flour', 'cornstarch',
             'baking powder', 'baking soda', 'vanilla extract'],
   },
-];
-
-const SPICE_ITEMS = [
-  'salt', 'black pepper', 'white pepper', 'cumin', 'coriander', 'turmeric',
-  'paprika', 'smoked paprika', 'chilli flakes', 'cayenne', 'cinnamon', 'nutmeg',
-  'cardamom', 'garlic powder', 'onion powder', 'oregano', 'dried thyme',
-  'dried rosemary', 'dried basil', 'bay leaves', 'garam masala', 'curry powder',
-  'five spice', 'msg',
+  {
+    label: 'Spices & Herbs',
+    items: ['salt', 'black pepper', 'white pepper', 'cumin', 'coriander', 'turmeric',
+            'paprika', 'smoked paprika', 'chilli flakes', 'cayenne', 'cinnamon', 'nutmeg',
+            'cardamom', 'garlic powder', 'onion powder', 'oregano', 'dried thyme',
+            'dried rosemary', 'dried basil', 'bay leaves', 'garam masala', 'curry powder',
+            'five spice', 'msg'],
+  },
 ];
 
 const STAPLES_SECTIONS = [
   {
-    label: 'Grains & Pasta', emoji: '🌾',
+    label: 'Grains & Pasta',
     items: ['white rice', 'brown rice', 'basmati rice', 'pasta', 'spaghetti', 'noodles',
             'udon', 'ramen', 'couscous', 'quinoa', 'oats', 'breadcrumbs', 'panko', 'tortillas'],
   },
   {
-    label: 'Legumes & Canned', emoji: '🥫',
+    label: 'Legumes & Canned',
     items: ['lentils', 'chickpeas', 'black beans', 'kidney beans', 'cannellini beans',
             'coconut milk', 'chicken stock', 'vegetable stock', 'beef stock'],
   },
 ];
 
-// All curated pantry/staples names in a flat set — used to decide where to put a recipe ingredient
-const ALL_PANTRY_ITEMS = new Set([
+const ALL_PRESET_PANTRY = new Set([
   ...PANTRY_SECTIONS.flatMap(g => g.items),
-  ...SPICE_ITEMS,
   ...STAPLES_SECTIONS.flatMap(g => g.items),
 ]);
 
-// Static fridge suggestions shown when the input is focused
 const FRIDGE_SUGGESTIONS = [
   { label: 'Produce', items: ['onion', 'garlic', 'ginger', 'lemon', 'lime', 'tomato', 'carrot', 'celery', 'bell pepper', 'spinach', 'potato', 'mushrooms', 'zucchini', 'broccoli', 'cucumber', 'avocado', 'spring onion', 'kale', 'sweet potato'] },
   { label: 'Dairy & Eggs', items: ['eggs', 'milk', 'butter', 'cheddar', 'parmesan', 'feta', 'mozzarella', 'cream', 'sour cream', 'yogurt', 'cream cheese'] },
@@ -60,18 +57,69 @@ const FRIDGE_SUGGESTIONS = [
   { label: 'Freezer', items: ['frozen peas', 'frozen spinach', 'frozen shrimp', 'frozen berries', 'frozen edamame', 'frozen corn', 'bread'] },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const isPantryItem = (name) => ALL_PRESET_PANTRY.has(name.toLowerCase().trim());
 
-// Decide whether an ingredient goes to pantryStaples or fridgeIngredients
-// based on whether it looks like a pantry item or a perishable
-const isPantryItem = (name) => ALL_PANTRY_ITEMS.has(name.toLowerCase().trim());
+// ─── PillGroup — a labeled group of tap-to-toggle pills ──────────────────────
+
+function PillGroup({ label, items, activeSet, onToggle, customItems = [], onAddCustom, onRemoveCustom }) {
+  const [customInput, setCustomInput] = useState('');
+  const [showInput, setShowInput] = useState(false);
+
+  const handleAdd = () => {
+    const val = customInput.toLowerCase().trim();
+    if (val && onAddCustom) { onAddCustom(val); setCustomInput(''); setShowInput(false); }
+  };
+
+  return (
+    <div className="kitchen-pill-group">
+      <p className="kitchen-checklist__group-label">{label}</p>
+      <div className="kitchen-checklist__items">
+        {items.map(item => (
+          <button
+            key={item}
+            className={`kitchen-chip ${activeSet.has(item) ? 'kitchen-chip--active' : ''}`}
+            onClick={() => onToggle(item)}
+          >
+            {activeSet.has(item) && <span className="kitchen-chip__check">✓ </span>}
+            {item}
+          </button>
+        ))}
+        {customItems.map(item => (
+          <button
+            key={item}
+            className="kitchen-chip kitchen-chip--active kitchen-chip--custom"
+            onClick={() => onRemoveCustom && onRemoveCustom(item)}
+          >
+            ✓ {item} <span className="kitchen-chip__remove">✕</span>
+          </button>
+        ))}
+        {showInput ? (
+          <span className="kitchen-custom-input-wrap">
+            <input
+              className="kitchen-custom-input"
+              autoFocus
+              value={customInput}
+              onChange={e => setCustomInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setShowInput(false); setCustomInput(''); } }}
+              placeholder="type & press Enter"
+            />
+            <button className="kitchen-custom-add-btn" onClick={handleAdd}>Add</button>
+          </span>
+        ) : (
+          <button className="kitchen-chip kitchen-chip--add" onClick={() => setShowInput(true)}>
+            + add yours
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ─── KitchenTab ───────────────────────────────────────────────────────────────
 
 export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, recipes = [] }) {
   const [pantryOpen,   setPantryOpen]   = useState(false);
   const [staplesOpen,  setStaplesOpen]  = useState(false);
-  const [spicesOpen,   setSpicesOpen]   = useState(false);
   const [notStockOpen, setNotStockOpen] = useState(true);
 
   const [fridgeInput,  setFridgeInput]  = useState('');
@@ -82,7 +130,6 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
   const fridgeSet = useMemo(() => new Set(fridgeIngredients.map(s => s.toLowerCase())), [fridgeIngredients]);
   const allTracked = useMemo(() => new Set([...pantrySet, ...fridgeSet]), [pantrySet, fridgeSet]);
 
-  // All unique ingredient names across all recipes (the "vocabulary" from your recipes)
   const recipeIngredientPool = useMemo(() => {
     const names = new Set();
     for (const r of recipes) {
@@ -91,7 +138,6 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     return names;
   }, [recipes]);
 
-  // Ingredients used in recipes that aren't tracked in the kitchen yet
   const notInStock = useMemo(() => {
     const missing = [];
     for (const name of recipeIngredientPool) {
@@ -100,7 +146,6 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     return missing.sort();
   }, [recipeIngredientPool, allTracked]);
 
-  // Count how many recipes use each not-in-stock ingredient (for the label)
   const recipeCountFor = useMemo(() => {
     const counts = {};
     for (const r of recipes) {
@@ -112,11 +157,25 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     return counts;
   }, [recipes]);
 
-  // ── Toggles ───────────────────────────────────────────────────────────────
+  // Custom items = items in pantryStaples that aren't in any preset list
+  const customPantryItems = useMemo(
+    () => pantryStaples.filter(s => !ALL_PRESET_PANTRY.has(s) && !STAPLES_SECTIONS.flatMap(g => g.items).includes(s)),
+    [pantryStaples]
+  );
+
+  // ── Toggles ──────────────────────────────────────────────────────────────
 
   const togglePantry = (item) => {
     const lower = item.toLowerCase();
     setPantryStaples(prev => pantrySet.has(lower) ? prev.filter(x => x !== lower) : [...prev, lower]);
+  };
+
+  const addCustomPantry = (item) => {
+    if (!pantrySet.has(item)) setPantryStaples(prev => [...prev, item]);
+  };
+
+  const removeCustomPantry = (item) => {
+    setPantryStaples(prev => prev.filter(x => x !== item));
   };
 
   const toggleFridge = (item) => {
@@ -125,11 +184,9 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     setFridgeIngredients(prev => fridgeSet.has(lower) ? prev.filter(x => x !== lower) : [...prev, lower]);
   };
 
-  // Add a recipe ingredient to the right bucket (pantry or fridge) based on its type
   const addFromRecipes = (item) => {
     const lower = item.toLowerCase().trim();
     if (allTracked.has(lower)) {
-      // It's already tracked — toggle it off
       setPantryStaples(prev => prev.filter(x => x !== lower));
       setFridgeIngredients(prev => prev.filter(x => x !== lower));
     } else if (isPantryItem(lower)) {
@@ -146,28 +203,21 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     setFridgeInput('');
   };
 
-  // ── Fridge suggestions filtered by search input ───────────────────────────
-
   const filteredSuggestions = useMemo(() => {
     const q = fridgeInput.toLowerCase().trim();
-
-    // When typing, also search recipe ingredients not yet in fridge
     const recipeMatches = q
       ? [...recipeIngredientPool].filter(n => n.includes(q) && !fridgeSet.has(n))
       : [];
-
     const staticGroups = FRIDGE_SUGGESTIONS.map(group => ({
       ...group,
       items: q ? group.items.filter(item => item.includes(q)) : group.items,
     })).filter(g => g.items.length > 0);
-
     if (recipeMatches.length > 0) {
       return [{ label: 'From your recipes', items: recipeMatches.slice(0, 10) }, ...staticGroups];
     }
     return staticGroups;
   }, [fridgeInput, recipeIngredientPool, fridgeSet]);
 
-  // Close suggestions on outside click
   useEffect(() => {
     const handler = (e) => { if (inputRef.current && !inputRef.current.contains(e.target)) setInputFocused(false); };
     document.addEventListener('mousedown', handler);
@@ -175,6 +225,13 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
   }, []);
 
   const totalTracked = fridgeIngredients.length + pantryStaples.length;
+
+  const pantryCheckedCount = pantryStaples.filter(s =>
+    PANTRY_SECTIONS.flatMap(g => g.items).includes(s) || customPantryItems.includes(s)
+  ).length;
+  const staplesCheckedCount = pantryStaples.filter(s =>
+    STAPLES_SECTIONS.flatMap(g => g.items).includes(s)
+  ).length;
 
   return (
     <main className="view kitchen-view">
@@ -236,7 +293,8 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
                         className={`kitchen-chip ${fridgeSet.has(item) ? 'kitchen-chip--active' : ''}`}
                         onMouseDown={e => { e.preventDefault(); toggleFridge(item); }}
                       >
-                        {item}{fridgeSet.has(item) && <span className="kitchen-chip__check"> ✓</span>}
+                        {fridgeSet.has(item) && <span className="kitchen-chip__check">✓ </span>}
+                        {item}
                       </button>
                     ))}
                   </div>
@@ -252,7 +310,6 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
       </section>
 
       {/* ── Not in stock ─────────────────────────────────────────────────────── */}
-      {/* Ingredients your recipes need that you haven't marked as having */}
       {notInStock.length > 0 && (
         <section className="kitchen-section">
           <button className="kitchen-section__header kitchen-section__header--btn" onClick={() => setNotStockOpen(p => !p)}>
@@ -286,7 +343,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
           <div>
             <h3 className="kitchen-section__title">Pantry</h3>
             <p className="kitchen-section__sub">
-              Sauces, oils, condiments · {[...pantrySet].filter(s => PANTRY_SECTIONS.flatMap(g => g.items).includes(s)).length} checked
+              Sauces, oils, condiments · {pantryCheckedCount} marked
             </p>
           </div>
           <span className={`kitchen-section__arrow ${pantryOpen ? 'kitchen-section__arrow--open' : ''}`}>▾</span>
@@ -294,38 +351,18 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
 
         {pantryOpen && (
           <div className="kitchen-checklist">
-            {PANTRY_SECTIONS.map(group => (
-              <div key={group.label} className="kitchen-checklist__group">
-                <p className="kitchen-checklist__group-label">{group.label}</p>
-                <div className="kitchen-checklist__items">
-                  {group.items.map(item => (
-                    <label key={item} className="kitchen-check-item">
-                      <input type="checkbox" className="kitchen-check-item__input"
-                        checked={pantrySet.has(item)} onChange={() => togglePantry(item)} />
-                      <span className="kitchen-check-item__label">{item}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+            {PANTRY_SECTIONS.map((group, i) => (
+              <PillGroup
+                key={group.label}
+                label={group.label}
+                items={group.items}
+                activeSet={pantrySet}
+                onToggle={togglePantry}
+                customItems={i === PANTRY_SECTIONS.length - 1 ? customPantryItems : []}
+                onAddCustom={i === PANTRY_SECTIONS.length - 1 ? addCustomPantry : undefined}
+                onRemoveCustom={i === PANTRY_SECTIONS.length - 1 ? removeCustomPantry : undefined}
+              />
             ))}
-
-            <div className="kitchen-checklist__group">
-              <button className="kitchen-checklist__spice-toggle" onClick={() => setSpicesOpen(p => !p)}>
-                Spices &amp; Herbs
-                <span className={`kitchen-section__arrow ${spicesOpen ? 'kitchen-section__arrow--open' : ''}`}>▾</span>
-              </button>
-              {spicesOpen && (
-                <div className="kitchen-checklist__items" style={{ marginTop: 10 }}>
-                  {SPICE_ITEMS.map(item => (
-                    <label key={item} className="kitchen-check-item">
-                      <input type="checkbox" className="kitchen-check-item__input"
-                        checked={pantrySet.has(item)} onChange={() => togglePantry(item)} />
-                      <span className="kitchen-check-item__label">{item}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         )}
       </section>
@@ -336,7 +373,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
           <div>
             <h3 className="kitchen-section__title">Staples</h3>
             <p className="kitchen-section__sub">
-              Pasta, rice, canned goods · {[...pantrySet].filter(s => STAPLES_SECTIONS.flatMap(g => g.items).includes(s)).length} checked
+              Pasta, rice, canned goods · {staplesCheckedCount} marked
             </p>
           </div>
           <span className={`kitchen-section__arrow ${staplesOpen ? 'kitchen-section__arrow--open' : ''}`}>▾</span>
@@ -345,18 +382,13 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
         {staplesOpen && (
           <div className="kitchen-checklist">
             {STAPLES_SECTIONS.map(group => (
-              <div key={group.label} className="kitchen-checklist__group">
-                <p className="kitchen-checklist__group-label">{group.label}</p>
-                <div className="kitchen-checklist__items">
-                  {group.items.map(item => (
-                    <label key={item} className="kitchen-check-item">
-                      <input type="checkbox" className="kitchen-check-item__input"
-                        checked={pantrySet.has(item)} onChange={() => togglePantry(item)} />
-                      <span className="kitchen-check-item__label">{item}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <PillGroup
+                key={group.label}
+                label={group.label}
+                items={group.items}
+                activeSet={pantrySet}
+                onToggle={togglePantry}
+              />
             ))}
           </div>
         )}
