@@ -14,7 +14,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
   const [showModal, setShowModal] = useState(false);
 
   const emptyForm = () => ({
-    name: '', cuisine: '', time: '', servings: '',
+    name: '', cuisine: '', time: '', servings: '', calories: '',
     cover_image_url: '', cookbook: '', reference: '', status: '', tags: [],
   });
 
@@ -75,7 +75,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
       const payload = {
         details: {
           name: details.name, cuisine: details.cuisine, time: details.time,
-          servings: details.servings,
+          servings: details.servings, calories: details.calories,
           cover_image_url: details.cover_image_url,
           cookbook: details.cookbook, page_number: details.reference,
           status: details.status, recipe_incomplete: details.recipe_incomplete, tags: details.tags,
@@ -160,8 +160,8 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                   onChange={e => setDetail('name', e.target.value)} placeholder="e.g. Grandma's Lasagne" autoFocus />
               </div>
 
-              {/* Time + Servings */}
-              <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+              {/* Time + Servings + Calories */}
+              <div className="create-modal__meta-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
                 <div className="create-modal__field">
                   <label className="create-modal__field-label"><Icon name="clock" size={13} strokeWidth={2} /> Time</label>
                   <input className="editor-input" value={details.time} onChange={e => setDetail('time', e.target.value)} placeholder="45 mins" />
@@ -169,6 +169,10 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                 <div className="create-modal__field">
                   <label className="create-modal__field-label"><Icon name="utensils" size={13} strokeWidth={2} /> Servings</label>
                   <input className="editor-input" value={details.servings} onChange={e => setDetail('servings', e.target.value)} placeholder="4" />
+                </div>
+                <div className="create-modal__field">
+                  <label className="create-modal__field-label"><Icon name="flame" size={13} strokeWidth={2} /> Calories</label>
+                  <input className="editor-input" value={details.calories} onChange={e => setDetail('calories', e.target.value)} placeholder="450" />
                 </div>
               </div>
 
