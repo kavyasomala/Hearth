@@ -477,7 +477,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   });
 
   if (loading) return <main className="view"><div className="placeholder"><h2>Loading recipe...</h2></div></main>;
-  if (!recipe) return <main className="view"><div className="placeholder"><h2>Recipe not found</h2><button className="btn btn--ghost" onClick={onBack}>â† Back</button></div></main>;
+  if (!recipe) return <main className="view"><div className="placeholder"><h2>Recipe not found</h2><button className="btn btn--ghost" onClick={onBack}>← Back</button></div></main>;
 
   const doneCount  = doneSteps.size;
   const totalSteps = instructions?.length ?? 0;
@@ -540,7 +540,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           {/* == DESKTOP: original top-bar layout == */}
           <div className="rp2__hero-desktop-layout">
             <div className="rp2__hero-topbar">
-              <button className="rp2__hero-btn" onClick={e => { e.stopPropagation(); onBack(); }}>â† Back</button>
+              <button className="rp2__hero-btn" onClick={e => { e.stopPropagation(); onBack(); }}>← Back</button>
               <div className="rp2__hero-topbar-right">
                 {isMakeSoon && onMarkCooked && (
                   <button className="rp2__hero-btn rp2__hero-cooked-btn"
