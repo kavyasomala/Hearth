@@ -8204,4 +8204,21 @@ html, body {
 }
 
 .kitchen-pill-group { display: flex; flex-direction: column; gap: 12px; }
+.kitchen-pill-wrap {
+  display: inline-flex; align-items: center; position: relative;
+}
+
+.kitchen-chip--removable { padding-right: 22px; }
+
+.kitchen-pill-remove {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  font-size: 0.7rem; color: var(--warm-gray); line-height: 1;
+  padding: 0; opacity: 0.5; transition: opacity 0.15s;
+}
+
+.kitchen-pill-wrap:hover .kitchen-pill-remove { opacity: 1; }
+.kitchen-chip--active .kitchen-pill-remove,
+.kitchen-chip--active + .kitchen-pill-remove { color: rgba(255,255,255,0.8); }
+
 
