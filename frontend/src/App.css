@@ -8320,3 +8320,25 @@ html, body {
 /* Fridge groups padding when expanded */
 .kitchen-fridge-groups { padding: 4px 22px 22px; display: flex; flex-direction: column; gap: 24px; }
 @media (max-width: 640px) { .kitchen-fridge-groups { padding: 4px 16px 16px; } }
+
+/* ─── Fridge drag-and-drop ────────────────────────────────────────────────── */
+.kpill__drag {
+  padding: 7px 4px 7px 10px; background: none; border: none;
+  cursor: grab; font-size: 0.85rem; color: var(--warm-gray);
+  opacity: 0.2; transition: opacity .15s; line-height: 1; user-select: none;
+}
+.kpill:hover .kpill__drag { opacity: 0.6; }
+.kpill--dragging { opacity: 0.4 !important; }
+
+.kpill--drag-overlay {
+  box-shadow: 0 6px 20px rgba(0,0,0,.18); transform: rotate(2deg);
+  background: var(--terracotta); border-color: var(--terracotta);
+}
+.kpill--drag-overlay .kpill__label { color: white; padding: 7px 14px; }
+
+.kitchen-pill-group--drop-target {
+  background: rgba(176, 78, 46, 0.05);
+  border-radius: 12px; outline: 2px dashed var(--terracotta);
+  outline-offset: 6px;
+}
+.kitchen-drop-hint { color: var(--terracotta); font-style: italic; }

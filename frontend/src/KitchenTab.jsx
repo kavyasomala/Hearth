@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, DragOverlay, useDroppable, useDraggable } from '@dnd-kit/core';
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
@@ -116,9 +117,34 @@ function UncategorizedGroup({ items, groupLabels, onAssign }) {
   );
 }
 
-// ─── FridgeSuggestionGroup — in the expanded fridge panel ────────────────────
+// ─── DraggablePill — a fridge suggestion pill that can be dragged ─────────────
 
-function FridgeSuggestionGroup({ group, fridgeSet, onToggle, onDelete, onAdd }) {
+function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id,
+    data: { item, fromGroup: groupLabel },
+  });
+
+  return (
+    <span
+      ref={setNodeRef}
+      className={`kpill ${active ? 'kpill--active' : ''} ${isDragging ? 'kpill--dragging' : ''}`}
+      style={{ opacity: isDragging ? 0.4 : 1, touchAction: 'none' }}
+    >
+      {/* Drag handle — grab icon */}
+      <span className="kpill__drag" {...listeners} {...attributes} title="Drag to move">⠿</span>
+      <button className="kpill__label" onClick={onToggle}>
+        {active && <span className="kpill__check">✓ </span>}{item}
+      </button>
+      <button className="kpill__delete" onClick={onDelete} title="Remove suggestion">×</button>
+    </span>
+  );
+}
+
+// ─── DroppableGroup — a fridge suggestion group that accepts drops ────────────
+
+function DroppableGroup({ group, fridgeSet, onToggle, onDelete, onAdd, isOver }) {
+  const { setNodeRef } = useDroppable({ id: group.label });
   const [showInput, setShowInput] = useState(false);
   const [input, setInput]         = useState('');
 
@@ -128,16 +154,25 @@ function FridgeSuggestionGroup({ group, fridgeSet, onToggle, onDelete, onAdd }) 
   };
 
   return (
-    <div className="kitchen-pill-group">
-      <p className="kitchen-checklist__group-label">{group.label}</p>
+    <div
+      ref={setNodeRef}
+      className={`kitchen-pill-group ${isOver ? 'kitchen-pill-group--drop-target' : ''}`}
+    >
+      <p className="kitchen-checklist__group-label">
+        {group.label}
+        {isOver && <span className="kitchen-drop-hint"> · drop here</span>}
+      </p>
       <div className="kitchen-checklist__items">
         {group.items.map(item => (
-          <span key={item} className={`kpill ${fridgeSet.has(item) ? 'kpill--active' : ''}`}>
-            <button className="kpill__label" onClick={() => onToggle(item)}>
-              {fridgeSet.has(item) && <span className="kpill__check">✓ </span>}{item}
-            </button>
-            <button className="kpill__delete" onClick={() => onDelete(group.label, item)} title="Remove suggestion">×</button>
-          </span>
+          <DraggablePill
+            key={item}
+            id={`${group.label}::${item}`}
+            item={item}
+            groupLabel={group.label}
+            active={fridgeSet.has(item)}
+            onToggle={() => onToggle(item)}
+            onDelete={() => onDelete(group.label, item)}
+          />
         ))}
         {showInput ? (
           <span className="kitchen-custom-input-wrap">
@@ -162,6 +197,13 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
   const [staplesOpen,   setStaplesOpen]   = useState(false);
   const [staplesConfig, setStaplesConfig] = useState(() => loadLS(STAPLES_KEY, DEFAULT_STAPLES));
   const [fridgeConfig,  setFridgeConfig]  = useState(() => loadLS(FRIDGE_KEY,  DEFAULT_FRIDGE_SUGGESTIONS));
+  const [activeDragId,  setActiveDragId]  = useState(null);
+  const [overGroupId,   setOverGroupId]   = useState(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 8 } })
+  );
 
   // Fridge search — only used for the dropdown overlay; doesn't affect the expanded pill grid
   const [fridgeSearch,        setFridgeSearch]        = useState('');
@@ -247,8 +289,40 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     const val = fridgeSearch.toLowerCase().trim();
     if (!val) return;
     if (!fridgeSet.has(val)) setFridgeIngredients(prev => [...prev, val]);
+    // If not in any suggestion group, add to Miscellaneous so user can drag it later
+    const inAnyGroup = fridgeConfig.some(g => g.items.includes(val));
+    if (!inAnyGroup) {
+      updateFridge(prev => {
+        const hasMisc = prev.some(g => g.label === 'Miscellaneous');
+        if (hasMisc) {
+          return prev.map(g => g.label === 'Miscellaneous' && !g.items.includes(val)
+            ? { ...g, items: [...g.items, val] } : g);
+        }
+        return [...prev, { label: 'Miscellaneous', items: [val] }];
+      });
+    }
     setFridgeSearch('');
     setFridgeSearchFocused(false);
+  };
+
+  // ── Drag handlers for fridge suggestion groups ────────────────────────────
+
+  const handleDragStart = ({ active }) => setActiveDragId(active.id);
+  const handleDragOver  = ({ over })   => setOverGroupId(over ? over.id : null);
+
+  const handleDragEnd = ({ active, over }) => {
+    setActiveDragId(null);
+    setOverGroupId(null);
+    if (!over || !active.data.current) return;
+    const { item, fromGroup } = active.data.current;
+    const toGroup = over.id;
+    if (fromGroup === toGroup) return;
+    updateFridge(prev => prev.map(g => {
+      if (g.label === fromGroup) return { ...g, items: g.items.filter(i => i !== item) };
+      if (g.label === toGroup && !g.items.includes(item)) return { ...g, items: [...g.items, item] };
+      return g;
+    // Remove Miscellaneous group if empty after move
+    }).filter(g => !(g.label === 'Miscellaneous' && g.items.length === 0)));
   };
 
   // ── Search dropdown content (only shown when typing) ──────────────────────
@@ -362,20 +436,34 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
           </div>
         )}
 
-        {/* Collapsible pill groups */}
+        {/* Collapsible pill groups with drag-and-drop */}
         {fridgeOpen && (
-          <div className="kitchen-fridge-groups">
-            {fridgeConfig.map(group => (
-              <FridgeSuggestionGroup
-                key={group.label}
-                group={group}
-                fridgeSet={fridgeSet}
-                onToggle={toggleFridge}
-                onDelete={deleteFridgeSuggestion}
-                onAdd={addFridgeSuggestion}
-              />
-            ))}
-          </div>
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="kitchen-fridge-groups">
+              {fridgeConfig.map(group => (
+                <DroppableGroup
+                  key={group.label}
+                  group={group}
+                  fridgeSet={fridgeSet}
+                  onToggle={toggleFridge}
+                  onDelete={deleteFridgeSuggestion}
+                  onAdd={addFridgeSuggestion}
+                  isOver={overGroupId === group.label}
+                />
+              ))}
+            </div>
+            <DragOverlay>
+              {activeDragId && (() => {
+                const item = activeDragId.split('::')[1];
+                return <span className="kpill kpill--drag-overlay"><span className="kpill__label">{item}</span></span>;
+              })()}
+            </DragOverlay>
+          </DndContext>
         )}
       </section>
 
