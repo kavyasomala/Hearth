@@ -311,9 +311,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
     }
     if (section === 'notes')        setDraftNotes((notes || []).map((n, idx) => ({ ...n, _id: `note-${idx}`, text: n.text ?? n.body_text ?? '' })));
     if (section === 'cookbook')      setDraftCookbook({ cookbook: recipe.cookbook || '', reference: recipe.reference || '' });
-    if (['meta','meta-cuisine','meta-tags','meta-progress','meta-time','meta-servings'].includes(section)) setDraftMeta({
+    if (['meta','meta-cuisine','meta-tags','meta-progress','meta-time','meta-servings','meta-calories'].includes(section)) setDraftMeta({
       time: recipe.time || '',
       servings: recipe.servings || '',
+      calories: recipe.calories || '',
       cuisine: recipe.cuisine || '',
       tags: recipe.tags || [],
       status: recipe.status || '',
@@ -334,6 +335,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           cuisine:         isMeta ? draftMeta.cuisine : (recipe.cuisine || ''),
           time:            isMeta ? draftMeta.time    : (recipe.time || ''),
           servings:        isMeta ? draftMeta.servings : (recipe.servings || ''),
+          calories:        isMeta ? draftMeta.calories : (recipe.calories || ''),
           cover_image_url: section === 'image' ? draftImageInput : (recipe.coverImage || ''),
           status:          isMeta ? draftMeta.status : (recipe.status || ''),
           tags:            isMeta ? draftMeta.tags   : (recipe.tags || []),
@@ -748,6 +750,28 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     <input className="rp2__dark-input" autoFocus value={draftMeta.servings}
                       onChange={e => setDraftMeta(p => ({...p, servings: e.target.value}))}
                       placeholder="e.g. 4"
+                      onKeyDown={e => { if (e.key === 'Enter') saveSection('meta'); if (e.key === 'Escape') cancelEdit(); }} />
+                    <div className="rp2__dark-pop-actions">
+                      <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
+                      <button className="rp2__dark-cancel" onClick={cancelEdit}>✕</button>
+                    </div>
+                  </div>
+                )}
+              </div>}
+
+              {/* Calories pill */}
+              {(isAdmin || recipe.calories) && <div className="rp2__hero-tag-wrap rp2__hero-tag-wrap--right">
+                <button className={`rp2__pill rp2__pill--clickable ${isEdit('meta-calories') ? 'rp2__pill--editing' : ''}`}
+                  onClick={e => { e.stopPropagation(); startEdit(isEdit('meta-calories') ? null : 'meta-calories'); }}>
+                  <span className="rp2__pill-icon"><Icon name="flame" size={13} strokeWidth={2} /></span>
+                  {recipe.calories ? `${recipe.calories} cal` : <span style={{opacity:0.6}}>+ Calories</span>}
+                </button>
+                {isEdit('meta-calories') && (
+                  <div className="rp2__hero-dark-popover rp2__hero-dark-popover--right">
+                    <p className="rp2__dark-pop-label"><Icon name="flame" size={13} strokeWidth={2} /> Calories per serving</p>
+                    <input className="rp2__dark-input" autoFocus value={draftMeta.calories}
+                      onChange={e => setDraftMeta(p => ({...p, calories: e.target.value}))}
+                      placeholder="e.g. 450"
                       onKeyDown={e => { if (e.key === 'Enter') saveSection('meta'); if (e.key === 'Escape') cancelEdit(); }} />
                     <div className="rp2__dark-pop-actions">
                       <button className="rp2__dark-save" onClick={() => saveSection('meta')} disabled={saving}>{saving ? '...' : '✓ Save'}</button>

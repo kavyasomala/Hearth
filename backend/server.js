@@ -125,6 +125,7 @@ function initDB() {
       cookbook       TEXT,                     -- display label only, not a FK
       reference      TEXT,                     -- source URL or book name
       tags           TEXT DEFAULT '[]',        -- JSON array of strings
+      calories       TEXT,                     -- per serving, e.g. '350 kcal'
       created_at     TEXT DEFAULT (datetime('now'))
     );
 
@@ -246,7 +247,7 @@ function prepareCachedStatements() {
 
     // recipes — bulk fetch uses a JOIN to avoid N+1 queries
     getAllRecipes: db.prepare(`
-      SELECT r.id, r.name, r.cuisine, r.time, r.servings, r.cover_image_url,
+      SELECT r.id, r.name, r.cuisine, r.time, r.servings, r.calories, r.cover_image_url,
              r.status, r.cookbook, r.reference, r.tags, r.created_at,
              i.name AS ing_name
       FROM recipes r
@@ -257,8 +258,8 @@ function prepareCachedStatements() {
     getIngredients:      db.prepare('SELECT * FROM recipe_ingredients WHERE recipe_id = ? ORDER BY order_index ASC'),
     getInstructions:     db.prepare('SELECT * FROM instructions WHERE recipe_id = ? ORDER BY step_number ASC'),
     getRecipeNotes:      db.prepare('SELECT id, order_index, body_text AS text FROM recipe_notes WHERE recipe_id = ? ORDER BY order_index ASC'),
-    insertRecipe:        db.prepare(`INSERT INTO recipes (id, name, cuisine, time, servings, cover_image_url, status, cookbook, reference, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
-    updateRecipe:        db.prepare(`UPDATE recipes SET name=?, cuisine=?, time=?, servings=?, cover_image_url=?, status=?, cookbook=?, reference=?, tags=? WHERE id=?`),
+    insertRecipe:        db.prepare(`INSERT INTO recipes (id, name, cuisine, time, servings, calories, cover_image_url, status, cookbook, reference, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+    updateRecipe:        db.prepare(`UPDATE recipes SET name=?, cuisine=?, time=?, servings=?, calories=?, cover_image_url=?, status=?, cookbook=?, reference=?, tags=? WHERE id=?`),
     deleteRecipe:        db.prepare('DELETE FROM recipes WHERE id = ?'),
     insertIngredient:    db.prepare(`INSERT INTO recipe_ingredients (id, recipe_id, name, amount, unit, prep_note, optional, group_label, order_index) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
     deleteIngredients:   db.prepare('DELETE FROM recipe_ingredients WHERE recipe_id = ?'),
@@ -472,7 +473,7 @@ app.get('/api/recipes', (req, res) => {
       if (!recipeMap.has(row.id)) {
         recipeMap.set(row.id, {
           id: row.id, name: row.name, cuisine: row.cuisine, time: row.time,
-          servings: row.servings, coverImage: row.cover_image_url, status: row.status,
+          servings: row.servings, calories: row.calories, coverImage: row.cover_image_url, status: row.status,
           cookbook: row.cookbook, reference: row.reference, created_at: row.created_at,
           tags: JSON.parse(row.tags || '[]'), ingredients: [],
         });
@@ -511,7 +512,7 @@ app.post('/api/recipes', authenticateToken, requireAdmin, (req, res) => {
     const id = uuid();
     stmts.insertRecipe.run(
       id, details.name.trim(), details.cuisine || null, details.time || null,
-      details.servings || null, details.cover_image_url || null, details.status || null,
+      details.servings || null, details.calories || null, details.cover_image_url || null, details.status || null,
       details.cookbook || null, details.reference || null,
       JSON.stringify(Array.isArray(details.tags) ? details.tags : [])
     );
@@ -548,7 +549,7 @@ app.put('/api/recipes/:id', authenticateToken, requireAdmin, (req, res) => {
   try {
     stmts.updateRecipe.run(
       details.name, details.cuisine || null, details.time || null, details.servings || null,
-      details.cover_image_url || null, details.status || null, details.cookbook || null,
+      details.calories || null, details.cover_image_url || null, details.status || null, details.cookbook || null,
       details.reference || null, JSON.stringify(Array.isArray(details.tags) ? details.tags : []), id
     );
     if (ingredients !== undefined) {
