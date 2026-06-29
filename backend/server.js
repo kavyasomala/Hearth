@@ -865,6 +865,14 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
+// Flush DB to Drive before Render shuts the instance down (every redeploy sends SIGTERM)
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM — flushing DB to Drive before shutdown...');
+  clearTimeout(uploadTimeout);
+  await uploadDBToDrive();
+  process.exit(0);
+});
+
 downloadDBFromDrive().then(() => {
   initDB();
   app.listen(PORT, () => console.log(`🍳 Hearth API running on port ${PORT}`));
