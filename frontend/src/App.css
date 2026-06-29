@@ -8179,3 +8179,29 @@ html, body {
   background: var(--terracotta); color: white;
   font-size: 0.65rem; font-weight: 700; margin-left: 5px;
 }
+.kitchen-chip--add {
+  border-style: dashed; color: var(--warm-gray);
+  background: transparent;
+}
+.kitchen-chip--add:hover { border-color: var(--terracotta); color: var(--terracotta); }
+
+.kitchen-chip--custom { opacity: 0.9; }
+
+.kitchen-custom-input-wrap {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+
+.kitchen-custom-input {
+  border: 1.5px solid var(--terracotta); border-radius: 20px;
+  padding: 6px 12px; font-size: 0.875rem; font-family: var(--font-body);
+  color: var(--charcoal); background: var(--warm-white); outline: none;
+  width: 150px;
+}
+
+.kitchen-custom-add-btn {
+  padding: 6px 14px; border-radius: 20px; font-size: 0.875rem;
+  background: var(--terracotta); color: white; border: none; cursor: pointer;
+}
+
+.kitchen-pill-group { display: flex; flex-direction: column; gap: 12px; }
+
