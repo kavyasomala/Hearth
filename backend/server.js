@@ -11,8 +11,6 @@ const express = require('express');
 const cors    = require('cors');
 const jwt     = require('jsonwebtoken');
 const crypto  = require('crypto');
-const dns     = require('dns').promises;
-const { URL: NodeURL } = require('url');
 const { Pool } = require('pg');
 require('dotenv').config();
 
@@ -23,29 +21,16 @@ app.use(cors({ origin: 'https://hearth-z2lo.onrender.com' }));
 app.use(express.json());
 
 // ─── Database ─────────────────────────────────────────────────────────────────
-// Pool is initialised inside initDB() after resolving the host to IPv4.
-// Render free tier can't make outbound IPv6 connections, but Supabase's
-// hostname resolves to IPv6 by default in Node 17+. We force IPv4 by
-// looking up the A record explicitly and connecting to that IP directly.
 
-let pool;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
+
 const q = (sql, params) => pool.query(sql, params);
 const uuid = () => crypto.randomUUID();
 
 async function initDB() {
-  // Resolve the Supabase hostname to an IPv4 address so pg doesn't try IPv6
-  const url = new NodeURL(process.env.DATABASE_URL);
-  const [ipv4] = await dns.resolve4(url.hostname);
-  console.log(`🔗 Connecting to Supabase at ${ipv4} (${url.hostname})`);
-  pool = new Pool({
-    host:     ipv4,
-    port:     parseInt(url.port) || 5432,
-    database: url.pathname.replace(/^\//, ''),
-    user:     decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    ssl:      { rejectUnauthorized: false },
-  });
-
   const tables = [
     `CREATE TABLE IF NOT EXISTS users (
       id            TEXT PRIMARY KEY,
