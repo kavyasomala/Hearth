@@ -501,6 +501,8 @@ app.post('/api/recipes', authenticateToken, requireAdmin, async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('POST /api/recipes error:', err);
+    // FK violation on created_by means the JWT carries a stale user ID (e.g. after a schema rebuild)
+    if (err.code === '23503') return res.status(401).json({ error: 'Session expired — please log out and log back in.' });
     res.status(500).json({ error: err.message });
   } finally { client.release(); }
 });
