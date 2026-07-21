@@ -28,9 +28,9 @@ export const PROGRESS_FILTERS = [
   { key: '__almostready',   label: 'Almost Ready',    icon: 'flame'       },
   { key: '__makesoon',      label: 'Make Soon',       icon: 'timer'       },
   { key: '__favorite',      label: 'Favorites',       icon: 'heart'       },
-  { key: '__incomplete',    label: 'Incomplete',      icon: 'note'        },
   { key: '__needstweaking', label: 'Needs Tweaking',  icon: 'tool'        },
-  { key: '__complete',      label: 'Complete',        icon: 'checkCircle' },
+  { key: '__complete',      label: 'Made It',         icon: 'checkCircle' },
+  { key: '__archived',      label: 'Archived',        icon: 'archive'     },
   { key: '__totry',         label: 'To Try',          icon: 'bookMarked'  },
 ];
 

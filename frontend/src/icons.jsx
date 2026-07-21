@@ -66,6 +66,7 @@ const ICONS = {
   home:        ['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 22V12h6v10'],
   link:        ['M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71', 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'],
   info:        ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 8h.01', 'M12 12v4'],
+  archive:     ['M21 8v13H3V8', 'M1 3h22v5H1z', 'M10 12h4'],
 };
 
 const Icon = ({ name, size = 16, color = 'currentColor', strokeWidth = 2 }) => {
