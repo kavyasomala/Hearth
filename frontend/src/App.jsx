@@ -450,10 +450,10 @@ function AppInner() {
         if (p === '__readytocook')  return matchById.get(r.id)?.canMake;
         if (p === '__almostready')  { const m = matchById.get(r.id); return m && m.matchScore >= 0.7 && !m.canMake; }
         if (p === '__makesoon') return makeSoonIds.includes(r.id);
-        if (p === '__incomplete') return r.status === 'incomplete';
+        if (p === '__archived')      return r.status === 'archived';
         if (p === '__needstweaking') return r.status === 'needs tweaking';
         if (p === '__favorite') return heartedIds.includes(r.id);
-        if (p === '__complete') return !r.recipe_incomplete && r.status === 'complete';
+        if (p === '__complete') return r.status === 'made it';
         if (p === '__totry') return r.status === 'to try';
         return false;
       }));
@@ -1159,7 +1159,7 @@ function AppInner() {
                         const protein  = toNum(r.protein);
                         const match = matchById.get(r.id);
                         const canMakeNow = Boolean(match?.canMake);
-                        const progress = r.recipe_incomplete ? <Icon name="alertTriangle" size={12} strokeWidth={2} /> : r.status === 'needs tweaking' ? <Icon name="tool" size={12} strokeWidth={2} /> : r.status === 'complete' ? <Icon name="checkCircle" size={12} strokeWidth={2} /> : r.status === 'to try' ? <Icon name="bookMarked" size={12} strokeWidth={2} /> : null;
+                        const progress = r.recipe_incomplete ? <Icon name="alertTriangle" size={12} strokeWidth={2} /> : r.status === 'needs tweaking' ? <Icon name="tool" size={12} strokeWidth={2} /> : r.status === 'made it' ? <Icon name="checkCircle" size={12} strokeWidth={2} /> : r.status === 'archived' ? <Icon name="archive" size={12} strokeWidth={2} /> : r.status === 'to try' ? <Icon name="bookMarked" size={12} strokeWidth={2} /> : null;
                         const tags = r.tags || [];
                         return (
                           <div key={r.id} className={`recipe-list-table__row${makeSoonIds.includes(r.id) ? ' recipe-list-table__row--make-soon' : ''}`} onClick={() => openRecipe(r)}>

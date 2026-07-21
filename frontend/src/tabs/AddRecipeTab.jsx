@@ -297,10 +297,10 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
                 <div className="picker__chips" style={{ marginTop: 6 }}>
                   {[
                     { key: '', label: '-- None' },
-                    { key: 'complete', label: 'Complete' },
-                    { key: 'needs tweaking', label: 'Needs Tweaking' },
                     { key: 'to try', label: 'To Try' },
-                    { key: 'incomplete', label: 'Incomplete' },
+                    { key: 'made it', label: 'Made It' },
+                    { key: 'needs tweaking', label: 'Needs Tweaking' },
+                    { key: 'archived', label: 'Archived' },
                   ].map(({ key, label }) => (
                     <button key={key}
                       className={`chip ${details.status === key ? 'chip--selected' : ''}`}

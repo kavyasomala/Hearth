@@ -51,7 +51,7 @@ async function initDB() {
       time_minutes    INTEGER,
       servings        INTEGER,
       cover_image_url TEXT,
-      status          TEXT CHECK (status IN ('draft','published','archived')),
+      status          TEXT CHECK (status IN ('to try','made it','needs tweaking','archived')),
       reference       TEXT,
       source_url      TEXT,
       tags            TEXT[]  DEFAULT '{}',
@@ -235,6 +235,10 @@ async function initDB() {
     `CREATE INDEX IF NOT EXISTS idx_recipes_tags          ON recipes USING GIN(tags)`,
   ];
   for (const sql of indexes) await q(sql);
+
+  // Migrate status constraint from draft/published/archived to lifecycle values
+  await q(`ALTER TABLE recipes DROP CONSTRAINT IF EXISTS recipes_status_check`);
+  await q(`ALTER TABLE recipes ADD CONSTRAINT recipes_status_check CHECK (status IN ('to try','made it','needs tweaking','archived'))`);
 
   console.log('🗄️  Database ready (12 tables, indexes, triggers)');
 }
