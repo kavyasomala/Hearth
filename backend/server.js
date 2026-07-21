@@ -31,17 +31,16 @@ const q = (sql, params) => pool.query(sql, params);
 const uuid = () => crypto.randomUUID();
 
 async function initDB() {
-  await q(`
-    CREATE TABLE IF NOT EXISTS users (
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS users (
       id            TEXT PRIMARY KEY,
       username      TEXT UNIQUE NOT NULL,
       display_name  TEXT,
       password_hash TEXT NOT NULL,
       role          TEXT DEFAULT 'guest',
       created_at    TIMESTAMPTZ DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS recipes (
+    )`,
+    `CREATE TABLE IF NOT EXISTS recipes (
       id              TEXT PRIMARY KEY,
       name            TEXT NOT NULL,
       cuisine         TEXT,
@@ -54,9 +53,8 @@ async function initDB() {
       tags            TEXT DEFAULT '[]',
       calories        TEXT,
       created_at      TIMESTAMPTZ DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS recipe_ingredients (
+    )`,
+    `CREATE TABLE IF NOT EXISTS recipe_ingredients (
       id          TEXT PRIMARY KEY,
       recipe_id   TEXT NOT NULL REFERENCES recipes(id),
       name        TEXT NOT NULL,
@@ -66,25 +64,22 @@ async function initDB() {
       optional    BOOLEAN DEFAULT FALSE,
       group_label TEXT,
       order_index INTEGER DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS instructions (
+    )`,
+    `CREATE TABLE IF NOT EXISTS instructions (
       id            TEXT PRIMARY KEY,
       recipe_id     TEXT NOT NULL REFERENCES recipes(id),
       step_number   INTEGER,
       body_text     TEXT,
       timer_seconds INTEGER,
       group_label   TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS recipe_notes (
+    )`,
+    `CREATE TABLE IF NOT EXISTS recipe_notes (
       id          TEXT PRIMARY KEY,
       recipe_id   TEXT NOT NULL REFERENCES recipes(id),
       order_index INTEGER DEFAULT 0,
       body_text   TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS cookbooks (
+    )`,
+    `CREATE TABLE IF NOT EXISTS cookbooks (
       id          TEXT PRIMARY KEY,
       title       TEXT NOT NULL,
       author      TEXT DEFAULT '',
@@ -94,9 +89,8 @@ async function initDB() {
       recipes     TEXT DEFAULT '[]',
       created_at  TIMESTAMPTZ DEFAULT NOW(),
       updated_at  TIMESTAMPTZ DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS cooking_notes (
+    )`,
+    `CREATE TABLE IF NOT EXISTS cooking_notes (
       id         TEXT PRIMARY KEY,
       title      TEXT NOT NULL,
       body       TEXT NOT NULL,
@@ -104,34 +98,29 @@ async function initDB() {
       category   TEXT DEFAULT 'General Technique',
       image_url  TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS cooking_note_bullets (
+    )`,
+    `CREATE TABLE IF NOT EXISTS cooking_note_bullets (
       id          TEXT PRIMARY KEY,
       note_id     TEXT NOT NULL REFERENCES cooking_notes(id),
       text        TEXT,
       order_index INTEGER DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS cooking_note_keywords (
+    )`,
+    `CREATE TABLE IF NOT EXISTS cooking_note_keywords (
       note_id TEXT NOT NULL REFERENCES cooking_notes(id),
       keyword TEXT NOT NULL,
       PRIMARY KEY (note_id, keyword)
-    );
-
-    CREATE TABLE IF NOT EXISTS user_favorites (
+    )`,
+    `CREATE TABLE IF NOT EXISTS user_favorites (
       user_id   TEXT NOT NULL,
       recipe_id TEXT NOT NULL,
       PRIMARY KEY (user_id, recipe_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS user_make_soon (
+    )`,
+    `CREATE TABLE IF NOT EXISTS user_make_soon (
       user_id   TEXT NOT NULL,
       recipe_id TEXT NOT NULL,
       PRIMARY KEY (user_id, recipe_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS user_cook_log (
+    )`,
+    `CREATE TABLE IF NOT EXISTS user_cook_log (
       id          TEXT PRIMARY KEY,
       user_id     TEXT NOT NULL,
       recipe_id   TEXT,
@@ -139,16 +128,16 @@ async function initDB() {
       rating      INTEGER,
       notes       TEXT,
       cooked_at   TIMESTAMPTZ DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS user_kitchen (
+    )`,
+    `CREATE TABLE IF NOT EXISTS user_kitchen (
       user_id         TEXT NOT NULL,
       ingredient_name TEXT NOT NULL,
       storage_type    TEXT DEFAULT 'fridge',
       PRIMARY KEY (user_id, ingredient_name)
-    );
-  `);
-  console.log('🗄️  Database ready');
+    )`,
+  ];
+  for (const sql of tables) await q(sql);
+  console.log('🗄️  Database ready (13 tables)');
 }
 
 // ─── Grocery Category Mapping ─────────────────────────────────────────────────
