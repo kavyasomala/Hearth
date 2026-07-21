@@ -377,7 +377,9 @@ function AppInner() {
       // Kitchen items are loaded separately via /api/user/kitchen after this block
       const recipeIngNames = [...new Set(recipeData.flatMap(r => r.ingredients || []))].sort();
       setAllIngredients(recipeIngNames.map(name => ({ name })));
-      setRecipes(recipeData);
+      // time_minutes is now an INTEGER in the DB; derive a display string so all existing
+      // recipe.time reads continue to work without touching every component.
+      setRecipes(recipeData.map(r => ({ ...r, time: r.time_minutes ? `${r.time_minutes} min` : '' })));
 
       // Load user-specific data if logged in
       if (authToken) {
@@ -480,15 +482,17 @@ function AppInner() {
         return mins <= maxMinutes;
       });
     }
-    // Cookbook filter
+    // Cookbook filter — uses cookbook_recipes membership (not recipe.cookbook text field)
     if (activeCookbooks.length) {
-      list = list.filter(r => {
-        const cb = (r.cookbook || '').trim();
-        return activeCookbooks.some(k => {
-          if (k === '__uncategorized') return !cb;
-          return cb.toLowerCase() === k.toLowerCase();
-        });
-      });
+      const inAnyBook = new Set(cookbooks.flatMap(cb => (cb.recipes||[]).map(e => e.recipeId).filter(Boolean)));
+      const byTitle   = new Map(cookbooks.map(cb => [
+        cb.title.toLowerCase().trim(),
+        new Set((cb.recipes||[]).map(e => e.recipeId).filter(Boolean)),
+      ]));
+      list = list.filter(r => activeCookbooks.some(k => {
+        if (k === '__uncategorized') return !inAnyBook.has(r.id);
+        return byTitle.get(k.toLowerCase().trim())?.has(r.id) ?? false;
+      }));
     }
     // Hide recipes with dietary conflicts if user opted in
     if (hideIncompatible && dietaryFilters.length > 0) {
@@ -499,7 +503,7 @@ function AppInner() {
       });
     }
     return list;
-  }, [recipes, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById, hideIncompatible, dietaryFilters, activeCookbooks, makeSoonIds]);
+  }, [recipes, cookbooks, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById, hideIncompatible, dietaryFilters, activeCookbooks, makeSoonIds]);
 
   const hasActiveFilters = !!(librarySearch || activeTags.length || activeCuisines.length || activeProgresses.length || maxCalories !== null || maxMinutes !== null || activeCookbooks.length);
   // Filter button highlight: only when filter chips/sliders are active (not search text)

@@ -108,6 +108,7 @@ async function initDB() {
       cookbook_id UUID NOT NULL REFERENCES cookbooks(id) ON DELETE CASCADE,
       recipe_id   UUID NOT NULL REFERENCES recipes(id)   ON DELETE CASCADE,
       order_index INTEGER DEFAULT 0,
+      added_at    TIMESTAMPTZ DEFAULT NOW(),
       PRIMARY KEY (cookbook_id, recipe_id)
     )`,
 
@@ -289,15 +290,25 @@ const requireAdmin = (req, res, next) => {
 // tags and ingredients are native arrays from pg — no JSON.parse needed
 const fmtRecipe = r => ({ ...r, coverImage: r.cover_image_url });
 
+// Returns cookbook.recipes as [{recipeId, name, page, image, tags, addedAt}] —
+// same shape the frontend CookbooksTab has always expected.
 const COOKBOOK_SELECT = `
   SELECT c.id, c.title, c.author, c.cover_image, c.spine_color, c.notes,
          c.created_by, c.created_at, c.updated_at,
          COALESCE(
-           json_agg(cr.recipe_id ORDER BY cr.order_index)
-           FILTER (WHERE cr.recipe_id IS NOT NULL), '[]'
+           json_agg(json_build_object(
+             'recipeId',  r.id,
+             'name',      r.name,
+             'page',      r.reference,
+             'image',     r.cover_image_url,
+             'tags',      r.tags,
+             'addedAt',   EXTRACT(EPOCH FROM cr.added_at) * 1000
+           ) ORDER BY cr.order_index) FILTER (WHERE r.id IS NOT NULL),
+           '[]'
          ) AS recipes
   FROM cookbooks c
-  LEFT JOIN cookbook_recipes cr ON cr.cookbook_id = c.id`;
+  LEFT JOIN cookbook_recipes cr ON cr.cookbook_id = c.id
+  LEFT JOIN recipes r ON r.id = cr.recipe_id`;
 
 const fmtCookbook = r => ({ ...r, coverImage: r.cover_image, spineColor: r.spine_color });
 
@@ -616,9 +627,12 @@ app.put('/api/cookbooks/:id/entries', authenticateToken, requireAdmin, async (re
     await client.query('BEGIN');
     await client.query('DELETE FROM cookbook_recipes WHERE cookbook_id = $1', [req.params.id]);
     for (let i = 0; i < recipes.length; i++) {
+      // Accept both UUID strings and entry objects {recipeId, ...}
+      const recipeId = typeof recipes[i] === 'string' ? recipes[i] : (recipes[i]?.recipeId || recipes[i]?.id);
+      if (!recipeId) continue;
       await client.query(
         'INSERT INTO cookbook_recipes (cookbook_id,recipe_id,order_index) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
-        [req.params.id, recipes[i], i]
+        [req.params.id, recipeId, i]
       );
     }
     await client.query('COMMIT');
