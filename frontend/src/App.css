@@ -2388,6 +2388,62 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* Import card */
+.add-tab__card--import {
+  cursor: default;
+}
+.add-tab__card--import:hover {
+  border-color: var(--terracotta);
+  box-shadow: 0 8px 32px rgba(196,98,58,0.14);
+  transform: translateY(-3px);
+}
+.add-tab__import-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+.add-tab__import-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+}
+.add-tab__import-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.add-tab__import-error {
+  font-size: 0.8rem;
+  color: var(--terracotta);
+  line-height: 1.4;
+  margin-top: -4px;
+}
+.add-tab__import-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Banner shown inside modal after import */
+.create-modal__import-banner {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  background: color-mix(in srgb, var(--terracotta) 10%, transparent);
+  color: var(--terracotta);
+  font-size: 0.82rem;
+  font-weight: 500;
+  border-bottom: 1px solid color-mix(in srgb, var(--terracotta) 20%, transparent);
+}
+
 /* ─── Link Import Spinner ────────────────────────────────────────────────── */
 .link-import__spinner {
   display: inline-block;

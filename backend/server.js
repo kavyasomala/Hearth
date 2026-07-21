@@ -394,6 +394,124 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
   res.json({ deleted: true });
 });
 
+// ─── Recipe URL Import ────────────────────────────────────────────────────────
+
+function parseIsoDuration(iso) {
+  if (!iso) return null;
+  const m = iso.match(/P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:[\d.]+S)?/i);
+  if (!m) return null;
+  const total = parseInt(m[1]||0)*1440 + parseInt(m[2]||0)*60 + parseInt(m[3]||0);
+  return total > 0 ? total : null;
+}
+
+function extractJsonLd(html) {
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = re.exec(html)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      const items = Array.isArray(parsed) ? parsed : [parsed];
+      for (const item of items) {
+        if (item['@graph']) {
+          const r = item['@graph'].find(n => [].concat(n['@type']||[]).includes('Recipe'));
+          if (r) return r;
+        }
+        if ([].concat(item['@type']||[]).includes('Recipe')) return item;
+      }
+    } catch {}
+  }
+  return null;
+}
+
+function normalizeImport(data, sourceUrl) {
+  const name = (data.name || '').trim();
+
+  let cover_image_url = '';
+  if (data.image) {
+    const img = Array.isArray(data.image) ? data.image[0] : data.image;
+    cover_image_url = typeof img === 'string' ? img : (img?.url || '');
+  }
+
+  const cookMins  = parseIsoDuration(data.cookTime);
+  const prepMins  = parseIsoDuration(data.prepTime);
+  const totalMins = parseIsoDuration(data.totalTime);
+  const time_minutes = totalMins || (cookMins && prepMins ? cookMins + prepMins : cookMins || prepMins) || null;
+
+  let servings = null;
+  if (data.recipeYield) {
+    const y = Array.isArray(data.recipeYield) ? data.recipeYield[0] : data.recipeYield;
+    const n = String(y).match(/\d+/);
+    if (n) servings = parseInt(n[0]);
+  }
+
+  // Keep ingredients as raw strings — user reviews in the editor
+  const ingredients = (data.recipeIngredient || [])
+    .map((raw, i) => ({ _id: `i${i}`, name: String(raw).trim(), amount: '', unit: '', prep_note: '', optional: false, group_label: '' }))
+    .filter(ing => ing.name);
+
+  const steps = [];
+  let sn = 1;
+  const flattenSteps = (items, label = '') => {
+    for (const item of (items || [])) {
+      const types = [].concat(item['@type'] || []);
+      if (typeof item === 'string') {
+        if (item.trim()) steps.push({ _id: `s${sn}`, step_number: sn++, body_text: item.trim(), group_label: label, timer_seconds: null });
+      } else if (types.includes('HowToStep')) {
+        const text = (item.text || item.name || '').replace(/<[^>]+>/g, '').trim();
+        if (text) steps.push({ _id: `s${sn}`, step_number: sn++, body_text: text, group_label: label, timer_seconds: null });
+      } else if (types.includes('HowToSection')) {
+        flattenSteps(item.itemListElement || [], (item.name || '').trim());
+      }
+    }
+  };
+  flattenSteps(data.recipeInstructions || []);
+
+  const rawCuisine = data.recipeCuisine || '';
+  const cuisine = (Array.isArray(rawCuisine) ? rawCuisine[0] : rawCuisine).trim();
+
+  let tags = [];
+  if (data.keywords) {
+    const kws = Array.isArray(data.keywords) ? data.keywords : String(data.keywords).split(/[,;]/);
+    tags = kws.map(k => k.trim()).filter(Boolean).slice(0, 10);
+  }
+  if (data.recipeCategory) {
+    const cats = [].concat(data.recipeCategory).map(c => c.trim()).filter(Boolean);
+    tags = [...new Set([...tags, ...cats])].slice(0, 10);
+  }
+
+  const notes = data.description?.trim()
+    ? [{ _id: 'n0', text: data.description.trim() }]
+    : [];
+
+  return { name, cover_image_url, time_minutes, servings, cuisine, tags, ingredients, steps, notes, source_url: sourceUrl };
+}
+
+app.post('/api/recipes/import-url', authenticateToken, requireAdmin, async (req, res) => {
+  const { url } = req.body;
+  if (!url?.startsWith('http')) return res.status(400).json({ error: 'A valid http/https URL is required.' });
+  try {
+    const resp = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!resp.ok) throw new Error(`Site returned ${resp.status}`);
+    const html = await resp.text();
+    const jsonLd = extractJsonLd(html);
+    if (!jsonLd) return res.status(422).json({
+      error: 'No recipe data found on this page. Works best with AllRecipes, NYT Cooking, Serious Eats, Food52, Bon Appétit, and most major recipe sites.',
+    });
+    res.json({ recipe: normalizeImport(jsonLd, url) });
+  } catch (err) {
+    if (err.name === 'TimeoutError') return res.status(504).json({ error: 'The site took too long to respond.' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Recipes ──────────────────────────────────────────────────────────────────
 
 // Single query via json_agg — one row per recipe regardless of ingredient count

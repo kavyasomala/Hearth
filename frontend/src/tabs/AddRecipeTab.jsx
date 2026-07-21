@@ -26,6 +26,11 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
   const [saveError, setSaveError] = useState(null);
   const [imgPreviewError, setImgPreviewError] = useState(false);
 
+  const [importUrl, setImportUrl]     = useState('');
+  const [importing, setImporting]     = useState(false);
+  const [importError, setImportError] = useState(null);
+  const [importedFrom, setImportedFrom] = useState(null); // hostname shown in modal banner
+
   const setDetail = (k, v) => setDetails(prev => ({ ...prev, [k]: v }));
   const toggleTag = (tag) => setDetails(prev => ({
     ...prev, tags: prev.tags.includes(tag) ? prev.tags.filter(t => t !== tag) : [...prev.tags, tag],
@@ -56,8 +61,59 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
     setNotesList([]);
     setSaveError(null);
     setImgPreviewError(false);
+    setImportedFrom(null);
     setShowModal(true);
   };
+
+  const openModalWithData = (data) => {
+    setDetails({
+      ...emptyForm(),
+      name:            data.name            || '',
+      cuisine:         data.cuisine         || '',
+      time:            data.time_minutes    ? String(data.time_minutes) : '',
+      servings:        data.servings        ? String(data.servings)     : '',
+      cover_image_url: data.cover_image_url || '',
+      tags:            Array.isArray(data.tags) ? data.tags : [],
+      source_url:      data.source_url      || '',
+    });
+    setIngs(
+      data.ingredients?.length
+        ? data.ingredients.map((ing, i) => ({ _id: `imp-ing-${i}`, ...ing }))
+        : [{ _id: 'imp-ing-empty', name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]
+    );
+    setSteps(
+      data.steps?.length
+        ? data.steps
+        : [{ _id: 'imp-step-empty', step_number: 1, body_text: '' }]
+    );
+    setNotesList(data.notes || []);
+    setSaveError(null);
+    setImgPreviewError(false);
+    setShowModal(true);
+  };
+
+  const importFromUrl = async () => {
+    if (!importUrl.trim()) return;
+    setImporting(true);
+    setImportError(null);
+    try {
+      const res = await apiFetch(`${API}/api/recipes/import-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: importUrl.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      try { setImportedFrom(new URL(importUrl.trim()).hostname.replace(/^www\./, '')); } catch {}
+      setImportUrl('');
+      openModalWithData(data.recipe);
+    } catch (e) {
+      setImportError(e.message);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const closeModal = () => setShowModal(false);
 
   const save = async () => {
@@ -79,6 +135,7 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
           cover_image_url: details.cover_image_url,
           cookbook: details.cookbook, page_number: details.reference,
           status: details.status, recipe_incomplete: details.recipe_incomplete, tags: details.tags,
+          source_url: details.source_url || undefined,
         },
         ingredients: flatIngs.map((i, idx) => ({ ...i, order_index: idx })),
         instructions: (() => {
@@ -122,6 +179,30 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
           <p className="add-tab__card-desc">Type in the name, ingredients, steps, and notes yourself</p>
           <span className="add-tab__card-cta">Get started →</span>
         </button>
+
+        <div className="add-tab__card add-tab__card--import">
+          <span className="add-tab__card-icon"><Icon name="link" size={28} strokeWidth={1.5} /></span>
+          <h3 className="add-tab__card-title">Import from URL</h3>
+          <p className="add-tab__card-desc">Paste a link from AllRecipes, NYT Cooking, Serious Eats, and more</p>
+          <div className="add-tab__import-row" onClick={e => e.stopPropagation()}>
+            <input
+              className="editor-input add-tab__import-input"
+              value={importUrl}
+              onChange={e => { setImportUrl(e.target.value); setImportError(null); }}
+              onKeyDown={e => e.key === 'Enter' && !importing && importFromUrl()}
+              placeholder="https://..."
+              disabled={importing}
+            />
+            <button
+              className="btn btn--primary btn--sm add-tab__import-btn"
+              onClick={importFromUrl}
+              disabled={importing || !importUrl.trim()}
+            >
+              {importing ? <><span className="add-tab__import-spinner" /> Importing…</> : 'Import'}
+            </button>
+          </div>
+          {importError && <p className="add-tab__import-error">{importError}</p>}
+        </div>
       </div>
 
       {/* -- Create Recipe Modal -- */}
@@ -131,9 +212,18 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
 
             {/* Modal header */}
             <div className="create-modal__header">
-              <h2 className="create-modal__title"><Icon name="note" size={18} strokeWidth={2} /> New Recipe</h2>
+              <h2 className="create-modal__title">
+                <Icon name={importedFrom ? 'link' : 'note'} size={18} strokeWidth={2} />
+                {importedFrom ? `Imported from ${importedFrom}` : 'New Recipe'}
+              </h2>
               <button className="ing-modal__close" onClick={closeModal}>✕</button>
             </div>
+            {importedFrom && (
+              <div className="create-modal__import-banner">
+                <Icon name="info" size={13} strokeWidth={2} />
+                Ingredients are pre-filled as written — review and split out amounts before saving.
+              </div>
+            )}
 
             <div className="create-modal__body">
 
