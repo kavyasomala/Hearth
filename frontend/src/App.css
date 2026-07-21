@@ -1633,6 +1633,128 @@ body {
 .rp2__cookbook-text__sep { color: var(--warm-gray); }
 .rp2__cookbook-text__page { color: var(--warm-gray); display: inline-block; }
 
+/* ─── Recipe Scaling ─────────────────────────────────────────────────────── */
+.rp2__scale-chip-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: 6px;
+}
+.rp2__scale-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--warm-gray);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+.rp2__scale-chip:hover {
+  background: var(--parchment);
+  border-color: var(--warm-gray);
+  color: var(--charcoal);
+}
+.rp2__scale-chip--active {
+  background: var(--terracotta);
+  border-color: var(--terracotta);
+  color: #fff;
+}
+.rp2__scale-chip--active:hover {
+  background: var(--terracotta-dark);
+  border-color: var(--terracotta-dark);
+}
+.rp2__scale-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--warm-gray);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.rp2__scale-reset:hover {
+  background: var(--parchment);
+  color: var(--charcoal);
+}
+.rp2__scale-panel {
+  margin: 8px 0 14px;
+  padding: 14px 16px;
+  background: var(--warm-white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.rp2__scale-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+.rp2__scale-stepper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--parchment);
+  color: var(--charcoal);
+  font-size: 22px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.rp2__scale-stepper:hover { background: var(--tan); }
+.rp2__scale-stepper:active { background: var(--tan-dark); }
+.rp2__scale-count {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--charcoal);
+  min-width: 52px;
+  text-align: center;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.rp2__scale-slider {
+  width: 100%;
+  accent-color: var(--terracotta);
+  cursor: pointer;
+}
+.rp2__scale-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--warm-gray);
+}
+.rp2__scale-label { font-weight: 500; }
+.rp2__scale-reset-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--terracotta);
+  cursor: pointer;
+}
+.rp2__scale-reset-link:hover { text-decoration: underline; }
+
 /* ─── Empty hint ─────────────────────────────────────────────────────────── */
 .rp2__empty-hint { font-size: 13px; color: var(--warm-gray); padding: 8px 0; font-style: italic; }
 

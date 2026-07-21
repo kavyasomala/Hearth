@@ -16,6 +16,33 @@ import {
   IngFlatRow, IngGroupRow,
 } from '../components/IngredientEditor';
 
+// --- Amount scaling helpers -----------------------------------------------
+function parseAmount(str) {
+  if (str == null || str === '') return NaN;
+  const s = String(str).trim();
+  const mixed = s.match(/^(\d+(?:\.\d+)?)\s+(\d+)\/(\d+)$/);
+  if (mixed) return +mixed[1] + +mixed[2] / +mixed[3];
+  const frac = s.match(/^(\d+)\/(\d+)$/);
+  if (frac) return +frac[1] / +frac[2];
+  return parseFloat(s);
+}
+
+function formatAmount(n) {
+  if (!isFinite(n) || n < 0) return String(n);
+  const whole = Math.floor(n);
+  const rem = n - whole;
+  if (rem < 0.04) return String(whole || 0);
+  if (rem > 0.96) return String(whole + 1);
+  const FRACS = [[1,8],[1,4],[1,3],[3,8],[1,2],[5,8],[2,3],[3,4],[7,8]];
+  for (const [num, den] of FRACS) {
+    if (Math.abs(rem - num / den) < 0.05) {
+      return whole ? `${whole} ${num}/${den}` : `${num}/${den}`;
+    }
+  }
+  const d = Math.round(n * 10) / 10;
+  return String(d);
+}
+
 // --- Step Item with integrated timer --------------------------------------
 const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNotes = [] }) => {
   const [showTips, setShowTips] = useState(false);
@@ -216,6 +243,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [stayAwake, setStayAwake] = useState(false);
   const wakeLockRef = useRef(null);
   const ingDndSensors = DRAG_SENSORS();
+  const [scaledServings, setScaledServings] = useState(null);
+  const [showScalePanel, setShowScalePanel] = useState(false);
 
   // -- Wake Lock --
   useEffect(() => {
@@ -482,6 +511,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const doneCount  = doneSteps.size;
   const totalSteps = instructions?.length ?? 0;
 
+  const baseServings = recipe.servings ? parseInt(recipe.servings) : null;
+  const currentServings = scaledServings ?? baseServings;
+  const scale = baseServings && currentServings ? currentServings / baseServings : 1;
+
   // Dietary conflict warnings
   const dietaryWarnings = checkDietaryConflicts(bodyIngredients || [], dietaryFilters);
 
@@ -645,9 +678,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 <div className="rp2__hero-tag-wrap">
                   <button
                     className={`rp2__tag rp2__tag--clickable ${
-                      recipe.status === 'incomplete' || recipe.status === 'needs tweaking'
+                      recipe.status === 'needs tweaking'
                         ? 'rp2__tag--warning'
-                        : recipe.status === 'complete'
+                        : recipe.status === 'made it'
                         ? 'rp2__tag--success'
                         : 'rp2__tag--light'
                     } ${isEdit('meta-tags') ? 'rp2__tag--editing' : ''}`}
@@ -655,9 +688,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     style={{ padding: '4px 8px' }}
                     title={recipe.status}
                   >
-                    {recipe.status === 'incomplete' ? <Icon name="alertTriangle" size={12} strokeWidth={2} /> :
-                    recipe.status === 'needs tweaking' ? <Icon name="tool" size={12} strokeWidth={2} /> :
-                    recipe.status === 'complete' ? <Icon name="checkCircle" size={12} strokeWidth={2} /> :
+                    {recipe.status === 'needs tweaking' ? <Icon name="tool" size={12} strokeWidth={2} /> :
+                    recipe.status === 'made it' ? <Icon name="checkCircle" size={12} strokeWidth={2} /> :
+                    recipe.status === 'archived' ? <Icon name="archive" size={12} strokeWidth={2} /> :
                     recipe.status === 'to try' ? <Icon name="bookMarked" size={12} strokeWidth={2} /> : null}
                   </button>
                 </div>
@@ -690,10 +723,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     <div className="rp2__dark-pop-chips">
                       {[
                         { key: '', label: '-- None' },
-                        { key: 'complete', label: 'Complete' },
-                        { key: 'needs tweaking', label: 'Needs Tweaking' },
                         { key: 'to try', label: 'To Try' },
-                        { key: 'incomplete', label: 'Incomplete' },
+                        { key: 'made it', label: 'Made It' },
+                        { key: 'needs tweaking', label: 'Needs Tweaking' },
+                        { key: 'archived', label: 'Archived' },
                       ].map(({ key, label }) => (
                         <button key={key} className={`rp2__dark-chip ${draftMeta.status === key ? 'rp2__dark-chip--on' : ''}`}
                           onClick={() => setDraftMeta(p => ({...p, status: key}))}>{label}</button>
@@ -968,8 +1001,46 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         <div className="rp2__ingredients">
           <div className="rp2__section-title-row">
             <h2 className="rp2__section-title rp2__section-title--sm">Ingredients</h2>
+            {baseServings && (
+              <div className="rp2__scale-chip-wrap">
+                <button
+                  className={`rp2__scale-chip ${scale !== 1 ? 'rp2__scale-chip--active' : ''}`}
+                  onClick={() => setShowScalePanel(v => !v)}
+                  title="Scale recipe servings"
+                >
+                  <Icon name="utensils" size={11} strokeWidth={2} />
+                  {currentServings} srv
+                </button>
+                {scale !== 1 && (
+                  <button className="rp2__scale-reset" onClick={() => { setScaledServings(null); }} title="Reset to original servings">↺</button>
+                )}
+              </div>
+            )}
             {isAdmin && <button className="section-pencil" onClick={e => { startEdit('ingredients'); setShowIngredientsModal(true); }} title="Edit ingredients">✎</button>}
           </div>
+          {showScalePanel && baseServings && (
+            <div className="rp2__scale-panel">
+              <div className="rp2__scale-controls">
+                <button className="rp2__scale-stepper" onClick={() => setScaledServings(v => Math.max(1, (v ?? baseServings) - 1))}>−</button>
+                <span className="rp2__scale-count">{currentServings}</span>
+                <button className="rp2__scale-stepper" onClick={() => setScaledServings(v => Math.min(99, (v ?? baseServings) + 1))}>+</button>
+              </div>
+              <input
+                type="range"
+                className="rp2__scale-slider"
+                min={1}
+                max={Math.max(20, baseServings * 4)}
+                value={currentServings}
+                onChange={e => setScaledServings(parseInt(e.target.value))}
+              />
+              <div className="rp2__scale-footer">
+                <span className="rp2__scale-label">Original: {baseServings} servings</span>
+                {scale !== 1 && (
+                  <button className="rp2__scale-reset-link" onClick={() => setScaledServings(null)}>↺ Reset</button>
+                )}
+              </div>
+            </div>
+          )}
 
           {ingredientGroups.length > 0
             ? ingredientGroups.map(({ label, items }) => (
@@ -979,7 +1050,9 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     {items.map((ing, idx) => {
                       const key = `${label}-${idx}`;
                       const isChecked = checkedIngredients.has(key);
-                      const amountStr = [ing.amount, ing.unit].filter(Boolean).join(' ');
+                      const rawAmt = parseAmount(ing.amount);
+                      const scaledAmt = !isNaN(rawAmt) && scale !== 1 ? formatAmount(rawAmt * scale) : ing.amount;
+                      const amountStr = [scaledAmt, ing.unit].filter(Boolean).join(' ');
                       return (
                         <IngredientItem
                           key={key}
