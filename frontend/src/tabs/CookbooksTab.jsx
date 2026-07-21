@@ -727,7 +727,8 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
   const [search,   setSearch]   = useState('');
   const [sortKey,  setSortKey]  = useState('page');
 
-  const savedCount = useMemo(() => recipes.filter(r => r.cookbook && r.cookbook.toLowerCase().trim() === cookbook.title.toLowerCase().trim()).length, [recipes, cookbook]);
+  // All cookbook entries are now linked recipes (recipeId always present via join table)
+  const savedCount = cookbook.recipes.filter(e => e.recipeId).length;
   const cookedIds  = useMemo(() => new Set((cookLog||[]).map(e => e.recipe_id)), [cookLog]);
   const cookedCount = useMemo(() => cookbook.recipes.filter(e => e.recipeId && cookedIds.has(e.recipeId)).length, [cookbook.recipes, cookedIds]);
   const pct = cookbook.recipes.length > 0 ? Math.round((cookedCount / cookbook.recipes.length) * 100) : 0;
@@ -917,24 +918,18 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
   };
 
   const enrichedCookbooks = useMemo(() => cookbooks.map(cb => {
-    const linked = recipes.filter(r => r.cookbook && r.cookbook.toLowerCase().trim() === cb.title.toLowerCase().trim());
-    const entries = [...(cb.recipes||[])];
-    for (const lr of linked) {
-      const existingIdx = entries.findIndex(e => e.name.toLowerCase() === lr.name.toLowerCase());
-      if (existingIdx < 0) {
-        // New linked recipe not in list yet -- add it
-        entries.push({ name: lr.name, page: lr.reference || '', image: lr.coverImage || '', tags: lr.tags || [], recipeId: lr.id, addedAt: Date.now() });
-      } else {
-        // Sync recipeId and page number from the live recipe record
-        entries[existingIdx] = {
-          ...entries[existingIdx],
-          recipeId: lr.id,
-          page: lr.reference || entries[existingIdx].page || '',
-          tags: lr.tags?.length ? lr.tags : entries[existingIdx].tags,
-        };
-      }
-    }
-    return {...cb, recipes: entries, savedCount: linked.length};
+    // cookbook.recipes comes from the API as [{recipeId, name, page, image, tags, addedAt}]
+    const entries = (cb.recipes || []).map(entry => {
+      const lr = entry.recipeId ? recipes.find(r => r.id === entry.recipeId) : null;
+      if (!lr) return entry;
+      return {
+        ...entry,
+        image: lr.coverImage || entry.image || '',
+        tags:  lr.tags?.length ? lr.tags : entry.tags,
+        page:  lr.reference   || entry.page || '',
+      };
+    });
+    return { ...cb, recipes: entries };
   }), [cookbooks, recipes]);
 
   const globalResults = useMemo(() => {
