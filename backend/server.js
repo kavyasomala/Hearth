@@ -7,6 +7,10 @@
  *  - Passwords stored as plaintext (private family app, not public SaaS)
  */
 
+// Force IPv4 — Render free tier can't reach Supabase over IPv6
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+
 const express = require('express');
 const cors    = require('cors');
 const jwt     = require('jsonwebtoken');
