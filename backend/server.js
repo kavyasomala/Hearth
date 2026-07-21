@@ -2,16 +2,16 @@
  * Hearth API — server.js
  *
  * Architecture:
- *  - PostgreSQL (Supabase) for storage — persistent across all deploys, no sync needed
- *  - JWT for auth — tokens last 30 days, stored client-side
- *  - Passwords stored as plaintext (private family app, not public SaaS)
+ *  - PostgreSQL (Supabase) via pg Pool — persistent, no sync needed
+ *  - JWT auth, 30-day tokens
+ *  - Passwords plaintext (private family app, not public SaaS yet)
  */
 
-const express = require('express');
-const cors    = require('cors');
-const jwt     = require('jsonwebtoken');
-const crypto  = require('crypto');
-const { Pool } = require('pg');
+const express    = require('express');
+const cors       = require('cors');
+const jwt        = require('jsonwebtoken');
+const crypto     = require('crypto');
+const { Pool }   = require('pg');
 require('dotenv').config();
 
 const app  = express();
@@ -20,43 +20,53 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({ origin: 'https://hearth-z2lo.onrender.com' }));
 app.use(express.json());
 
-// ─── Database ─────────────────────────────────────────────────────────────────
+// ─── Database ────────────────────────────────────────────────────────────────
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
-
-const q = (sql, params) => pool.query(sql, params);
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+const q    = (sql, params) => pool.query(sql, params);
 const uuid = () => crypto.randomUUID();
 
+// ─── Schema ──────────────────────────────────────────────────────────────────
+
 async function initDB() {
+  // ── Tables ──────────────────────────────────────────────────────────────────
   const tables = [
     `CREATE TABLE IF NOT EXISTS users (
-      id            TEXT PRIMARY KEY,
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       username      TEXT UNIQUE NOT NULL,
       display_name  TEXT,
+      email         TEXT UNIQUE,
       password_hash TEXT NOT NULL,
-      role          TEXT DEFAULT 'guest',
+      avatar_url    TEXT,
+      role          TEXT NOT NULL DEFAULT 'guest'
+                      CHECK (role IN ('admin','guest','suspended')),
+      deleted_at    TIMESTAMPTZ,
       created_at    TIMESTAMPTZ DEFAULT NOW()
     )`,
+
     `CREATE TABLE IF NOT EXISTS recipes (
-      id              TEXT PRIMARY KEY,
+      id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name            TEXT NOT NULL,
       cuisine         TEXT,
-      time            TEXT,
-      servings        TEXT,
+      time_minutes    INTEGER,
+      servings        INTEGER,
       cover_image_url TEXT,
-      status          TEXT,
-      cookbook        TEXT,
+      status          TEXT CHECK (status IN ('draft','published','archived')),
       reference       TEXT,
-      tags            TEXT DEFAULT '[]',
-      calories        TEXT,
-      created_at      TIMESTAMPTZ DEFAULT NOW()
+      source_url      TEXT,
+      tags            TEXT[]  DEFAULT '{}',
+      calories        INTEGER,
+      created_by      UUID    REFERENCES users(id) ON DELETE SET NULL,
+      visibility      TEXT    NOT NULL DEFAULT 'private'
+                        CHECK (visibility IN ('private','shareable')),
+      search_vector   TSVECTOR,
+      created_at      TIMESTAMPTZ DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ DEFAULT NOW()
     )`,
+
     `CREATE TABLE IF NOT EXISTS recipe_ingredients (
-      id          TEXT PRIMARY KEY,
-      recipe_id   TEXT NOT NULL REFERENCES recipes(id),
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      recipe_id   UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
       name        TEXT NOT NULL,
       amount      TEXT,
       unit        TEXT,
@@ -65,79 +75,167 @@ async function initDB() {
       group_label TEXT,
       order_index INTEGER DEFAULT 0
     )`,
-    `CREATE TABLE IF NOT EXISTS instructions (
-      id            TEXT PRIMARY KEY,
-      recipe_id     TEXT NOT NULL REFERENCES recipes(id),
+
+    `CREATE TABLE IF NOT EXISTS recipe_steps (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      recipe_id     UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
       step_number   INTEGER,
       body_text     TEXT,
       timer_seconds INTEGER,
       group_label   TEXT
     )`,
+
     `CREATE TABLE IF NOT EXISTS recipe_notes (
-      id          TEXT PRIMARY KEY,
-      recipe_id   TEXT NOT NULL REFERENCES recipes(id),
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      recipe_id   UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
       order_index INTEGER DEFAULT 0,
       body_text   TEXT
     )`,
+
     `CREATE TABLE IF NOT EXISTS cookbooks (
-      id          TEXT PRIMARY KEY,
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       title       TEXT NOT NULL,
       author      TEXT DEFAULT '',
       cover_image TEXT DEFAULT '',
       spine_color TEXT DEFAULT '#C65D3B',
       notes       TEXT DEFAULT '',
-      recipes     TEXT DEFAULT '[]',
+      created_by  UUID REFERENCES users(id) ON DELETE SET NULL,
       created_at  TIMESTAMPTZ DEFAULT NOW(),
       updated_at  TIMESTAMPTZ DEFAULT NOW()
     )`,
+
+    `CREATE TABLE IF NOT EXISTS cookbook_recipes (
+      cookbook_id UUID NOT NULL REFERENCES cookbooks(id) ON DELETE CASCADE,
+      recipe_id   UUID NOT NULL REFERENCES recipes(id)   ON DELETE CASCADE,
+      order_index INTEGER DEFAULT 0,
+      PRIMARY KEY (cookbook_id, recipe_id)
+    )`,
+
+    // bullets: [{text, order_index}]  keywords: ['salt','acid',...]
     `CREATE TABLE IF NOT EXISTS cooking_notes (
-      id         TEXT PRIMARY KEY,
+      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       title      TEXT NOT NULL,
       body       TEXT NOT NULL,
-      type       TEXT DEFAULT 'rule',
-      category   TEXT DEFAULT 'General Technique',
+      type       TEXT    DEFAULT 'rule',
+      category   TEXT    DEFAULT 'General Technique',
       image_url  TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
+      keywords   TEXT[]  DEFAULT '{}',
+      bullets    JSONB   DEFAULT '[]',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     )`,
-    `CREATE TABLE IF NOT EXISTS cooking_note_bullets (
-      id          TEXT PRIMARY KEY,
-      note_id     TEXT NOT NULL REFERENCES cooking_notes(id),
-      text        TEXT,
-      order_index INTEGER DEFAULT 0
+
+    `CREATE TABLE IF NOT EXISTS user_kitchen (
+      user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      ingredient_name TEXT NOT NULL,
+      storage_type    TEXT DEFAULT 'fridge'
+                        CHECK (storage_type IN ('fridge','freezer','pantry')),
+      PRIMARY KEY (user_id, ingredient_name)
     )`,
-    `CREATE TABLE IF NOT EXISTS cooking_note_keywords (
-      note_id TEXT NOT NULL REFERENCES cooking_notes(id),
-      keyword TEXT NOT NULL,
-      PRIMARY KEY (note_id, keyword)
-    )`,
+
     `CREATE TABLE IF NOT EXISTS user_favorites (
-      user_id   TEXT NOT NULL,
-      recipe_id TEXT NOT NULL,
+      user_id   UUID NOT NULL REFERENCES users(id)   ON DELETE CASCADE,
+      recipe_id UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+      added_at  TIMESTAMPTZ DEFAULT NOW(),
       PRIMARY KEY (user_id, recipe_id)
     )`,
+
     `CREATE TABLE IF NOT EXISTS user_make_soon (
-      user_id   TEXT NOT NULL,
-      recipe_id TEXT NOT NULL,
+      user_id   UUID NOT NULL REFERENCES users(id)   ON DELETE CASCADE,
+      recipe_id UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+      added_at  TIMESTAMPTZ DEFAULT NOW(),
       PRIMARY KEY (user_id, recipe_id)
     )`,
+
     `CREATE TABLE IF NOT EXISTS user_cook_log (
-      id          TEXT PRIMARY KEY,
-      user_id     TEXT NOT NULL,
-      recipe_id   TEXT,
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      recipe_id   UUID REFERENCES recipes(id) ON DELETE SET NULL,
       recipe_name TEXT,
-      rating      INTEGER,
+      rating      INTEGER CHECK (rating BETWEEN 1 AND 5),
       notes       TEXT,
       cooked_at   TIMESTAMPTZ DEFAULT NOW()
     )`,
-    `CREATE TABLE IF NOT EXISTS user_kitchen (
-      user_id         TEXT NOT NULL,
-      ingredient_name TEXT NOT NULL,
-      storage_type    TEXT DEFAULT 'fridge',
-      PRIMARY KEY (user_id, ingredient_name)
-    )`,
   ];
+
   for (const sql of tables) await q(sql);
-  console.log('🗄️  Database ready (13 tables)');
+
+  // ── Trigger functions ────────────────────────────────────────────────────────
+  await q(`
+    CREATE OR REPLACE FUNCTION set_updated_at()
+    RETURNS TRIGGER LANGUAGE plpgsql AS $$
+    BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
+    $$
+  `);
+
+  await q(`
+    CREATE OR REPLACE FUNCTION recipes_search_update()
+    RETURNS TRIGGER LANGUAGE plpgsql AS $$
+    BEGIN
+      NEW.search_vector := to_tsvector('english',
+        coalesce(NEW.name, '')    || ' ' ||
+        coalesce(NEW.cuisine, '') || ' ' ||
+        coalesce(array_to_string(NEW.tags, ' '), '')
+      );
+      RETURN NEW;
+    END;
+    $$
+  `);
+
+  // ── Triggers ─────────────────────────────────────────────────────────────────
+  const triggers = [
+    `DROP TRIGGER IF EXISTS trg_recipes_updated_at    ON recipes`,
+    `CREATE TRIGGER trg_recipes_updated_at
+       BEFORE UPDATE ON recipes
+       FOR EACH ROW EXECUTE FUNCTION set_updated_at()`,
+
+    `DROP TRIGGER IF EXISTS trg_cookbooks_updated_at  ON cookbooks`,
+    `CREATE TRIGGER trg_cookbooks_updated_at
+       BEFORE UPDATE ON cookbooks
+       FOR EACH ROW EXECUTE FUNCTION set_updated_at()`,
+
+    `DROP TRIGGER IF EXISTS trg_cooking_notes_updated_at ON cooking_notes`,
+    `CREATE TRIGGER trg_cooking_notes_updated_at
+       BEFORE UPDATE ON cooking_notes
+       FOR EACH ROW EXECUTE FUNCTION set_updated_at()`,
+
+    `DROP TRIGGER IF EXISTS trg_recipes_search ON recipes`,
+    `CREATE TRIGGER trg_recipes_search
+       BEFORE INSERT OR UPDATE ON recipes
+       FOR EACH ROW EXECUTE FUNCTION recipes_search_update()`,
+  ];
+  for (const sql of triggers) await q(sql);
+
+  // ── Indexes ──────────────────────────────────────────────────────────────────
+  const indexes = [
+    // Recipe children — most queried FKs
+    `CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe ON recipe_ingredients(recipe_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_recipe_steps_recipe       ON recipe_steps(recipe_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_recipe_notes_recipe       ON recipe_notes(recipe_id)`,
+
+    // Cookbook join table — both directions
+    `CREATE INDEX IF NOT EXISTS idx_cookbook_recipes_cookbook ON cookbook_recipes(cookbook_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_cookbook_recipes_recipe   ON cookbook_recipes(recipe_id)`,
+
+    // User data — always filtered by user
+    `CREATE INDEX IF NOT EXISTS idx_user_favorites_user  ON user_favorites(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_user_make_soon_user  ON user_make_soon(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_user_kitchen_user    ON user_kitchen(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_cook_log_user_date   ON user_cook_log(user_id, cooked_at DESC)`,
+
+    // Recipe filtering & sorting
+    `CREATE INDEX IF NOT EXISTS idx_recipes_created_by   ON recipes(created_by)`,
+    `CREATE INDEX IF NOT EXISTS idx_recipes_cuisine      ON recipes(cuisine)`,
+    `CREATE INDEX IF NOT EXISTS idx_recipes_time         ON recipes(time_minutes)`,
+    `CREATE INDEX IF NOT EXISTS idx_recipes_created_at   ON recipes(created_at DESC)`,
+
+    // GIN indexes — full-text search and tag filtering
+    `CREATE INDEX IF NOT EXISTS idx_recipes_search_vector ON recipes USING GIN(search_vector)`,
+    `CREATE INDEX IF NOT EXISTS idx_recipes_tags          ON recipes USING GIN(tags)`,
+  ];
+  for (const sql of indexes) await q(sql);
+
+  console.log('🗄️  Database ready (12 tables, indexes, triggers)');
 }
 
 // ─── Grocery Category Mapping ─────────────────────────────────────────────────
@@ -163,16 +261,12 @@ const CATEGORY_META = {
 };
 
 const KEYWORD_INDEX = new Map();
-for (const [cat, keywords] of Object.entries(CATEGORY_MAP)) {
-  for (const kw of keywords) KEYWORD_INDEX.set(kw, cat);
-}
+for (const [cat, kws] of Object.entries(CATEGORY_MAP)) for (const kw of kws) KEYWORD_INDEX.set(kw, cat);
 
 function categorise(name) {
   const lower = name.toLowerCase().trim();
   if (KEYWORD_INDEX.has(lower)) return KEYWORD_INDEX.get(lower);
-  for (const [kw, cat] of KEYWORD_INDEX) {
-    if (lower.includes(kw)) return cat;
-  }
+  for (const [kw, cat] of KEYWORD_INDEX) if (lower.includes(kw)) return cat;
   return 'other';
 }
 
@@ -181,12 +275,8 @@ function categorise(name) {
 const authenticateToken = (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Not authenticated' });
-  try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
-    next();
-  } catch {
-    return res.status(403).json({ error: 'Invalid or expired token' });
-  }
+  try { req.user = jwt.verify(token, process.env.JWT_SECRET); next(); }
+  catch { return res.status(403).json({ error: 'Invalid or expired token' }); }
 };
 
 const requireAdmin = (req, res, next) => {
@@ -196,8 +286,20 @@ const requireAdmin = (req, res, next) => {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const fmtRecipe   = r => ({ ...r, tags: JSON.parse(r.tags || '[]'), coverImage: r.cover_image_url });
-const fmtCookbook = r => ({ ...r, recipes: JSON.parse(r.recipes || '[]'), coverImage: r.cover_image, spineColor: r.spine_color });
+// tags and ingredients are native arrays from pg — no JSON.parse needed
+const fmtRecipe = r => ({ ...r, coverImage: r.cover_image_url });
+
+const COOKBOOK_SELECT = `
+  SELECT c.id, c.title, c.author, c.cover_image, c.spine_color, c.notes,
+         c.created_by, c.created_at, c.updated_at,
+         COALESCE(
+           json_agg(cr.recipe_id ORDER BY cr.order_index)
+           FILTER (WHERE cr.recipe_id IS NOT NULL), '[]'
+         ) AS recipes
+  FROM cookbooks c
+  LEFT JOIN cookbook_recipes cr ON cr.cookbook_id = c.id`;
+
+const fmtCookbook = r => ({ ...r, coverImage: r.cover_image, spineColor: r.spine_color });
 
 // ─── Auth Routes ──────────────────────────────────────────────────────────────
 
@@ -207,9 +309,11 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const existing = await q('SELECT id FROM users WHERE username = $1', [username.trim().toLowerCase()]);
     if (existing.rows[0]) return res.status(409).json({ error: 'Username already taken' });
-    const id = uuid();
-    await q(`INSERT INTO users (id, username, display_name, password_hash, role) VALUES ($1,$2,$3,$4,'guest')`, [id, username.trim().toLowerCase(), null, password]);
-    const { rows: [user] } = await q('SELECT id, username, display_name, role FROM users WHERE id = $1', [id]);
+    const { rows: [user] } = await q(
+      `INSERT INTO users (username, display_name, password_hash, role)
+       VALUES ($1, $2, $3, 'guest') RETURNING id, username, display_name, role`,
+      [username.trim().toLowerCase(), null, password]
+    );
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.status(201).json({ token, user });
   } catch (err) {
@@ -223,18 +327,16 @@ app.post('/api/auth/login', async (req, res) => {
   if (!username?.trim() || !password) return res.status(400).json({ error: 'Username and password are required' });
   try {
     const { rows: [user] } = await q('SELECT * FROM users WHERE username = $1', [username.trim().toLowerCase()]);
-    if (!user)                        return res.status(401).json({ error: 'Invalid username or password' });
-    if (user.role === 'suspended')    return res.status(403).json({ error: 'Your account has been suspended.' });
+    if (!user)                           return res.status(401).json({ error: 'Invalid username or password' });
+    if (user.role === 'suspended')       return res.status(403).json({ error: 'Your account has been suspended.' });
     if (password !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password' });
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name || null, role: user.role } });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
-  const { rows: [user] } = await q('SELECT id, username, display_name, role FROM users WHERE id = $1', [req.user.id]);
+  const { rows: [user] } = await q('SELECT id, username, display_name, role, email, avatar_url FROM users WHERE id = $1', [req.user.id]);
   if (!user) return res.status(404).json({ error: 'User not found' });
   res.json({ user });
 });
@@ -247,7 +349,7 @@ app.put('/api/user/display-name', authenticateToken, async (req, res) => {
 // ─── Admin Routes ─────────────────────────────────────────────────────────────
 
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
-  const { rows } = await q('SELECT id, username, display_name, password_hash AS password, role, created_at FROM users ORDER BY created_at ASC');
+  const { rows } = await q('SELECT id, username, display_name, password_hash AS password, role, email, created_at FROM users ORDER BY created_at ASC');
   res.json({ users: rows });
 });
 
@@ -257,13 +359,13 @@ app.post('/api/auth/create-user', authenticateToken, requireAdmin, async (req, r
   try {
     const existing = await q('SELECT id FROM users WHERE username = $1', [username.trim().toLowerCase()]);
     if (existing.rows[0]) return res.status(409).json({ error: 'Username already taken' });
-    const id = uuid();
-    await q(`INSERT INTO users (id, username, display_name, password_hash, role) VALUES ($1,$2,$3,$4,'guest')`, [id, username.trim().toLowerCase(), display_name?.trim() || null, password]);
-    const { rows: [user] } = await q('SELECT id, username, display_name, role FROM users WHERE id = $1', [id]);
+    const { rows: [user] } = await q(
+      `INSERT INTO users (username, display_name, password_hash, role)
+       VALUES ($1, $2, $3, 'guest') RETURNING id, username, display_name, role`,
+      [username.trim().toLowerCase(), display_name?.trim() || null, password]
+    );
     res.status(201).json({ user });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.put('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
@@ -274,50 +376,32 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res
   res.json({ user });
 });
 
+// CASCADE handles: user_favorites, user_make_soon, user_cook_log, user_kitchen
 app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query('DELETE FROM user_favorites WHERE user_id = $1', [req.params.id]);
-    await client.query('DELETE FROM user_make_soon  WHERE user_id = $1', [req.params.id]);
-    await client.query('DELETE FROM user_cook_log   WHERE user_id = $1', [req.params.id]);
-    await client.query('DELETE FROM user_kitchen    WHERE user_id = $1', [req.params.id]);
-    await client.query('DELETE FROM users           WHERE id      = $1', [req.params.id]);
-    await client.query('COMMIT');
-    res.json({ deleted: true });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
-  }
+  const result = await q('DELETE FROM users WHERE id = $1', [req.params.id]);
+  if (!result.rowCount) return res.status(404).json({ error: 'User not found' });
+  res.json({ deleted: true });
 });
 
 // ─── Recipes ──────────────────────────────────────────────────────────────────
 
+// Single query via json_agg — one row per recipe regardless of ingredient count
 app.get('/api/recipes', async (req, res) => {
   try {
     const { rows } = await q(`
-      SELECT r.id, r.name, r.cuisine, r.time, r.servings, r.calories, r.cover_image_url,
-             r.status, r.cookbook, r.reference, r.tags, r.created_at,
-             i.name AS ing_name
+      SELECT r.id, r.name, r.cuisine, r.time_minutes, r.servings, r.calories,
+             r.cover_image_url, r.status, r.reference, r.source_url,
+             r.tags, r.created_by, r.visibility, r.created_at, r.updated_at,
+             COALESCE(
+               json_agg(ri.name ORDER BY ri.order_index)
+               FILTER (WHERE ri.name IS NOT NULL), '[]'
+             ) AS ingredients
       FROM recipes r
-      LEFT JOIN recipe_ingredients i ON i.recipe_id = r.id
-      ORDER BY r.name ASC, i.order_index ASC
+      LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id
+      GROUP BY r.id
+      ORDER BY r.name ASC
     `);
-    const recipeMap = new Map();
-    for (const row of rows) {
-      if (!recipeMap.has(row.id)) {
-        recipeMap.set(row.id, {
-          id: row.id, name: row.name, cuisine: row.cuisine, time: row.time,
-          servings: row.servings, calories: row.calories, coverImage: row.cover_image_url,
-          status: row.status, cookbook: row.cookbook, reference: row.reference,
-          created_at: row.created_at, tags: JSON.parse(row.tags || '[]'), ingredients: [],
-        });
-      }
-      if (row.ing_name) recipeMap.get(row.id).ingredients.push(row.ing_name);
-    }
-    res.json({ recipes: Array.from(recipeMap.values()) });
+    res.json({ recipes: rows.map(fmtRecipe) });
   } catch (err) {
     console.error('GET /api/recipes error:', err);
     res.status(500).json({ error: 'Failed to load recipes' });
@@ -328,13 +412,13 @@ app.get('/api/recipes/:id', async (req, res) => {
   try {
     const { rows: [recipe] } = await q('SELECT * FROM recipes WHERE id = $1', [req.params.id]);
     if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
-    const { rows: ings }   = await q('SELECT * FROM recipe_ingredients WHERE recipe_id = $1 ORDER BY order_index ASC', [req.params.id]);
-    const { rows: steps }  = await q('SELECT * FROM instructions WHERE recipe_id = $1 ORDER BY step_number ASC',        [req.params.id]);
-    const { rows: notes }  = await q('SELECT id, order_index, body_text AS text FROM recipe_notes WHERE recipe_id = $1 ORDER BY order_index ASC', [req.params.id]);
+    const { rows: ings  } = await q('SELECT * FROM recipe_ingredients WHERE recipe_id = $1 ORDER BY order_index ASC', [req.params.id]);
+    const { rows: steps } = await q('SELECT * FROM recipe_steps       WHERE recipe_id = $1 ORDER BY step_number ASC',  [req.params.id]);
+    const { rows: notes } = await q('SELECT id, order_index, body_text AS text FROM recipe_notes WHERE recipe_id = $1 ORDER BY order_index ASC', [req.params.id]);
     res.json({
       recipe:          fmtRecipe(recipe),
       bodyIngredients: ings.map(i => ({ ...i, optional: Boolean(i.optional) })),
-      instructions:    steps,
+      instructions:    steps,   // keep key name for frontend compat
       notes,
     });
   } catch (err) {
@@ -349,19 +433,34 @@ app.post('/api/recipes', authenticateToken, requireAdmin, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const id = uuid();
-    await client.query(
-      `INSERT INTO recipes (id,name,cuisine,time,servings,calories,cover_image_url,status,cookbook,reference,tags) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-      [id, details.name.trim(), details.cuisine||null, details.time||null, details.servings||null, details.calories||null,
-       details.cover_image_url||null, details.status||null, details.cookbook||null, details.reference||null,
-       JSON.stringify(Array.isArray(details.tags) ? details.tags : [])]
+    const { rows: [{ id }] } = await client.query(
+      `INSERT INTO recipes
+         (name, cuisine, time_minutes, servings, calories, cover_image_url,
+          status, reference, source_url, tags, created_by, visibility)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+      [
+        details.name.trim(),
+        details.cuisine       || null,
+        parseInt(details.time_minutes ?? details.time) || null,
+        parseInt(details.servings)   || null,
+        parseInt(details.calories)   || null,
+        details.cover_image_url      || null,
+        details.status               || null,
+        details.reference            || null,
+        details.source_url           || null,
+        Array.isArray(details.tags) ? details.tags : [],
+        req.user.id,
+        details.visibility || 'private',
+      ]
     );
     if (Array.isArray(ingredients)) {
       for (const ing of ingredients) {
         if (!ing.name?.trim()) continue;
         await client.query(
-          `INSERT INTO recipe_ingredients (id,recipe_id,name,amount,unit,prep_note,optional,group_label,order_index) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-          [uuid(), id, ing.name.trim().toLowerCase(), ing.amount||null, ing.unit||null, ing.prep_note||null, Boolean(ing.optional), ing.group_label||null, ing.order_index??0]
+          `INSERT INTO recipe_ingredients (recipe_id,name,amount,unit,prep_note,optional,group_label,order_index)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [id, ing.name.trim().toLowerCase(), ing.amount||null, ing.unit||null,
+           ing.prep_note||null, Boolean(ing.optional), ing.group_label||null, ing.order_index??0]
         );
       }
     }
@@ -369,8 +468,9 @@ app.post('/api/recipes', authenticateToken, requireAdmin, async (req, res) => {
       for (const step of instructions) {
         if (!step.body_text?.trim()) continue;
         await client.query(
-          `INSERT INTO instructions (id,recipe_id,step_number,body_text,timer_seconds,group_label) VALUES ($1,$2,$3,$4,$5,$6)`,
-          [uuid(), id, step.step_number, step.body_text.trim(), step.timer_seconds??null, step.group_label||null]
+          `INSERT INTO recipe_steps (recipe_id,step_number,body_text,timer_seconds,group_label)
+           VALUES ($1,$2,$3,$4,$5)`,
+          [id, step.step_number, step.body_text.trim(), step.timer_seconds??null, step.group_label||null]
         );
       }
     }
@@ -378,7 +478,10 @@ app.post('/api/recipes', authenticateToken, requireAdmin, async (req, res) => {
       for (const note of notes) {
         const text = note.text?.trim() || note.body_text?.trim();
         if (!text) continue;
-        await client.query(`INSERT INTO recipe_notes (id,recipe_id,order_index,body_text) VALUES ($1,$2,$3,$4)`, [uuid(), id, note.order_index??0, text]);
+        await client.query(
+          `INSERT INTO recipe_notes (recipe_id,order_index,body_text) VALUES ($1,$2,$3)`,
+          [id, note.order_index??0, text]
+        );
       }
     }
     await client.query('COMMIT');
@@ -388,9 +491,7 @@ app.post('/api/recipes', authenticateToken, requireAdmin, async (req, res) => {
     await client.query('ROLLBACK');
     console.error('POST /api/recipes error:', err);
     res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
-  }
+  } finally { client.release(); }
 });
 
 app.put('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) => {
@@ -400,28 +501,46 @@ app.put('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) =>
   try {
     await client.query('BEGIN');
     await client.query(
-      `UPDATE recipes SET name=$1,cuisine=$2,time=$3,servings=$4,calories=$5,cover_image_url=$6,status=$7,cookbook=$8,reference=$9,tags=$10 WHERE id=$11`,
-      [details.name, details.cuisine||null, details.time||null, details.servings||null, details.calories||null,
-       details.cover_image_url||null, details.status||null, details.cookbook||null, details.reference||null,
-       JSON.stringify(Array.isArray(details.tags) ? details.tags : []), id]
+      `UPDATE recipes SET
+         name=$1, cuisine=$2, time_minutes=$3, servings=$4, calories=$5,
+         cover_image_url=$6, status=$7, reference=$8, source_url=$9,
+         tags=$10, visibility=$11
+       WHERE id=$12`,
+      [
+        details.name,
+        details.cuisine     || null,
+        parseInt(details.time_minutes ?? details.time) || null,
+        parseInt(details.servings)   || null,
+        parseInt(details.calories)   || null,
+        details.cover_image_url      || null,
+        details.status               || null,
+        details.reference            || null,
+        details.source_url           || null,
+        Array.isArray(details.tags) ? details.tags : [],
+        details.visibility || 'private',
+        id,
+      ]
     );
     if (ingredients !== undefined) {
       await client.query('DELETE FROM recipe_ingredients WHERE recipe_id = $1', [id]);
       for (const ing of ingredients) {
         if (!ing.name?.trim()) continue;
         await client.query(
-          `INSERT INTO recipe_ingredients (id,recipe_id,name,amount,unit,prep_note,optional,group_label,order_index) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-          [uuid(), id, ing.name.trim().toLowerCase(), ing.amount||null, ing.unit||null, ing.prep_note||null, Boolean(ing.optional), ing.group_label||null, ing.order_index??0]
+          `INSERT INTO recipe_ingredients (recipe_id,name,amount,unit,prep_note,optional,group_label,order_index)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [id, ing.name.trim().toLowerCase(), ing.amount||null, ing.unit||null,
+           ing.prep_note||null, Boolean(ing.optional), ing.group_label||null, ing.order_index??0]
         );
       }
     }
     if (instructions !== undefined) {
-      await client.query('DELETE FROM instructions WHERE recipe_id = $1', [id]);
+      await client.query('DELETE FROM recipe_steps WHERE recipe_id = $1', [id]);
       for (const step of instructions) {
         if (!step.body_text?.trim()) continue;
         await client.query(
-          `INSERT INTO instructions (id,recipe_id,step_number,body_text,timer_seconds,group_label) VALUES ($1,$2,$3,$4,$5,$6)`,
-          [uuid(), id, step.step_number, step.body_text.trim(), step.timer_seconds??null, step.group_label||null]
+          `INSERT INTO recipe_steps (recipe_id,step_number,body_text,timer_seconds,group_label)
+           VALUES ($1,$2,$3,$4,$5)`,
+          [id, step.step_number, step.body_text.trim(), step.timer_seconds??null, step.group_label||null]
         );
       }
     }
@@ -430,7 +549,10 @@ app.put('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) =>
       for (const note of notes) {
         const text = note.text?.trim() || note.body_text?.trim();
         if (!text) continue;
-        await client.query(`INSERT INTO recipe_notes (id,recipe_id,order_index,body_text) VALUES ($1,$2,$3,$4)`, [uuid(), id, note.order_index??0, text]);
+        await client.query(
+          `INSERT INTO recipe_notes (recipe_id,order_index,body_text) VALUES ($1,$2,$3)`,
+          [id, note.order_index??0, text]
+        );
       }
     }
     await client.query('COMMIT');
@@ -440,77 +562,76 @@ app.put('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) =>
     await client.query('ROLLBACK');
     console.error('PUT /api/recipes/:id error:', err);
     res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
-  }
+  } finally { client.release(); }
 });
 
+// CASCADE handles: recipe_ingredients, recipe_steps, recipe_notes,
+//                  cookbook_recipes, user_favorites, user_make_soon
+// user_cook_log.recipe_id SET NULL (preserves cook history)
 app.delete('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) => {
-  const { id } = req.params;
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query('DELETE FROM recipe_notes       WHERE recipe_id = $1', [id]);
-    await client.query('DELETE FROM instructions       WHERE recipe_id = $1', [id]);
-    await client.query('DELETE FROM recipe_ingredients WHERE recipe_id = $1', [id]);
-    await client.query('DELETE FROM user_favorites     WHERE recipe_id = $1', [id]);
-    await client.query('DELETE FROM user_make_soon     WHERE recipe_id = $1', [id]);
-    const result = await client.query('DELETE FROM recipes WHERE id = $1', [id]);
-    await client.query('COMMIT');
-    if (!result.rowCount) return res.status(404).json({ error: 'Recipe not found' });
-    res.json({ deleted: true });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
-  }
+  const result = await q('DELETE FROM recipes WHERE id = $1', [req.params.id]);
+  if (!result.rowCount) return res.status(404).json({ error: 'Recipe not found' });
+  res.json({ deleted: true });
 });
 
 // ─── Cookbooks ────────────────────────────────────────────────────────────────
 
 app.get('/api/cookbooks', async (req, res) => {
   try {
-    const { rows } = await q('SELECT * FROM cookbooks ORDER BY title ASC');
+    const { rows } = await q(`${COOKBOOK_SELECT} GROUP BY c.id ORDER BY c.title ASC`);
     res.json({ cookbooks: rows.map(fmtCookbook) });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/cookbooks', authenticateToken, requireAdmin, async (req, res) => {
   const { title, author, coverImage, spineColor, notes } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: 'title is required' });
-  const id = uuid();
-  await q(`INSERT INTO cookbooks (id,title,author,cover_image,spine_color,notes,recipes) VALUES ($1,$2,$3,$4,$5,$6,'[]')`,
-    [id, title.trim(), author||'', coverImage||'', spineColor||'#C65D3B', notes||'']);
-  const { rows: [cb] } = await q('SELECT * FROM cookbooks WHERE id = $1', [id]);
+  const { rows: [{ id }] } = await q(
+    `INSERT INTO cookbooks (title,author,cover_image,spine_color,notes,created_by)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+    [title.trim(), author||'', coverImage||'', spineColor||'#C65D3B', notes||'', req.user.id]
+  );
+  const { rows: [cb] } = await q(`${COOKBOOK_SELECT} WHERE c.id=$1 GROUP BY c.id`, [id]);
   res.status(201).json({ cookbook: fmtCookbook(cb) });
 });
 
 app.put('/api/cookbooks/:id', authenticateToken, requireAdmin, async (req, res) => {
   const { rows: [existing] } = await q('SELECT * FROM cookbooks WHERE id = $1', [req.params.id]);
   if (!existing) return res.status(404).json({ error: 'Cookbook not found' });
-  const { title, author, coverImage, spineColor, notes, recipes } = req.body;
+  const { title, author, coverImage, spineColor, notes } = req.body;
   await q(
-    `UPDATE cookbooks SET title=$1,author=$2,cover_image=$3,spine_color=$4,notes=$5,recipes=$6,updated_at=NOW() WHERE id=$7`,
+    `UPDATE cookbooks SET title=$1,author=$2,cover_image=$3,spine_color=$4,notes=$5 WHERE id=$6`,
     [title??existing.title, author??existing.author, coverImage??existing.cover_image,
-     spineColor??existing.spine_color, notes??existing.notes,
-     recipes !== undefined ? JSON.stringify(recipes) : existing.recipes, req.params.id]
+     spineColor??existing.spine_color, notes??existing.notes, req.params.id]
   );
-  const { rows: [cb] } = await q('SELECT * FROM cookbooks WHERE id = $1', [req.params.id]);
+  const { rows: [cb] } = await q(`${COOKBOOK_SELECT} WHERE c.id=$1 GROUP BY c.id`, [req.params.id]);
   res.json({ cookbook: fmtCookbook(cb) });
 });
 
 app.put('/api/cookbooks/:id/entries', authenticateToken, requireAdmin, async (req, res) => {
   const { recipes } = req.body;
   if (!Array.isArray(recipes)) return res.status(400).json({ error: 'recipes must be an array' });
-  await q(`UPDATE cookbooks SET recipes=$1,updated_at=NOW() WHERE id=$2`, [JSON.stringify(recipes), req.params.id]);
-  const { rows: [cb] } = await q('SELECT * FROM cookbooks WHERE id = $1', [req.params.id]);
-  if (!cb) return res.status(404).json({ error: 'Cookbook not found' });
-  res.json({ cookbook: fmtCookbook(cb) });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM cookbook_recipes WHERE cookbook_id = $1', [req.params.id]);
+    for (let i = 0; i < recipes.length; i++) {
+      await client.query(
+        'INSERT INTO cookbook_recipes (cookbook_id,recipe_id,order_index) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
+        [req.params.id, recipes[i], i]
+      );
+    }
+    await client.query('COMMIT');
+    const { rows: [cb] } = await q(`${COOKBOOK_SELECT} WHERE c.id=$1 GROUP BY c.id`, [req.params.id]);
+    if (!cb) return res.status(404).json({ error: 'Cookbook not found' });
+    res.json({ cookbook: fmtCookbook(cb) });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally { client.release(); }
 });
 
+// CASCADE handles cookbook_recipes
 app.delete('/api/cookbooks/:id', authenticateToken, requireAdmin, async (req, res) => {
   await q('DELETE FROM cookbooks WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
@@ -520,49 +641,42 @@ app.delete('/api/cookbooks/:id', authenticateToken, requireAdmin, async (req, re
 
 app.get('/api/cooking-notes', async (req, res) => {
   try {
-    const { rows: notes }    = await q('SELECT * FROM cooking_notes ORDER BY category ASC, created_at ASC');
-    const { rows: bullets }  = await q('SELECT note_id, text, order_index FROM cooking_note_bullets ORDER BY note_id, order_index ASC');
-    const { rows: keywords } = await q('SELECT note_id, keyword FROM cooking_note_keywords');
-    const bulletMap  = new Map();
-    const keywordMap = new Map();
-    for (const b of bullets)  { if (!bulletMap.has(b.note_id))  bulletMap.set(b.note_id,  []); bulletMap.get(b.note_id).push({ text: b.text, order_index: b.order_index }); }
-    for (const k of keywords) { if (!keywordMap.has(k.note_id)) keywordMap.set(k.note_id, []); keywordMap.get(k.note_id).push(k.keyword); }
-    res.json({ notes: notes.map(n => ({ ...n, bullets: bulletMap.get(n.id)||[], keywords: keywordMap.get(n.id)||[] })) });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    const { rows } = await q('SELECT * FROM cooking_notes ORDER BY category ASC, created_at ASC');
+    res.json({ notes: rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/cooking-notes', authenticateToken, requireAdmin, async (req, res) => {
   const { title, body, type, category, image_url, keywords=[], bullets=[] } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: 'title is required' });
   if (!body?.trim())  return res.status(400).json({ error: 'body is required' });
-  const id = uuid();
-  await q(`INSERT INTO cooking_notes (id,title,body,type,category,image_url) VALUES ($1,$2,$3,$4,$5,$6)`,
-    [id, title.trim(), body.trim(), type||'rule', category||'General Technique', image_url||null]);
-  for (const b  of bullets)  await q('INSERT INTO cooking_note_bullets (id,note_id,text,order_index) VALUES ($1,$2,$3,$4)', [uuid(), id, b.text, b.order_index??0]);
-  for (const kw of keywords) if (kw.trim()) await q('INSERT INTO cooking_note_keywords (note_id,keyword) VALUES ($1,$2) ON CONFLICT DO NOTHING', [id, kw.trim().toLowerCase()]);
-  const { rows: [note] } = await q('SELECT * FROM cooking_notes WHERE id = $1', [id]);
-  res.status(201).json({ note: { ...note, bullets, keywords } });
+  const { rows: [note] } = await q(
+    `INSERT INTO cooking_notes (title,body,type,category,image_url,keywords,bullets)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [title.trim(), body.trim(), type||'rule', category||'General Technique', image_url||null,
+     keywords.map(k => k.trim().toLowerCase()).filter(Boolean),
+     JSON.stringify(bullets)]
+  );
+  res.status(201).json({ note });
 });
 
 app.put('/api/cooking-notes/:id', authenticateToken, requireAdmin, async (req, res) => {
-  const { id } = req.params;
   const { title, body, type, category, image_url, keywords=[], bullets=[] } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: 'title is required' });
-  await q(`UPDATE cooking_notes SET title=$1,body=$2,type=$3,category=$4,image_url=$5 WHERE id=$6`,
-    [title.trim(), body?.trim(), type||'rule', category||'General Technique', image_url||null, id]);
-  await q('DELETE FROM cooking_note_bullets  WHERE note_id = $1', [id]);
-  await q('DELETE FROM cooking_note_keywords WHERE note_id = $1', [id]);
-  for (const b  of bullets)  await q('INSERT INTO cooking_note_bullets (id,note_id,text,order_index) VALUES ($1,$2,$3,$4)', [uuid(), id, b.text, b.order_index??0]);
-  for (const kw of keywords) if (kw.trim()) await q('INSERT INTO cooking_note_keywords (note_id,keyword) VALUES ($1,$2) ON CONFLICT DO NOTHING', [id, kw.trim().toLowerCase()]);
-  const { rows: [note] } = await q('SELECT * FROM cooking_notes WHERE id = $1', [id]);
-  res.json({ note: { ...note, bullets, keywords } });
+  const { rows: [note] } = await q(
+    `UPDATE cooking_notes
+     SET title=$1,body=$2,type=$3,category=$4,image_url=$5,keywords=$6,bullets=$7
+     WHERE id=$8 RETURNING *`,
+    [title.trim(), body?.trim(), type||'rule', category||'General Technique', image_url||null,
+     keywords.map(k => k.trim().toLowerCase()).filter(Boolean),
+     JSON.stringify(bullets), req.params.id]
+  );
+  if (!note) return res.status(404).json({ error: 'Note not found' });
+  res.json({ note });
 });
 
+// No satellite tables to clean up
 app.delete('/api/cooking-notes/:id', authenticateToken, requireAdmin, async (req, res) => {
-  await q('DELETE FROM cooking_note_bullets  WHERE note_id = $1', [req.params.id]);
-  await q('DELETE FROM cooking_note_keywords WHERE note_id = $1', [req.params.id]);
   const result = await q('DELETE FROM cooking_notes WHERE id = $1', [req.params.id]);
   if (!result.rowCount) return res.status(404).json({ error: 'Note not found' });
   res.json({ deleted: true });
@@ -571,7 +685,7 @@ app.delete('/api/cooking-notes/:id', authenticateToken, requireAdmin, async (req
 // ─── User Data ────────────────────────────────────────────────────────────────
 
 app.get('/api/user/favorites', authenticateToken, async (req, res) => {
-  const { rows } = await q('SELECT recipe_id FROM user_favorites WHERE user_id = $1', [req.user.id]);
+  const { rows } = await q('SELECT recipe_id FROM user_favorites WHERE user_id = $1 ORDER BY added_at DESC', [req.user.id]);
   res.json({ favorites: rows.map(r => r.recipe_id) });
 });
 
@@ -582,7 +696,8 @@ app.put('/api/user/favorites', authenticateToken, async (req, res) => {
   try {
     await client.query('BEGIN');
     await client.query('DELETE FROM user_favorites WHERE user_id = $1', [req.user.id]);
-    for (const id of favorites) await client.query('INSERT INTO user_favorites (user_id,recipe_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, id]);
+    for (const id of favorites)
+      await client.query('INSERT INTO user_favorites (user_id,recipe_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, id]);
     await client.query('COMMIT');
     res.json({ success: true });
   } catch (err) { await client.query('ROLLBACK'); res.status(500).json({ error: err.message }); }
@@ -590,7 +705,7 @@ app.put('/api/user/favorites', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/user/make-soon', authenticateToken, async (req, res) => {
-  const { rows } = await q('SELECT recipe_id FROM user_make_soon WHERE user_id = $1', [req.user.id]);
+  const { rows } = await q('SELECT recipe_id FROM user_make_soon WHERE user_id = $1 ORDER BY added_at DESC', [req.user.id]);
   res.json({ makeSoon: rows.map(r => r.recipe_id) });
 });
 
@@ -601,7 +716,8 @@ app.put('/api/user/make-soon', authenticateToken, async (req, res) => {
   try {
     await client.query('BEGIN');
     await client.query('DELETE FROM user_make_soon WHERE user_id = $1', [req.user.id]);
-    for (const id of makeSoon) await client.query('INSERT INTO user_make_soon (user_id,recipe_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, id]);
+    for (const id of makeSoon)
+      await client.query('INSERT INTO user_make_soon (user_id,recipe_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, id]);
     await client.query('COMMIT');
     res.json({ success: true });
   } catch (err) { await client.query('ROLLBACK'); res.status(500).json({ error: err.message }); }
@@ -622,8 +738,10 @@ app.put('/api/user/kitchen', authenticateToken, async (req, res) => {
     await client.query('DELETE FROM user_kitchen WHERE user_id = $1', [req.user.id]);
     for (const item of kitchen) {
       if (!item.ingredient_name?.trim()) continue;
-      await client.query('INSERT INTO user_kitchen (user_id,ingredient_name,storage_type) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
-        [req.user.id, item.ingredient_name.toLowerCase().trim(), item.storage_type||'fridge']);
+      await client.query(
+        'INSERT INTO user_kitchen (user_id,ingredient_name,storage_type) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
+        [req.user.id, item.ingredient_name.toLowerCase().trim(), item.storage_type||'fridge']
+      );
     }
     await client.query('COMMIT');
     res.json({ success: true });
@@ -633,7 +751,10 @@ app.put('/api/user/kitchen', authenticateToken, async (req, res) => {
 
 app.get('/api/user/cook-log', authenticateToken, async (req, res) => {
   if (req.query.recipe_id) {
-    const { rows } = await q('SELECT * FROM user_cook_log WHERE user_id=$1 AND recipe_id=$2 ORDER BY cooked_at DESC', [req.user.id, req.query.recipe_id]);
+    const { rows } = await q(
+      'SELECT * FROM user_cook_log WHERE user_id=$1 AND recipe_id=$2 ORDER BY cooked_at DESC',
+      [req.user.id, req.query.recipe_id]
+    );
     return res.json({ entries: rows });
   }
   const { rows } = await q('SELECT * FROM user_cook_log WHERE user_id=$1 ORDER BY cooked_at DESC', [req.user.id]);
@@ -643,10 +764,11 @@ app.get('/api/user/cook-log', authenticateToken, async (req, res) => {
 app.post('/api/user/cook-log', authenticateToken, async (req, res) => {
   const { recipe_id, recipe_name, rating, notes, cooked_at } = req.body;
   const realId = recipe_id && !recipe_id.startsWith('ref-') && recipe_id.length > 10 ? recipe_id : null;
-  const id = uuid();
-  await q(`INSERT INTO user_cook_log (id,user_id,recipe_id,recipe_name,rating,notes,cooked_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-    [id, req.user.id, realId, recipe_name?.trim()||null, rating??null, notes?.trim()||null, cooked_at||new Date().toISOString()]);
-  const { rows: [entry] } = await q('SELECT * FROM user_cook_log WHERE id = $1', [id]);
+  const { rows: [entry] } = await q(
+    `INSERT INTO user_cook_log (user_id,recipe_id,recipe_name,rating,notes,cooked_at)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    [req.user.id, realId, recipe_name?.trim()||null, rating??null, notes?.trim()||null, cooked_at||new Date().toISOString()]
+  );
   res.json({ entry });
 });
 
@@ -654,7 +776,8 @@ app.post('/api/user/cook-log', authenticateToken, async (req, res) => {
 
 app.post('/api/grocery-list', async (req, res) => {
   const { recipeIds } = req.body;
-  if (!Array.isArray(recipeIds) || !recipeIds.length) return res.status(400).json({ error: 'recipeIds must be a non-empty array' });
+  if (!Array.isArray(recipeIds) || !recipeIds.length)
+    return res.status(400).json({ error: 'recipeIds must be a non-empty array' });
   try {
     const { rows } = await q(`
       SELECT r.id AS recipe_id, r.name AS recipe_name,
@@ -668,13 +791,13 @@ app.post('/api/grocery-list', async (req, res) => {
     if (!rows.length) return res.json({ categories: [], recipeNames: [] });
 
     const recipeNameMap = new Map();
-    for (const row of rows) recipeNameMap.set(row.recipe_id, row.recipe_name);
-
     const itemMap = new Map();
     for (const row of rows) {
+      recipeNameMap.set(row.recipe_id, row.recipe_name);
       const key = `${row.ingredient_name.toLowerCase().trim()}||${(row.unit||'').toLowerCase().trim()}`;
       if (!itemMap.has(key)) {
-        itemMap.set(key, { name: row.ingredient_name, amounts: [], rawAmounts: [], unit: row.unit||'', prep_note: row.prep_note||'', optional: Boolean(row.optional), recipes: [], category: categorise(row.ingredient_name) });
+        itemMap.set(key, { name: row.ingredient_name, amounts: [], rawAmounts: [], unit: row.unit||'',
+          prep_note: row.prep_note||'', optional: Boolean(row.optional), recipes: [], category: categorise(row.ingredient_name) });
       }
       const entry = itemMap.get(key);
       if (!entry.recipes.includes(row.recipe_name)) entry.recipes.push(row.recipe_name);
@@ -694,12 +817,17 @@ app.post('/api/grocery-list', async (req, res) => {
         displayAmount = item.rawAmounts.join(' + ');
       }
       if (!catMap.has(item.category)) catMap.set(item.category, []);
-      catMap.get(item.category).push({ name: item.name, amount: displayAmount, unit: item.unit, prep_note: item.prep_note, optional: item.optional, recipes: item.recipes });
+      catMap.get(item.category).push({ name: item.name, amount: displayAmount, unit: item.unit,
+        prep_note: item.prep_note, optional: item.optional, recipes: item.recipes });
     }
 
     const categories = Array.from(catMap.entries())
       .sort((a, b) => (CATEGORY_META[a[0]]?.order??99) - (CATEGORY_META[b[0]]?.order??99))
-      .map(([cat, items]) => ({ name: cat.charAt(0).toUpperCase()+cat.slice(1), emoji: CATEGORY_META[cat]?.emoji??'🛒', items: items.sort((a,b)=>a.name.localeCompare(b.name)) }));
+      .map(([cat, items]) => ({
+        name: cat.charAt(0).toUpperCase() + cat.slice(1),
+        emoji: CATEGORY_META[cat]?.emoji ?? '🛒',
+        items: items.sort((a, b) => a.name.localeCompare(b.name)),
+      }));
 
     res.json({ categories, recipeNames: Array.from(recipeNameMap.values()) });
   } catch (err) {
@@ -712,14 +840,20 @@ app.post('/api/grocery-list', async (req, res) => {
 
 app.post('/api/match', (req, res) => {
   const { fridgeIngredients, recipes } = req.body;
-  if (!Array.isArray(fridgeIngredients) || !Array.isArray(recipes)) return res.status(400).json({ error: 'Invalid payload' });
+  if (!Array.isArray(fridgeIngredients) || !Array.isArray(recipes))
+    return res.status(400).json({ error: 'Invalid payload' });
   const fridge = new Set(fridgeIngredients.map(i => i.toLowerCase().trim()));
   const matched = recipes.map(recipe => {
     const ings    = recipe.ingredients || [];
     const have    = ings.filter(i => fridge.has(i));
     const missing = ings.filter(i => !fridge.has(i));
-    return { ...recipe, have, missing, matchScore: ings.length===0 ? 0 : have.length/ings.length, canMake: missing.length===0 && ings.length>0 };
-  }).sort((a,b) => { if (a.canMake !== b.canMake) return a.canMake ? -1 : 1; return b.matchScore - a.matchScore; });
+    return { ...recipe, have, missing,
+      matchScore: ings.length === 0 ? 0 : have.length / ings.length,
+      canMake: missing.length === 0 && ings.length > 0 };
+  }).sort((a, b) => {
+    if (a.canMake !== b.canMake) return a.canMake ? -1 : 1;
+    return b.matchScore - a.matchScore;
+  });
   res.json({ matched });
 });
 
@@ -730,15 +864,17 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 initDB().then(async () => {
-  // If ADMIN_PASSWORD env var is set, upsert the admin account on startup.
   const adminPw = process.env.ADMIN_PASSWORD;
   if (adminPw) {
     const { rows: [existing] } = await q("SELECT id FROM users WHERE username = 'kavya'");
     if (existing) {
       await q("UPDATE users SET password_hash=$1, role='admin' WHERE username='kavya'", [adminPw]);
-      console.log('🔑 Admin password reset from ADMIN_PASSWORD env var');
+      console.log('🔑 Admin password updated from ADMIN_PASSWORD env var');
     } else {
-      await q("INSERT INTO users (id,username,display_name,password_hash,role) VALUES ($1,'kavya','Kavya',$2,'admin')", [uuid(), adminPw]);
+      await q(
+        "INSERT INTO users (username,display_name,password_hash,role) VALUES ('kavya','Kavya',$1,'admin')",
+        [adminPw]
+      );
       console.log('🔑 Admin account created from ADMIN_PASSWORD env var');
     }
   }
