@@ -293,18 +293,20 @@ const authenticateToken = async (req, res, next) => {
 
   // Upsert user in our table and return their role in one query
   const displayName = user.user_metadata?.full_name || user.user_metadata?.name || null;
+  const avatarUrl   = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
   const username    = (user.email || '').split('@')[0];
   const role        = user.email === process.env.ADMIN_EMAIL ? 'admin' : 'guest';
 
   const { rows: [dbUser] } = await q(`
-    INSERT INTO users (id, username, display_name, email, role)
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO users (id, username, display_name, email, role, avatar_url)
+    VALUES ($1, $2, $3, $4, $5, $6)
     ON CONFLICT (id) DO UPDATE SET
       email        = EXCLUDED.email,
       display_name = COALESCE(NULLIF(users.display_name, ''), EXCLUDED.display_name),
+      avatar_url   = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
       role         = CASE WHEN $5 = 'admin' THEN 'admin'::text ELSE users.role END
     RETURNING role, username, display_name, avatar_url
-  `, [user.id, username, displayName, user.email, role]);
+  `, [user.id, username, displayName, user.email, role, avatarUrl]);
 
   req.user = { id: user.id, email: user.email, role: dbUser?.role || 'guest' };
   next();

@@ -1311,7 +1311,7 @@ function AppInner() {
           authFetch={authFetch}
           authUser={authUser}
           onLogout={handleLogout}
-          onAuthUserUpdate={(updatedUser) => { setAuthUser(updatedUser); LS.set('authUser', updatedUser); }}
+          onAuthUserUpdate={(updatedUser) => setAuthUser(updatedUser)}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
           tabBarTabs={tabBarTabs}
