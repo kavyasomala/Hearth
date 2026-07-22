@@ -1,64 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Icon } from '../icons';
-import { API, DIETARY_OPTIONS, THEME_OPTIONS, STAR_LABELS } from '../constants';
-import { haptic, LS, getDaysInMonth, getFirstDayOfMonth, checkDietaryConflicts } from '../utils';
+import { API, DIETARY_OPTIONS, STAR_LABELS } from '../constants';
+import { haptic, LS, getDaysInMonth, getFirstDayOfMonth } from '../utils';
 import { Badge } from '../components/ui';
-
-// ─── Invite User Modal ────────────────────────────────────────────────────────
-const InviteUserModal = ({ onClose, onInvited, authFetch }) => {
-  const apiFetch = authFetch || fetch;
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [sending, setSending] = useState(false);
-
-  const handleInvite = async () => {
-    if (!email.trim()) return setError('Email is required.');
-    setSending(true); setError('');
-    try {
-      const res = await apiFetch(`${API}/api/auth/create-user`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: email.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed');
-      onInvited(email.trim());
-      onClose();
-    } catch (e) { setError(e.message); }
-    finally { setSending(false); }
-  };
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-      onClick={onClose}>
-      <div onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--warm-white)', borderRadius: 16, padding: '24px 22px', width: '100%', maxWidth: 320, boxShadow: '0 8px 40px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700, color: 'var(--charcoal)' }}>
-            <Icon name="users" size={18} strokeWidth={2} /> Invite a Friend
-          </h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--warm-gray)', padding: '2px 4px' }}>×</button>
-        </div>
-        {error && <div style={{ background: '#fff0ee', border: '1px solid #f5c2b8', borderRadius: 8, padding: '7px 10px', fontSize: '0.8rem', color: 'var(--terracotta-dark, #b84a2e)' }}>{error}</div>}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--warm-gray)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Email address</label>
-          <input className="editor-input" type="email" placeholder="friend@example.com" value={email}
-            onChange={e => setEmail(e.target.value)} autoCapitalize="none" autoFocus
-            onKeyDown={e => e.key === 'Enter' && handleInvite()}
-            style={{ padding: '8px 10px', fontSize: '0.9rem' }} />
-        </div>
-        <p style={{ fontSize: '0.78rem', color: 'var(--warm-gray)', margin: 0 }}>They'll get an email to set their password and join Hearth.</p>
-        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '9px', borderRadius: 8, background: 'none', border: '1.5px solid var(--border)', color: 'var(--warm-gray)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>Cancel</button>
-          <button onClick={handleInvite} disabled={sending}
-            style={{ flex: 1, padding: '9px', borderRadius: 8, background: 'var(--terracotta)', color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', opacity: sending ? 0.7 : 1 }}>
-            {sending ? 'Sending...' : 'Send invite'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // ─── Collapsible Section ──────────────────────────────────────────────────────
 const Section = ({ icon, title, badge, defaultOpen = false, children }) => {
@@ -93,16 +37,6 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const [draftDisplayName, setDraftDisplayName] = useState('');
   const [savingDisplayName, setSavingDisplayName] = useState(false);
 
-  // ── Admin: manage users ──
-  const [users, setUsers] = useState([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [showInvite, setShowInvite] = useState(false);
-  const [inviteSuccess, setInviteSuccess] = useState('');
-
-  // ── Admin: tools ──
-  const [recalcRunning, setRecalcRunning] = useState(false);
-  const [recalcResult, setRecalcResult] = useState(null);
-
   // ── Feedback ──
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackList, setFeedbackList] = useState(() => LS.get('feedbackReports', []));
@@ -120,16 +54,6 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
     return () => { cancelled = true; };
   }, []); // eslint-disable-line
 
-  const loadUsers = async () => {
-    setUsersLoading(true);
-    try {
-      const res = await apiFetch(`${API}/api/admin/users`);
-      const data = await res.json();
-      setUsers(data.users || []);
-    } catch {}
-    finally { setUsersLoading(false); }
-  };
-
   const handleSaveDisplayName = async () => {
     setSavingDisplayName(true);
     try {
@@ -141,21 +65,6 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       if (onAuthUserUpdate) onAuthUserUpdate({ ...authUser, display_name: draftDisplayName.trim() || null });
     } catch {}
     finally { setSavingDisplayName(false); setEditingDisplayName(false); }
-  };
-
-  const handleSuspend = async (user) => {
-    const newRole = user.role === 'suspended' ? 'guest' : 'suspended';
-    await apiFetch(`${API}/api/admin/users/${user.id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: newRole }),
-    });
-    loadUsers();
-  };
-
-  const handleDelete = async (user) => {
-    if (!window.confirm(`Permanently delete ${user.display_name || user.email}? This removes all their data.`)) return;
-    await apiFetch(`${API}/api/admin/users/${user.id}`, { method: 'DELETE' });
-    loadUsers();
   };
 
   // ── History derived data ──
@@ -198,6 +107,35 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
     return set;
   }, [cookHistory, calendarDate, recipes]);
 
+  // ── Fun cooking stats ──
+  const cookStreak = useMemo(() => {
+    if (cookHistory.length === 0) return 0;
+    const dates = new Set(cookHistory.map(e => new Date(e.cooked_at).toLocaleDateString('en-CA')));
+    let streak = 0;
+    const d = new Date();
+    while (dates.has(d.toLocaleDateString('en-CA'))) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    }
+    return streak;
+  }, [cookHistory]);
+
+  const favCookDay = useMemo(() => {
+    if (cookHistory.length === 0) return null;
+    const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const counts = Array(7).fill(0);
+    cookHistory.forEach(e => counts[new Date(e.cooked_at).getDay()]++);
+    return DAYS[counts.indexOf(Math.max(...counts))];
+  }, [cookHistory]);
+
+  const thisMonthCooks = useMemo(() => {
+    const now = new Date();
+    return cookHistory.filter(e => {
+      const d = new Date(e.cooked_at);
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    }).length;
+  }, [cookHistory]);
+
   const getRecipeName = (entry) => {
     const r = recipes.find(r => r.id === entry.recipe_id);
     return r?.name || entry.recipe_name || 'Unknown Recipe';
@@ -221,89 +159,84 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
     setTimeout(() => setFeedbackSubmitted(false), 2500);
   };
 
+  const FEATURES = [
+    { icon: 'link',       label: 'Import from URL',    sub: 'Paste a link, Hearth scrapes the recipe' },
+    { icon: 'sliders',    label: 'Live Scaling',        sub: 'Tap servings to adjust amounts instantly' },
+    { icon: 'package',    label: 'Kitchen Inventory',   sub: 'Track your fridge and pantry' },
+    { icon: 'cart',       label: 'Grocery Lists',       sub: 'Smart consolidation with unit conversion' },
+    { icon: 'bookMarked', label: 'Cookbooks',           sub: 'Organize recipes into collections' },
+    { icon: 'lightbulb',  label: 'Cooking Notes',       sub: 'Notes that stick across every session' },
+    { icon: 'calendar',   label: 'Cook History',        sub: 'Timeline and calendar of every dish' },
+    { icon: 'barChart',   label: 'Nutrition',           sub: 'Auto-calculated from ingredients' },
+    { icon: 'award',      label: 'Ratings & Notes',     sub: 'Log how each cook went' },
+  ];
+
   return (
     <main className="view profile-view">
-      {showInvite && (
-        <InviteUserModal
-          authFetch={authFetch}
-          onClose={() => setShowInvite(false)}
-          onInvited={(email) => { setInviteSuccess(`Invite sent to ${email}`); loadUsers(); setTimeout(() => setInviteSuccess(''), 4000); }}
-        />
-      )}
 
       {/* ── Profile Hero ─────────────────────────────────────────── */}
       <div className="profile-hero">
-        <div className="profile-hero__top">
-          {authUser?.avatar_url ? (
-            <img src={authUser.avatar_url} alt="Avatar" className="profile-avatar profile-avatar--lg" referrerPolicy="no-referrer" />
-          ) : (
-            <div className="profile-avatar profile-avatar--lg profile-avatar--initial">
-              {(displayName || authUser?.email || '?')[0].toUpperCase()}
-            </div>
-          )}
-          <button onClick={onLogout} className="profile-signout-btn">Sign out</button>
-        </div>
+        <div className="profile-hero__main">
+          <div className="profile-hero__identity">
+            {authUser?.avatar_url ? (
+              <img src={authUser.avatar_url} alt="Avatar" className="profile-avatar profile-avatar--lg" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="profile-avatar profile-avatar--lg profile-avatar--initial">
+                {(displayName || authUser?.email || '?')[0].toUpperCase()}
+              </div>
+            )}
 
-        {editingDisplayName ? (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
-            <input
-              autoFocus
-              className="login-modal__input"
-              style={{ flex: '1 1 180px', padding: '8px 12px', fontSize: '1rem', margin: 0 }}
-              placeholder="Your name"
-              value={draftDisplayName}
-              onChange={e => setDraftDisplayName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleSaveDisplayName(); if (e.key === 'Escape') setEditingDisplayName(false); }}
-            />
-            <button onClick={handleSaveDisplayName} disabled={savingDisplayName} className="display-name-save-btn">
-              {savingDisplayName ? '...' : '✓ Save'}
+            <div className="profile-hero__info">
+              {editingDisplayName ? (
+                <div className="profile-name-edit">
+                  <input
+                    autoFocus
+                    className="login-modal__input"
+                    style={{ padding: '7px 11px', fontSize: '0.95rem', margin: 0, width: '100%' }}
+                    placeholder="Your name"
+                    value={draftDisplayName}
+                    onChange={e => setDraftDisplayName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveDisplayName(); if (e.key === 'Escape') setEditingDisplayName(false); }}
+                  />
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                    <button onClick={handleSaveDisplayName} disabled={savingDisplayName} className="display-name-save-btn">
+                      {savingDisplayName ? '...' : '✓ Save'}
+                    </button>
+                    <button onClick={() => setEditingDisplayName(false)} className="display-name-cancel-btn">Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="profile-hero__name-row">
+                    <h2 className="profile-hero__name">{displayName || 'Set a display name'}</h2>
+                    {isAdmin && <span className="profile-hero__badge">Admin</span>}
+                    <button
+                      onClick={() => { setDraftDisplayName(authUser?.display_name || ''); setEditingDisplayName(true); }}
+                      style={{ background: 'none', border: 'none', color: 'var(--warm-gray)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', lineHeight: 1 }}
+                      title="Edit display name"
+                    >✎</button>
+                  </div>
+                  {authUser?.email && <p className="profile-hero__email">{authUser.email}</p>}
+                  <p className="profile-hero__meta">
+                    {totalRecipes} {totalRecipes === 1 ? 'recipe' : 'recipes'} · {cookHistory.length} cooked · {isAdmin ? 'Admin' : 'Member'}
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="profile-hero__controls">
+            <button onClick={onLogout} className="profile-signout-btn">Sign out</button>
+            <button
+              className={`dark-mode-toggle__btn ${darkMode ? 'dark-mode-toggle__btn--on' : ''}`}
+              onClick={() => setDarkMode && setDarkMode(!darkMode)}
+              type="button"
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              <span className="dark-mode-toggle__track"><span className="dark-mode-toggle__thumb" /></span>
             </button>
-            <button onClick={() => setEditingDisplayName(false)} className="display-name-cancel-btn">Cancel</button>
           </div>
-        ) : (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <h2 className="profile-hero__name">{displayName || 'Set a display name'}</h2>
-              {isAdmin && <span className="profile-hero__badge">Admin</span>}
-              <button
-                onClick={() => { setDraftDisplayName(authUser?.display_name || ''); setEditingDisplayName(true); }}
-                style={{ background: 'none', border: 'none', color: 'var(--warm-gray)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', lineHeight: 1 }}
-                title="Edit display name"
-              >✎</button>
-            </div>
-            {authUser?.email && <p className="profile-hero__email">{authUser.email}</p>}
-          </div>
-        )}
-      </div>
-
-      {/* ── Stats Row ────────────────────────────────────────────── */}
-      <div className="profile-stats-row">
-        <div className="profile-stat">
-          <span className="profile-stat__num">{totalRecipes}</span>
-          <span className="profile-stat__label">Recipes</span>
         </div>
-        <div className="profile-stat-divider" />
-        <div className="profile-stat">
-          <span className="profile-stat__num">{cookHistory.length}</span>
-          <span className="profile-stat__label">Times Cooked</span>
-        </div>
-        <div className="profile-stat-divider" />
-        <div className="profile-stat">
-          <span className="profile-stat__num">{recipeCounts.length}</span>
-          <span className="profile-stat__label">Unique Dishes</span>
-        </div>
-      </div>
-
-      {/* ── Dark Mode Quick Toggle ────────────────────────────────── */}
-      <div className="profile-quick-bar">
-        <span className="profile-quick-bar__label"><Icon name={darkMode ? 'moon' : 'sun'} size={14} strokeWidth={2} /> {darkMode ? 'Dark mode' : 'Light mode'}</span>
-        <button
-          className={`dark-mode-toggle__btn ${darkMode ? 'dark-mode-toggle__btn--on' : ''}`}
-          onClick={() => setDarkMode && setDarkMode(!darkMode)}
-          type="button"
-        >
-          <span className="dark-mode-toggle__track"><span className="dark-mode-toggle__thumb" /></span>
-        </button>
       </div>
 
       {/* ── Cooking History ───────────────────────────────────────── */}
@@ -491,125 +424,26 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         </div>
       </Section>
 
-      {/* ── Admin: Manage Users ──────────────────────────────────── */}
-      {isAdmin && (
-        <Section icon="users" title="Manage Users" defaultOpen={false}>
-          <div className="settings-section" style={{ marginBottom: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <h4 className="settings-section__title" style={{ margin: 0 }}>Current Users</h4>
-              <button
-                onClick={() => { setInviteSuccess(''); setShowInvite(true); if (users.length === 0) loadUsers(); }}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 999, background: 'var(--terracotta)', color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}
-              >
-                <Icon name="userCircle" size={14} strokeWidth={2} /> Invite Friend
-              </button>
-            </div>
-            {inviteSuccess && (
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 12px', fontSize: '0.85rem', color: '#166534', marginBottom: 12 }}>
-                {inviteSuccess}
-              </div>
-            )}
-            {users.length === 0 && !usersLoading && (
-              <button onClick={loadUsers} className="btn btn--ghost btn--sm" style={{ marginBottom: 12 }}>Load users</button>
-            )}
-            {usersLoading ? (
-              <p style={{ fontSize: 13, color: 'var(--warm-gray)' }}>Loading...</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {users.map(u => (
-                  <div key={u.id} style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--cream)', overflow: 'hidden' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
-                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: u.role === 'suspended' ? '#c8c3bc' : u.role === 'admin' ? 'var(--terracotta)' : 'var(--sage)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, flexShrink: 0 }}>
-                        {(u.display_name || u.email || '?')[0].toUpperCase()}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          {u.display_name || u.email}
-                          <button
-                            className={`admin-pill-toggle ${u.role === 'admin' ? 'admin-pill-toggle--on' : 'admin-pill-toggle--off'}`}
-                            title={u.role === 'admin' ? 'Revoke admin' : 'Make admin'}
-                            onClick={async () => {
-                              const isAdminNow = u.role === 'admin';
-                              if (!window.confirm(isAdminNow ? `Remove admin from ${u.display_name || u.email}?` : `Make ${u.display_name || u.email} an admin?`)) return;
-                              await apiFetch(`${API}/api/admin/users/${u.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: isAdminNow ? 'guest' : 'admin' }) });
-                              loadUsers();
-                            }}
-                          >
-                            <span className="admin-pill-toggle__track"><span className="admin-pill-toggle__thumb" /></span>
-                            <span className="admin-pill-toggle__label">Admin</span>
-                          </button>
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--warm-gray)' }}>
-                          {u.display_name ? `${u.email} · ` : ''}<span style={{ textTransform: 'capitalize' }}>{u.role}</span>
-                        </div>
-                      </div>
-                      {u.role !== 'admin' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <button onClick={() => handleSuspend(u)} style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--warm-white)', cursor: 'pointer', color: u.role === 'suspended' ? 'var(--sage)' : 'var(--warm-gray)', fontWeight: 500 }}>
-                            {u.role === 'suspended' ? 'Restore' : 'Suspend'}
-                          </button>
-                          <button onClick={() => handleDelete(u)} style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: 999, border: '1px solid #f5c2b8', background: '#fff0ee', cursor: 'pointer', color: 'var(--terracotta-dark, #b84a2e)', fontWeight: 500 }}>
-                            Remove
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </Section>
-      )}
-
-      {/* ── Admin: Tools ─────────────────────────────────────────── */}
-      {isAdmin && (
-        <Section icon="tool" title="Admin Tools">
-          <div className="settings-section">
-            <h4 className="settings-section__title"><Icon name="repeat" size={15} strokeWidth={2} /> Recalculate Nutrition</h4>
-            <p className="settings-section__hint">Clears all pre-populated calories/protein/fiber and recalculates from each recipe's ingredients.</p>
-            <button
-              className="btn btn--primary btn--sm"
-              style={{ marginTop: 10 }}
-              disabled={recalcRunning}
-              onClick={async () => {
-                if (!window.confirm('Clear ALL existing nutrition data and recalculate from ingredients?')) return;
-                setRecalcRunning(true); setRecalcResult(null);
-                try {
-                  const res = await apiFetch(`${API}/api/admin/recalculate-nutrition`, { method: 'POST' });
-                  const data = await res.json();
-                  if (!res.ok) throw new Error(data.error || 'Failed');
-                  setRecalcResult(`Done — updated ${data.updated} of ${data.total} recipes`);
-                } catch (e) { setRecalcResult(`Error: ${e.message}`); }
-                setRecalcRunning(false);
-              }}
-            >{recalcRunning ? 'Running...' : 'Recalculate All'}</button>
-            {recalcResult && <p style={{ marginTop: 10, fontSize: '0.85rem', color: recalcResult.startsWith('Done') ? 'var(--sage)' : 'var(--terracotta)' }}>{recalcResult}</p>}
-          </div>
-        </Section>
-      )}
-
-      {/* ── Feedback ─────────────────────────────────────────────── */}
-      <Section icon="alertTriangle" title="Send Feedback" badge={feedbackList.filter(b => !b.done).length || null}>
-        <div className="settings-section" style={{ borderBottom: 'none', marginBottom: 0, paddingBottom: 0 }}>
-          <p className="settings-section__hint">Found a bug or have a suggestion? Log it here.</p>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <input
-              className="editor-input"
-              style={{ flex: 1, fontSize: 14 }}
-              placeholder="Describe what went wrong or what you'd like..."
-              value={feedbackText}
-              onChange={e => { setFeedbackText(e.target.value); setFeedbackSubmitted(false); }}
-              onKeyDown={e => e.key === 'Enter' && submitFeedback()}
-            />
+      {/* ── Send Feedback ─────────────────────────────────────────── */}
+      <Section icon="alertTriangle" title="Send Feedback">
+        <div className="feedback-form">
+          <textarea
+            className="feedback-textarea"
+            placeholder="Found a bug or have a suggestion? Tell us what's on your mind..."
+            value={feedbackText}
+            onChange={e => { setFeedbackText(e.target.value); setFeedbackSubmitted(false); }}
+            rows={3}
+          />
+          <div className="feedback-form__footer">
+            {feedbackSubmitted && <span className="feedback-success">✓ Logged — thanks!</span>}
             <button className="btn btn--primary btn--sm" disabled={!feedbackText.trim()} onClick={submitFeedback}>Submit</button>
           </div>
-          {feedbackSubmitted && <p style={{ fontSize: 12, color: 'var(--sage)', marginTop: 6 }}>✓ Logged — thanks!</p>}
         </div>
+
         {feedbackList.length > 0 && (
-          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <h4 className="settings-section__title" style={{ margin: 0 }}>Your reports ({feedbackList.filter(b => !b.done).length} open)</h4>
+          <div className="feedback-log">
+            <div className="feedback-log__header">
+              <span className="settings-section__title" style={{ margin: 0 }}>Your reports <span style={{ fontWeight: 400, color: 'var(--warm-gray)' }}>({feedbackList.filter(b => !b.done).length} open)</span></span>
               {feedbackList.some(b => b.done) && (
                 <button className="btn btn--ghost btn--sm" style={{ fontSize: 11, padding: '3px 10px' }}
                   onClick={() => { const next = feedbackList.filter(b => !b.done); setFeedbackList(next); LS.set('feedbackReports', next); }}>
@@ -618,14 +452,15 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
               )}
             </div>
             {feedbackList.map(bug => (
-              <div key={bug.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: bug.done ? 'var(--cream)' : 'var(--warm-white)', border: `1.5px solid var(--border)`, borderLeft: `3px solid ${bug.done ? 'var(--sage)' : 'var(--terracotta-light)'}`, borderRadius: 10, opacity: bug.done ? 0.55 : 1 }}>
+              <div key={bug.id} className={`feedback-item ${bug.done ? 'feedback-item--done' : ''}`}>
                 <button
+                  className="feedback-item__check"
+                  data-done={bug.done}
                   onClick={() => { const next = feedbackList.map(b => b.id === bug.id ? { ...b, done: !b.done } : b); setFeedbackList(next); LS.set('feedbackReports', next); }}
-                  style={{ width: 20, height: 20, borderRadius: 5, flexShrink: 0, marginTop: 1, border: `1.5px solid ${bug.done ? 'var(--sage)' : 'var(--border)'}`, background: bug.done ? 'var(--sage)' : 'transparent', color: bug.done ? 'white' : 'transparent', cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >{bug.done ? '✓' : ''}</button>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, color: 'var(--charcoal)', margin: 0, textDecoration: bug.done ? 'line-through' : 'none', wordBreak: 'break-word' }}>{bug.text}</p>
-                  <p style={{ fontSize: 11, color: 'var(--warm-gray)', margin: '2px 0 0' }}>{bug.date}</p>
+                <div className="feedback-item__body">
+                  <p className="feedback-item__text">{bug.text}</p>
+                  <p className="feedback-item__date">{bug.date}</p>
                 </div>
                 <button className="editor-remove-btn" onClick={() => { const next = feedbackList.filter(b => b.id !== bug.id); setFeedbackList(next); LS.set('feedbackReports', next); }}>✕</button>
               </div>
@@ -637,23 +472,23 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       {/* ── What's Coming ────────────────────────────────────────── */}
       <Section icon="zap" title="What's Coming">
         <div className="settings-section">
-          <h4 className="settings-section__title">🔗 Recipe Sharing</h4>
+          <h4 className="settings-section__title">Recipe Sharing</h4>
           <p className="settings-section__hint">Share any recipe via a link — friends get a beautiful preview with a one-tap "Save to Hearth" button.</p>
           <span className="roadmap-badge">In progress</span>
         </div>
         <div className="settings-section">
-          <h4 className="settings-section__title">👥 Friend System</h4>
-          <p className="settings-section__hint">Add friends by username, receive and save their shared recipes, browse what they're cooking.</p>
+          <h4 className="settings-section__title">Friend System</h4>
+          <p className="settings-section__hint">Add friends, receive shared recipes, and browse what they're cooking.</p>
           <span className="roadmap-badge">Planned</span>
         </div>
         <div className="settings-section">
-          <h4 className="settings-section__title">🔒 Row-Level Security</h4>
-          <p className="settings-section__hint">Each user's recipes and data will be completely private by default — you choose what gets shared.</p>
+          <h4 className="settings-section__title">Private by Default</h4>
+          <p className="settings-section__hint">Your recipes and data stay completely private — you choose what gets shared and with whom.</p>
           <span className="roadmap-badge">Planned</span>
         </div>
         <div className="settings-section">
-          <h4 className="settings-section__title">🗑️ Account Deletion</h4>
-          <p className="settings-section__hint">Full self-serve account deletion that removes all your data — a required step before App Store submission.</p>
+          <h4 className="settings-section__title">Account Deletion</h4>
+          <p className="settings-section__hint">Full self-serve account deletion — a required step before App Store submission.</p>
           <span className="roadmap-badge">Planned</span>
         </div>
       </Section>
@@ -661,50 +496,57 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       {/* ── About Hearth ─────────────────────────────────────────── */}
       <Section icon="lightbulb" title="About Hearth">
         <div className="settings-section">
-          <p className="settings-section__hint" style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--charcoal)' }}>
-            Hearth is your personal kitchen companion — a place to collect the recipes you love, track what you cook, and actually use your grocery list.
+          <p style={{ fontSize: '0.88rem', lineHeight: 1.65, color: 'var(--charcoal)', margin: 0 }}>
+            Hearth is your personal kitchen companion — a place to collect the recipes you love,
+            track what you actually cook, and keep your grocery list in sync. Built for home cooks
+            who want everything from fridge to table in one place.
           </p>
         </div>
 
         <div className="settings-section">
-          <h4 className="settings-section__title">✨ What's in the app</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-            {[
-              { icon: '🔗', label: 'Import any recipe from a URL', sub: 'Paste a link, Hearth scrapes the recipe automatically' },
-              { icon: '⚖️', label: 'Live recipe scaling', sub: 'Tap servings to adjust ingredient amounts on the fly' },
-              { icon: '🥬', label: 'Kitchen inventory', sub: 'Track fridge and pantry — see which recipes you can make right now' },
-              { icon: '🛒', label: 'Smart grocery lists', sub: 'Consolidates ingredients across recipes with unit conversion' },
-              { icon: '📚', label: 'Cookbooks', sub: 'Organize recipes into collections' },
-              { icon: '📝', label: 'Cooking notes', sub: 'Per-recipe notes that persist across cook sessions' },
-              { icon: '📅', label: 'Cooking history', sub: 'Timeline + calendar of every dish you\'ve made' },
-            ].map(({ icon, label, sub }) => (
-              <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>{icon}</span>
-                <div>
-                  <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--charcoal)' }}>{label}</p>
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--warm-gray)' }}>{sub}</p>
-                </div>
+          <h4 className="settings-section__title" style={{ marginBottom: 14 }}>What's in the app</h4>
+          <div className="feature-cards">
+            {FEATURES.map(({ icon, label, sub }) => (
+              <div key={label} className="feature-card">
+                <Icon name={icon} size={20} strokeWidth={1.75} color="var(--terracotta)" />
+                <p className="feature-card__label">{label}</p>
+                <p className="feature-card__sub">{sub}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="settings-section settings-section--about" style={{ borderBottom: 'none' }}>
-          <div className="about-cards">
-            <div className="about-card">
-              <span className="about-card__icon"><Icon name="barChart" size={22} strokeWidth={2} color="var(--terracotta)" /></span>
-              <div><div className="about-card__value">{totalRecipes}</div><div className="about-card__label">Recipes</div></div>
+        <div className="settings-section" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+          <h4 className="settings-section__title" style={{ marginBottom: 14 }}>Your kitchen, by the numbers</h4>
+          {cookHistory.length === 0 ? (
+            <p style={{ fontSize: '0.82rem', color: 'var(--warm-gray)', fontStyle: 'italic' }}>
+              Start cooking to unlock your personal stats.
+            </p>
+          ) : (
+            <div className="cook-stats-grid">
+              <div className="cook-stat-card">
+                <span className="cook-stat-card__num">{recipeCounts.length}</span>
+                <span className="cook-stat-card__label">Unique dishes</span>
+              </div>
+              <div className="cook-stat-card">
+                <span className="cook-stat-card__num">{cookStreak > 0 ? cookStreak : '—'}</span>
+                <span className="cook-stat-card__label">Day streak</span>
+              </div>
+              <div className="cook-stat-card">
+                <span className="cook-stat-card__num">{thisMonthCooks}</span>
+                <span className="cook-stat-card__label">This month</span>
+              </div>
+              <div className="cook-stat-card cook-stat-card--wide">
+                <span className="cook-stat-card__num cook-stat-card__num--text">{recipeCounts[0]?.name || '—'}</span>
+                <span className="cook-stat-card__label">Most cooked</span>
+              </div>
+              <div className="cook-stat-card cook-stat-card--wide">
+                <span className="cook-stat-card__num cook-stat-card__num--text">{favCookDay || '—'}</span>
+                <span className="cook-stat-card__label">Favorite cook day</span>
+              </div>
             </div>
-            <div className="about-card">
-              <span className="about-card__icon"><Icon name="chefHat" size={22} strokeWidth={2} color="var(--terracotta)" /></span>
-              <div><div className="about-card__value">{cookHistory.length}</div><div className="about-card__label">Times Cooked</div></div>
-            </div>
-            <div className="about-card">
-              <span className="about-card__icon"><Icon name="zap" size={22} strokeWidth={2} color="var(--terracotta)" /></span>
-              <div><div className="about-card__value">v2.0</div><div className="about-card__label">Version</div></div>
-            </div>
-          </div>
-          <div className="about-stack-github-row">
+          )}
+          <div className="about-stack-github-row" style={{ marginTop: 20 }}>
             <a className="about-github-btn" href="https://github.com/kavyasomala/Hearth" target="_blank" rel="noopener noreferrer">
               <svg className="about-github-btn__icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
               View on GitHub
