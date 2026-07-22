@@ -1,18 +1,23 @@
-/**
- * Hearth API — server.js
+﻿/**
+ * Hearth API â€” server.js
  *
  * Architecture:
- *  - PostgreSQL (Supabase) via pg Pool — persistent, no sync needed
- *  - JWT auth, 30-day tokens
- *  - Passwords plaintext (private family app, not public SaaS yet)
+ *  - PostgreSQL (Supabase) via pg Pool
+ *  - Auth via Supabase Auth (tokens verified with supabaseAdmin.auth.getUser)
  */
 
 const express    = require('express');
 const cors       = require('cors');
-const jwt        = require('jsonwebtoken');
 const crypto     = require('crypto');
 const { Pool }   = require('pg');
+const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
+
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SECRET_KEY,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+);
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -20,23 +25,22 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({ origin: 'https://hearth-z2lo.onrender.com' }));
 app.use(express.json());
 
-// ─── Database ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Database â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 const q    = (sql, params) => pool.query(sql, params);
 const uuid = () => crypto.randomUUID();
 
-// ─── Schema ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Schema â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function initDB() {
-  // ── Tables ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Tables â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const tables = [
     `CREATE TABLE IF NOT EXISTS users (
       id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       username      TEXT UNIQUE NOT NULL,
       display_name  TEXT,
       email         TEXT UNIQUE,
-      password_hash TEXT NOT NULL,
       avatar_url    TEXT,
       role          TEXT NOT NULL DEFAULT 'guest'
                       CHECK (role IN ('admin','guest','suspended')),
@@ -161,7 +165,7 @@ async function initDB() {
 
   for (const sql of tables) await q(sql);
 
-  // ── Trigger functions ────────────────────────────────────────────────────────
+  // â”€â”€ Trigger functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   await q(`
     CREATE OR REPLACE FUNCTION set_updated_at()
     RETURNS TRIGGER LANGUAGE plpgsql AS $$
@@ -183,7 +187,7 @@ async function initDB() {
     $$
   `);
 
-  // ── Triggers ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Triggers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const triggers = [
     `DROP TRIGGER IF EXISTS trg_recipes_updated_at    ON recipes`,
     `CREATE TRIGGER trg_recipes_updated_at
@@ -207,18 +211,18 @@ async function initDB() {
   ];
   for (const sql of triggers) await q(sql);
 
-  // ── Indexes ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Indexes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const indexes = [
-    // Recipe children — most queried FKs
+    // Recipe children â€” most queried FKs
     `CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe ON recipe_ingredients(recipe_id)`,
     `CREATE INDEX IF NOT EXISTS idx_recipe_steps_recipe       ON recipe_steps(recipe_id)`,
     `CREATE INDEX IF NOT EXISTS idx_recipe_notes_recipe       ON recipe_notes(recipe_id)`,
 
-    // Cookbook join table — both directions
+    // Cookbook join table â€” both directions
     `CREATE INDEX IF NOT EXISTS idx_cookbook_recipes_cookbook ON cookbook_recipes(cookbook_id)`,
     `CREATE INDEX IF NOT EXISTS idx_cookbook_recipes_recipe   ON cookbook_recipes(recipe_id)`,
 
-    // User data — always filtered by user
+    // User data â€” always filtered by user
     `CREATE INDEX IF NOT EXISTS idx_user_favorites_user  ON user_favorites(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_user_make_soon_user  ON user_make_soon(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_user_kitchen_user    ON user_kitchen(user_id)`,
@@ -230,7 +234,7 @@ async function initDB() {
     `CREATE INDEX IF NOT EXISTS idx_recipes_time         ON recipes(time_minutes)`,
     `CREATE INDEX IF NOT EXISTS idx_recipes_created_at   ON recipes(created_at DESC)`,
 
-    // GIN indexes — full-text search and tag filtering
+    // GIN indexes â€” full-text search and tag filtering
     `CREATE INDEX IF NOT EXISTS idx_recipes_search_vector ON recipes USING GIN(search_vector)`,
     `CREATE INDEX IF NOT EXISTS idx_recipes_tags          ON recipes USING GIN(tags)`,
   ];
@@ -240,13 +244,16 @@ async function initDB() {
   await q(`ALTER TABLE recipes DROP CONSTRAINT IF EXISTS recipes_status_check`);
   await q(`ALTER TABLE recipes ADD CONSTRAINT recipes_status_check CHECK (status IN ('to try','made it','needs tweaking','archived'))`);
 
-  console.log('🗄️  Database ready (12 tables, indexes, triggers)');
+  // Migrate users: drop password_hash (Supabase Auth manages credentials now)
+  await q(`ALTER TABLE users DROP COLUMN IF EXISTS password_hash`);
+
+  console.log('ðŸ—„ï¸  Database ready (12 tables, indexes, triggers)');
 }
 
-// ─── Grocery Category Mapping ─────────────────────────────────────────────────
+// â”€â”€â”€ Grocery Category Mapping â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CATEGORY_MAP = {
-  produce:       ['onion','garlic','ginger','tomato','tomatoes','lemon','lime','spinach','carrot','carrots','celery','potato','potatoes','bell pepper','cucumber','zucchini','broccoli','cauliflower','mushroom','mushrooms','avocado','lettuce','kale','cabbage','spring onion','scallion','shallot','shallots','chilli','chili','jalapeño','capsicum','leek','asparagus','eggplant','aubergine','sweet potato','pumpkin','butternut squash','beetroot','radish','green beans','peas','corn','coriander','cilantro','parsley','basil','mint','thyme','rosemary','dill','chives','bay leaves','lemongrass','orange','lime leaves','thai basil','apple','banana','mango','berry','berries','strawberry','blueberry','peach','pear','grape','cherry'],
+  produce:       ['onion','garlic','ginger','tomato','tomatoes','lemon','lime','spinach','carrot','carrots','celery','potato','potatoes','bell pepper','cucumber','zucchini','broccoli','cauliflower','mushroom','mushrooms','avocado','lettuce','kale','cabbage','spring onion','scallion','shallot','shallots','chilli','chili','jalapeÃ±o','capsicum','leek','asparagus','eggplant','aubergine','sweet potato','pumpkin','butternut squash','beetroot','radish','green beans','peas','corn','coriander','cilantro','parsley','basil','mint','thyme','rosemary','dill','chives','bay leaves','lemongrass','orange','lime leaves','thai basil','apple','banana','mango','berry','berries','strawberry','blueberry','peach','pear','grape','cherry'],
   'meat & fish': ['chicken','beef','pork','lamb','turkey','duck','bacon','sausage','mince','ground beef','ground pork','steak','salmon','tuna','shrimp','prawns','cod','tilapia','fish','crab','lobster','scallops','mussels','anchovies','ham','pancetta','prosciutto','chorizo','salami','veal','brisket','ribs','meatball','swordfish','trout','halibut','clams','oysters','squid','calamari'],
   dairy:         ['egg','eggs','milk','butter','cream','heavy cream','double cream','sour cream','yogurt','greek yogurt','cheese','parmesan','cheddar','feta','mozzarella','ricotta','cream cheese','brie','gouda','halloumi','creme fraiche','ghee','buttermilk','condensed milk','coconut milk','coconut cream'],
   sauces:        ['soy sauce','fish sauce','oyster sauce','hoisin sauce','worcestershire sauce','hot sauce','sriracha','ketchup','mayonnaise','ranch','caesar dressing','tomato paste','tomato sauce','passata','canned tomatoes','diced tomatoes','peanut butter','tahini','miso','mustard','dijon mustard','bbq sauce','teriyaki sauce','sambal','chilli sauce','aioli','pesto','hummus','vinaigrette','maple syrup','honey'],
@@ -255,14 +262,14 @@ const CATEGORY_MAP = {
   staples:       ['rice','pasta','noodles','flour','bread','breadcrumbs','panko','oats','quinoa','lentils','chickpeas','black beans','kidney beans','cannellini beans','split peas','couscous','polenta','cornmeal','tortilla','wrap','pita','stock','broth','chicken stock','beef stock','vegetable stock','oil','olive oil','sesame oil','vegetable oil','coconut oil','vinegar','balsamic vinegar','rice vinegar','apple cider vinegar','sugar','brown sugar','cornstarch','cornflour','chocolate','cocoa','dried pasta','udon','rice noodles','glass noodles','wonton wrappers','frozen peas','frozen corn','frozen spinach','frozen edamame','frozen berries','ice cream','frozen prawns','frozen shrimp'],
 };
 const CATEGORY_META = {
-  produce:       { emoji: '🥦', order: 1 },
-  'meat & fish': { emoji: '🥩', order: 2 },
-  dairy:         { emoji: '🥛', order: 3 },
-  sauces:        { emoji: '🫙', order: 4 },
-  spices:        { emoji: '🧂', order: 5 },
-  alcohol:       { emoji: '🍷', order: 6 },
-  staples:       { emoji: '🌾', order: 7 },
-  other:         { emoji: '🛒', order: 8 },
+  produce:       { emoji: 'ðŸ¥¦', order: 1 },
+  'meat & fish': { emoji: 'ðŸ¥©', order: 2 },
+  dairy:         { emoji: 'ðŸ¥›', order: 3 },
+  sauces:        { emoji: 'ðŸ«™', order: 4 },
+  spices:        { emoji: 'ðŸ§‚', order: 5 },
+  alcohol:       { emoji: 'ðŸ·', order: 6 },
+  staples:       { emoji: 'ðŸŒ¾', order: 7 },
+  other:         { emoji: 'ðŸ›’', order: 8 },
 };
 
 const KEYWORD_INDEX = new Map();
@@ -275,13 +282,32 @@ function categorise(name) {
   return 'other';
 }
 
-// ─── Auth Middleware ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Auth Middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Not authenticated' });
-  try { req.user = jwt.verify(token, process.env.JWT_SECRET); next(); }
-  catch { return res.status(403).json({ error: 'Invalid or expired token' }); }
+
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !user) return res.status(401).json({ error: 'Invalid or expired token' });
+
+  // Upsert user in our table and return their role in one query
+  const displayName = user.user_metadata?.full_name || user.user_metadata?.name || null;
+  const username    = (user.email || '').split('@')[0];
+  const role        = user.email === process.env.ADMIN_EMAIL ? 'admin' : 'guest';
+
+  const { rows: [dbUser] } = await q(`
+    INSERT INTO users (id, username, display_name, email, role)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (id) DO UPDATE SET
+      email        = EXCLUDED.email,
+      display_name = COALESCE(NULLIF(users.display_name, ''), EXCLUDED.display_name),
+      role         = CASE WHEN $5 = 'admin' THEN 'admin'::text ELSE users.role END
+    RETURNING role, username, display_name, avatar_url
+  `, [user.id, username, displayName, user.email, role]);
+
+  req.user = { id: user.id, email: user.email, role: dbUser?.role || 'guest' };
+  next();
 };
 
 const requireAdmin = (req, res, next) => {
@@ -289,12 +315,12 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// tags and ingredients are native arrays from pg — no JSON.parse needed
+// tags and ingredients are native arrays from pg â€” no JSON.parse needed
 const fmtRecipe = r => ({ ...r, coverImage: r.cover_image_url });
 
-// Returns cookbook.recipes as [{recipeId, name, page, image, tags, addedAt}] —
+// Returns cookbook.recipes as [{recipeId, name, page, image, tags, addedAt}] â€”
 // same shape the frontend CookbooksTab has always expected.
 const COOKBOOK_SELECT = `
   SELECT c.id, c.title, c.author, c.cover_image, c.spine_color, c.notes,
@@ -316,39 +342,7 @@ const COOKBOOK_SELECT = `
 
 const fmtCookbook = r => ({ ...r, coverImage: r.cover_image, spineColor: r.spine_color });
 
-// ─── Auth Routes ──────────────────────────────────────────────────────────────
-
-app.post('/api/auth/register', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username?.trim() || !password) return res.status(400).json({ error: 'Username and password are required' });
-  try {
-    const existing = await q('SELECT id FROM users WHERE username = $1', [username.trim().toLowerCase()]);
-    if (existing.rows[0]) return res.status(409).json({ error: 'Username already taken' });
-    const { rows: [user] } = await q(
-      `INSERT INTO users (username, display_name, password_hash, role)
-       VALUES ($1, $2, $3, 'guest') RETURNING id, username, display_name, role`,
-      [username.trim().toLowerCase(), null, password]
-    );
-    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    res.status(201).json({ token, user });
-  } catch (err) {
-    console.error('register error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username?.trim() || !password) return res.status(400).json({ error: 'Username and password are required' });
-  try {
-    const { rows: [user] } = await q('SELECT * FROM users WHERE username = $1', [username.trim().toLowerCase()]);
-    if (!user)                           return res.status(401).json({ error: 'Invalid username or password' });
-    if (user.role === 'suspended')       return res.status(403).json({ error: 'Your account has been suspended.' });
-    if (password !== user.password_hash) return res.status(401).json({ error: 'Invalid username or password' });
-    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name || null, role: user.role } });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
+// â”€â”€â”€ Auth Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   const { rows: [user] } = await q('SELECT id, username, display_name, role, email, avatar_url FROM users WHERE id = $1', [req.user.id]);
@@ -361,32 +355,30 @@ app.put('/api/user/display-name', authenticateToken, async (req, res) => {
   res.json({ success: true });
 });
 
-// ─── Admin Routes ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Admin Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
-  const { rows } = await q('SELECT id, username, display_name, password_hash AS password, role, email, created_at FROM users ORDER BY created_at ASC');
+  const { rows } = await q('SELECT id, username, display_name, role, email, created_at FROM users ORDER BY created_at ASC');
   res.json({ users: rows });
 });
 
 app.post('/api/auth/create-user', authenticateToken, requireAdmin, async (req, res) => {
-  const { username, password, display_name } = req.body;
-  if (!username?.trim() || !password) return res.status(400).json({ error: 'Username and password are required' });
+  const { username, display_name } = req.body;
+  if (!username?.trim()) return res.status(400).json({ error: 'Email is required' });
   try {
     const existing = await q('SELECT id FROM users WHERE username = $1', [username.trim().toLowerCase()]);
-    if (existing.rows[0]) return res.status(409).json({ error: 'Username already taken' });
-    const { rows: [user] } = await q(
-      `INSERT INTO users (username, display_name, password_hash, role)
-       VALUES ($1, $2, $3, 'guest') RETURNING id, username, display_name, role`,
-      [username.trim().toLowerCase(), display_name?.trim() || null, password]
-    );
-    res.status(201).json({ user });
+    if (existing.rows[0]) return res.status(409).json({ error: 'User already exists' });
+    // Invite via Supabase Auth â€” user gets an email to set their password
+    const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(username.trim());
+    if (error) return res.status(400).json({ error: error.message });
+    res.status(201).json({ user: { id: data.user.id, email: data.user.email } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+
 app.put('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
-  const { role, password } = req.body;
-  if (role     !== undefined) await q('UPDATE users SET role = $1 WHERE id = $2',          [role, req.params.id]);
-  if (password !== undefined) await q('UPDATE users SET password_hash = $1 WHERE id = $2', [password, req.params.id]);
+  const { role } = req.body;
+  if (role !== undefined) await q('UPDATE users SET role = $1 WHERE id = $2', [role, req.params.id]);
   const { rows: [user] } = await q('SELECT id, username, display_name, role FROM users WHERE id = $1', [req.params.id]);
   res.json({ user });
 });
@@ -398,7 +390,7 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
   res.json({ deleted: true });
 });
 
-// ─── Recipe URL Import ────────────────────────────────────────────────────────
+// â”€â”€â”€ Recipe URL Import â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function parseIsoDuration(iso) {
   if (!iso) return null;
@@ -448,7 +440,7 @@ function normalizeImport(data, sourceUrl) {
     if (n) servings = parseInt(n[0]);
   }
 
-  // Keep ingredients as raw strings — user reviews in the editor
+  // Keep ingredients as raw strings â€” user reviews in the editor
   const ingredients = (data.recipeIngredient || [])
     .map((raw, i) => ({ _id: `i${i}`, name: String(raw).trim(), amount: '', unit: '', prep_note: '', optional: false, group_label: '' }))
     .filter(ing => ing.name);
@@ -507,7 +499,7 @@ app.post('/api/recipes/import-url', authenticateToken, requireAdmin, async (req,
     const html = await resp.text();
     const jsonLd = extractJsonLd(html);
     if (!jsonLd) return res.status(422).json({
-      error: 'No recipe data found on this page. Works best with AllRecipes, NYT Cooking, Serious Eats, Food52, Bon Appétit, and most major recipe sites.',
+      error: 'No recipe data found on this page. Works best with AllRecipes, NYT Cooking, Serious Eats, Food52, Bon AppÃ©tit, and most major recipe sites.',
     });
     res.json({ recipe: normalizeImport(jsonLd, url) });
   } catch (err) {
@@ -516,9 +508,9 @@ app.post('/api/recipes/import-url', authenticateToken, requireAdmin, async (req,
   }
 });
 
-// ─── Recipes ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Recipes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// Single query via json_agg — one row per recipe regardless of ingredient count
+// Single query via json_agg â€” one row per recipe regardless of ingredient count
 app.get('/api/recipes', async (req, res) => {
   try {
     const { rows } = await q(`
@@ -624,7 +616,7 @@ app.post('/api/recipes', authenticateToken, requireAdmin, async (req, res) => {
     await client.query('ROLLBACK');
     console.error('POST /api/recipes error:', err);
     // FK violation on created_by means the JWT carries a stale user ID (e.g. after a schema rebuild)
-    if (err.code === '23503') return res.status(401).json({ error: 'Session expired — please log out and log back in.' });
+    if (err.code === '23503') return res.status(401).json({ error: 'Session expired â€” please log out and log back in.' });
     res.status(500).json({ error: err.message });
   } finally { client.release(); }
 });
@@ -709,7 +701,7 @@ app.delete('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res)
   res.json({ deleted: true });
 });
 
-// ─── Cookbooks ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Cookbooks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/cookbooks', async (req, res) => {
   try {
@@ -775,7 +767,7 @@ app.delete('/api/cookbooks/:id', authenticateToken, requireAdmin, async (req, re
   res.json({ ok: true });
 });
 
-// ─── Cooking Notes ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Cooking Notes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/cooking-notes', async (req, res) => {
   try {
@@ -820,7 +812,7 @@ app.delete('/api/cooking-notes/:id', authenticateToken, requireAdmin, async (req
   res.json({ deleted: true });
 });
 
-// ─── User Data ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ User Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/user/favorites', authenticateToken, async (req, res) => {
   const { rows } = await q('SELECT recipe_id FROM user_favorites WHERE user_id = $1 ORDER BY added_at DESC', [req.user.id]);
@@ -910,7 +902,7 @@ app.post('/api/user/cook-log', authenticateToken, async (req, res) => {
   res.json({ entry });
 });
 
-// ─── Grocery List ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Grocery List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.post('/api/grocery-list', async (req, res) => {
   const { recipeIds } = req.body;
@@ -963,7 +955,7 @@ app.post('/api/grocery-list', async (req, res) => {
       .sort((a, b) => (CATEGORY_META[a[0]]?.order??99) - (CATEGORY_META[b[0]]?.order??99))
       .map(([cat, items]) => ({
         name: cat.charAt(0).toUpperCase() + cat.slice(1),
-        emoji: CATEGORY_META[cat]?.emoji ?? '🛒',
+        emoji: CATEGORY_META[cat]?.emoji ?? 'ðŸ›’',
         items: items.sort((a, b) => a.name.localeCompare(b.name)),
       }));
 
@@ -974,7 +966,7 @@ app.post('/api/grocery-list', async (req, res) => {
   }
 });
 
-// ─── Match Recipes ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Match Recipes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.post('/api/match', (req, res) => {
   const { fridgeIngredients, recipes } = req.body;
@@ -995,28 +987,15 @@ app.post('/api/match', (req, res) => {
   res.json({ matched });
 });
 
-// ─── Health Check ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Health Check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
-// ─── Start ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-initDB().then(async () => {
-  const adminPw = process.env.ADMIN_PASSWORD;
-  if (adminPw) {
-    const { rows: [existing] } = await q("SELECT id FROM users WHERE username = 'kavya'");
-    if (existing) {
-      await q("UPDATE users SET password_hash=$1, role='admin' WHERE username='kavya'", [adminPw]);
-      console.log('🔑 Admin password updated from ADMIN_PASSWORD env var');
-    } else {
-      await q(
-        "INSERT INTO users (username,display_name,password_hash,role) VALUES ('kavya','Kavya',$1,'admin')",
-        [adminPw]
-      );
-      console.log('🔑 Admin account created from ADMIN_PASSWORD env var');
-    }
-  }
-  app.listen(PORT, () => console.log(`🍳 Hearth API running on port ${PORT}`));
+initDB().then(() => {
+  // Admin role is granted automatically in authenticateToken when email === ADMIN_EMAIL
+  app.listen(PORT, () => console.log('Hearth API running on port ' + PORT));
 }).catch(err => {
   console.error('Failed to initialize database:', err);
   process.exit(1);
