@@ -247,6 +247,11 @@ async function initDB() {
   // Migrate users: drop password_hash (Supabase Auth manages credentials now)
   await q(`ALTER TABLE users DROP COLUMN IF EXISTS password_hash`);
 
+  // Sharing columns
+  await q(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS share_token TEXT UNIQUE`);
+  await q(`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS source_attribution TEXT`);
+  await q(`CREATE INDEX IF NOT EXISTS idx_recipes_share_token ON recipes(share_token) WHERE share_token IS NOT NULL`);
+
   console.log('ðŸ—„ï¸  Database ready (12 tables, indexes, triggers)');
 }
 
@@ -343,6 +348,15 @@ const COOKBOOK_SELECT = `
   LEFT JOIN recipes r ON r.id = cr.recipe_id`;
 
 const fmtCookbook = r => ({ ...r, coverImage: r.cover_image, spineColor: r.spine_color });
+const SHARE_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const generateShareToken = () => {
+  const bytes = crypto.randomBytes(8);
+  return Array.from(bytes).map(b => SHARE_CHARS[b % 62]).join('');
+};
+
+const escapeHtml = (s) =>
+  String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+
 
 // â”€â”€â”€ Auth Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -1020,6 +1034,159 @@ app.post('/api/match', (req, res) => {
 });
 
 // â”€â”€â”€ Health Check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+
+// --- Sharing -----------------------------------------------------------------
+
+app.put('/api/recipes/:id/visibility', authenticateToken, async (req, res) => {
+  const { visibility } = req.body;
+  if (!['private', 'shareable'].includes(visibility)) return res.status(400).json({ error: 'Invalid visibility' });
+  try {
+    const { rows: [existing] } = await q('SELECT * FROM recipes WHERE id=$1 AND created_by=$2', [req.params.id, req.user.id]);
+    if (!existing) return res.status(404).json({ error: 'Recipe not found' });
+    let shareToken = existing.share_token;
+    if (visibility === 'shareable' && !shareToken) {
+      for (let i = 0; i < 5; i++) {
+        const c = generateShareToken();
+        const { rows } = await q('SELECT id FROM recipes WHERE share_token=$1', [c]);
+        if (!rows.length) { shareToken = c; break; }
+      }
+    }
+    const { rows: [updated] } = await q(
+      'UPDATE recipes SET visibility=$1, share_token=$2 WHERE id=$3 RETURNING *',
+      [visibility, visibility === 'shareable' ? shareToken : existing.share_token, req.params.id]
+    );
+    res.json({ recipe: fmtRecipe(updated), share_token: updated.share_token });
+  } catch (e) { console.error('PUT /visibility:', e); res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/share/:token', async (req, res) => {
+  try {
+    const { rows: [recipe] } = await q(
+      "SELECT r.*, u.display_name AS sharer_name FROM recipes r LEFT JOIN users u ON u.id=r.created_by WHERE r.share_token=$1 AND r.visibility='shareable'",
+      [req.params.token]
+    );
+    if (!recipe) return res.status(404).json({ error: 'Recipe not found or link is no longer active' });
+    const { rows: ings  } = await q('SELECT * FROM recipe_ingredients WHERE recipe_id=$1 ORDER BY order_index', [recipe.id]);
+    const { rows: steps } = await q('SELECT * FROM recipe_steps       WHERE recipe_id=$1 ORDER BY step_number', [recipe.id]);
+    const { rows: notes } = await q('SELECT id, order_index, body_text AS text FROM recipe_notes WHERE recipe_id=$1 ORDER BY order_index', [recipe.id]);
+    res.json({
+      recipe: { ...fmtRecipe(recipe), sharerName: recipe.sharer_name },
+      bodyIngredients: ings.map(i => ({ ...i, optional: Boolean(i.optional) })),
+      instructions: steps, notes,
+    });
+  } catch (e) { console.error('GET /api/share/:token:', e); res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/share/:token/save', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { rows: [src] } = await q(
+      "SELECT r.*, u.display_name AS sharer_name FROM recipes r LEFT JOIN users u ON u.id=r.created_by WHERE r.share_token=$1 AND r.visibility='shareable'",
+      [req.params.token]
+    );
+    if (!src) return res.status(404).json({ error: 'Recipe not found or link is no longer active' });
+    const attribution = src.sharer_name ? `Shared by ${src.sharer_name}` : 'Shared recipe';
+    await client.query('BEGIN');
+    const { rows: [{ id: newId }] } = await client.query(
+      "INSERT INTO recipes (name,cuisine,time_minutes,servings,calories,cover_image_url,status,reference,source_url,tags,created_by,visibility,source_attribution) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'private',$12) RETURNING id",
+      [src.name, src.cuisine, src.time_minutes, src.servings, src.calories, src.cover_image_url, src.status, src.reference, src.source_url, src.tags, req.user.id, attribution]
+    );
+    const { rows: ings } = await q('SELECT * FROM recipe_ingredients WHERE recipe_id=$1 ORDER BY order_index', [src.id]);
+    for (const ing of ings) {
+      await client.query(
+        'INSERT INTO recipe_ingredients (recipe_id,name,amount,unit,prep_note,optional,group_label,order_index) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+        [newId, ing.name, ing.amount, ing.unit, ing.prep_note, ing.optional, ing.group_label, ing.order_index]
+      );
+    }
+    const { rows: steps } = await q('SELECT * FROM recipe_steps WHERE recipe_id=$1 ORDER BY step_number', [src.id]);
+    for (const step of steps) {
+      await client.query(
+        'INSERT INTO recipe_steps (recipe_id,step_number,body_text,timer_seconds,group_label) VALUES ($1,$2,$3,$4,$5)',
+        [newId, step.step_number, step.body_text, step.timer_seconds, step.group_label]
+      );
+    }
+    const { rows: rnotes } = await q('SELECT * FROM recipe_notes WHERE recipe_id=$1 ORDER BY order_index', [src.id]);
+    for (const n of rnotes) {
+      await client.query('INSERT INTO recipe_notes (recipe_id,order_index,body_text) VALUES ($1,$2,$3)', [newId, n.order_index, n.body_text]);
+    }
+    await client.query('COMMIT');
+    const { rows: [saved] } = await q('SELECT * FROM recipes WHERE id=$1', [newId]);
+    res.status(201).json({ recipe: fmtRecipe(saved), id: newId });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('POST /share/:token/save:', e);
+    res.status(500).json({ error: e.message });
+  } finally { client.release(); }
+});
+
+app.get('/r/:token', async (req, res) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'https://hearth-z2lo.onrender.com';
+  const saveUrl = `${frontendUrl}/r/${req.params.token}`;
+  try {
+    const { rows: [recipe] } = await q(
+      "SELECT r.*, u.display_name AS sharer_name FROM recipes r LEFT JOIN users u ON u.id=r.created_by WHERE r.share_token=$1 AND r.visibility='shareable'",
+      [req.params.token]
+    );
+    if (!recipe) {
+      return res.status(404).send(
+        `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Not found - Hearth</title></head>` +
+        `<body style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#faf8f5;margin:0">` +
+        `<div style="text-align:center;color:#6b5c4e;padding:20px"><h2 style="margin-bottom:12px">This recipe link is no longer active.</h2>` +
+        `<a href="${frontendUrl}" style="color:#c65d3b;text-decoration:none;font-weight:600">Open Hearth</a></div></body></html>`
+      );
+    }
+    const sharerName = recipe.sharer_name || 'Someone';
+    const metaParts = [recipe.cuisine, recipe.time_minutes && `${recipe.time_minutes} min`, recipe.servings && `${recipe.servings} servings`].filter(Boolean).join(' · ');
+    const { rows: ings } = await q('SELECT name FROM recipe_ingredients WHERE recipe_id=$1 ORDER BY order_index LIMIT 8', [recipe.id]);
+    const ingText = ings.map(i => i.name).join(', ') + (ings.length >= 8 ? '…' : '');
+    const img = recipe.cover_image_url;
+    const ogImg = img ? `<meta property="og:image" content="${escapeHtml(img)}"/>` : '';
+    const twImg = img ? `<meta name="twitter:image" content="${escapeHtml(img)}"/>` : '';
+    const imgHtml = img ? `<img src="${escapeHtml(img)}" alt="${escapeHtml(recipe.name)}"/>` : '<span>No photo</span>';
+    const metaHtml = metaParts ? `<p class="meta">${escapeHtml(metaParts)}</p>` : '';
+    const ingHtml  = ingText  ? `<p class="ings">${escapeHtml(ingText)}</p>`   : '';
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(
+      `<!DOCTYPE html>\n<html lang="en">\n<head>\n` +
+      `<meta charset="UTF-8"/>\n<meta name="viewport" content="width=device-width,initial-scale=1"/>\n` +
+      `<title>${escapeHtml(recipe.name)} — Hearth</title>\n` +
+      `<meta property="og:type" content="website"/>\n` +
+      `<meta property="og:title" content="${escapeHtml(recipe.name)}"/>\n` +
+      `<meta property="og:description" content="${escapeHtml(sharerName)} shared a recipe with you on Hearth"/>\n` +
+      `<meta property="og:url" content="${escapeHtml(saveUrl)}"/>\n` +
+      `<meta property="og:site_name" content="Hearth"/>\n` +
+      ogImg + `\n` +
+      `<meta name="twitter:card" content="${img ? 'summary_large_image' : 'summary'}"/>\n` +
+      `<meta name="twitter:title" content="${escapeHtml(recipe.name)}"/>\n` +
+      twImg + `\n` +
+      `<style>\n` +
+      `*{box-sizing:border-box;margin:0;padding:0}\n` +
+      `body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#faf8f5;color:#2c1a0e;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px}\n` +
+      `.brand{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;color:#c65d3b;margin:8px 0 24px}\n` +
+      `.card{background:#fff;border-radius:20px;max-width:460px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.10);overflow:hidden}\n` +
+      `.card-img{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:#f0ece6;color:#c4b09a;font-size:13px}\n` +
+      `.card-img img{width:100%;height:100%;object-fit:cover;display:block}\n` +
+      `.card-body{padding:24px}\n` +
+      `.from{font-size:11px;color:#9c8475;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}\n` +
+      `h1{font-size:22px;font-weight:700;line-height:1.2;margin-bottom:6px}\n` +
+      `.meta{font-size:13px;color:#9c8475;margin-bottom:14px}\n` +
+      `.ings{font-size:13px;color:#6b5c4e;line-height:1.6;margin-bottom:24px}\n` +
+      `.btn{display:block;background:#c65d3b;color:#fff;text-align:center;text-decoration:none;font-size:16px;font-weight:600;padding:14px 24px;border-radius:12px;transition:background .15s}\n` +
+      `.btn:hover{background:#b34f31}\n` +
+      `</style>\n</head>\n<body>\n` +
+      `<div class="brand"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402C1 3.738 3.746 2 6.5 2c1.922 0 3.745.839 5.5 2.261C13.755 2.839 15.578 2 17.5 2 20.254 2 23 3.738 23 7.191c0 4.105-5.371 8.863-11 14.402z" fill="#c65d3b"/></svg>Hearth</div>\n` +
+      `<div class="card">\n` +
+      `<div class="card-img">${imgHtml}</div>\n` +
+      `<div class="card-body">\n` +
+      `<div class="from">${escapeHtml(sharerName)} shared a recipe with you</div>\n` +
+      `<h1>${escapeHtml(recipe.name)}</h1>\n` +
+      metaHtml + `\n` + ingHtml + `\n` +
+      `<a href="${escapeHtml(saveUrl)}" class="btn">Save to Hearth &rarr;</a>\n` +
+      `</div>\n</div>\n</body>\n</html>`
+    );
+  } catch (e) { console.error('GET /r/:token:', e); res.status(500).send('Server error'); }
+});
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 

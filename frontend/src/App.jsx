@@ -15,12 +15,13 @@ import GroceryListTab from './tabs/GroceryListTab';
 import CookingNotesTab from './tabs/CookingNotesTab';
 import CookbooksTab, { SiteFooter } from './tabs/CookbooksTab';
 import AddRecipeTab from './tabs/AddRecipeTab';
+import SharedRecipeView from './pages/SharedRecipeView';
 import { supabase } from './supabase';
 
 
 
 
-const LoginModal = () => {
+const LoginModal = ({ onClose }) => {
   const [tab, setTab] = useState('signin');
   // Sign-in fields
   const [email, setEmail] = useState('');
@@ -64,8 +65,9 @@ const LoginModal = () => {
   );
 
   return (
-    <div className="login-overlay">
-      <div className="login-modal">
+    <div className="login-overlay" onClick={onClose || undefined}>
+      <div className="login-modal" onClick={onClose ? e => e.stopPropagation() : undefined}>
+        {onClose && <button className="login-modal__close" onClick={onClose} aria-label="Close">×</button>}
         <div className="login-modal__header">
           <span className="login-modal__flame"><Icon name="flame" size={40} color="var(--terracotta)" strokeWidth={1.5} /></span>
           <div className="login-modal__title">Hearth</div>
@@ -243,6 +245,13 @@ function AppInner() {
       },
     });
   }, []);
+
+  // --- Shared recipe route (/r/:token) ----------------------------------------
+  const [shareToken] = useState(() => {
+    const m = window.location.pathname.match(/^\/r\/([a-zA-Z0-9_-]{4,})/);
+    return m ? m[1] : null;
+  });
+  const [shareLoginOpen, setShareLoginOpen] = useState(false);
 
   // --- Navigation & UI -------------------------------------------------------
   const [view, setViewRaw] = useState('home');
@@ -587,6 +596,21 @@ function AppInner() {
       setSelectedRecipe(data.recipe); setRecipeBodyIngredients(data.bodyIngredients || []); setRecipeInstructions(data.instructions || []); setRecipeNotes(data.notes || []);
     } catch (e) { setError(e.message); } finally { setRecipeLoading(false); }
   };
+
+  if (shareToken) {
+    if (authLoading) return <div className="loading-screen"><div className="loading-spinner" /></div>;
+    return (
+      <div className="app">
+        {!session && shareLoginOpen && <LoginModal onClose={() => setShareLoginOpen(false)} />}
+        <SharedRecipeView
+          token={shareToken}
+          authFetch={authFetch}
+          session={session}
+          onRequestLogin={() => setShareLoginOpen(true)}
+        />
+      </div>
+    );
+  }
 
   if (authLoading || loading) return <div className="loading-screen"><div className="loading-spinner" /><p>Loading your recipes...</p></div>;
 
