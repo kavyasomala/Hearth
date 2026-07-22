@@ -44,6 +44,11 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const [feedbackList, setFeedbackList] = useState(() => LS.get('feedbackReports', []));
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
+  // ── Account deletion ──
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
   const toggleDiet = (d) => setDietaryFilters(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
 
   useEffect(() => {
@@ -207,6 +212,21 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
     setFeedbackText('');
     setFeedbackSubmitted(true);
     setTimeout(() => setFeedbackSubmitted(false), 2500);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirm !== 'DELETE') return;
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      const res = await apiFetch(`${API}/api/user/account`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete account');
+      onLogout();
+    } catch (e) {
+      setDeleteError(e.message);
+      setDeleteLoading(false);
+    }
   };
 
   const FEATURES = [
@@ -613,6 +633,37 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
               <span className="about-stack__badge">PostgreSQL</span>
               <span className="about-stack__badge">Supabase</span>
             </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* ── Delete Account ───────────────────────────────────────── */}
+      <Section icon="trash2" title="Delete Account">
+        <div className="danger-zone">
+          <p className="danger-zone__text">
+            This permanently removes all your recipes, cookbooks, cook history, kitchen inventory, and your account.
+            <strong> There is no undo.</strong>
+          </p>
+          <div className="danger-zone__form">
+            <label className="profile-edit-label">
+              Type <span style={{ fontFamily: 'monospace', background: 'var(--parchment)', padding: '1px 5px', borderRadius: 4 }}>DELETE</span> to confirm
+            </label>
+            <input
+              className="editor-input"
+              value={deleteConfirm}
+              onChange={e => { setDeleteConfirm(e.target.value); setDeleteError(''); }}
+              placeholder="DELETE"
+              autoComplete="off"
+              autoCapitalize="none"
+            />
+            {deleteError && <p className="profile-edit-msg profile-edit-msg--error">{deleteError}</p>}
+            <button
+              className="danger-zone__btn"
+              disabled={deleteConfirm !== 'DELETE' || deleteLoading}
+              onClick={handleDeleteAccount}
+            >
+              {deleteLoading ? 'Deleting...' : 'Delete my account'}
+            </button>
           </div>
         </div>
       </Section>
