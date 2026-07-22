@@ -30,9 +30,7 @@ const LoginModal = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [signupSuccess, setSignupSuccess] = useState(false);
-
-  const switchTab = (t) => { setTab(t); setError(''); setSignupSuccess(false); };
+  const switchTab = (t) => { setTab(t); setError(''); };
 
   const handleSignIn = async () => {
     if (!email.trim() || !password) return setError('Please enter your email and password.');
@@ -53,8 +51,7 @@ const LoginModal = () => {
       password,
       options: { data: { full_name: name.trim() } },
     });
-    if (error) { setError(error.message); setLoading(false); return; }
-    setSignupSuccess(true);
+    if (error) { setError(error.message); }
     setLoading(false);
   };
 
@@ -80,11 +77,7 @@ const LoginModal = () => {
             <button className={`login-modal__tab${tab === 'signup' ? ' login-modal__tab--active' : ''}`} onClick={() => switchTab('signup')}>Create account</button>
           </div>
 
-          {signupSuccess ? (
-            <div className="login-modal__success">
-              Check your email to confirm your account, then sign in.
-            </div>
-          ) : tab === 'signin' ? (
+          {tab === 'signin' ? (
             <>
               {error && <div className="login-modal__error">{error}</div>}
               <div className="login-modal__field">
