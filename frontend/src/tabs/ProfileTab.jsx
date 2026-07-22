@@ -4,29 +4,27 @@ import { API, DIETARY_OPTIONS, THEME_OPTIONS, STAR_LABELS } from '../constants';
 import { haptic, LS, getDaysInMonth, getFirstDayOfMonth, checkDietaryConflicts } from '../utils';
 import { Badge } from '../components/ui';
 
-const AddFriendModal = ({ onClose, onCreated, authFetch }) => {
+const InviteUserModal = ({ onClose, onInvited, authFetch }) => {
   const apiFetch = authFetch || fetch;
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  const handleCreate = async () => {
-    if (!username.trim() || !password) return setError('Username and password required.');
-    setCreating(true); setError('');
+  const handleInvite = async () => {
+    if (!email.trim()) return setError('Email is required.');
+    setSending(true); setError('');
     try {
       const res = await apiFetch(`${API}/api/auth/create-user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim(), password, display_name: displayName.trim() || null }),
+        body: JSON.stringify({ username: email.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
-      onCreated(data.user.username);
+      onInvited(email.trim());
       onClose();
     } catch (e) { setError(e.message); }
-    finally { setCreating(false); }
+    finally { setSending(false); }
   };
 
   return (
@@ -35,38 +33,25 @@ const AddFriendModal = ({ onClose, onCreated, authFetch }) => {
       <div onClick={e => e.stopPropagation()}
         style={{ background: 'var(--warm-white)', borderRadius: 16, padding: '24px 22px', width: '100%', maxWidth: 320, boxShadow: '0 8px 40px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-          <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700, color: 'var(--charcoal)' }}><Icon name="users" size={18} strokeWidth={2} /> Add a Friend</h3>
+          <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 700, color: 'var(--charcoal)' }}><Icon name="users" size={18} strokeWidth={2} /> Invite a Friend</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--warm-gray)', lineHeight: 1, padding: '2px 4px' }}>×</button>
         </div>
         {error && <div style={{ background: '#fff0ee', border: '1px solid #f5c2b8', borderRadius: 8, padding: '7px 10px', fontSize: '0.8rem', color: 'var(--terracotta-dark, #b84a2e)' }}>{error}</div>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--warm-gray)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Username</label>
-          <input className="editor-input" type="text" placeholder="e.g. priya" value={username}
-            onChange={e => setUsername(e.target.value)} autoCapitalize="none" autoFocus
-            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--warm-gray)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Email address</label>
+          <input className="editor-input" type="email" placeholder="friend@example.com" value={email}
+            onChange={e => setEmail(e.target.value)} autoCapitalize="none" autoFocus
+            onKeyDown={e => e.key === 'Enter' && handleInvite()}
             style={{ padding: '8px 10px', fontSize: '0.9rem' }} />
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--warm-gray)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Password</label>
-          <input className="editor-input" type="text" placeholder="Set a password" value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleCreate()}
-            style={{ padding: '8px 10px', fontSize: '0.9rem' }} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-          <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--warm-gray)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Display Name <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '0.7rem' }}>(optional)</span></label>
-          <input className="editor-input" type="text" placeholder="e.g. Priya S." value={displayName}
-            onChange={e => setDisplayName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleCreate()}
-            style={{ padding: '8px 10px', fontSize: '0.9rem' }} />
-        </div>
+        <p style={{ fontSize: '0.78rem', color: 'var(--warm-gray)', margin: 0 }}>They'll receive an email to set their password and join Hearth.</p>
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
           <button onClick={onClose} style={{ flex: 1, padding: '9px', borderRadius: 8, background: 'none', border: '1.5px solid var(--border)', color: 'var(--warm-gray)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
             Cancel
           </button>
-          <button onClick={handleCreate} disabled={creating}
-            style={{ flex: 1, padding: '9px', borderRadius: 8, background: 'var(--terracotta)', color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', opacity: creating ? 0.7 : 1 }}>
-            {creating ? 'Adding...' : 'Create'}
+          <button onClick={handleInvite} disabled={sending}
+            style={{ flex: 1, padding: '9px', borderRadius: 8, background: 'var(--terracotta)', color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', opacity: sending ? 0.7 : 1 }}>
+            {sending ? 'Sending...' : 'Send invite'}
           </button>
         </div>
       </div>
@@ -107,10 +92,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const [usersLoading, setUsersLoading] = useState(false);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [addFriendSuccess, setAddFriendSuccess] = useState('');
-  const [revealedPasswords, setRevealedPasswords] = useState({});
-
   const toggleDiet = (d) => setDietaryFilters(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
-  const toggleReveal = (id) => setRevealedPasswords(p => ({ ...p, [id]: !p[id] }));
 
   useEffect(() => {
     let cancelled = false;
@@ -226,14 +208,22 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   return (
     <main className="view profile-view">
       {showAddFriend && (
-        <AddFriendModal
+        <InviteUserModal
           authFetch={authFetch}
           onClose={() => setShowAddFriend(false)}
-          onCreated={(uname) => { setAddFriendSuccess(`Account created for ${uname} ✓`); loadUsers(); setTimeout(() => setAddFriendSuccess(''), 4000); }}
+          onInvited={(email) => { setAddFriendSuccess(`Invite sent to ${email}`); loadUsers(); setTimeout(() => setAddFriendSuccess(''), 4000); }}
         />
       )}
       {/* -- User header -- */}
       <div className="profile-header">
+        {/* Avatar */}
+        {authUser?.avatar_url ? (
+          <img src={authUser.avatar_url} alt="Avatar" className="profile-avatar" referrerPolicy="no-referrer" />
+        ) : (
+          <div className="profile-avatar profile-avatar--initial">
+            {(authUser?.display_name || authUser?.username || '?')[0].toUpperCase()}
+          </div>
+        )}
         <div style={{ flex: 1 }}>
           {editingDisplayName ? (
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -482,15 +472,9 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                             </div>
                           )}
                         </div>
-                        {/* Password row */}
-                        <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--warm-white)', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--warm-gray)', flexShrink: 0 }}>Password:</span>
-                          <span style={{ fontSize: '0.82rem', fontFamily: 'monospace', flex: 1, minWidth: 60, color: revealedPasswords[u.id] ? 'var(--charcoal)' : 'transparent', textShadow: revealedPasswords[u.id] ? 'none' : '0 0 6px rgba(0,0,0,0.35)', userSelect: revealedPasswords[u.id] ? 'text' : 'none', transition: 'all 0.2s' }}>
-                            {u.password || '--'}
-                          </span>
-                          <button onClick={() => toggleReveal(u.id)} style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: 999, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', color: 'var(--warm-gray)', flexShrink: 0 }}>
-                            {revealedPasswords[u.id] ? 'Hide' : 'Reveal'}
-                          </button>
+                        {/* Email row */}
+                        <div style={{ borderTop: '1px solid var(--border)', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 6, background: 'var(--warm-white)' }}>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--warm-gray)' }}>{u.email || '—'}</span>
                         </div>
                       </div>
                     ))}
