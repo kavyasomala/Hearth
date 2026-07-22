@@ -3848,6 +3848,107 @@ body {
 /* ─── Profile Tab ────────────────────────────────────────────────────────── */
 .profile-view { padding-bottom: 64px; }
 
+/* ─── Profile Hero ────────────────────────────────────────── */
+.profile-hero {
+  padding: 28px 0 20px;
+  border-bottom: 1.5px solid var(--border);
+  margin-bottom: 0;
+}
+.profile-hero__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.profile-hero__name {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--charcoal);
+  margin: 0;
+}
+.profile-hero__badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--terracotta);
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 8px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.profile-hero__email {
+  font-size: 0.82rem;
+  color: var(--warm-gray);
+  margin: 3px 0 0;
+}
+.profile-signout-btn {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--warm-gray);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color var(--transition), color var(--transition);
+}
+.profile-signout-btn:hover { border-color: var(--warm-gray); color: var(--charcoal); }
+
+/* ─── Stats Row ───────────────────────────────────────────── */
+.profile-stats-row {
+  display: flex;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1.5px solid var(--border);
+  margin-bottom: 0;
+}
+.profile-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.profile-stat__num {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--charcoal);
+  line-height: 1;
+}
+.profile-stat__label {
+  font-size: 0.72rem;
+  color: var(--warm-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.profile-stat-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* ─── Quick Bar ───────────────────────────────────────────── */
+.profile-quick-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1.5px solid var(--border);
+  margin-bottom: 0;
+}
+.profile-quick-bar__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--charcoal);
+}
+
+/* ─── Legacy profile-header (kept for backward compat) ───── */
 .profile-header {
   display: flex; align-items: center; gap: 16px;
   padding: 28px 0 20px;
@@ -3865,6 +3966,7 @@ body {
   object-fit: cover; border: 2px solid var(--border);
   flex-shrink: 0;
 }
+.profile-avatar--lg { width: 72px; height: 72px; font-size: 28px; }
 .profile-avatar--initial {
   background: var(--terracotta); color: #fff;
   display: flex; align-items: center; justify-content: center;
