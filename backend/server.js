@@ -366,6 +366,27 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
   res.json({ success: true });
 });
 
+app.delete('/api/user/account', authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // recipes.created_by is ON DELETE SET NULL, so delete before user row
+    await client.query('DELETE FROM recipes   WHERE created_by = $1', [req.user.id]);
+    await client.query('DELETE FROM cookbooks WHERE created_by = $1', [req.user.id]);
+    // CASCADE handles kitchen, favorites, make_soon, cook_log
+    await client.query('DELETE FROM users     WHERE id         = $1', [req.user.id]);
+    await client.query('COMMIT');
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(req.user.id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
 // â”€â”€â”€ Admin Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
