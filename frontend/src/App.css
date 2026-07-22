@@ -9419,3 +9419,136 @@ html, body {
 /* dark mode */
 [data-theme="dark"] .shared-view { background: var(--parchment); }
 [data-theme="dark"] .shared-view__meta span { background: var(--card-bg); border-color: var(--divider); }
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   KitchenTab pill redesign — replaces the old kpill__drag / kpill__label /
+   kpill__delete approach with a drag-the-text + hidden × pattern
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.kpill {
+  display: inline-flex !important;
+  align-items: stretch !important;
+  border-radius: 100px !important;
+  border: 1.5px solid var(--border) !important;
+  background: transparent !important;
+  overflow: hidden !important;
+  user-select: none;
+  transition: border-color .15s, background .15s;
+  position: relative;
+  vertical-align: middle;
+}
+.kpill:hover { border-color: var(--terracotta) !important; }
+.kpill--active {
+  background: var(--terracotta) !important;
+  border-color: var(--terracotta) !important;
+}
+
+/* The drag-and-toggle zone — entire text area is the handle */
+.kpill__toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px 5px 11px;
+  background: none;
+  border: none;
+  cursor: grab;
+  font-size: 0.83rem;
+  font-family: var(--font-body);
+  color: var(--charcoal);
+  white-space: nowrap;
+  touch-action: none;
+  line-height: 1.15;
+  transition: color .12s;
+}
+.kpill__toggle:active { cursor: grabbing; }
+.kpill--active .kpill__toggle { color: #fff; }
+.kpill:not(.kpill--active):hover .kpill__toggle { color: var(--terracotta); }
+
+.kpill__check-mark {
+  font-size: 0.68rem;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+/* × remove — zero-width by default, slides in on hover */
+.kpill__rm {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: var(--warm-gray);
+  padding: 0;
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: width .15s ease, opacity .12s, padding .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.kpill:hover .kpill__rm {
+  width: 20px;
+  opacity: 0.45;
+  padding: 4px 3px;
+}
+.kpill:hover .kpill__rm:hover { opacity: 1; color: var(--terracotta); }
+.kpill--active .kpill__rm { color: rgba(255,255,255,0.65); }
+.kpill--active:hover .kpill__rm:hover { color: #fff; opacity: 1; }
+
+/* Inline rename mode — double-click any fridge pill to rename */
+.kpill--editing {
+  display: inline-flex !important;
+  align-items: center !important;
+  border-radius: 100px !important;
+  border: 1.5px solid var(--terracotta) !important;
+  background: transparent !important;
+  overflow: hidden;
+}
+.kpill__edit-input {
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 0.83rem;
+  font-family: var(--font-body);
+  color: var(--charcoal);
+  padding: 5px 11px;
+  min-width: 40px;
+}
+
+.kpill--dragging { opacity: 0.25 !important; }
+
+/* Ghost that follows the cursor during drag */
+.kpill--drag-overlay {
+  background: var(--terracotta) !important;
+  border-color: var(--terracotta) !important;
+  pointer-events: none;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+}
+.kpill--drag-overlay .kpill__toggle {
+  color: #fff;
+  cursor: grabbing;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Tab header normalization — unified size and alignment across all tabs
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.kitchen-title,
+.fridge-title,
+.cookbooks-title,
+.cn-tab__title,
+.add-tab__title { font-size: 22px !important; }
+
+/* Add-recipe header was center-aligned; match the left-aligned tabs */
+.add-tab__header { text-align: left !important; }
+
+@media (max-width: 600px) {
+  .kitchen-title,
+  .fridge-title,
+  .cookbooks-title,
+  .cn-tab__title,
+  .add-tab__title { font-size: 19px !important; }
+}

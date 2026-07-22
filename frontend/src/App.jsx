@@ -729,7 +729,7 @@ function AppInner() {
               { key: 'grocery',   label: 'Grocery'      },
               { key: 'cookbooks', label: 'Cookbooks'    },
               { key: 'notes',     label: 'Notes'        },
-              ...(isAdmin ? [{ key: 'add', label: 'Add' }] : []),
+              ...(session ? [{ key: 'add', label: 'Add' }] : []),
             ].map(({ key, label }) => (
               <button key={key} className={`nav-tab ${view === key ? 'nav-tab--active' : ''}`} onClick={() => setView(key)} disabled={key === 'recipes' && recipes.length === 0}>
                 {label}
@@ -769,7 +769,7 @@ function AppInner() {
                 { key: 'grocery',   label: 'Grocery',   icon: 'cart'      },
                 { key: 'cookbooks', label: 'Cookbooks', icon: 'bookMarked'},
                 { key: 'notes',     label: 'Notes',     icon: 'lightbulb' },
-                ...(isAdmin ? [{ key: 'add', label: 'Add Recipe', icon: 'plus' }] : []),
+                ...(session ? [{ key: 'add', label: 'Add Recipe', icon: 'plus' }] : []),
               ].map(({ key, label, icon }) => (
                 <button key={key}
                   className={`mobile-nav-item ${view === key ? 'mobile-nav-item--active' : ''}`}
@@ -845,7 +845,7 @@ function AppInner() {
           cookbooks={cookbooks}
           dietaryFilters={dietaryFilters}
           authFetch={authFetch}
-          isAdmin={isAdmin}
+          isAdmin={isAdmin || !!(authUser && selectedRecipe?.created_by === authUser.id)}
           onMarkCooked={(recipeId, toRemove) => {
             setMakeSoonIds(prev => prev.filter(id => id !== recipeId));
             if (toRemove?.length) {
@@ -1357,6 +1357,7 @@ function AppInner() {
           cookLog={cookLog}
           onRecipeConverted={(newRecipe) => { loadData(); openRecipe(newRecipe); }}
           isAdmin={isAdmin}
+          session={session}
         />
       )}
 

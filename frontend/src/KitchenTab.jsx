@@ -37,10 +37,11 @@ const FRIDGE_KEY  = 'hearth_fridge_config';
 function StaplePill({ item, active, onToggle, onDelete }) {
   return (
     <span className={`kpill ${active ? 'kpill--active' : ''}`}>
-      <button className="kpill__label" onClick={onToggle}>
-        {active && <span className="kpill__check">✓ </span>}{item}
+      <button className="kpill__toggle" onClick={onToggle}>
+        {active && <span className="kpill__check-mark">✓</span>}
+        {item}
       </button>
-      <button className="kpill__delete" onClick={onDelete} title="Remove from list">×</button>
+      <button className="kpill__rm" onPointerDown={e => e.stopPropagation()} onClick={onDelete} title="Remove from list">✕</button>
     </span>
   );
 }
@@ -119,31 +120,66 @@ function UncategorizedGroup({ items, groupLabels, onAssign }) {
 
 // ─── DraggablePill — a fridge suggestion pill that can be dragged ─────────────
 
-function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete }) {
+function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete, onEdit }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id,
     data: { item, fromGroup: groupLabel },
   });
+  const [editing, setEditing] = useState(false);
+  const [editVal, setEditVal] = useState(item);
+
+  const commitEdit = () => {
+    const v = editVal.trim().toLowerCase();
+    if (v && v !== item) onEdit(groupLabel, item, v);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <span className="kpill kpill--editing">
+        <input
+          autoFocus
+          className="kpill__edit-input"
+          value={editVal}
+          onChange={e => setEditVal(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(false); }}
+          onBlur={commitEdit}
+          size={Math.max(item.length, editVal.length) + 2}
+        />
+      </span>
+    );
+  }
 
   return (
     <span
       ref={setNodeRef}
       className={`kpill ${active ? 'kpill--active' : ''} ${isDragging ? 'kpill--dragging' : ''}`}
-      style={{ opacity: isDragging ? 0.4 : 1, touchAction: 'none' }}
+      style={{ opacity: isDragging ? 0.25 : 1, touchAction: 'none' }}
+      onDoubleClick={() => { setEditing(true); setEditVal(item); }}
     >
-      {/* Drag handle — grab icon */}
-      <span className="kpill__drag" {...listeners} {...attributes} title="Drag to move">⠿</span>
-      <button className="kpill__label" onClick={onToggle}>
-        {active && <span className="kpill__check">✓ </span>}{item}
+      <button
+        className="kpill__toggle"
+        {...listeners}
+        {...attributes}
+        onClick={() => { navigator.vibrate?.(3); onToggle(); }}
+      >
+        {active && <span className="kpill__check-mark">✓</span>}
+        {item}
       </button>
-      <button className="kpill__delete" onClick={onDelete} title="Remove suggestion">×</button>
+      <button
+        className="kpill__rm"
+        tabIndex={-1}
+        onPointerDown={e => e.stopPropagation()}
+        onClick={e => { e.stopPropagation(); onDelete(); }}
+        title="Remove"
+      >✕</button>
     </span>
   );
 }
 
 // ─── DroppableGroup — a fridge suggestion group that accepts drops ────────────
 
-function DroppableGroup({ group, fridgeSet, onToggle, onDelete, onAdd, isOver }) {
+function DroppableGroup({ group, fridgeSet, onToggle, onDelete, onAdd, onEdit, isOver }) {
   const { setNodeRef } = useDroppable({ id: group.label });
   const [showInput, setShowInput] = useState(false);
   const [input, setInput]         = useState('');
@@ -172,6 +208,7 @@ function DroppableGroup({ group, fridgeSet, onToggle, onDelete, onAdd, isOver })
             active={fridgeSet.has(item)}
             onToggle={() => onToggle(item)}
             onDelete={() => onDelete(group.label, item)}
+            onEdit={onEdit}
           />
         ))}
         {showInput ? (
@@ -278,6 +315,15 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
       g.label === groupLabel && !g.items.includes(lower) ? { ...g, items: [...g.items, lower] } : g
     ));
   }, [updateFridge]);
+
+  const editFridgeSuggestion = useCallback((groupLabel, oldItem, newItem) => {
+    const lower = newItem.toLowerCase().trim();
+    if (!lower || lower === oldItem) return;
+    updateFridge(prev => prev.map(g =>
+      g.label === groupLabel ? { ...g, items: g.items.map(i => i === oldItem ? lower : i) } : g
+    ));
+    setFridgeIngredients(prev => prev.map(x => x === oldItem ? lower : x));
+  }, [updateFridge, setFridgeIngredients]);
 
   const toggleFridge = useCallback(item => {
     const lower = item.toLowerCase().trim();
@@ -453,6 +499,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
                   onToggle={toggleFridge}
                   onDelete={deleteFridgeSuggestion}
                   onAdd={addFridgeSuggestion}
+                  onEdit={editFridgeSuggestion}
                   isOver={overGroupId === group.label}
                 />
               ))}
@@ -460,7 +507,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
             <DragOverlay>
               {activeDragId && (() => {
                 const item = activeDragId.split('::')[1];
-                return <span className="kpill kpill--drag-overlay"><span className="kpill__label">{item}</span></span>;
+                return <span className="kpill kpill--drag-overlay"><span className="kpill__toggle">{item}</span></span>;
               })()}
             </DragOverlay>
           </DndContext>
