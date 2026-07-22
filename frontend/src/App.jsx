@@ -15,29 +15,38 @@ import GroceryListTab from './tabs/GroceryListTab';
 import CookingNotesTab from './tabs/CookingNotesTab';
 import CookbooksTab, { SiteFooter } from './tabs/CookbooksTab';
 import AddRecipeTab from './tabs/AddRecipeTab';
+import { supabase } from './supabase';
 
 
 
 
-const LoginModal = ({ onLogin }) => {
-  const [username, setUsername] = useState('');
+const LoginModal = () => {
+  const [tab, setTab] = useState('signin');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!username.trim() || !password) return setError('Please enter your username and password.');
+  const handleSignIn = async () => {
+    if (!email.trim() || !password) return setError('Please enter your email and password.');
     setLoading(true); setError('');
-    try {
-      const res = await fetch(`${API}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim(), password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
-      onLogin(data.token, data.user);
-    } catch (e) { setError(e.message); } finally { setLoading(false); }
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (error) setError(error.message);
+    setLoading(false);
+  };
+
+  const handleSignUp = async () => {
+    if (!email.trim() || !password) return setError('Please enter your email and password.');
+    setLoading(true); setError('');
+    const { error } = await supabase.auth.signUp({ email: email.trim(), password });
+    if (error) { setError(error.message); setLoading(false); return; }
+    setSignupSuccess(true);
+    setLoading(false);
+  };
+
+  const handleGoogle = () => {
+    supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
   };
 
   return (
@@ -46,37 +55,52 @@ const LoginModal = ({ onLogin }) => {
         <div className="login-modal__header">
           <span className="login-modal__flame"><Icon name="flame" size={40} color="var(--terracotta)" strokeWidth={1.5} /></span>
           <div className="login-modal__title">Hearth</div>
-          <div className="login-modal__subtitle">Sign in to continue</div>
+          <div className="login-modal__subtitle">Your personal recipe kitchen</div>
         </div>
         <div className="login-modal__body">
-          {error && <div className="login-modal__error">{error}</div>}
-          <div className="login-modal__field">
-            <label className="login-modal__label">Username</label>
-            <input
-              className="login-modal__input"
-              type="text"
-              placeholder="e.g. kavya"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-              autoFocus
-              autoCapitalize="none"
-            />
+          <div className="login-modal__tabs">
+            <button className={`login-modal__tab${tab === 'signin' ? ' login-modal__tab--active' : ''}`} onClick={() => { setTab('signin'); setError(''); setSignupSuccess(false); }}>Sign in</button>
+            <button className={`login-modal__tab${tab === 'signup' ? ' login-modal__tab--active' : ''}`} onClick={() => { setTab('signup'); setError(''); setSignupSuccess(false); }}>Create account</button>
           </div>
-          <div className="login-modal__field">
-            <label className="login-modal__label">Password</label>
-            <input
-              className="login-modal__input"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-            />
-          </div>
-          <button className="login-modal__btn" onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
+          {signupSuccess ? (
+            <div className="login-modal__success">Check your email to confirm your account, then sign in.</div>
+          ) : (
+            <>
+              {error && <div className="login-modal__error">{error}</div>}
+              <div className="login-modal__field">
+                <label className="login-modal__label">Email</label>
+                <input
+                  className="login-modal__input"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (tab === 'signin' ? handleSignIn() : handleSignUp())}
+                  autoFocus
+                  autoCapitalize="none"
+                />
+              </div>
+              <div className="login-modal__field">
+                <label className="login-modal__label">Password</label>
+                <input
+                  className="login-modal__input"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (tab === 'signin' ? handleSignIn() : handleSignUp())}
+                />
+              </div>
+              <button className="login-modal__btn" onClick={tab === 'signin' ? handleSignIn : handleSignUp} disabled={loading}>
+                {loading ? (tab === 'signin' ? 'Signing in...' : 'Creating account...') : (tab === 'signin' ? 'Sign in' : 'Create account')}
+              </button>
+              <div className="login-modal__divider"><span>or</span></div>
+              <button className="login-modal__google-btn" onClick={handleGoogle}>
+                <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/><path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+                Continue with Google
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -85,25 +109,24 @@ const LoginModal = ({ onLogin }) => {
 
 // --- Create User Modal (admin only) ------------------------------------------
 const CreateUserModal = ({ onClose, authFetch }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const handleCreate = async () => {
-    if (!username.trim() || !password) return setError('Username and password are required.');
+    if (!email.trim()) return setError('Email is required.');
     setLoading(true); setError(''); setSuccess('');
     try {
       const res = await authFetch(`${API}/api/auth/create-user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.trim(), password }),
+        body: JSON.stringify({ username: email.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to create user');
-      setSuccess(`Account created for ${data.user.username} ✓`);
-      setUsername(''); setPassword('');
+      if (!res.ok) throw new Error(data.error || 'Failed to send invite');
+      setSuccess(`Invite sent to ${email.trim()}`);
+      setEmail('');
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   };
 
@@ -111,22 +134,18 @@ const CreateUserModal = ({ onClose, authFetch }) => {
     <div className="login-overlay" onClick={onClose}>
       <div className="create-user-modal" onClick={e => e.stopPropagation()}>
         <div className="create-user-modal__header">
-          <span className="create-user-modal__title"><Icon name="userCircle" size={18} strokeWidth={2} /> Create Account</span>
+          <span className="create-user-modal__title"><Icon name="userCircle" size={18} strokeWidth={2} /> Invite User</span>
           <button className="ing-modal__close" onClick={onClose}>✕</button>
         </div>
         <div className="login-modal__body">
           {error && <div className="login-modal__error">{error}</div>}
           {success && <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px', fontSize: '0.85rem', color: '#166534' }}>{success}</div>}
           <div className="login-modal__field">
-            <label className="login-modal__label">Username</label>
-            <input className="login-modal__input" type="text" placeholder="e.g. PriyaK" value={username} onChange={e => setUsername(e.target.value)} autoCapitalize="none" />
-          </div>
-          <div className="login-modal__field">
-            <label className="login-modal__label">Password</label>
-            <input className="login-modal__input" type="password" placeholder="Set a password for them" value={password} onChange={e => setPassword(e.target.value)} />
+            <label className="login-modal__label">Email address</label>
+            <input className="login-modal__input" type="email" placeholder="friend@example.com" value={email} onChange={e => setEmail(e.target.value)} autoCapitalize="none" />
           </div>
           <button className="login-modal__btn" onClick={handleCreate} disabled={loading}>
-            {loading ? 'Creating...' : 'Create Account'}
+            {loading ? 'Sending invite...' : 'Send invite'}
           </button>
         </div>
       </div>
@@ -138,43 +157,54 @@ const CreateUserModal = ({ onClose, authFetch }) => {
 // ─── Main App ────────────────────────────────────────────────────────────────
 function AppInner() {
   // --- Auth ------------------------------------------------------------------
-  const [authToken, setAuthToken] = useState(() => LS.get('authToken', null));
-  const [authUser, setAuthUser]   = useState(() => LS.get('authUser', null));
-  const [showLogin, setShowLogin] = useState(false);
+  const [session, setSession] = useState(null);
+  const [authUser, setAuthUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  // loading lives here so the auth effect can clear it when there's no session
+  const [loading, setLoading] = useState(true);
   const isAdmin = authUser?.role === 'admin';
 
-  // Show login gate if no token
+  // Derived token — keeps all existing authToken checks working
+  const authToken = session?.access_token || null;
+
   useEffect(() => {
-    if (!authToken) setShowLogin(true);
-    else setShowLogin(false);
-  }, [authToken]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (!session) setLoading(false);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (!session) { setAuthUser(null); setLoading(false); }
+      setAuthLoading(false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
-  const handleLogin = (token, user) => {
-    LS.set('authToken', token);
-    LS.set('authUser', user);
-    setAuthToken(token);
-    setAuthUser(user);
-    setShowLogin(false);
-  };
+  // Fetch role + display name from our DB once per login
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const token = session.access_token;
+    fetch(`${API}/api/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => { if (data.user) setAuthUser(data.user); })
+      .catch(() => {});
+  }, [session?.user?.id]); // eslint-disable-line
 
-  const handleLogout = () => {
-    LS.set('authToken', null);
-    LS.set('authUser', null);
-    setAuthToken(null);
-    setAuthUser(null);
-    setShowLogin(true);
-  };
+  const handleLogout = () => supabase.auth.signOut();
 
-  // Authenticated fetch wrapper -- adds Bearer token automatically
-  const authFetch = useCallback((url, opts = {}) => {
+  // Authenticated fetch wrapper — always grabs a fresh token from Supabase
+  const authFetch = useCallback(async (url, opts = {}) => {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    const token = s?.access_token;
     return fetch(url, {
       ...opts,
       headers: {
         ...(opts.headers || {}),
-        ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
     });
-  }, [authToken]);
+  }, []);
 
   // --- Navigation & UI -------------------------------------------------------
   const [view, setViewRaw] = useState('home');
@@ -285,7 +315,6 @@ function AppInner() {
   const [recipeInstructions, setRecipeInstructions] = useState([]);
   const [recipeNotes, setRecipeNotes] = useState([]);
   const [recipeLoading, setRecipeLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // --- Library Filters -------------------------------------------------------
   const [librarySearch, setLibrarySearch] = useState('');
@@ -413,7 +442,7 @@ function AppInner() {
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }, [authToken, authFetch]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { if (!authLoading) loadData(); }, [loadData, authLoading]); // eslint-disable-line
 
   const allMyIngredients = useMemo(() => new Set([...fridgeIngredients, ...pantryStaples].map(i => i.toLowerCase().trim())), [fridgeIngredients, pantryStaples]);
 
@@ -521,7 +550,7 @@ function AppInner() {
     } catch (e) { setError(e.message); } finally { setRecipeLoading(false); }
   };
 
-  if (loading) return <div className="loading-screen"><div className="loading-spinner" /><p>Loading your recipes...</p></div>;
+  if (authLoading || loading) return <div className="loading-screen"><div className="loading-spinner" /><p>Loading your recipes...</p></div>;
 
   if (error) return (
     <div className="error-screen">
@@ -535,7 +564,7 @@ function AppInner() {
 
   return (
     <div className="app">
-      {showLogin && <LoginModal onLogin={handleLogin} />}
+      {!session && <LoginModal />}
       {/* app__scroll wraps everything EXCEPT the tab bar so keyboard never moves the bar */}
       <div className="app__scroll" ref={appScrollRef}>
       <header className="app-header">
