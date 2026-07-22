@@ -3851,7 +3851,6 @@ body {
 /* ─── Profile Hero ────────────────────────────────────────── */
 .profile-hero {
   padding: 24px 0 20px;
-  border-bottom: 1.5px solid var(--border);
   margin-bottom: 0;
 }
 .profile-hero__main {
@@ -8920,3 +8919,99 @@ html, body {
 .feedback-item__date { font-size: 0.7rem; color: var(--warm-gray); margin: 2px 0 0; }
 [data-theme="dark"] .feedback-form { background: var(--warm-white); }
 [data-theme="dark"] .feedback-textarea { background: var(--cream); }
+
+/* ─── Profile hero edit button ───────────────────────────────────────────── */
+.profile-hero__edit-btn {
+  background: none;
+  border: none;
+  color: var(--warm-gray);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 5px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: color var(--transition), background var(--transition);
+}
+.profile-hero__edit-btn:hover { color: var(--terracotta); background: var(--parchment); }
+
+/* ─── Dark mode compact toggle ───────────────────────────────────────────── */
+.profile-dark-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  justify-content: flex-end;
+}
+.dark-mode-toggle__btn--compact .dark-mode-toggle__track {
+  width: 36px;
+  height: 20px;
+}
+.dark-mode-toggle__btn--compact .dark-mode-toggle__thumb {
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+}
+.dark-mode-toggle__btn--compact.dark-mode-toggle__btn--on .dark-mode-toggle__thumb {
+  transform: translateX(16px);
+}
+
+/* ─── Profile edit panel ─────────────────────────────────────────────────── */
+.profile-edit-panel {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--cream);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.profile-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 420px) {
+  .profile-edit-grid { grid-template-columns: 1fr; }
+}
+.profile-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.profile-edit-field--full { grid-column: span 2; }
+@media (max-width: 420px) {
+  .profile-edit-field--full { grid-column: span 1; }
+}
+.profile-edit-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--warm-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.profile-edit-hint {
+  font-size: 0.68rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ash);
+}
+.profile-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.profile-edit-msg {
+  font-size: 0.8rem;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+.profile-edit-msg--error { background: #fff0ee; color: var(--terracotta-dark, #b84a2e); border: 1px solid #f5c2b8; }
+.profile-edit-msg--success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+[data-theme="dark"] .profile-edit-panel { background: var(--warm-white); }

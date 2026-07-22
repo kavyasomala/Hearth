@@ -357,6 +357,15 @@ app.put('/api/user/display-name', authenticateToken, async (req, res) => {
   res.json({ success: true });
 });
 
+app.put('/api/user/profile', authenticateToken, async (req, res) => {
+  const { display_name, avatar_url } = req.body;
+  const sets = [], vals = [];
+  if (display_name !== undefined) { sets.push(`display_name = $${sets.length + 1}`); vals.push(display_name?.trim() || null); }
+  if (avatar_url !== undefined) { sets.push(`avatar_url = $${sets.length + 1}`); vals.push(avatar_url?.trim() || null); }
+  if (sets.length) { vals.push(req.user.id); await q(`UPDATE users SET ${sets.join(', ')} WHERE id = $${vals.length}`, vals); }
+  res.json({ success: true });
+});
+
 // â”€â”€â”€ Admin Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {

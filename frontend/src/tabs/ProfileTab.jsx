@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Icon } from '../icons';
 import { API, DIETARY_OPTIONS, STAR_LABELS } from '../constants';
-import { haptic, LS, getDaysInMonth, getFirstDayOfMonth } from '../utils';
-import { Badge } from '../components/ui';
+import { LS, getDaysInMonth, getFirstDayOfMonth } from '../utils';
+import { supabase } from '../supabase';
 
 // ─── Collapsible Section ──────────────────────────────────────────────────────
 const Section = ({ icon, title, badge, defaultOpen = false, children }) => {
@@ -32,10 +32,12 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const [historyView, setHistoryView] = useState('timeline');
   const [calendarDate, setCalendarDate] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() }; });
 
-  // ── Display name editing ──
-  const [editingDisplayName, setEditingDisplayName] = useState(false);
-  const [draftDisplayName, setDraftDisplayName] = useState('');
-  const [savingDisplayName, setSavingDisplayName] = useState(false);
+  // ── Profile editing ──
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editDraft, setEditDraft] = useState({ displayName: '', email: '', avatarUrl: '', password: '', confirmPassword: '' });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [editSuccess, setEditSuccess] = useState('');
 
   // ── Feedback ──
   const [feedbackText, setFeedbackText] = useState('');
@@ -54,17 +56,69 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
     return () => { cancelled = true; };
   }, []); // eslint-disable-line
 
-  const handleSaveDisplayName = async () => {
-    setSavingDisplayName(true);
+  const openEdit = () => {
+    setEditDraft({
+      displayName: authUser?.display_name || '',
+      email: authUser?.email || '',
+      avatarUrl: authUser?.avatar_url || '',
+      password: '',
+      confirmPassword: '',
+    });
+    setEditError('');
+    setEditSuccess('');
+    setEditingProfile(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (editDraft.password && editDraft.password !== editDraft.confirmPassword) {
+      setEditError('Passwords do not match.');
+      return;
+    }
+    if (editDraft.password && editDraft.password.length < 6) {
+      setEditError('Password must be at least 6 characters.');
+      return;
+    }
+    setEditSaving(true);
+    setEditError('');
     try {
-      await apiFetch(`${API}/api/user/display-name`, {
+      const supabaseUpdate = {};
+      if (editDraft.email.trim() && editDraft.email.trim() !== authUser?.email) {
+        supabaseUpdate.email = editDraft.email.trim();
+      }
+      if (editDraft.password) supabaseUpdate.password = editDraft.password;
+      const metaChanges = {};
+      if (editDraft.displayName.trim() !== (authUser?.display_name || '')) metaChanges.full_name = editDraft.displayName.trim();
+      if (editDraft.avatarUrl.trim() !== (authUser?.avatar_url || '')) metaChanges.avatar_url = editDraft.avatarUrl.trim();
+      if (Object.keys(metaChanges).length) supabaseUpdate.data = metaChanges;
+
+      if (Object.keys(supabaseUpdate).length) {
+        const { error } = await supabase.auth.updateUser(supabaseUpdate);
+        if (error) throw error;
+      }
+
+      await apiFetch(`${API}/api/user/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ display_name: draftDisplayName.trim() || null }),
+        body: JSON.stringify({
+          display_name: editDraft.displayName.trim() || null,
+          avatar_url: editDraft.avatarUrl.trim() || null,
+        }),
       });
-      if (onAuthUserUpdate) onAuthUserUpdate({ ...authUser, display_name: draftDisplayName.trim() || null });
-    } catch {}
-    finally { setSavingDisplayName(false); setEditingDisplayName(false); }
+
+      if (onAuthUserUpdate) onAuthUserUpdate({
+        ...authUser,
+        display_name: editDraft.displayName.trim() || authUser?.display_name,
+        email: editDraft.email.trim() || authUser?.email,
+        avatar_url: editDraft.avatarUrl.trim() || authUser?.avatar_url,
+      });
+
+      const emailChanged = supabaseUpdate.email;
+      setEditSuccess(emailChanged ? 'Saved! Check your new email for a confirmation link.' : 'Profile updated.');
+      setTimeout(() => { setEditSuccess(''); setEditingProfile(false); }, 2200);
+    } catch (e) {
+      setEditError(e.message || 'Something went wrong.');
+    }
+    setEditSaving(false);
   };
 
   // ── History derived data ──
@@ -107,16 +161,12 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
     return set;
   }, [cookHistory, calendarDate, recipes]);
 
-  // ── Fun cooking stats ──
   const cookStreak = useMemo(() => {
     if (cookHistory.length === 0) return 0;
     const dates = new Set(cookHistory.map(e => new Date(e.cooked_at).toLocaleDateString('en-CA')));
     let streak = 0;
     const d = new Date();
-    while (dates.has(d.toLocaleDateString('en-CA'))) {
-      streak++;
-      d.setDate(d.getDate() - 1);
-    }
+    while (dates.has(d.toLocaleDateString('en-CA'))) { streak++; d.setDate(d.getDate() - 1); }
     return streak;
   }, [cookHistory]);
 
@@ -185,58 +235,72 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                 {(displayName || authUser?.email || '?')[0].toUpperCase()}
               </div>
             )}
-
             <div className="profile-hero__info">
-              {editingDisplayName ? (
-                <div className="profile-name-edit">
-                  <input
-                    autoFocus
-                    className="login-modal__input"
-                    style={{ padding: '7px 11px', fontSize: '0.95rem', margin: 0, width: '100%' }}
-                    placeholder="Your name"
-                    value={draftDisplayName}
-                    onChange={e => setDraftDisplayName(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSaveDisplayName(); if (e.key === 'Escape') setEditingDisplayName(false); }}
-                  />
-                  <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                    <button onClick={handleSaveDisplayName} disabled={savingDisplayName} className="display-name-save-btn">
-                      {savingDisplayName ? '...' : '✓ Save'}
-                    </button>
-                    <button onClick={() => setEditingDisplayName(false)} className="display-name-cancel-btn">Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="profile-hero__name-row">
-                    <h2 className="profile-hero__name">{displayName || 'Set a display name'}</h2>
-                    {isAdmin && <span className="profile-hero__badge">Admin</span>}
-                    <button
-                      onClick={() => { setDraftDisplayName(authUser?.display_name || ''); setEditingDisplayName(true); }}
-                      style={{ background: 'none', border: 'none', color: 'var(--warm-gray)', cursor: 'pointer', fontSize: 14, padding: '2px 4px', lineHeight: 1 }}
-                      title="Edit display name"
-                    >✎</button>
-                  </div>
-                  {authUser?.email && <p className="profile-hero__email">{authUser.email}</p>}
-                  <p className="profile-hero__meta">
-                    {totalRecipes} {totalRecipes === 1 ? 'recipe' : 'recipes'} · {cookHistory.length} cooked · {isAdmin ? 'Admin' : 'Member'}
-                  </p>
-                </>
-              )}
+              <div className="profile-hero__name-row">
+                <h2 className="profile-hero__name">{displayName || 'Set a display name'}</h2>
+                {isAdmin && <span className="profile-hero__badge">Admin</span>}
+                <button onClick={openEdit} className="profile-hero__edit-btn" title="Edit profile">✎</button>
+              </div>
+              {authUser?.email && <p className="profile-hero__email">{authUser.email}</p>}
+              <p className="profile-hero__meta">
+                {totalRecipes} {totalRecipes === 1 ? 'recipe' : 'recipes'} · {cookHistory.length} cooked · {isAdmin ? 'Admin' : 'Member'}
+              </p>
             </div>
           </div>
 
           <div className="profile-hero__controls">
             <button onClick={onLogout} className="profile-signout-btn">Sign out</button>
-            <button
-              className={`dark-mode-toggle__btn ${darkMode ? 'dark-mode-toggle__btn--on' : ''}`}
-              onClick={() => setDarkMode && setDarkMode(!darkMode)}
-              type="button"
-              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              <span className="dark-mode-toggle__track"><span className="dark-mode-toggle__thumb" /></span>
-            </button>
+            <div className="profile-dark-toggle">
+              <Icon name={darkMode ? 'moon' : 'sun'} size={12} strokeWidth={2} color="var(--warm-gray)" />
+              <button
+                className={`dark-mode-toggle__btn dark-mode-toggle__btn--compact ${darkMode ? 'dark-mode-toggle__btn--on' : ''}`}
+                onClick={() => setDarkMode && setDarkMode(!darkMode)}
+                type="button"
+                title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                <span className="dark-mode-toggle__track"><span className="dark-mode-toggle__thumb" /></span>
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* ── Inline Edit Panel ── */}
+        {editingProfile && (
+          <div className="profile-edit-panel">
+            <div className="profile-edit-grid">
+              <div className="profile-edit-field">
+                <label className="profile-edit-label">Display Name</label>
+                <input className="editor-input" value={editDraft.displayName} onChange={e => setEditDraft(d => ({ ...d, displayName: e.target.value }))} placeholder="Your name" />
+              </div>
+              <div className="profile-edit-field">
+                <label className="profile-edit-label">Email</label>
+                <input className="editor-input" type="email" value={editDraft.email} onChange={e => setEditDraft(d => ({ ...d, email: e.target.value }))} placeholder="you@example.com" />
+              </div>
+              <div className="profile-edit-field profile-edit-field--full">
+                <label className="profile-edit-label">Photo URL <span className="profile-edit-hint">paste a link to a photo</span></label>
+                <input className="editor-input" type="url" value={editDraft.avatarUrl} onChange={e => setEditDraft(d => ({ ...d, avatarUrl: e.target.value }))} placeholder="https://..." />
+              </div>
+              <div className="profile-edit-field">
+                <label className="profile-edit-label">New Password <span className="profile-edit-hint">leave blank to keep current</span></label>
+                <input className="editor-input" type="password" value={editDraft.password} onChange={e => setEditDraft(d => ({ ...d, password: e.target.value }))} placeholder="••••••••" autoComplete="new-password" />
+              </div>
+              {editDraft.password && (
+                <div className="profile-edit-field">
+                  <label className="profile-edit-label">Confirm Password</label>
+                  <input className="editor-input" type="password" value={editDraft.confirmPassword} onChange={e => setEditDraft(d => ({ ...d, confirmPassword: e.target.value }))} placeholder="••••••••" autoComplete="new-password" />
+                </div>
+              )}
+            </div>
+            {editError && <p className="profile-edit-msg profile-edit-msg--error">{editError}</p>}
+            {editSuccess && <p className="profile-edit-msg profile-edit-msg--success">{editSuccess}</p>}
+            <div className="profile-edit-actions">
+              <button onClick={() => setEditingProfile(false)} className="display-name-cancel-btn">Cancel</button>
+              <button onClick={handleSaveProfile} disabled={editSaving} className="display-name-save-btn">
+                {editSaving ? 'Saving...' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Cooking History ───────────────────────────────────────── */}
@@ -251,8 +315,8 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         ) : (
           <>
             <div className="history-view-toggle" style={{ marginBottom: 14 }}>
-              <button className={`history-view-toggle__btn ${historyView === 'timeline' ? 'history-view-toggle__btn--on' : ''}`} onClick={() => setHistoryView('timeline')} title="Timeline view">☰ Timeline</button>
-              <button className={`history-view-toggle__btn ${historyView === 'calendar' ? 'history-view-toggle__btn--on' : ''}`} onClick={() => setHistoryView('calendar')} title="Calendar view">▦ Calendar</button>
+              <button className={`history-view-toggle__btn ${historyView === 'timeline' ? 'history-view-toggle__btn--on' : ''}`} onClick={() => setHistoryView('timeline')}>☰ Timeline</button>
+              <button className={`history-view-toggle__btn ${historyView === 'calendar' ? 'history-view-toggle__btn--on' : ''}`} onClick={() => setHistoryView('calendar')}>▦ Calendar</button>
             </div>
             {historyView === 'timeline' ? (
               <div className="cook-timeline cook-timeline--scrollable">
@@ -328,32 +392,58 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         )}
       </Section>
 
-      {/* ── Recipe Attempts ───────────────────────────────────────── */}
-      <Section icon="repeat" title="Recipe Attempts">
-        {recipeCounts.length === 0 ? (
+      {/* ── Cooking Stats ─────────────────────────────────────────── */}
+      <Section icon="barChart" title="Cooking Stats">
+        {cookHistory.length === 0 ? (
           <div className="profile-empty">
-            <span className="profile-empty__icon"><Icon name="repeat" size={36} strokeWidth={1.5} color="var(--ash)" /></span>
-            <p className="profile-empty__text">No recipe attempts yet. Start cooking to track how often you make each dish!</p>
+            <span className="profile-empty__icon"><Icon name="barChart" size={36} strokeWidth={1.5} color="var(--ash)" /></span>
+            <p className="profile-empty__text">Start cooking to unlock your personal stats and recipe breakdown!</p>
           </div>
         ) : (
-          <div className="attempts-list attempts-list--scrollable">
-            {recipeCounts.map((item, i) => {
-              const recipe = recipes.find(r => r.id === item.id);
-              return (
-                <div key={item.id || i} className="attempts-row">
-                  {recipe?.coverImage && <img className="attempts-row__thumb" src={recipe.coverImage} alt={item.name} />}
-                  <div className="attempts-row__info">
-                    <span className="attempts-row__name">{item.name}</span>
-                    {item.lastCooked && <span className="attempts-row__last">Last: {item.lastCooked.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
+          <>
+            <div className="cook-stats-grid" style={{ marginBottom: 20 }}>
+              <div className="cook-stat-card">
+                <span className="cook-stat-card__num">{recipeCounts.length}</span>
+                <span className="cook-stat-card__label">Unique dishes</span>
+              </div>
+              <div className="cook-stat-card">
+                <span className="cook-stat-card__num">{cookStreak > 0 ? cookStreak : '—'}</span>
+                <span className="cook-stat-card__label">Day streak</span>
+              </div>
+              <div className="cook-stat-card">
+                <span className="cook-stat-card__num">{thisMonthCooks}</span>
+                <span className="cook-stat-card__label">This month</span>
+              </div>
+              <div className="cook-stat-card cook-stat-card--wide">
+                <span className="cook-stat-card__num cook-stat-card__num--text">{recipeCounts[0]?.name || '—'}</span>
+                <span className="cook-stat-card__label">Most cooked</span>
+              </div>
+              <div className="cook-stat-card cook-stat-card--wide">
+                <span className="cook-stat-card__num cook-stat-card__num--text">{favCookDay || '—'}</span>
+                <span className="cook-stat-card__label">Favorite cook day</span>
+              </div>
+            </div>
+
+            <p className="settings-section__title" style={{ marginBottom: 12 }}>Recipe Attempts</p>
+            <div className="attempts-list attempts-list--scrollable">
+              {recipeCounts.map((item, i) => {
+                const recipe = recipes.find(r => r.id === item.id);
+                return (
+                  <div key={item.id || i} className="attempts-row">
+                    {recipe?.coverImage && <img className="attempts-row__thumb" src={recipe.coverImage} alt={item.name} />}
+                    <div className="attempts-row__info">
+                      <span className="attempts-row__name">{item.name}</span>
+                      {item.lastCooked && <span className="attempts-row__last">Last: {item.lastCooked.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
+                    </div>
+                    <div className="attempts-row__count">
+                      <span className="attempts-row__num">{item.count}</span>
+                      <span className="attempts-row__label">{item.count === 1 ? 'time' : 'times'}</span>
+                    </div>
                   </div>
-                  <div className="attempts-row__count">
-                    <span className="attempts-row__num">{item.count}</span>
-                    <span className="attempts-row__label">{item.count === 1 ? 'time' : 'times'}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </Section>
 
@@ -439,7 +529,6 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
             <button className="btn btn--primary btn--sm" disabled={!feedbackText.trim()} onClick={submitFeedback}>Submit</button>
           </div>
         </div>
-
         {feedbackList.length > 0 && (
           <div className="feedback-log">
             <div className="feedback-log__header">
@@ -453,11 +542,10 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
             </div>
             {feedbackList.map(bug => (
               <div key={bug.id} className={`feedback-item ${bug.done ? 'feedback-item--done' : ''}`}>
-                <button
-                  className="feedback-item__check"
-                  data-done={bug.done}
-                  onClick={() => { const next = feedbackList.map(b => b.id === bug.id ? { ...b, done: !b.done } : b); setFeedbackList(next); LS.set('feedbackReports', next); }}
-                >{bug.done ? '✓' : ''}</button>
+                <button className="feedback-item__check" data-done={bug.done}
+                  onClick={() => { const next = feedbackList.map(b => b.id === bug.id ? { ...b, done: !b.done } : b); setFeedbackList(next); LS.set('feedbackReports', next); }}>
+                  {bug.done ? '✓' : ''}
+                </button>
                 <div className="feedback-item__body">
                   <p className="feedback-item__text">{bug.text}</p>
                   <p className="feedback-item__date">{bug.date}</p>
@@ -503,7 +591,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
           </p>
         </div>
 
-        <div className="settings-section">
+        <div className="settings-section" style={{ borderBottom: 'none', paddingBottom: 0 }}>
           <h4 className="settings-section__title" style={{ marginBottom: 14 }}>What's in the app</h4>
           <div className="feature-cards">
             {FEATURES.map(({ icon, label, sub }) => (
@@ -514,38 +602,6 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="settings-section" style={{ borderBottom: 'none', paddingBottom: 0 }}>
-          <h4 className="settings-section__title" style={{ marginBottom: 14 }}>Your kitchen, by the numbers</h4>
-          {cookHistory.length === 0 ? (
-            <p style={{ fontSize: '0.82rem', color: 'var(--warm-gray)', fontStyle: 'italic' }}>
-              Start cooking to unlock your personal stats.
-            </p>
-          ) : (
-            <div className="cook-stats-grid">
-              <div className="cook-stat-card">
-                <span className="cook-stat-card__num">{recipeCounts.length}</span>
-                <span className="cook-stat-card__label">Unique dishes</span>
-              </div>
-              <div className="cook-stat-card">
-                <span className="cook-stat-card__num">{cookStreak > 0 ? cookStreak : '—'}</span>
-                <span className="cook-stat-card__label">Day streak</span>
-              </div>
-              <div className="cook-stat-card">
-                <span className="cook-stat-card__num">{thisMonthCooks}</span>
-                <span className="cook-stat-card__label">This month</span>
-              </div>
-              <div className="cook-stat-card cook-stat-card--wide">
-                <span className="cook-stat-card__num cook-stat-card__num--text">{recipeCounts[0]?.name || '—'}</span>
-                <span className="cook-stat-card__label">Most cooked</span>
-              </div>
-              <div className="cook-stat-card cook-stat-card--wide">
-                <span className="cook-stat-card__num cook-stat-card__num--text">{favCookDay || '—'}</span>
-                <span className="cook-stat-card__label">Favorite cook day</span>
-              </div>
-            </div>
-          )}
           <div className="about-stack-github-row" style={{ marginTop: 20 }}>
             <a className="about-github-btn" href="https://github.com/kavyasomala/Hearth" target="_blank" rel="noopener noreferrer">
               <svg className="about-github-btn__icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
