@@ -245,6 +245,56 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const ingDndSensors = DRAG_SENSORS();
   const [scaledServings, setScaledServings] = useState(null);
   const [showScalePanel, setShowScalePanel] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareToast, setShareToast] = useState(false);
+  const [sharePop, setSharePop] = useState(false);
+  const sharePopRef = useRef(null);
+
+  // Close share popover on outside click
+  useEffect(() => {
+    if (!sharePop) return;
+    const handler = (e) => { if (sharePopRef.current && !sharePopRef.current.contains(e.target)) setSharePop(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [sharePop]);
+
+  const handleShare = async () => {
+    if (recipe.visibility === 'shareable') { setSharePop(s => !s); return; }
+    setShareLoading(true);
+    try {
+      const res = await apiFetch(`${API}/api/recipes/${recipe.id}/visibility`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visibility: 'shareable' }),
+      });
+      const d = await res.json();
+      if (onSaved) onSaved({ ...recipe, visibility: 'shareable', share_token: d.share_token });
+      await navigator.clipboard.writeText(`${API}/r/${d.share_token}`).catch(() => {});
+      setShareToast(true);
+      setTimeout(() => setShareToast(false), 3000);
+    } catch (e) { console.error('share error:', e); }
+    setShareLoading(false);
+  };
+
+  const copyShareLink = async () => {
+    await navigator.clipboard.writeText(`${API}/r/${recipe.share_token}`).catch(() => {});
+    setSharePop(false);
+    setShareToast(true);
+    setTimeout(() => setShareToast(false), 3000);
+  };
+
+  const makePrivate = async () => {
+    setSharePop(false); setShareLoading(true);
+    try {
+      await apiFetch(`${API}/api/recipes/${recipe.id}/visibility`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visibility: 'private' }),
+      });
+      if (onSaved) onSaved({ ...recipe, visibility: 'private' });
+    } catch (e) { console.error('make private error:', e); }
+    setShareLoading(false);
+  };
 
   // -- Wake Lock --
   useEffect(() => {
@@ -842,6 +892,26 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             >
               {stayAwake ? <><Icon name="sun" size={14} strokeWidth={2} /> Awake</> : <Icon name="sun" size={14} strokeWidth={2} />}
             </button>
+            {isAdmin && (
+              <div className="rp2__share-wrap" ref={sharePopRef}>
+                {shareToast && <div className="rp2__share-toast">Link copied!</div>}
+                <button
+                  className={`rp2__cooking-mode-btn ${recipe.visibility === 'shareable' ? 'rp2__cooking-mode-btn--on' : ''}`}
+                  onClick={handleShare}
+                  disabled={shareLoading}
+                  title="Share recipe"
+                >
+                  {shareLoading ? '…' : <><Icon name="link" size={14} strokeWidth={2} /> {recipe.visibility === 'shareable' ? 'Shared' : 'Share'}</>}
+                </button>
+                {sharePop && recipe.visibility === 'shareable' && (
+                  <div className="rp2__share-pop">
+                    <p className="rp2__share-pop__label">Anyone with the link can save a copy</p>
+                    <button className="rp2__share-pop__btn" onClick={copyShareLink}>Copy link</button>
+                    <button className="rp2__share-pop__btn rp2__share-pop__btn--muted" onClick={makePrivate}>Make private</button>
+                  </div>
+                )}
+              </div>
+            )}
             {isAdmin && <button className="rp2__delete-btn" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe"><Icon name="trash2" size={15} strokeWidth={2} color="var(--warm-gray)" /></button>}
           </div>
         </div>
