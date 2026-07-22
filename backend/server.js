@@ -528,7 +528,7 @@ function normalizeImport(data, sourceUrl) {
   return { name, cover_image_url, time_minutes, servings, cuisine, tags, ingredients, steps, notes, source_url: sourceUrl };
 }
 
-app.post('/api/recipes/import-url', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/recipes/import-url', authenticateToken, async (req, res) => {
   const { url } = req.body;
   if (!url?.startsWith('http')) return res.status(400).json({ error: 'A valid http/https URL is required.' });
   try {
@@ -598,7 +598,7 @@ app.get('/api/recipes/:id', async (req, res) => {
   }
 });
 
-app.post('/api/recipes', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/recipes', authenticateToken, async (req, res) => {
   const { details, ingredients, instructions, notes } = req.body;
   if (!details?.name?.trim()) return res.status(400).json({ error: 'Recipe name is required' });
   const client = await pool.connect();
@@ -667,9 +667,13 @@ app.post('/api/recipes', authenticateToken, requireAdmin, async (req, res) => {
   } finally { client.release(); }
 });
 
-app.put('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.put('/api/recipes/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { details, ingredients, instructions, notes } = req.body;
+  const { rows: [existing] } = await q('SELECT created_by FROM recipes WHERE id = $1', [id]);
+  if (!existing) return res.status(404).json({ error: 'Recipe not found' });
+  if (req.user.role !== 'admin' && existing.created_by !== req.user.id)
+    return res.status(403).json({ error: 'Forbidden' });
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -741,9 +745,12 @@ app.put('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) =>
 // CASCADE handles: recipe_ingredients, recipe_steps, recipe_notes,
 //                  cookbook_recipes, user_favorites, user_make_soon
 // user_cook_log.recipe_id SET NULL (preserves cook history)
-app.delete('/api/recipes/:id', authenticateToken, requireAdmin, async (req, res) => {
-  const result = await q('DELETE FROM recipes WHERE id = $1', [req.params.id]);
-  if (!result.rowCount) return res.status(404).json({ error: 'Recipe not found' });
+app.delete('/api/recipes/:id', authenticateToken, async (req, res) => {
+  const { rows: [rec] } = await q('SELECT created_by FROM recipes WHERE id = $1', [req.params.id]);
+  if (!rec) return res.status(404).json({ error: 'Recipe not found' });
+  if (req.user.role !== 'admin' && rec.created_by !== req.user.id)
+    return res.status(403).json({ error: 'Forbidden' });
+  await q('DELETE FROM recipes WHERE id = $1', [req.params.id]);
   res.json({ deleted: true });
 });
 
@@ -756,7 +763,7 @@ app.get('/api/cookbooks', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/cookbooks', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/cookbooks', authenticateToken, async (req, res) => {
   const { title, author, coverImage, spineColor, notes } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: 'title is required' });
   const { rows: [{ id }] } = await q(
@@ -768,9 +775,11 @@ app.post('/api/cookbooks', authenticateToken, requireAdmin, async (req, res) => 
   res.status(201).json({ cookbook: fmtCookbook(cb) });
 });
 
-app.put('/api/cookbooks/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.put('/api/cookbooks/:id', authenticateToken, async (req, res) => {
   const { rows: [existing] } = await q('SELECT * FROM cookbooks WHERE id = $1', [req.params.id]);
   if (!existing) return res.status(404).json({ error: 'Cookbook not found' });
+  if (req.user.role !== 'admin' && existing.created_by !== req.user.id)
+    return res.status(403).json({ error: 'Forbidden' });
   const { title, author, coverImage, spineColor, notes } = req.body;
   await q(
     `UPDATE cookbooks SET title=$1,author=$2,cover_image=$3,spine_color=$4,notes=$5 WHERE id=$6`,
@@ -781,9 +790,13 @@ app.put('/api/cookbooks/:id', authenticateToken, requireAdmin, async (req, res) 
   res.json({ cookbook: fmtCookbook(cb) });
 });
 
-app.put('/api/cookbooks/:id/entries', authenticateToken, requireAdmin, async (req, res) => {
+app.put('/api/cookbooks/:id/entries', authenticateToken, async (req, res) => {
   const { recipes } = req.body;
   if (!Array.isArray(recipes)) return res.status(400).json({ error: 'recipes must be an array' });
+  const { rows: [cbOwn] } = await q('SELECT created_by FROM cookbooks WHERE id = $1', [req.params.id]);
+  if (!cbOwn) return res.status(404).json({ error: 'Cookbook not found' });
+  if (req.user.role !== 'admin' && cbOwn.created_by !== req.user.id)
+    return res.status(403).json({ error: 'Forbidden' });
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -808,7 +821,11 @@ app.put('/api/cookbooks/:id/entries', authenticateToken, requireAdmin, async (re
 });
 
 // CASCADE handles cookbook_recipes
-app.delete('/api/cookbooks/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.delete('/api/cookbooks/:id', authenticateToken, async (req, res) => {
+  const { rows: [cb] } = await q('SELECT created_by FROM cookbooks WHERE id = $1', [req.params.id]);
+  if (!cb) return res.status(404).json({ error: 'Cookbook not found' });
+  if (req.user.role !== 'admin' && cb.created_by !== req.user.id)
+    return res.status(403).json({ error: 'Forbidden' });
   await q('DELETE FROM cookbooks WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 });

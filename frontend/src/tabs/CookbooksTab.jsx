@@ -873,7 +873,7 @@ const CookbookDetail = ({ cookbook, onBack, onEdit, onDelete, onOpenRecipe, reci
 
 // --- CookbooksTab -------------------------------------------------------------
 // ─── Cookbooks Tab ───────────────────────────────────────────────────────────
-const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngredients, setCookingRecipe, cookLog, onRecipeConverted, isAdmin, authFetch }) => {
+const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngredients, setCookingRecipe, cookLog, onRecipeConverted, isAdmin, session, authFetch }) => {
   const [selectedCookbook, setSelectedCookbook] = useState(null);
   const [showAddModal,     setShowAddModal]     = useState(false);
   const [editingCookbook,  setEditingCookbook]  = useState(null);
@@ -979,7 +979,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
           <h2 className="cookbooks-title">My Cookbooks</h2>
           <p className="cookbooks-subtitle">{cookbooks.length} {cookbooks.length===1?'cookbook':'cookbooks'} · {enrichedCookbooks.reduce((s,c) => s+c.recipes.length, 0)} recipes indexed</p>
         </div>
-        {isAdmin && <button className="btn btn--primary" onClick={() => setShowAddModal(true)}>+ Add Cookbook</button>}
+        {(isAdmin || !!session) && <button className="btn btn--primary" onClick={() => setShowAddModal(true)}>+ Add Cookbook</button>}
       </div>
 
       {cookbooks.length > 0 && (
@@ -1017,7 +1017,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
           <div className="cookbooks-empty__icon"><Icon name="bookOpen" size={40} color="var(--ash)" strokeWidth={1.5} /></div>
           <h3 className="cookbooks-empty__title">Start your cookbook shelf</h3>
           <p className="cookbooks-empty__sub">Add your physical cookbooks and track which recipes you've saved in Hearth</p>
-          {isAdmin && <button className="btn btn--primary" onClick={() => setShowAddModal(true)}>+ Add your first cookbook</button>}
+          {(isAdmin || !!session) && <button className="btn btn--primary" onClick={() => setShowAddModal(true)}>+ Add your first cookbook</button>}
         </div>
       ) : (
         <div className="cookbooks-grid">
@@ -1047,7 +1047,7 @@ const CookbooksTab = ({ cookbooks, setCookbooks, recipes, onOpenRecipe, allIngre
               </button>
             );
           })}
-          {isAdmin && <button className="cookbook-card cookbook-card--add" onClick={() => setShowAddModal(true)}>
+          {(isAdmin || !!session) && <button className="cookbook-card cookbook-card--add" onClick={() => setShowAddModal(true)}>
             <div className="cookbook-card__add-icon"><Icon name="bookMarked" size={24} color="var(--terracotta)" strokeWidth={2} /></div>
             <p className="cookbook-card__add-label">Add cookbook</p>
           </button>}
