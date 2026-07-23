@@ -9552,3 +9552,156 @@ html, body {
   .cn-tab__title,
   .add-tab__title { font-size: 19px !important; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   RecipePage — meta editing UX additions
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* "+ Tags" button in the desktop hero tags area */
+.rp2__tag--add-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  opacity: 0.55;
+  border-style: dashed !important;
+  transition: opacity .15s;
+}
+.rp2__tag--add-entry:hover { opacity: 1 !important; }
+
+/* Below-title meta summary row — display only, mobile-first */
+.rp2__meta-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 4px;
+  padding: 0 4px;
+}
+
+.rp2__meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--warm-gray);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.rp2__meta-pill--edit {
+  cursor: pointer;
+  background: none;
+  border-style: dashed;
+  opacity: 0.5;
+  font-size: 0.9rem;
+  padding: 2px 8px;
+  transition: opacity .15s;
+}
+.rp2__meta-pill--edit:hover { opacity: 1; border-color: var(--terracotta); color: var(--terracotta); }
+
+/* "Add time · servings · calories" ghost button */
+.rp2__meta-add-btn {
+  display: inline-flex;
+  font-size: 0.78rem;
+  color: var(--warm-gray);
+  opacity: 0.5;
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 4px 10px;
+  margin: 6px 0 2px 4px;
+  cursor: pointer;
+  transition: opacity .15s, color .15s;
+}
+.rp2__meta-add-btn:hover { opacity: 1; color: var(--terracotta); border-color: var(--terracotta); }
+
+/* Hide the below-title row on desktop — the hero already shows this info */
+@media (min-width: 641px) {
+  .rp2__meta-summary,
+  .rp2__meta-add-btn { display: none; }
+}
+
+/* ── Meta edit modal ─────────────────────────────────────────────────────────
+   Full-screen portal overlay, centered panel, dark glass style              */
+
+.rp2__meta-modal-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+.rp2__meta-modal {
+  background: #1c1c1e;
+  color: #f5f0eb;
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 560px;
+  max-height: 88dvh;
+  overflow-y: auto;
+  padding: 20px 20px 32px;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4);
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 641px) {
+  .rp2__meta-modal-bg { align-items: center; padding: 16px; }
+  .rp2__meta-modal {
+    border-radius: 16px;
+    max-height: 85dvh;
+    padding: 24px;
+  }
+}
+
+.rp2__meta-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.rp2__meta-modal__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f5f0eb;
+  margin: 0;
+}
+
+.rp2__meta-modal__close {
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: rgba(255,255,255,0.6);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, color .15s;
+}
+.rp2__meta-modal__close:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+.rp2__meta-modal__fields { display: flex; flex-direction: column; }
+
+/* Three-column grid for time / servings / calories */
+.rp2__meta-modal__trio {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.rp2__meta-modal__trio .rp2__dark-pop-label { margin-bottom: 4px; }
+.rp2__meta-modal__trio .rp2__dark-input { width: 100%; box-sizing: border-box; }
