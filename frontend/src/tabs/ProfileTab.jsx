@@ -478,6 +478,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
               { key: 'recipes',   label: 'Recipes',   icon: 'bookOpen'   },
               { key: 'kitchen',   label: 'Kitchen',   icon: 'package'    },
               { key: 'grocery',   label: 'Grocery',   icon: 'cart'       },
+              { key: 'plan',      label: 'Plan',      icon: 'calendar'   },
               { key: 'cookbooks', label: 'Cookbooks', icon: 'bookMarked' },
               { key: 'notes',     label: 'Notes',     icon: 'lightbulb'  },
             ];

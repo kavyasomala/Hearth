@@ -12,6 +12,7 @@ import RecipePage from './pages/RecipePage';
 import RecipeEditor from './pages/RecipeEditor';
 import ProfileTab from './tabs/ProfileTab';
 import GroceryListTab from './tabs/GroceryListTab';
+import MealPlanTab from './tabs/MealPlanTab';
 import CookingNotesTab from './tabs/CookingNotesTab';
 import CookbooksTab, { SiteFooter } from './tabs/CookbooksTab';
 import AddRecipeTab from './tabs/AddRecipeTab';
@@ -845,6 +846,7 @@ function AppInner() {
           cookbooks={cookbooks}
           dietaryFilters={dietaryFilters}
           authFetch={authFetch}
+          session={session}
           isAdmin={isAdmin || !!(authUser && selectedRecipe?.created_by === authUser.id)}
           onMarkCooked={(recipeId, toRemove) => {
             setMakeSoonIds(prev => prev.filter(id => id !== recipeId));
@@ -1328,6 +1330,8 @@ function AppInner() {
 
       {view === 'grocery' && <GroceryListTab recipes={recipes} makeSoonIds={makeSoonIds} allMyIngredients={allMyIngredients} allIngredients={allIngredients} setFridgeIngredients={setFridgeIngredients} setPantryStaples={setPantryStaples} />}
 
+      {view === 'plan' && <MealPlanTab session={session} recipes={recipes} />}
+
       {view === 'add' && (
         <AddRecipeTab
           allIngredients={allIngredients}
@@ -1426,6 +1430,7 @@ function AppInner() {
           { key: 'recipes',   icon: 'bookOpen',  label: 'Recipes'   },
           { key: 'kitchen',   icon: 'package',   label: 'Kitchen'   },
           { key: 'grocery',   icon: 'cart',      label: 'Grocery'   },
+          { key: 'plan',      icon: 'calendar',  label: 'Plan'      },
           { key: 'cookbooks', icon: 'bookMarked', label: 'Cookbooks' },
           { key: 'notes',     icon: 'lightbulb', label: 'Notes'     },
           { key: 'profile',   icon: 'user',      label: 'Profile'   },

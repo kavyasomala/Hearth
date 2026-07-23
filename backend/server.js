@@ -161,6 +161,17 @@ async function initDB() {
       notes       TEXT,
       cooked_at   TIMESTAMPTZ DEFAULT NOW()
     )`,
+
+    `CREATE TABLE IF NOT EXISTS meal_plans (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      recipe_id    UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+      planned_date DATE NOT NULL,
+      meal_type    VARCHAR(20) DEFAULT 'any',
+      cooked_at    TIMESTAMPTZ,
+      notes        TEXT,
+      created_at   TIMESTAMPTZ DEFAULT NOW()
+    )`,
   ];
 
   for (const sql of tables) await q(sql);
@@ -227,6 +238,7 @@ async function initDB() {
     `CREATE INDEX IF NOT EXISTS idx_user_make_soon_user  ON user_make_soon(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_user_kitchen_user    ON user_kitchen(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_cook_log_user_date   ON user_cook_log(user_id, cooked_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_meal_plans_user_date ON meal_plans(user_id, planned_date)`,
 
     // Recipe filtering & sorting
     `CREATE INDEX IF NOT EXISTS idx_recipes_created_by   ON recipes(created_by)`,
@@ -1136,6 +1148,69 @@ app.post('/api/share/:token/save', authenticateToken, async (req, res) => {
     res.status(500).json({ error: e.message });
   } finally { client.release(); }
 });
+
+// ─── Meal Plans ────────────────────────────────────────────────────────────────
+
+app.get('/api/meal-plans', authenticateToken, async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    const { rows } = await q(
+      `SELECT mp.id, mp.planned_date, mp.meal_type, mp.cooked_at, mp.notes,
+              r.id AS recipe_id, r.name AS title, r.cover_image_url, r.time_minutes, r.servings
+       FROM meal_plans mp
+       JOIN recipes r ON mp.recipe_id = r.id
+       WHERE mp.user_id = $1
+         AND mp.planned_date BETWEEN $2 AND $3
+       ORDER BY mp.planned_date, mp.created_at`,
+      [req.user.id, start || '2000-01-01', end || '2099-12-31']
+    );
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/meal-plans', authenticateToken, async (req, res) => {
+  try {
+    const { recipe_id, planned_date, meal_type = 'any', notes } = req.body;
+    if (!recipe_id || !planned_date) return res.status(400).json({ error: 'recipe_id and planned_date required' });
+    const { rows: [plan] } = await q(
+      `INSERT INTO meal_plans (user_id, recipe_id, planned_date, meal_type, notes)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [req.user.id, recipe_id, planned_date, meal_type, notes || null]
+    );
+    const { rows: [recipe] } = await q(
+      'SELECT name AS title, cover_image_url, time_minutes, servings FROM recipes WHERE id=$1',
+      [recipe_id]
+    );
+    res.status(201).json({ ...plan, ...recipe, recipe_id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/meal-plans/:id', authenticateToken, async (req, res) => {
+  try {
+    const { planned_date, meal_type, notes, cooked } = req.body;
+    const { rows: [plan] } = await q(
+      `UPDATE meal_plans SET
+         planned_date = COALESCE($1, planned_date),
+         meal_type    = COALESCE($2, meal_type),
+         notes        = COALESCE($3, notes),
+         cooked_at    = CASE WHEN $4 = TRUE THEN NOW() ELSE cooked_at END
+       WHERE id=$5 AND user_id=$6
+       RETURNING *`,
+      [planned_date || null, meal_type || null, notes !== undefined ? notes : null, cooked || false, req.params.id, req.user.id]
+    );
+    if (!plan) return res.status(404).json({ error: 'Not found' });
+    res.json(plan);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/meal-plans/:id', authenticateToken, async (req, res) => {
+  try {
+    await q('DELETE FROM meal_plans WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    res.json({ deleted: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ────────────────────────────────────────────────────────────────────────────────
 
 app.get('/r/:token', async (req, res) => {
   const frontendUrl = process.env.FRONTEND_URL || 'https://hearth-z2lo.onrender.com';
