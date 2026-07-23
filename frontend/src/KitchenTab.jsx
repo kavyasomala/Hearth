@@ -48,15 +48,7 @@ function StaplePill({ item, active, onToggle, onDelete }) {
 
 // ─── PillGroup ────────────────────────────────────────────────────────────────
 
-function PillGroup({ label, items, activeSet, onToggle, onDelete, onAdd }) {
-  const [showInput, setShowInput] = useState(false);
-  const [input, setInput]         = useState('');
-
-  const commit = () => {
-    const v = input.toLowerCase().trim();
-    if (v) { onAdd(label, v); setInput(''); setShowInput(false); }
-  };
-
+function PillGroup({ label, items, activeSet, onToggle, onDelete }) {
   return (
     <div className="kitchen-pill-group">
       <p className="kitchen-checklist__group-label">{label}</p>
@@ -65,33 +57,55 @@ function PillGroup({ label, items, activeSet, onToggle, onDelete, onAdd }) {
           <StaplePill key={item} item={item} active={activeSet.has(item)}
             onToggle={() => onToggle(item)} onDelete={() => onDelete(label, item)} />
         ))}
-        {showInput ? (
-          <span className="kitchen-custom-input-wrap">
-            <input className="kitchen-custom-input" autoFocus value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setShowInput(false); setInput(''); } }}
-              placeholder="type & press Enter" />
-            <button className="kitchen-custom-add-btn" onClick={commit}>Add</button>
-          </span>
-        ) : (
-          <button className="kitchen-chip kitchen-chip--add" onClick={() => setShowInput(true)}>+ add</button>
-        )}
       </div>
+    </div>
+  );
+}
+
+// ─── StaplesAddBar — single add control at the top of the staples section ─────
+function StaplesAddBar({ groups, onAdd }) {
+  const [open, setOpen]   = useState(false);
+  const [name, setName]   = useState('');
+  const [group, setGroup] = useState('');
+
+  const commit = () => {
+    const v = name.trim().toLowerCase();
+    if (!v) return;
+    onAdd(group || 'My Pantry', v);
+    setName(''); setGroup(''); setOpen(false);
+  };
+
+  if (!open) return (
+    <button className="kitchen-section-addbtn" onClick={() => setOpen(true)}>+ Add Staple</button>
+  );
+
+  return (
+    <div className="kitchen-section-addform">
+      <input autoFocus className="kitchen-custom-input" value={name}
+        placeholder="e.g. miso paste"
+        onChange={e => setName(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setOpen(false); setName(''); } }} />
+      <select className="kitchen-group-select" value={group} onChange={e => setGroup(e.target.value)}>
+        <option value="">My Pantry (default)</option>
+        {groups.map(g => <option key={g.label} value={g.label}>{g.label}</option>)}
+      </select>
+      <button className="kitchen-custom-add-btn" onClick={commit}>Add</button>
+      <button className="btn btn--ghost btn--sm" onClick={() => { setOpen(false); setName(''); }}>✕</button>
     </div>
   );
 }
 
 // ─── UnCategorizedGroup — recipe ingredients not yet in any staples group ─────
 
-function UncategorizedGroup({ items, groupLabels, onAssign }) {
-  const [openFor, setOpenFor] = useState(null); // item name that has picker open
+function UncategorizedGroup({ items, groupLabels, onAssign, onAddToFridge }) {
+  const [openFor, setOpenFor] = useState(null);
 
   if (!items.length) return null;
 
   return (
     <div className="kitchen-pill-group">
       <p className="kitchen-checklist__group-label">Uncategorized · from your recipes</p>
-      <p className="kitchen-uncategorized-hint">Tap an item to add it to a staples group</p>
+      <p className="kitchen-uncategorized-hint">Tap to add to fridge or assign to a pantry group</p>
       <div className="kitchen-checklist__items">
         {items.map(item => (
           <span key={item} className="kitchen-uncat-wrap">
@@ -103,10 +117,14 @@ function UncategorizedGroup({ items, groupLabels, onAssign }) {
             </button>
             {openFor === item && (
               <div className="kitchen-uncat-picker">
+                <button className="kitchen-uncat-option kitchen-uncat-option--fridge"
+                  onClick={() => { onAddToFridge(item); setOpenFor(null); }}>
+                  + Add to Fridge
+                </button>
                 {groupLabels.map(label => (
                   <button key={label} className="kitchen-uncat-option"
                     onClick={() => { onAssign(item, label); setOpenFor(null); }}>
-                    {label}
+                    → {label}
                   </button>
                 ))}
               </div>
@@ -120,7 +138,7 @@ function UncategorizedGroup({ items, groupLabels, onAssign }) {
 
 // ─── DraggablePill — a fridge suggestion pill that can be dragged ─────────────
 
-function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete, onEdit }) {
+function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete, onEdit, onMoveToStaples }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id,
     data: { item, fromGroup: groupLabel },
@@ -167,6 +185,13 @@ function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete, onEdi
         {item}
       </button>
       <button
+        className="kpill__mv"
+        tabIndex={-1}
+        onPointerDown={e => e.stopPropagation()}
+        onClick={e => { e.stopPropagation(); onMoveToStaples(); }}
+        title="Move to Pantry"
+      >★</button>
+      <button
         className="kpill__rm"
         tabIndex={-1}
         onPointerDown={e => e.stopPropagation()}
@@ -179,15 +204,8 @@ function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete, onEdi
 
 // ─── DroppableGroup — a fridge suggestion group that accepts drops ────────────
 
-function DroppableGroup({ group, fridgeSet, onToggle, onDelete, onAdd, onEdit, isOver }) {
+function DroppableGroup({ group, fridgeSet, onToggle, onDelete, onEdit, onMoveToStaples, isOver }) {
   const { setNodeRef } = useDroppable({ id: group.label });
-  const [showInput, setShowInput] = useState(false);
-  const [input, setInput]         = useState('');
-
-  const commit = () => {
-    const v = input.toLowerCase().trim();
-    if (v) { onAdd(group.label, v); onToggle(v); setInput(''); setShowInput(false); }
-  };
 
   return (
     <div
@@ -209,19 +227,9 @@ function DroppableGroup({ group, fridgeSet, onToggle, onDelete, onAdd, onEdit, i
             onToggle={() => onToggle(item)}
             onDelete={() => onDelete(group.label, item)}
             onEdit={onEdit}
+            onMoveToStaples={() => onMoveToStaples(group.label, item)}
           />
         ))}
-        {showInput ? (
-          <span className="kitchen-custom-input-wrap">
-            <input className="kitchen-custom-input" autoFocus value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setShowInput(false); setInput(''); } }}
-              placeholder="type & press Enter" />
-            <button className="kitchen-custom-add-btn" onClick={commit}>Add</button>
-          </span>
-        ) : (
-          <button className="kitchen-chip kitchen-chip--add" onClick={() => setShowInput(true)}>+ add</button>
-        )}
       </div>
     </div>
   );
@@ -252,6 +260,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
   const allTracked = useMemo(() => new Set([...pantrySet, ...fridgeSet]), [pantrySet, fridgeSet]);
 
   const allStapleItems = useMemo(() => new Set(staplesConfig.flatMap(g => g.items)), [staplesConfig]);
+  const allFridgeConfigItems = useMemo(() => new Set(fridgeConfig.flatMap(g => g.items)), [fridgeConfig]);
 
   // Recipe ingredients
   const recipeIngredients = useMemo(() => {
@@ -260,14 +269,14 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     return names;
   }, [recipes]);
 
-  // Uncategorized = in recipes, not tracked anywhere, not in any current staples group
+  // Uncategorized = in recipes, not in any fridge or staples group, not tracked
   const uncategorized = useMemo(() => {
     const out = [];
     for (const n of recipeIngredients) {
-      if (!allTracked.has(n) && !allStapleItems.has(n)) out.push(n);
+      if (!allTracked.has(n) && !allStapleItems.has(n) && !allFridgeConfigItems.has(n)) out.push(n);
     }
     return out.sort();
-  }, [recipeIngredients, allTracked, allStapleItems]);
+  }, [recipeIngredients, allTracked, allStapleItems, allFridgeConfigItems]);
 
   // ── Staples mutations ─────────────────────────────────────────────────────
 
@@ -283,9 +292,11 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
   const addStapleItem = useCallback((groupLabel, item) => {
     const lower = item.toLowerCase().trim();
     if (!lower) return;
-    updateStaples(prev => prev.map(g =>
-      g.label === groupLabel && !g.items.includes(lower) ? { ...g, items: [...g.items, lower] } : g
-    ));
+    updateStaples(prev => {
+      const exists = prev.some(g => g.label === groupLabel);
+      if (exists) return prev.map(g => g.label === groupLabel && !g.items.includes(lower) ? { ...g, items: [...g.items, lower] } : g);
+      return [...prev, { label: groupLabel, items: [lower] }];
+    });
     setPantryStaples(prev => pantrySet.has(lower) ? prev : [...prev, lower]);
   }, [updateStaples, setPantryStaples, pantrySet]);
 
@@ -351,6 +362,33 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     setFridgeSearchFocused(false);
   };
 
+  const moveToStaples = useCallback((groupLabel, item) => {
+    updateFridge(prev => prev.map(g =>
+      g.label === groupLabel ? { ...g, items: g.items.filter(i => i !== item) } : g
+    ).filter(g => !(g.label === 'Miscellaneous' && g.items.length === 0)));
+    setFridgeIngredients(prev => prev.filter(x => x !== item));
+    updateStaples(prev => {
+      const hasMy = prev.some(g => g.label === 'My Pantry');
+      if (hasMy) return prev.map(g => g.label === 'My Pantry' && !g.items.includes(item) ? { ...g, items: [...g.items, item] } : g);
+      return [...prev, { label: 'My Pantry', items: [item] }];
+    });
+    setPantryStaples(prev => pantrySet.has(item) ? prev : [...prev, item]);
+  }, [updateFridge, setFridgeIngredients, updateStaples, setPantryStaples, pantrySet]);
+
+  const addToFridgeFromRecipe = useCallback((item) => {
+    const lower = item.toLowerCase().trim();
+    if (!lower) return;
+    if (!fridgeSet.has(lower)) setFridgeIngredients(prev => [...prev, lower]);
+    const inAnyGroup = fridgeConfig.some(g => g.items.includes(lower));
+    if (!inAnyGroup) {
+      updateFridge(prev => {
+        const hasMisc = prev.some(g => g.label === 'Miscellaneous');
+        if (hasMisc) return prev.map(g => g.label === 'Miscellaneous' && !g.items.includes(lower) ? { ...g, items: [...g.items, lower] } : g);
+        return [...prev, { label: 'Miscellaneous', items: [lower] }];
+      });
+    }
+  }, [fridgeSet, setFridgeIngredients, fridgeConfig, updateFridge]);
+
   // ── Drag handlers for fridge suggestion groups ────────────────────────────
 
   const handleDragStart = ({ active }) => setActiveDragId(active.id);
@@ -414,9 +452,9 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
         {/* Header — collapses/expands the pill groups only */}
         <button className="kitchen-section__header kitchen-section__header--btn" onClick={() => setFridgeOpen(p => !p)}>
           <div>
-            <h3 className="kitchen-section__title">Fridge &amp; Freezer</h3>
+            <h3 className="kitchen-section__title">Groceries</h3>
             <p className="kitchen-section__sub">
-              {fridgeIngredients.length > 0 ? `${fridgeIngredients.length} item${fridgeIngredients.length !== 1 ? 's' : ''} · drives "What can I make?"` : 'Expand to browse or search to add'}
+              {fridgeIngredients.length > 0 ? `${fridgeIngredients.length} item${fridgeIngredients.length !== 1 ? 's' : ''} · perishables & fresh · drives "What can I make?"` : 'Perishables, produce & fresh · search above to add'}
             </p>
           </div>
           <span className={`kitchen-section__arrow ${fridgeOpen ? 'kitchen-section__arrow--open' : ''}`}>▾</span>
@@ -427,7 +465,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
           <div className="kitchen-fridge-input-row">
             <input
               className="kitchen-fridge-input"
-              placeholder="Search ingredients..."
+              placeholder="Search or add to fridge…"
               value={fridgeSearch}
               onChange={e => setFridgeSearch(e.target.value)}
               onFocus={() => setFridgeSearchFocused(true)}
@@ -498,8 +536,8 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
                   fridgeSet={fridgeSet}
                   onToggle={toggleFridge}
                   onDelete={deleteFridgeSuggestion}
-                  onAdd={addFridgeSuggestion}
                   onEdit={editFridgeSuggestion}
+                  onMoveToStaples={moveToStaples}
                   isOver={overGroupId === group.label}
                 />
               ))}
@@ -526,6 +564,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
 
         {staplesOpen && (
           <div className="kitchen-checklist">
+            <StaplesAddBar groups={staplesConfig} onAdd={addStapleItem} />
             {staplesConfig.map(group => (
               <PillGroup
                 key={group.label}
@@ -534,13 +573,13 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
                 activeSet={pantrySet}
                 onToggle={togglePantry}
                 onDelete={deleteStapleItem}
-                onAdd={addStapleItem}
               />
             ))}
             <UncategorizedGroup
               items={uncategorized}
               groupLabels={staplesConfig.map(g => g.label)}
               onAssign={assignUncategorized}
+              onAddToFridge={addToFridgeFromRecipe}
             />
           </div>
         )}
