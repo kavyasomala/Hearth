@@ -728,6 +728,7 @@ function AppInner() {
               { key: 'recipes',   label: 'Recipes'      },
               { key: 'kitchen',   label: 'Kitchen'      },
               { key: 'grocery',   label: 'Grocery'      },
+              { key: 'plan',      label: 'Plan'         },
               { key: 'cookbooks', label: 'Cookbooks'    },
               { key: 'notes',     label: 'Notes'        },
               ...(session ? [{ key: 'add', label: 'Add' }] : []),
@@ -764,12 +765,13 @@ function AppInner() {
               <div className="mobile-nav-overlay__divider" />
               {/* Nav items */}
               {[
-                { key: 'home',      label: 'Home',      icon: 'home'      },
-                { key: 'recipes',   label: 'Recipes',   icon: 'bookOpen'  },
-                { key: 'kitchen',   label: 'Kitchen',   icon: 'package'   },
-                { key: 'grocery',   label: 'Grocery',   icon: 'cart'      },
-                { key: 'cookbooks', label: 'Cookbooks', icon: 'bookMarked'},
-                { key: 'notes',     label: 'Notes',     icon: 'lightbulb' },
+                { key: 'home',      label: 'Home',       icon: 'home'      },
+                { key: 'recipes',   label: 'Recipes',    icon: 'bookOpen'  },
+                { key: 'kitchen',   label: 'Kitchen',    icon: 'package'   },
+                { key: 'grocery',   label: 'Grocery',    icon: 'cart'      },
+                { key: 'plan',      label: 'Meal Plan',  icon: 'calendar'  },
+                { key: 'cookbooks', label: 'Cookbooks',  icon: 'bookMarked'},
+                { key: 'notes',     label: 'Notes',      icon: 'lightbulb' },
                 ...(session ? [{ key: 'add', label: 'Add Recipe', icon: 'plus' }] : []),
               ].map(({ key, label, icon }) => (
                 <button key={key}

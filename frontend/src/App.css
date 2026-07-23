@@ -9843,69 +9843,138 @@ html, body {
 
 
 
+
 /* ══════════════════════════════════════════════════════════════════════════════
-   MEAL PLAN TAB  — month calendar
+   MEAL PLAN TAB — month + week calendar
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .meal-plan-view {
-  padding: 0 0 80px;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
   min-height: 0;
+  flex: 1;
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────────── */
 
 .mp-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  padding: 24px 20px 14px;
+  padding: 20px 20px 12px;
   gap: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.mp-header__left { min-width: 0; }
+.mp-header__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 .mp-title {
   font-size: 22px;
   font-weight: 800;
   color: var(--ink);
-  margin: 0 0 2px;
+  margin: 0 0 1px;
 }
 .mp-subtitle {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--warm-gray);
   margin: 0;
 }
+
+/* View toggle (Month / Week) */
+.mp-view-toggle {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.mp-view-toggle__btn {
+  background: none;
+  border: none;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warm-gray);
+  cursor: pointer;
+  transition: background .12s, color .12s;
+  white-space: nowrap;
+}
+.mp-view-toggle__btn--active {
+  background: var(--terracotta);
+  color: #fff;
+}
+
+/* Nav arrows */
 .mp-nav {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
+  gap: 4px;
 }
 .mp-nav__btn {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 7px;
   color: var(--ink);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  padding: 6px 12px;
+  padding: 5px 10px;
   cursor: pointer;
-  transition: background .15s;
   line-height: 1;
+  transition: background .12s;
 }
 .mp-nav__btn:hover { background: var(--bg-hover); }
 .mp-nav__btn--today {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--terracotta);
   border-color: var(--terracotta);
-  padding: 6px 10px;
+  padding: 5px 9px;
 }
 
-/* ── Grid wrapper ───────────────────────────────────────────────────────────── */
+/* ── Body: calendar + detail side by side on desktop ───────────────────────── */
 
+.mp-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* Calendar side */
 .mp-grid-wrap {
-  padding: 0 12px 12px;
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px 16px;
+  overflow-y: auto;
 }
 
-/* ── Day-of-week header row ─────────────────────────────────────────────────── */
+/* Detail panel side — desktop sidebar */
+.mp-detail-wrap {
+  width: 280px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+}
+.mp-detail-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 120px;
+  color: var(--warm-gray);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px;
+}
+
+/* ── Day-of-week header ─────────────────────────────────────────────────────── */
 
 .mp-dow-row {
   display: grid;
@@ -9931,42 +10000,45 @@ html, body {
   gap: 3px;
 }
 
+/* Week grid — single row, taller cells */
+.mp-grid--week {
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
 /* ── Day cell ───────────────────────────────────────────────────────────────── */
 
 .mp-cell {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
-  min-height: 92px;
+  min-height: 90px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   cursor: pointer;
   transition: border-color .12s, box-shadow .12s;
-  position: relative;
 }
-.mp-cell:hover { border-color: var(--terracotta-light, #e88c6e); }
+.mp-cell--week {
+  min-height: 160px;
+}
+.mp-cell:hover { border-color: rgba(198,93,59,0.4); }
 .mp-cell--over {
   border-color: var(--terracotta);
   box-shadow: 0 0 0 2px rgba(198,93,59,0.18);
   background: rgba(198,93,59,0.04);
 }
-.mp-cell--other {
-  background: var(--surface);
-  opacity: 0.45;
-}
-.mp-cell--past { cursor: default; }
+.mp-cell--other  { background: var(--surface); opacity: 0.4; pointer-events: none; }
+.mp-cell--past   { cursor: default; }
 .mp-cell--past:hover { border-color: var(--border); }
-.mp-cell--today {
-  border-color: var(--terracotta);
-  border-width: 2px;
-}
+.mp-cell--today  { border-color: var(--terracotta); border-width: 2px; }
+.mp-cell--selected { border-color: var(--terracotta); background: rgba(198,93,59,0.04); }
 
 .mp-cell__hd {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 5px 7px 3px;
+  padding: 5px 6px 3px;
   flex-shrink: 0;
 }
 .mp-cell__num {
@@ -9974,6 +10046,7 @@ html, body {
   font-weight: 700;
   color: var(--ink);
   line-height: 1;
+  flex-shrink: 0;
 }
 .mp-cell--today .mp-cell__num {
   background: var(--terracotta);
@@ -9987,22 +10060,29 @@ html, body {
   font-size: 11px;
 }
 .mp-cell--other .mp-cell__num { color: var(--warm-gray); }
+.mp-cell__dow {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--warm-gray);
+  flex: 1;
+  text-align: center;
+}
 .mp-cell__add-hint {
   font-size: 14px;
   color: var(--border);
-  line-height: 1;
   transition: color .12s;
 }
 .mp-cell:hover .mp-cell__add-hint { color: var(--terracotta); }
 
 .mp-cell__body {
-  padding: 0 4px 5px;
+  padding: 0 4px 4px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
 }
 .mp-cell__more {
   font-size: 10px;
@@ -10010,12 +10090,12 @@ html, body {
   color: var(--terracotta);
   background: none;
   border: none;
-  padding: 1px 3px;
+  padding: 1px 2px;
   cursor: pointer;
   text-align: left;
 }
 
-/* ── Meal pill (inside calendar cells) ─────────────────────────────────────── */
+/* ── Meal pill ───────────────────────────────────────────────────────────────── */
 
 .mp-pill {
   display: flex;
@@ -10030,21 +10110,21 @@ html, body {
   line-height: 1.2;
   user-select: none;
   overflow: hidden;
-  position: relative;
   transition: box-shadow .1s, border-color .1s;
 }
-.mp-pill:hover { border-color: var(--terracotta-light, #e88c6e); }
+.mp-pill:hover { border-color: rgba(198,93,59,0.5); }
 .mp-pill--dragging { box-shadow: 0 4px 16px rgba(0,0,0,0.12); cursor: grabbing; }
 .mp-pill--overlay  {
-  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.2);
   border-color: var(--terracotta);
   rotate: 2deg;
   cursor: grabbing;
   pointer-events: none;
   font-size: 12px;
-  padding: 5px 8px;
+  padding: 6px 10px;
   border-radius: 8px;
   background: var(--card);
+  min-width: 120px;
 }
 .mp-pill--cooked { border-color: #4caf50; background: rgba(76,175,80,0.06); }
 
@@ -10058,11 +10138,8 @@ html, body {
   align-items: center;
   justify-content: center;
 }
-.mp-pill--overlay .mp-pill__img { width: 26px; height: 26px; border-radius: 5px; }
-.mp-pill__img--ph {
-  background: var(--border);
-  font-size: 9px;
-}
+.mp-pill--overlay .mp-pill__img { width: 28px; height: 28px; border-radius: 5px; }
+.mp-pill__img--ph { background: var(--border); font-size: 9px; }
 .mp-pill__title {
   flex: 1;
   min-width: 0;
@@ -10072,16 +10149,8 @@ html, body {
   color: var(--ink);
   font-weight: 500;
 }
-.mp-pill__cooked-dot {
-  font-size: 9px;
-  color: #4caf50;
-  flex-shrink: 0;
-}
-.mp-pill__acts {
-  display: none;
-  gap: 2px;
-  flex-shrink: 0;
-}
+.mp-pill__cooked-dot { font-size: 9px; color: #4caf50; flex-shrink: 0; }
+.mp-pill__acts { display: none; gap: 2px; flex-shrink: 0; }
 .mp-pill:hover .mp-pill__acts { display: flex; }
 .mp-pill__act {
   background: none;
@@ -10096,78 +10165,58 @@ html, body {
 .mp-pill__act:hover { background: var(--bg-hover); }
 .mp-pill__act--rm:hover { color: var(--terracotta); }
 
-/* ── Day detail panel (slides in below calendar) ────────────────────────────── */
+/* ── Day detail panel ────────────────────────────────────────────────────────── */
 
 .mp-detail {
-  margin: 8px 12px 0;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  animation: mp-detail-in .18s ease;
-}
-@keyframes mp-detail-in {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 .mp-detail__hd {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 14px 16px 10px;
   border-bottom: 1px solid var(--border);
-  gap: 10px;
+  flex-shrink: 0;
+  gap: 8px;
 }
 .mp-detail__label {
   font-size: 15px;
   font-weight: 700;
   color: var(--ink);
 }
-.mp-detail__hd-acts {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+.mp-detail__hd-acts { display: flex; align-items: center; gap: 8px; }
 .mp-detail__close {
   background: none;
   border: none;
   font-size: 14px;
   color: var(--warm-gray);
   cursor: pointer;
-  padding: 4px;
+  padding: 3px 5px;
   line-height: 1;
-  border-radius: 50%;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 4px;
 }
 .mp-detail__close:hover { background: var(--bg-hover); }
 .mp-detail__empty {
-  padding: 16px;
+  padding: 20px 16px;
   font-size: 13px;
   color: var(--warm-gray);
   margin: 0;
 }
-.mp-detail__list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
+.mp-detail__list { flex: 1; overflow-y: auto; }
 .mp-detail__card {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--border);
-  transition: background .12s;
 }
 .mp-detail__card:last-child { border-bottom: none; }
 .mp-detail__card--cooked { background: rgba(76,175,80,0.04); }
 .mp-detail__img {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 8px;
   object-fit: cover;
   flex-shrink: 0;
@@ -10177,43 +10226,26 @@ html, body {
   align-items: center;
   justify-content: center;
   background: var(--surface);
-  font-size: 20px;
+  font-size: 18px;
 }
-.mp-detail__body {
-  flex: 1;
-  min-width: 0;
-}
+.mp-detail__body { flex: 1; min-width: 0; }
 .mp-detail__title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink);
   margin: 0 0 2px;
+  line-height: 1.3;
 }
-.mp-detail__type {
-  font-size: 11px;
-  color: var(--warm-gray);
-  text-transform: capitalize;
-}
-.mp-detail__cooked {
-  font-size: 11px;
-  font-weight: 600;
-  color: #4caf50;
-  display: block;
-}
-.mp-detail__acts {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: flex-end;
-  flex-shrink: 0;
-}
+.mp-detail__type { font-size: 11px; color: var(--warm-gray); text-transform: capitalize; }
+.mp-detail__cooked { font-size: 11px; font-weight: 600; color: #4caf50; display: block; }
+.mp-detail__acts { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 .mp-detail__act {
   background: none;
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
-  padding: 4px 10px;
+  padding: 4px 8px;
   cursor: pointer;
   white-space: nowrap;
   transition: border-color .12s, color .12s;
@@ -10241,7 +10273,7 @@ html, body {
   background: var(--card);
   border-radius: 20px 20px 0 0;
   width: 100%;
-  max-height: 82vh;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -10257,99 +10289,60 @@ html, body {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-.mp-modal__title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--ink);
-  margin: 0 0 2px;
-}
-.mp-modal__date-label {
-  font-size: 12px;
-  color: var(--terracotta);
-  font-weight: 600;
-  margin: 0;
-}
+.mp-modal__title { font-size: 16px; font-weight: 700; color: var(--ink); margin: 0 0 2px; }
+.mp-modal__date-label { font-size: 12px; color: var(--terracotta); font-weight: 600; margin: 0; }
 .mp-modal__close {
-  background: none;
-  border: none;
-  font-size: 18px;
-  color: var(--warm-gray);
-  cursor: pointer;
-  padding: 0 0 0 8px;
-  line-height: 1;
-  flex-shrink: 0;
+  background: none; border: none; font-size: 18px; color: var(--warm-gray);
+  cursor: pointer; padding: 0 0 0 8px; line-height: 1; flex-shrink: 0;
 }
 .mp-modal__types {
-  display: flex;
-  gap: 6px;
-  padding: 12px 16px 8px;
-  flex-wrap: wrap;
-  flex-shrink: 0;
+  display: flex; gap: 6px; padding: 10px 16px 8px; flex-wrap: wrap; flex-shrink: 0;
 }
 .mp-modal__search {
-  margin: 0 16px 8px;
-  width: calc(100% - 32px);
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--ink);
-  font-size: 14px;
-  flex-shrink: 0;
+  margin: 0 16px 8px; width: calc(100% - 32px);
+  padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); color: var(--ink); font-size: 14px; flex-shrink: 0;
+  box-sizing: border-box;
 }
 .mp-modal__search:focus { outline: none; border-color: var(--terracotta); }
-.mp-modal__list {
-  overflow-y: auto;
-  flex: 1;
-  padding: 4px 8px 12px;
-}
+.mp-modal__list { overflow-y: auto; flex: 1; padding: 4px 8px 12px; }
 .mp-modal__item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 10px;
-  background: none;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  text-align: left;
-  transition: background .12s;
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 8px 10px; background: none; border: none; border-radius: 10px;
+  cursor: pointer; text-align: left; transition: background .12s;
 }
 .mp-modal__item:hover { background: var(--surface); }
 .mp-modal__item-img {
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
-  object-fit: cover;
-  flex-shrink: 0;
+  width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
 }
 .mp-modal__item-img--ph {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface); border: 1px solid var(--border); font-size: 20px;
 }
-.mp-modal__item-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
-  line-height: 1.3;
-}
-.mp-modal__empty {
-  text-align: center;
-  color: var(--warm-gray);
-  font-size: 13px;
-  padding: 24px 0;
-  margin: 0;
-}
+.mp-modal__item-title { font-size: 14px; font-weight: 600; color: var(--ink); line-height: 1.3; }
+.mp-modal__empty { text-align: center; color: var(--warm-gray); font-size: 13px; padding: 24px 0; margin: 0; }
 
-/* ── Recipe page: Plan button popover ──────────────────────────────────────── */
-.rp2__plan-wrap {
-  position: relative;
+/* ── Recipe page: Plan button (filled, not ghost) ───────────────────────────── */
+.rp2__plan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--terracotta);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity .15s;
+  white-space: nowrap;
 }
+.rp2__plan-btn:hover { opacity: 0.88; }
+.rp2__plan-btn--done {
+  background: #4caf50;
+}
+.rp2__plan-wrap { position: relative; }
 .rp2__plan-pop {
   position: absolute;
   top: calc(100% + 8px);
@@ -10358,12 +10351,12 @@ html, body {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 14px 16px;
-  min-width: 200px;
+  min-width: 210px;
   z-index: 200;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.13);
 }
 .rp2__plan-pop__label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -10384,39 +10377,50 @@ html, body {
 .rp2__plan-pop__date:focus { outline: none; border-color: var(--terracotta); }
 .rp2__plan-pop__btns { display: flex; gap: 6px; }
 .rp2__plan-pop__confirm {
-  flex: 1;
-  padding: 8px;
-  background: var(--terracotta);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
+  flex: 1; padding: 8px; background: var(--terracotta); color: #fff;
+  border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
 }
 .rp2__plan-pop__confirm:hover { opacity: 0.9; }
 .rp2__plan-pop__cancel {
-  padding: 8px 12px;
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--warm-gray);
-  cursor: pointer;
+  padding: 8px 12px; background: none; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 13px; color: var(--warm-gray); cursor: pointer;
 }
 
 /* ── Mobile ─────────────────────────────────────────────────────────────────── */
 
 @media (max-width: 640px) {
-  .mp-header { padding: 16px 14px 10px; }
-  .mp-grid-wrap { padding: 0 8px 8px; }
-  .mp-cell { min-height: 64px; border-radius: 6px; }
+  .mp-header { padding: 14px 14px 10px; gap: 8px; }
+  .mp-header__right { gap: 6px; }
+  .mp-view-toggle__btn { padding: 5px 10px; font-size: 11px; }
+  .mp-nav__btn { padding: 5px 8px; font-size: 14px; }
+  .mp-nav__btn--today { font-size: 10px; padding: 5px 7px; }
+
+  /* On mobile, body stacks: calendar on top, detail below */
+  .mp-body {
+    flex-direction: column;
+    overflow: visible;
+  }
+  .mp-grid-wrap {
+    padding: 0 8px 10px;
+    overflow: visible;
+  }
+  .mp-detail-wrap {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    min-height: 180px;
+    overflow: visible;
+  }
+  .mp-detail { height: auto; }
+
+  .mp-cell { min-height: 60px; border-radius: 6px; }
+  .mp-cell--week { min-height: 100px; }
   .mp-cell__num { font-size: 11px; }
   .mp-cell--today .mp-cell__num { width: 18px; height: 18px; font-size: 10px; }
-  .mp-cell__add-hint { font-size: 12px; }
-  .mp-pill { font-size: 9px; padding: 2px 3px; }
+
+  .mp-pill { font-size: 9px; }
   .mp-pill__img { width: 14px; height: 14px; }
-  .mp-pill--overlay { font-size: 11px; padding: 4px 7px; }
-  .mp-pill--overlay .mp-pill__img { width: 20px; height: 20px; }
-  .mp-detail { margin: 6px 8px 0; }
+
+  /* On mobile, show pill actions always (no hover) */
+  .mp-pill__acts { display: flex; }
 }

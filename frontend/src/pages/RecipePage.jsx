@@ -259,12 +259,12 @@ function PlanButton({ recipeId, session }) {
   return (
     <div className="rp2__plan-wrap" ref={ref}>
       <button
-        className={`rp2__cooking-mode-btn ${done ? 'rp2__cooking-mode-btn--on' : ''}`}
+        className={`rp2__plan-btn ${done ? 'rp2__plan-btn--done' : ''}`}
         onClick={() => setOpen(o => !o)}
         title="Add to Meal Plan"
       >
-        <Icon name="calendar" size={14} strokeWidth={2} />
-        {done ? ' Added!' : ' Plan'}
+        <Icon name="calendar" size={14} strokeWidth={2} color="#fff" />
+        {done ? 'Added!' : 'Plan'}
       </button>
       {open && !done && (
         <div className="rp2__plan-pop">
