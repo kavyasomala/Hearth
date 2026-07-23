@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Icon } from '../icons';
-import { API, TAG_FILTERS, COMMON_UNITS, STAR_LABELS } from '../constants';
+import { API, TAG_FILTERS, COMMON_UNITS, STAR_LABELS, GEO_CUISINES } from '../constants';
 import { haptic, pct, toNum, pluralizeIng, checkDietaryConflicts, unitType, formatWeight, formatVolume } from '../utils';
 import { DRAG_SENSORS, AutoGrowTextarea, Badge, SectionPencil, AnchoredPopover, useAnchoredPopover } from '../components/ui';
 import { HeroImage, HeroTagsButton } from '../components/HeroComponents';
@@ -321,6 +321,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const rpSensors = DRAG_SENSORS();
   const [draftNotes, setDraftNotes] = useState([]);
   const [draftMeta, setDraftMeta] = useState({});
+  const [showMetaModal, setShowMetaModal] = useState(false);
   const [draftCookbook, setDraftCookbook] = useState({ cookbook: '', reference: '' });
 
   const isEdit = (s) => editingSection === s;
@@ -403,7 +404,19 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
 
   const cancelEdit = () => { setEditingSection(null); setSaveError(null); };
 
-  const saveSection = async (section) => {
+  const openMetaModal = () => {
+    setDraftMeta({
+      time:     recipe.time     || '',
+      servings: recipe.servings || '',
+      calories: recipe.calories || '',
+      cuisine:  recipe.cuisine  || '',
+      tags:     recipe.tags     || [],
+      status:   recipe.status   || '',
+    });
+    setShowMetaModal(true);
+  };
+
+  const saveSection = async (section, afterSave) => {
     setSaving(true); setSaveError(null);
     const isMeta = section === 'meta' || section.startsWith('meta-');
 
@@ -464,6 +477,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
       if (!res.ok) throw new Error(data.error || `Save failed (${res.status})`);
       setEditingSection(null);
       if (onSaved) onSaved(data.recipe);
+      if (afterSave) afterSave();
     } catch (e) { setSaveError(e.message); }
     finally { setSaving(false); }
   };
@@ -705,6 +719,15 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             ><Icon name="timer" size={16} strokeWidth={2} /></button>
           </div>
 
+          {/* Bottom-right: Edit details (owners only, mobile only) */}
+          {isAdmin && (
+            <div className="rp2__hero-corner rp2__hero-corner--br rp2__hero-mobile-only">
+              <button className="rp2__hero-btn" onClick={e => { e.stopPropagation(); openMetaModal(); }} title="Edit details">
+                <Icon name="sliders" size={13} strokeWidth={2} />
+              </button>
+            </div>
+          )}
+
           {/* -- Desktop-only tags+pills row at bottom -- */}
           <div className="rp2__hero-bottom rp2__hero-bottom--desktop-only">
 
@@ -742,6 +765,19 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     recipe.status === 'made it' ? <Icon name="checkCircle" size={12} strokeWidth={2} /> :
                     recipe.status === 'archived' ? <Icon name="archive" size={12} strokeWidth={2} /> :
                     recipe.status === 'to try' ? <Icon name="bookMarked" size={12} strokeWidth={2} /> : null}
+                  </button>
+                </div>
+              )}
+
+              {/* Entry button — visible for owners when no chips exist */}
+              {isAdmin && !isEdit('meta-tags') && !recipe.cuisine && !(recipe.status && recipe.status !== '') && (
+                <div className="rp2__hero-tag-wrap">
+                  <button
+                    className="rp2__tag rp2__tag--add-entry"
+                    onClick={e => { e.stopPropagation(); startEdit('meta-tags'); }}
+                    title="Add cuisine, tags & progress"
+                  >
+                    <Icon name="tag" size={11} strokeWidth={2} /> + Tags
                   </button>
                 </div>
               )}
@@ -915,6 +951,18 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             {isAdmin && <button className="rp2__delete-btn" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe"><Icon name="trash2" size={15} strokeWidth={2} color="var(--warm-gray)" /></button>}
           </div>
         </div>
+
+        {/* -- Meta summary row — shows on mobile (desktop sees this in the hero) */}
+        {(recipe.time || recipe.servings || recipe.calories) ? (
+          <div className="rp2__meta-summary">
+            {recipe.time     && <span className="rp2__meta-pill"><Icon name="clock"    size={11} strokeWidth={2} /> {recipe.time}</span>}
+            {recipe.servings && <span className="rp2__meta-pill"><Icon name="utensils" size={11} strokeWidth={2} /> {recipe.servings} srv</span>}
+            {recipe.calories && <span className="rp2__meta-pill"><Icon name="flame"    size={11} strokeWidth={2} /> {recipe.calories} cal</span>}
+            {isAdmin && <button className="rp2__meta-pill rp2__meta-pill--edit" onClick={openMetaModal} title="Edit details">✎</button>}
+          </div>
+        ) : isAdmin ? (
+          <button className="rp2__meta-add-btn" onClick={openMetaModal}>+ Add time · servings · calories</button>
+        ) : null}
 
         {/* -- Dietary Conflict Warnings -- */}
         {dietaryWarnings.length > 0 && (
@@ -1558,6 +1606,64 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         </div>
       </div>
       )}
+      {/* ── Meta edit modal — all fields in one place, works on mobile + desktop ── */}
+      {isAdmin && showMetaModal && createPortal((
+        <div className="rp2__meta-modal-bg" onClick={() => { setShowMetaModal(false); setSaveError(null); }}>
+          <div className="rp2__meta-modal" onClick={e => e.stopPropagation()}>
+            <div className="rp2__meta-modal__head">
+              <h3 className="rp2__meta-modal__title">Edit Details</h3>
+              <button className="rp2__meta-modal__close" onClick={() => { setShowMetaModal(false); setSaveError(null); }}>✕</button>
+            </div>
+
+            <div className="rp2__meta-modal__fields">
+              <div className="rp2__meta-modal__trio">
+                <div>
+                  <label className="rp2__dark-pop-label"><Icon name="clock" size={12} strokeWidth={2} /> Time</label>
+                  <input className="rp2__dark-input" value={draftMeta.time||''} onChange={e => setDraftMeta(p => ({...p, time: e.target.value}))} placeholder="45 mins" />
+                </div>
+                <div>
+                  <label className="rp2__dark-pop-label"><Icon name="utensils" size={12} strokeWidth={2} /> Servings</label>
+                  <input className="rp2__dark-input" value={draftMeta.servings||''} onChange={e => setDraftMeta(p => ({...p, servings: e.target.value}))} placeholder="4" />
+                </div>
+                <div>
+                  <label className="rp2__dark-pop-label"><Icon name="flame" size={12} strokeWidth={2} /> Cal / serving</label>
+                  <input className="rp2__dark-input" value={draftMeta.calories||''} onChange={e => setDraftMeta(p => ({...p, calories: e.target.value}))} placeholder="450" />
+                </div>
+              </div>
+
+              <p className="rp2__dark-pop-label" style={{marginTop:14}}><Icon name="mapPin" size={12} strokeWidth={2} /> Cuisine</p>
+              <div className="rp2__dark-pop-chips">
+                <button className={`rp2__dark-chip ${!draftMeta.cuisine ? 'rp2__dark-chip--on' : ''}`} onClick={() => setDraftMeta(p => ({...p, cuisine: ''}))}>None</button>
+                {GEO_CUISINES.map(c => (
+                  <button key={c} className={`rp2__dark-chip ${draftMeta.cuisine===c ? 'rp2__dark-chip--on' : ''}`} onClick={() => setDraftMeta(p => ({...p, cuisine: c}))}>{c}</button>
+                ))}
+              </div>
+
+              <p className="rp2__dark-pop-label" style={{marginTop:10}}><Icon name="tag" size={12} strokeWidth={2} /> Tags</p>
+              <div className="rp2__dark-pop-chips">
+                {TAG_FILTERS.map(({key,label}) => (
+                  <button key={key} className={`rp2__dark-chip ${(draftMeta.tags||[]).includes(key) ? 'rp2__dark-chip--on' : ''}`} onClick={() => toggleDraftTag(key)}>{label}</button>
+                ))}
+              </div>
+
+              <p className="rp2__dark-pop-label" style={{marginTop:10}}><Icon name="list" size={12} strokeWidth={2} /> Progress</p>
+              <div className="rp2__dark-pop-chips">
+                {[{key:'',label:'None'},{key:'to try',label:'To Try'},{key:'made it',label:'Made It'},{key:'needs tweaking',label:'Needs Tweaking'},{key:'archived',label:'Archived'}].map(({key,label}) => (
+                  <button key={key} className={`rp2__dark-chip ${draftMeta.status===key ? 'rp2__dark-chip--on' : ''}`} onClick={() => setDraftMeta(p => ({...p, status: key}))}>{label}</button>
+                ))}
+              </div>
+            </div>
+
+            {saveError && <p className="rp2__save-error" style={{marginTop:8,color:'var(--terracotta)'}}>{saveError}</p>}
+
+            <div className="rp2__dark-pop-actions" style={{marginTop:16}}>
+              <button className="rp2__dark-save" onClick={() => saveSection('meta', () => setShowMetaModal(false))} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
+              <button className="rp2__dark-cancel" onClick={() => { setShowMetaModal(false); setSaveError(null); }}>✕ Cancel</button>
+            </div>
+          </div>
+        </div>
+      ), document.body)}
+
     </main>
   );
 };
