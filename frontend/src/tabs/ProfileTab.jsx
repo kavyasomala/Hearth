@@ -469,7 +469,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
 
       {/* ── Preferences ──────────────────────────────────────────── */}
       <Section icon="settings" title="Preferences">
-        <div className="settings-section">
+        <div className="settings-section mobile-only-pref">
           <h4 className="settings-section__title"><Icon name="home" size={15} strokeWidth={2} /> Bottom Tab Bar</h4>
           <p className="settings-section__hint">Choose up to 4 tabs (Profile is always included)</p>
           {(() => {
