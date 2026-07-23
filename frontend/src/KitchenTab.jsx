@@ -145,6 +145,14 @@ function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete, onEdi
   });
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState(item);
+  const [showMenu, setShowMenu] = useState(false);
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const dismiss = () => setShowMenu(false);
+    window.addEventListener('touchstart', dismiss, { once: true, capture: true });
+    return () => window.removeEventListener('touchstart', dismiss, { capture: true });
+  }, [showMenu]);
 
   const commitEdit = () => {
     const v = editVal.trim().toLowerCase();
@@ -171,7 +179,7 @@ function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete, onEdi
   return (
     <span
       ref={setNodeRef}
-      className={`kpill ${active ? 'kpill--active' : ''} ${isDragging ? 'kpill--dragging' : ''}`}
+      className={`kpill ${active ? 'kpill--active' : ''} ${isDragging ? 'kpill--dragging' : ''} ${showMenu ? 'kpill--menu-open' : ''}`}
       style={{ opacity: isDragging ? 0.25 : 1, touchAction: 'none' }}
       onDoubleClick={() => { setEditing(true); setEditVal(item); }}
     >
@@ -179,7 +187,7 @@ function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete, onEdi
         className="kpill__toggle"
         {...listeners}
         {...attributes}
-        onClick={() => { navigator.vibrate?.(3); onToggle(); }}
+        onClick={() => { navigator.vibrate?.(3); onToggle(); setShowMenu(false); }}
       >
         {active && <span className="kpill__check-mark">✓</span>}
         {item}
@@ -188,7 +196,7 @@ function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete, onEdi
         className="kpill__mv"
         tabIndex={-1}
         onPointerDown={e => e.stopPropagation()}
-        onClick={e => { e.stopPropagation(); onMoveToStaples(); }}
+        onClick={e => { e.stopPropagation(); onMoveToStaples(); setShowMenu(false); }}
         title="Move to Pantry"
       >★</button>
       <button
@@ -198,6 +206,17 @@ function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete, onEdi
         onClick={e => { e.stopPropagation(); onDelete(); }}
         title="Remove"
       >✕</button>
+      <button
+        className="kpill__more"
+        tabIndex={-1}
+        onPointerDown={e => e.stopPropagation()}
+        onClick={e => {
+          e.stopPropagation();
+          navigator.vibrate?.([8, 4, 8]);
+          setShowMenu(m => !m);
+        }}
+        aria-label="More actions"
+      >···</button>
     </span>
   );
 }
@@ -345,6 +364,9 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
   const addFridgeFromSearch = () => {
     const val = fridgeSearch.toLowerCase().trim();
     if (!val) return;
+    if (allStapleItems.has(val)) {
+      setFridgeSearch(''); setFridgeSearchFocused(false); return;
+    }
     if (!fridgeSet.has(val)) setFridgeIngredients(prev => [...prev, val]);
     // If not in any suggestion group, add to Miscellaneous so user can drag it later
     const inAnyGroup = fridgeConfig.some(g => g.items.includes(val));
@@ -416,11 +438,11 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     if (!q) return null;
     const allFridgeItems = fridgeConfig.flatMap(g => g.items);
     const matches = [
-      ...allFridgeItems.filter(i => i.includes(q)),
-      ...[...recipeIngredients].filter(n => n.includes(q) && !allFridgeItems.includes(n)),
+      ...allFridgeItems.filter(i => i.includes(q) && !allStapleItems.has(i)),
+      ...[...recipeIngredients].filter(n => n.includes(q) && !allFridgeItems.includes(n) && !allStapleItems.has(n)),
     ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 20);
     return matches;
-  }, [fridgeSearch, fridgeConfig, recipeIngredients]);
+  }, [fridgeSearch, fridgeConfig, recipeIngredients, allStapleItems]);
 
   const showSearchDropdown = fridgeSearchFocused && !!fridgeSearch && searchDropdown && searchDropdown.length > 0;
 
@@ -509,16 +531,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
           )}
         </div>
 
-        {/* Active chips — always visible */}
-        {fridgeIngredients.length > 0 && (
-          <div className="kitchen-active-chips" style={{padding: '0 22px 12px'}}>
-            {fridgeIngredients.map(item => (
-              <button key={item} className="kitchen-chip kitchen-chip--active" onClick={() => toggleFridge(item)}>
-                {item} <span className="kitchen-chip__remove">✕</span>
-              </button>
-            ))}
-          </div>
-        )}
+
 
         {/* Collapsible pill groups with drag-and-drop */}
         {fridgeOpen && (
