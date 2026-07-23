@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   DndContext, PointerSensor, TouchSensor, useSensor, useSensors,
   useDroppable, useDraggable, DragOverlay,
@@ -14,6 +14,13 @@ function fmtDate(d) {
   return `${y}-${m}-${dd}`;
 }
 
+function addDays(d, n) {
+  const r = new Date(d); r.setDate(r.getDate() + n); return r;
+}
+function getMonday(d) {
+  const r = new Date(d); r.setHours(0,0,0,0);
+  const dow = r.getDay(); r.setDate(r.getDate() - (dow === 0 ? 6 : dow - 1)); return r;
+}
 function todayStr() { return fmtDate(new Date()); }
 function isPast(s)  { return s < todayStr(); }
 function isToday(s) { return s === todayStr(); }
@@ -23,13 +30,20 @@ const MONTH_NAMES = ['January','February','March','April','May','June',
 const DOW_SHORT   = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
 function getMonthCells(year, month) {
-  const firstOfMonth = new Date(year, month, 1);
-  const lastOfMonth  = new Date(year, month + 1, 0);
-  const startOffset  = (firstOfMonth.getDay() + 6) % 7; // Monday-based
-  const totalCells   = Math.ceil((startOffset + lastOfMonth.getDate()) / 7) * 7;
-  return Array.from({ length: totalCells }, (_, i) => {
-    const d = new Date(year, month, 1 - startOffset + i);
+  const first  = new Date(year, month, 1);
+  const last   = new Date(year, month + 1, 0);
+  const offset = (first.getDay() + 6) % 7;
+  const total  = Math.ceil((offset + last.getDate()) / 7) * 7;
+  return Array.from({ length: total }, (_, i) => {
+    const d = new Date(year, month, 1 - offset + i);
     return { date: d, dateStr: fmtDate(d), inMonth: d.getMonth() === month };
+  });
+}
+
+function getWeekCells(weekStart) {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(weekStart, i);
+    return { date: d, dateStr: fmtDate(d), inMonth: true };
   });
 }
 
@@ -73,27 +87,33 @@ function DraggableMealPill({ plan, onRemove, onMarkCooked, isOverlay }) {
 
 // ─── DroppableDayCell ─────────────────────────────────────────────────────────
 
-function DroppableDayCell({ dateStr, date, plans, inMonth, onCellClick, onRemove, onMarkCooked }) {
+function DroppableDayCell({ dateStr, date, plans, inMonth, isWeekView, onCellClick, onRemove, onMarkCooked, isSelected }) {
   const { setNodeRef, isOver } = useDroppable({ id: dateStr });
-  const today = isToday(dateStr);
-  const past  = isPast(dateStr);
-  const show  = plans.slice(0, 3);
-  const more  = plans.length - show.length;
+  const today    = isToday(dateStr);
+  const past     = isPast(dateStr);
+  const maxPills = isWeekView ? 6 : 3;
+  const show     = plans.slice(0, maxPills);
+  const more     = plans.length - show.length;
 
   return (
     <div
       ref={setNodeRef}
       className={[
         'mp-cell',
-        !inMonth ? 'mp-cell--other' : '',
-        today    ? 'mp-cell--today' : '',
-        past     ? 'mp-cell--past'  : '',
-        isOver   ? 'mp-cell--over'  : '',
+        !inMonth    ? 'mp-cell--other'    : '',
+        today       ? 'mp-cell--today'    : '',
+        past        ? 'mp-cell--past'     : '',
+        isOver      ? 'mp-cell--over'     : '',
+        isSelected  ? 'mp-cell--selected' : '',
+        isWeekView  ? 'mp-cell--week'     : '',
       ].join(' ')}
       onClick={() => onCellClick(dateStr)}
     >
       <div className="mp-cell__hd">
         <span className="mp-cell__num">{date.getDate()}</span>
+        {isWeekView && (
+          <span className="mp-cell__dow">{DOW_SHORT[(date.getDay() + 6) % 7]}</span>
+        )}
         {inMonth && !past && plans.length === 0 && (
           <span className="mp-cell__add-hint">+</span>
         )}
@@ -124,6 +144,9 @@ const MEAL_TYPES = ['any', 'breakfast', 'lunch', 'dinner', 'snack'];
 function AddMealModal({ dateStr, recipes, onAdd, onClose }) {
   const [q,        setQ]    = useState('');
   const [mealType, setType] = useState('any');
+  const inputRef = useRef(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
 
   const filtered = useMemo(() => {
     const lq = q.toLowerCase().trim();
@@ -157,7 +180,7 @@ function AddMealModal({ dateStr, recipes, onAdd, onClose }) {
         </div>
 
         <input
-          autoFocus
+          ref={inputRef}
           className="mp-modal__search"
           placeholder="Search recipes…"
           value={q}
@@ -203,13 +226,15 @@ function DayDetailPanel({ dateStr, plans, onClose, onAddMeal, onRemove, onMarkCo
               + Add meal
             </button>
           )}
-          <button className="mp-detail__close" onClick={onClose}>✕</button>
+          {onClose && (
+            <button className="mp-detail__close" onClick={onClose}>✕</button>
+          )}
         </div>
       </div>
 
       {plans.length === 0 ? (
         <p className="mp-detail__empty">
-          {past ? 'Nothing was planned for this day.' : 'Tap a recipe to add it.'}
+          {past ? 'Nothing was planned for this day.' : 'Tap + Add meal to plan something.'}
         </p>
       ) : (
         <div className="mp-detail__list">
@@ -247,12 +272,14 @@ function DayDetailPanel({ dateStr, plans, onClose, onAddMeal, onRemove, onMarkCo
 // ─── MealPlanTab ──────────────────────────────────────────────────────────────
 
 export default function MealPlanTab({ session, recipes = [] }) {
-  const now = new Date();
+  const now  = new Date();
+  const [viewMode,     setViewMode]     = useState('month'); // 'month' | 'week'
   const [year,         setYear]         = useState(now.getFullYear());
   const [month,        setMonth]        = useState(now.getMonth());
+  const [weekStart,    setWeekStart]    = useState(() => getMonday(now));
   const [plans,        setPlans]        = useState([]);
-  const [addModal,     setAddModal]     = useState(null); // dateStr | null
-  const [selectedDate, setSelectedDate] = useState(null); // dateStr | null
+  const [addModal,     setAddModal]     = useState(null);
+  const [selectedDate, setSelectedDate] = useState(() => todayStr());
   const [activeDragId, setActiveDragId] = useState(null);
 
   const sensors = useSensors(
@@ -260,7 +287,9 @@ export default function MealPlanTab({ session, recipes = [] }) {
     useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 8 } })
   );
 
-  const cells = useMemo(() => getMonthCells(year, month), [year, month]);
+  const monthCells = useMemo(() => getMonthCells(year, month), [year, month]);
+  const weekCells  = useMemo(() => getWeekCells(weekStart), [weekStart]);
+  const cells      = viewMode === 'month' ? monthCells : weekCells;
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
@@ -285,25 +314,54 @@ export default function MealPlanTab({ session, recipes = [] }) {
     return map;
   }, [plans]);
 
-  const activePlan = activeDragId ? plans.find(p => p.id === activeDragId) : null;
+  const activePlan    = activeDragId ? plans.find(p => p.id === activeDragId) : null;
+  const selectedPlans = selectedDate ? (plansByDate[selectedDate] || []) : [];
 
-  // ── Month nav ─────────────────────────────────────────────────────────────
+  // ── Navigation ────────────────────────────────────────────────────────────
 
-  const prevMonth = () => {
-    setSelectedDate(null);
-    if (month === 0) { setYear(y => y - 1); setMonth(11); }
-    else               setMonth(m => m - 1);
+  const prevPeriod = () => {
+    if (viewMode === 'month') {
+      if (month === 0) { setYear(y => y - 1); setMonth(11); } else setMonth(m => m - 1);
+    } else {
+      setWeekStart(d => addDays(d, -7));
+    }
   };
-  const nextMonth = () => {
-    setSelectedDate(null);
-    if (month === 11) { setYear(y => y + 1); setMonth(0); }
-    else               setMonth(m => m + 1);
+  const nextPeriod = () => {
+    if (viewMode === 'month') {
+      if (month === 11) { setYear(y => y + 1); setMonth(0); } else setMonth(m => m + 1);
+    } else {
+      setWeekStart(d => addDays(d, 7));
+    }
   };
   const goToday = () => {
     const n = new Date();
     setYear(n.getFullYear()); setMonth(n.getMonth());
-    setSelectedDate(null);
+    setWeekStart(getMonday(n));
+    setSelectedDate(todayStr());
   };
+
+  const switchView = (mode) => {
+    setViewMode(mode);
+    if (mode === 'week') {
+      // Jump to the week containing the selected date or today
+      const anchor = selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date();
+      setWeekStart(getMonday(anchor));
+    } else {
+      const anchor = selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date();
+      setYear(anchor.getFullYear()); setMonth(anchor.getMonth());
+    }
+  };
+
+  // ── Period label ──────────────────────────────────────────────────────────
+
+  const periodLabel = viewMode === 'month'
+    ? `${MONTH_NAMES[month]} ${year}`
+    : (() => {
+        const end = addDays(weekStart, 6);
+        if (weekStart.getMonth() === end.getMonth())
+          return `${MONTH_NAMES[weekStart.getMonth()]} ${weekStart.getDate()}–${end.getDate()}, ${weekStart.getFullYear()}`;
+        return `${MONTH_NAMES[weekStart.getMonth()]} ${weekStart.getDate()} – ${MONTH_NAMES[end.getMonth()]} ${end.getDate()}`;
+      })();
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
@@ -354,9 +412,8 @@ export default function MealPlanTab({ session, recipes = [] }) {
     setPlans(prev => prev.map(p =>
       p.id === planId ? { ...p, planned_date: newDate } : p
     ));
-    if (selectedDate === plan.planned_date.slice(0, 10)) {
-      setSelectedDate(newDate);
-    }
+    if (selectedDate === plan.planned_date.slice(0, 10)) setSelectedDate(newDate);
+
     await fetch(`${API}/api/meal-plans/${planId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
@@ -364,7 +421,7 @@ export default function MealPlanTab({ session, recipes = [] }) {
     });
   }, [plans, session, selectedDate]);
 
-  // ── Cell interaction ──────────────────────────────────────────────────────
+  // ── Cell click ────────────────────────────────────────────────────────────
 
   const handleCellClick = useCallback((dateStr) => {
     const dayPlans = plansByDate[dateStr] || [];
@@ -385,69 +442,98 @@ export default function MealPlanTab({ session, recipes = [] }) {
     );
   }
 
+  const isWeekView = viewMode === 'week';
+
   return (
     <main className="view meal-plan-view">
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="mp-header">
-        <div>
+        <div className="mp-header__left">
           <h2 className="mp-title">Meal Plan</h2>
-          <p className="mp-subtitle">{MONTH_NAMES[month]} {year}</p>
+          <p className="mp-subtitle">{periodLabel}</p>
         </div>
-        <div className="mp-nav">
-          <button className="mp-nav__btn" onClick={prevMonth} aria-label="Previous month">‹</button>
-          <button className="mp-nav__btn mp-nav__btn--today" onClick={goToday}>Today</button>
-          <button className="mp-nav__btn" onClick={nextMonth} aria-label="Next month">›</button>
+        <div className="mp-header__right">
+          {/* View toggle */}
+          <div className="mp-view-toggle">
+            <button
+              className={`mp-view-toggle__btn ${!isWeekView ? 'mp-view-toggle__btn--active' : ''}`}
+              onClick={() => switchView('month')}
+            >Month</button>
+            <button
+              className={`mp-view-toggle__btn ${isWeekView ? 'mp-view-toggle__btn--active' : ''}`}
+              onClick={() => switchView('week')}
+            >Week</button>
+          </div>
+          {/* Navigation */}
+          <div className="mp-nav">
+            <button className="mp-nav__btn" onClick={prevPeriod} aria-label="Previous">‹</button>
+            <button className="mp-nav__btn mp-nav__btn--today" onClick={goToday}>Today</button>
+            <button className="mp-nav__btn" onClick={nextPeriod} aria-label="Next">›</button>
+          </div>
         </div>
       </div>
 
-      {/* ── Calendar ────────────────────────────────────────────────────────── */}
-      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="mp-grid-wrap">
-          <div className="mp-dow-row">
-            {DOW_SHORT.map(d => <span key={d} className="mp-dow">{d}</span>)}
+      {/* ── Calendar + Detail — split layout ────────────────────────────────── */}
+      <div className="mp-body">
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <div className="mp-grid-wrap">
+            {/* Day-of-week header row — only shown in month view */}
+            {!isWeekView && (
+              <div className="mp-dow-row">
+                {DOW_SHORT.map(d => <span key={d} className="mp-dow">{d}</span>)}
+              </div>
+            )}
+
+            <div className={`mp-grid ${isWeekView ? 'mp-grid--week' : ''}`}>
+              {cells.map(({ date, dateStr, inMonth }) => (
+                <DroppableDayCell
+                  key={dateStr}
+                  date={date}
+                  dateStr={dateStr}
+                  inMonth={inMonth}
+                  isWeekView={isWeekView}
+                  plans={plansByDate[dateStr] || []}
+                  onCellClick={handleCellClick}
+                  onRemove={removePlan}
+                  onMarkCooked={markCooked}
+                  isSelected={selectedDate === dateStr}
+                />
+              ))}
+            </div>
           </div>
-          <div className="mp-grid">
-            {cells.map(({ date, dateStr, inMonth }) => (
-              <DroppableDayCell
-                key={dateStr}
-                date={date}
-                dateStr={dateStr}
-                inMonth={inMonth}
-                plans={plansByDate[dateStr] || []}
-                onCellClick={handleCellClick}
-                onRemove={removePlan}
-                onMarkCooked={markCooked}
+
+          <DragOverlay dropAnimation={null}>
+            {activePlan && (
+              <DraggableMealPill
+                plan={activePlan}
+                onRemove={() => {}}
+                onMarkCooked={() => {}}
+                isOverlay
               />
-            ))}
-          </div>
-        </div>
+            )}
+          </DragOverlay>
+        </DndContext>
 
-        <DragOverlay dropAnimation={null}>
-          {activePlan && (
-            <DraggableMealPill
-              plan={activePlan}
-              onRemove={() => {}}
-              onMarkCooked={() => {}}
-              isOverlay
+        {/* Day detail — always visible on mobile below calendar, sidebar on desktop */}
+        <div className="mp-detail-wrap">
+          {selectedDate ? (
+            <DayDetailPanel
+              dateStr={selectedDate}
+              plans={selectedPlans}
+              onClose={() => setSelectedDate(null)}
+              onAddMeal={(date) => { setAddModal(date); }}
+              onRemove={removePlan}
+              onMarkCooked={markCooked}
             />
+          ) : (
+            <div className="mp-detail-empty">
+              <p>Tap a day to see or add meals</p>
+            </div>
           )}
-        </DragOverlay>
-      </DndContext>
+        </div>
+      </div>
 
-      {/* ── Day detail panel ─────────────────────────────────────────────────── */}
-      {selectedDate && (
-        <DayDetailPanel
-          dateStr={selectedDate}
-          plans={plansByDate[selectedDate] || []}
-          onClose={() => setSelectedDate(null)}
-          onAddMeal={(date) => { setAddModal(date); setSelectedDate(null); }}
-          onRemove={removePlan}
-          onMarkCooked={markCooked}
-        />
-      )}
-
-      {/* ── Add modal ────────────────────────────────────────────────────────── */}
       {addModal && (
         <AddMealModal
           dateStr={addModal}

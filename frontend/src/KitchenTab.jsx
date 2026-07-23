@@ -146,11 +146,15 @@ function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete, onEdi
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState(item);
   const [showMenu, setShowMenu] = useState(false);
+  const pillRef = useRef(null);
 
   useEffect(() => {
     if (!showMenu) return;
-    const dismiss = () => setShowMenu(false);
-    window.addEventListener('touchstart', dismiss, { once: true, capture: true });
+    const dismiss = (e) => {
+      if (pillRef.current && pillRef.current.contains(e.target)) return;
+      setShowMenu(false);
+    };
+    window.addEventListener('touchstart', dismiss, { capture: true });
     return () => window.removeEventListener('touchstart', dismiss, { capture: true });
   }, [showMenu]);
 
@@ -178,7 +182,7 @@ function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete, onEdi
 
   return (
     <span
-      ref={setNodeRef}
+      ref={(el) => { setNodeRef(el); pillRef.current = el; }}
       className={`kpill ${active ? 'kpill--active' : ''} ${isDragging ? 'kpill--dragging' : ''} ${showMenu ? 'kpill--menu-open' : ''}`}
       style={{ opacity: isDragging ? 0.25 : 1, touchAction: 'none' }}
       onDoubleClick={() => { setEditing(true); setEditVal(item); }}
