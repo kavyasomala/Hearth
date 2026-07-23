@@ -227,7 +227,65 @@ const SortableNoteRow = ({ note, onUpdate, onRemove }) => {
 
 // --- Recipe Page -------------------------------------------------------------
 // ─── Recipe Page ─────────────────────────────────────────────────────────────
-const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [] }) => {
+// PlanButton — inline "Add to Meal Plan" for the recipe hero
+function PlanButton({ recipeId, session }) {
+  const [open, setOpen] = React.useState(false);
+  const [date, setDate] = React.useState(() => {
+    const d = new Date(); d.setHours(0,0,0,0);
+    return d.toISOString().slice(0,10);
+  });
+  const [done, setDone] = React.useState(false);
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  if (!session) return null;
+
+  const addToPlan = async () => {
+    await fetch(`${API}/api/meal-plans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ recipe_id: recipeId, planned_date: date, meal_type: 'any' }),
+    });
+    setDone(true);
+    setTimeout(() => { setOpen(false); setDone(false); }, 1400);
+  };
+
+  return (
+    <div className="rp2__plan-wrap" ref={ref}>
+      <button
+        className={`rp2__cooking-mode-btn ${done ? 'rp2__cooking-mode-btn--on' : ''}`}
+        onClick={() => setOpen(o => !o)}
+        title="Add to Meal Plan"
+      >
+        <Icon name="calendar" size={14} strokeWidth={2} />
+        {done ? ' Added!' : ' Plan'}
+      </button>
+      {open && !done && (
+        <div className="rp2__plan-pop">
+          <p className="rp2__plan-pop__label">Add to meal plan</p>
+          <input
+            className="rp2__plan-pop__date"
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+          />
+          <div className="rp2__plan-pop__btns">
+            <button className="rp2__plan-pop__confirm" onClick={addToPlan}>Add</button>
+            <button className="rp2__plan-pop__cancel" onClick={() => setOpen(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [], session }) => {
   const apiFetch = authFetch || fetch;
   const [checkedIngredients, setCheckedIngredients] = useState(new Set());
   const [doneSteps, setDoneSteps] = useState(new Set());
@@ -949,6 +1007,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               </div>
             )}
             {isAdmin && <button className="rp2__delete-btn" onClick={e => { e.stopPropagation(); setShowDeleteConfirm(true); }} title="Delete recipe"><Icon name="trash2" size={15} strokeWidth={2} color="var(--warm-gray)" /></button>}
+            {session && <PlanButton recipeId={recipe?.id} session={session} />}
           </div>
         </div>
 
