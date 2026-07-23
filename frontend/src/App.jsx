@@ -1332,7 +1332,7 @@ function AppInner() {
 
       {view === 'grocery' && <GroceryListTab recipes={recipes} makeSoonIds={makeSoonIds} allMyIngredients={allMyIngredients} allIngredients={allIngredients} setFridgeIngredients={setFridgeIngredients} setPantryStaples={setPantryStaples} />}
 
-      {view === 'plan' && <MealPlanTab session={session} recipes={recipes} />}
+      {view === 'plan' && <MealPlanTab session={session} recipes={recipes} onOpenRecipe={openRecipe} />}
 
       {view === 'add' && (
         <AddRecipeTab

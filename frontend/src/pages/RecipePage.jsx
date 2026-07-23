@@ -235,14 +235,6 @@ function PlanButton({ recipeId, session }) {
     return d.toISOString().slice(0,10);
   });
   const [done, setDone] = React.useState(false);
-  const ref = React.useRef(null);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [open]);
 
   if (!session) return null;
 
@@ -257,31 +249,37 @@ function PlanButton({ recipeId, session }) {
   };
 
   return (
-    <div className="rp2__plan-wrap" ref={ref}>
+    <>
       <button
         className={`rp2__plan-btn ${done ? 'rp2__plan-btn--done' : ''}`}
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen(true)}
         title="Add to Meal Plan"
       >
         <Icon name="calendar" size={14} strokeWidth={2} color="#fff" />
         {done ? 'Added!' : 'Plan'}
       </button>
       {open && !done && (
-        <div className="rp2__plan-pop">
-          <p className="rp2__plan-pop__label">Add to meal plan</p>
-          <input
-            className="rp2__plan-pop__date"
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-          />
-          <div className="rp2__plan-pop__btns">
-            <button className="rp2__plan-pop__confirm" onClick={addToPlan}>Add</button>
-            <button className="rp2__plan-pop__cancel" onClick={() => setOpen(false)}>Cancel</button>
+        <div className="rp2__plan-modal-bg" onClick={() => setOpen(false)}>
+          <div className="rp2__plan-modal" onClick={e => e.stopPropagation()}>
+            <div className="rp2__plan-modal__hd">
+              <p className="rp2__plan-modal__title">Add to meal plan</p>
+              <button className="rp2__plan-modal__close" onClick={() => setOpen(false)}>✕</button>
+            </div>
+            <p className="rp2__plan-modal__label">Date</p>
+            <input
+              className="rp2__plan-modal__date"
+              type="date"
+              value={date}
+              onChange={e => setDate(e.target.value)}
+            />
+            <div className="rp2__plan-modal__btns">
+              <button className="rp2__plan-modal__confirm" onClick={addToPlan}>Add to plan</button>
+              <button className="rp2__plan-modal__cancel" onClick={() => setOpen(false)}>Cancel</button>
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
