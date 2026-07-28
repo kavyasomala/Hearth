@@ -63,7 +63,7 @@ function PillGroup({ label, items, activeSet, onToggle, onDelete }) {
 }
 
 // ─── StaplesAddBar — single add control at the top of the staples section ─────
-function StaplesAddBar({ groups, onAdd }) {
+function StaplesAddBar({ groups, onAdd, onAddUncategorized }) {
   const [open, setOpen]   = useState(false);
   const [name, setName]   = useState('');
   const [group, setGroup] = useState('');
@@ -71,7 +71,8 @@ function StaplesAddBar({ groups, onAdd }) {
   const commit = () => {
     const v = name.trim().toLowerCase();
     if (!v) return;
-    onAdd(group || 'My Pantry', v);
+    if (group) onAdd(group, v);
+    else onAddUncategorized(v);
     setName(''); setGroup(''); setOpen(false);
   };
 
@@ -86,7 +87,7 @@ function StaplesAddBar({ groups, onAdd }) {
         onChange={e => setName(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setOpen(false); setName(''); } }} />
       <select className="kitchen-group-select" value={group} onChange={e => setGroup(e.target.value)}>
-        <option value="">My Pantry (default)</option>
+        <option value="">Uncategorized (default)</option>
         {groups.map(g => <option key={g.label} value={g.label}>{g.label}</option>)}
       </select>
       <button className="kitchen-custom-add-btn" onClick={commit}>Add</button>
@@ -95,38 +96,59 @@ function StaplesAddBar({ groups, onAdd }) {
   );
 }
 
-// ─── UnCategorizedGroup — recipe ingredients not yet in any staples group ─────
+// ─── UncategorizedGroup — recipe ingredients not yet tracked; tap → add to grocery ─
 
-function UncategorizedGroup({ items, groupLabels, onAssign, onAddToFridge }) {
-  const [openFor, setOpenFor] = useState(null);
-
+function UncategorizedGroup({ items, onAddToFridge }) {
   if (!items.length) return null;
-
   return (
     <div className="kitchen-pill-group">
-      <p className="kitchen-checklist__group-label">Uncategorized · from your recipes</p>
-      <p className="kitchen-uncategorized-hint">Tap to add to fridge or assign to a pantry group</p>
+      <p className="kitchen-checklist__group-label">From your recipes</p>
+      <p className="kitchen-uncategorized-hint">Tap to add to your grocery list</p>
+      <div className="kitchen-checklist__items">
+        {items.map(item => (
+          <button
+            key={item}
+            className="kitchen-chip kitchen-chip--uncat"
+            onClick={() => onAddToFridge(item)}
+          >
+            + {item}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── UncategorizedPantryGroup — staples not yet assigned to a group ─────────────
+
+function UncategorizedPantryGroup({ items, groupLabels, onAssign, onDelete }) {
+  const [openFor, setOpenFor] = useState(null);
+  if (!items.length) return null;
+  return (
+    <div className="kitchen-pill-group">
+      <p className="kitchen-checklist__group-label">Uncategorized</p>
+      <p className="kitchen-uncategorized-hint">Tap to assign to a group</p>
       <div className="kitchen-checklist__items">
         {items.map(item => (
           <span key={item} className="kitchen-uncat-wrap">
             <button
-              className="kitchen-chip kitchen-chip--uncat"
+              className="kitchen-chip kitchen-chip--uncat kitchen-chip--owned"
               onClick={() => setOpenFor(openFor === item ? null : item)}
             >
-              {item} <span className="kitchen-chip__arrow">▾</span>
+              ✓ {item} <span className="kitchen-chip__arrow">▾</span>
             </button>
             {openFor === item && (
               <div className="kitchen-uncat-picker">
-                <button className="kitchen-uncat-option kitchen-uncat-option--fridge"
-                  onClick={() => { onAddToFridge(item); setOpenFor(null); }}>
-                  + Add to Fridge
-                </button>
                 {groupLabels.map(label => (
                   <button key={label} className="kitchen-uncat-option"
                     onClick={() => { onAssign(item, label); setOpenFor(null); }}>
                     → {label}
                   </button>
                 ))}
+                <button className="kitchen-uncat-option kitchen-uncat-option--delete"
+                  onClick={() => { onDelete(item); setOpenFor(null); }}>
+                  ✕ Remove
+                </button>
               </div>
             )}
           </span>
@@ -327,6 +349,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     addStapleItem(groupLabel, item);
   }, [addStapleItem]);
 
+
   const togglePantry = useCallback(item => {
     const lower = item.toLowerCase();
     setPantryStaples(prev => pantrySet.has(lower) ? prev.filter(x => x !== lower) : [...prev, lower]);
@@ -393,13 +416,30 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
       g.label === groupLabel ? { ...g, items: g.items.filter(i => i !== item) } : g
     ).filter(g => !(g.label === 'Miscellaneous' && g.items.length === 0)));
     setFridgeIngredients(prev => prev.filter(x => x !== item));
-    updateStaples(prev => {
-      const hasMy = prev.some(g => g.label === 'My Pantry');
-      if (hasMy) return prev.map(g => g.label === 'My Pantry' && !g.items.includes(item) ? { ...g, items: [...g.items, item] } : g);
-      return [...prev, { label: 'My Pantry', items: [item] }];
-    });
+    // Add to pantryStaples without assigning to a group — appears as Uncategorized
     setPantryStaples(prev => pantrySet.has(item) ? prev : [...prev, item]);
-  }, [updateFridge, setFridgeIngredients, updateStaples, setPantryStaples, pantrySet]);
+  }, [updateFridge, setFridgeIngredients, setPantryStaples, pantrySet]);
+
+  // Pantry staples that haven't been assigned to any staplesConfig group yet
+  const uncategorizedPantryStaples = useMemo(() =>
+    pantryStaples.filter(s => !allStapleItems.has(s.toLowerCase())),
+  [pantryStaples, allStapleItems]);
+
+  const addUncategorizedStaple = useCallback((item) => {
+    const lower = item.toLowerCase().trim();
+    if (!lower) return;
+    setPantryStaples(prev => prev.includes(lower) ? prev : [...prev, lower]);
+  }, [setPantryStaples]);
+
+  const assignUncategorizedPantry = useCallback((item, groupLabel) => {
+    addStapleItem(groupLabel, item);
+    // Remove from free-floating pantryStaples so it's only tracked via the group
+    // (addStapleItem re-adds it, so the net effect is: it moves into the group display)
+  }, [addStapleItem]);
+
+  const deleteUncategorizedPantry = useCallback((item) => {
+    setPantryStaples(prev => prev.filter(x => x !== item));
+  }, [setPantryStaples]);
 
   const addToFridgeFromRecipe = useCallback((item) => {
     const lower = item.toLowerCase().trim();
@@ -581,7 +621,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
 
         {staplesOpen && (
           <div className="kitchen-checklist">
-            <StaplesAddBar groups={staplesConfig} onAdd={addStapleItem} />
+            <StaplesAddBar groups={staplesConfig} onAdd={addStapleItem} onAddUncategorized={addUncategorizedStaple} />
             {staplesConfig.map(group => (
               <PillGroup
                 key={group.label}
@@ -592,10 +632,14 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
                 onDelete={deleteStapleItem}
               />
             ))}
+            <UncategorizedPantryGroup
+              items={uncategorizedPantryStaples}
+              groupLabels={staplesConfig.map(g => g.label)}
+              onAssign={assignUncategorizedPantry}
+              onDelete={deleteUncategorizedPantry}
+            />
             <UncategorizedGroup
               items={uncategorized}
-              groupLabels={staplesConfig.map(g => g.label)}
-              onAssign={assignUncategorized}
               onAddToFridge={addToFridgeFromRecipe}
             />
           </div>

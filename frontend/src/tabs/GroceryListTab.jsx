@@ -29,14 +29,8 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
         setPantryStaples(prev2 => prev2.filter(x => x !== lower));
       } else {
         next.add(key);
-        // Auto-add to kitchen
-        const known = allIngredients?.find(i => (typeof i === 'string' ? i : i.name).toLowerCase() === lower);
-        const isFridgeType = known && typeof known === 'object' && ['produce', 'meat & fish', 'dairy', 'sauces'].includes(known.type);
-        if (isFridgeType) {
-          setFridgeIngredients(prev2 => prev2.includes(lower) ? prev2 : [...prev2, lower]);
-        } else {
-          setPantryStaples(prev2 => prev2.includes(lower) ? prev2 : [...prev2, lower]);
-        }
+        // Auto-add to fridge (grocery → fridge first; user can upgrade to staples from Kitchen tab)
+        setFridgeIngredients(prev2 => prev2.includes(lower) ? prev2 : [...prev2, lower]);
       }
       return next;
     });
