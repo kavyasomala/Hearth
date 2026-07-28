@@ -160,15 +160,15 @@ function DraggableWeekCard({ plan, past, onRemove, onMarkCooked, onOpenRecipe, i
   );
 }
 
-function WeekColumnView({ weekCells, plansByDate, activeDragId, onAddMeal, onRemove, onMarkCooked, onOpenRecipe }) {
+function WeekListView({ weekCells, plansByDate, onAddMeal, onRemove, onMarkCooked, onOpenRecipe }) {
   return (
-    <div className="mp-week-cols">
+    <div className="mp-week-list">
       {weekCells.map(({ date, dateStr }, i) => {
         const plans = plansByDate[dateStr] || [];
         const today = isToday(dateStr);
         const past  = isPast(dateStr);
         return (
-          <WeekColumn
+          <WeekListRow
             key={dateStr}
             dateStr={dateStr}
             date={date}
@@ -187,18 +187,23 @@ function WeekColumnView({ weekCells, plansByDate, activeDragId, onAddMeal, onRem
   );
 }
 
-function WeekColumn({ dateStr, date, dow, plans, today, past, onAddMeal, onRemove, onMarkCooked, onOpenRecipe }) {
+function WeekListRow({ dateStr, date, dow, plans, today, past, onAddMeal, onRemove, onMarkCooked, onOpenRecipe }) {
   const { setNodeRef, isOver } = useDroppable({ id: dateStr });
   return (
     <div
       ref={setNodeRef}
-      className={['mp-wcol', today ? 'mp-wcol--today' : '', past ? 'mp-wcol--past' : '', isOver ? 'mp-wcol--over' : ''].join(' ')}
+      className={['mp-wrow', today ? 'mp-wrow--today' : '', past ? 'mp-wrow--past' : '', isOver ? 'mp-wrow--over' : ''].join(' ')}
     >
-      <div className="mp-wcol__hd">
-        <span className="mp-wcol__dow">{dow}</span>
-        <span className="mp-wcol__date">{date.getDate()}</span>
+      <div className="mp-wrow__hd">
+        <div className="mp-wrow__day-info">
+          <span className="mp-wrow__dow">{dow}</span>
+          <span className={`mp-wrow__date ${today ? 'mp-wrow__date--today' : ''}`}>{date.getDate()}</span>
+        </div>
+        {!past && (
+          <button className="mp-wrow__add" onClick={() => onAddMeal(dateStr)}>+ Add</button>
+        )}
       </div>
-      <div className="mp-wcol__body">
+      <div className="mp-wrow__cards">
         {plans.map(p => (
           <DraggableWeekCard
             key={p.id}
@@ -210,12 +215,9 @@ function WeekColumn({ dateStr, date, dow, plans, today, past, onAddMeal, onRemov
           />
         ))}
         {plans.length === 0 && (
-          <p className="mp-wcol__empty">No meals</p>
+          <p className="mp-wrow__empty">{past ? '—' : 'Nothing planned'}</p>
         )}
       </div>
-      {!past && (
-        <button className="mp-wcol__add" onClick={() => onAddMeal(dateStr)}>+ Add meal</button>
-      )}
     </div>
   );
 }
@@ -536,12 +538,11 @@ export default function MealPlanTab({ session, recipes = [], onOpenRecipe }) {
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
 
           {isWeek ? (
-            /* ── Week column view ─────────────────────────────────────────── */
+            /* ── Week list view (vertical) ────────────────────────────────── */
             <div className="mp-grid-wrap mp-grid-wrap--week">
-              <WeekColumnView
+              <WeekListView
                 weekCells={weekCells}
                 plansByDate={plansByDate}
-                activeDragId={activeDragId}
                 onAddMeal={(d) => setAddModal(d)}
                 onRemove={removePlan}
                 onMarkCooked={markCooked}
@@ -575,7 +576,7 @@ export default function MealPlanTab({ session, recipes = [], onOpenRecipe }) {
           <DragOverlay dropAnimation={null}>
             {activePlan && (
               isWeek
-                ? <DraggableWeekCard plan={activePlan} past={false} onRemove={() => {}} onMarkCooked={() => {}} isOverlay />
+                ? <DraggableWeekCard plan={activePlan} past={false} onRemove={() => {}} onMarkCooked={() => {}} onOpenRecipe={() => {}} isOverlay />
                 : <DraggablePill plan={activePlan} onRemove={() => {}} onMarkCooked={() => {}} isOverlay />
             )}
           </DragOverlay>
