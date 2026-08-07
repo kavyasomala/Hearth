@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { DndContext, closestCenter } from '@dnd-kit/core';
-import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { Icon } from '../icons';
 import { API, TAG_FILTERS, COMMON_UNITS, STAR_LABELS, GEO_CUISINES } from '../constants';
 import { haptic, pct, toNum, pluralizeIng, checkDietaryConflicts, unitType, formatWeight, formatVolume } from '../utils';

@@ -96,29 +96,6 @@ function StaplesAddBar({ groups, onAdd, onAddUncategorized }) {
   );
 }
 
-// ─── UncategorizedGroup — recipe ingredients not yet tracked; tap → add to grocery ─
-
-function UncategorizedGroup({ items, onAddToFridge }) {
-  if (!items.length) return null;
-  return (
-    <div className="kitchen-pill-group">
-      <p className="kitchen-checklist__group-label">From your recipes</p>
-      <p className="kitchen-uncategorized-hint">Tap to add to your grocery list</p>
-      <div className="kitchen-checklist__items">
-        {items.map(item => (
-          <button
-            key={item}
-            className="kitchen-chip kitchen-chip--uncat"
-            onClick={() => onAddToFridge(item)}
-          >
-            + {item}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── UncategorizedPantryGroup — staples not yet assigned to a group ─────────────
 
 function UncategorizedPantryGroup({ items, groupLabels, onAssign, onDelete }) {
@@ -298,12 +275,11 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
   // Fridge search — only used for the dropdown overlay; doesn't affect the expanded pill grid
   const [fridgeSearch,        setFridgeSearch]        = useState('');
   const [fridgeSearchFocused, setFridgeSearchFocused] = useState(false);
+  const [addIngForm,          setAddIngForm]          = useState(null); // { name, group }
   const searchRef = useRef(null);
 
   const pantrySet  = useMemo(() => new Set(pantryStaples.map(s => s.toLowerCase())), [pantryStaples]);
   const fridgeSet  = useMemo(() => new Set(fridgeIngredients.map(s => s.toLowerCase())), [fridgeIngredients]);
-  const allTracked = useMemo(() => new Set([...pantrySet, ...fridgeSet]), [pantrySet, fridgeSet]);
-
   const allStapleItems = useMemo(() => new Set(staplesConfig.flatMap(g => g.items)), [staplesConfig]);
   const allFridgeConfigItems = useMemo(() => new Set(fridgeConfig.flatMap(g => g.items)), [fridgeConfig]);
 
@@ -313,15 +289,6 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     for (const r of recipes) for (const ing of (r.ingredients || [])) names.add(ing.toLowerCase().trim());
     return names;
   }, [recipes]);
-
-  // Uncategorized = in recipes, not in any fridge or staples group, not tracked
-  const uncategorized = useMemo(() => {
-    const out = [];
-    for (const n of recipeIngredients) {
-      if (!allTracked.has(n) && !allStapleItems.has(n) && !allFridgeConfigItems.has(n)) out.push(n);
-    }
-    return out.sort();
-  }, [recipeIngredients, allTracked, allStapleItems, allFridgeConfigItems]);
 
   // ── Staples mutations ─────────────────────────────────────────────────────
 
@@ -344,11 +311,6 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     });
     setPantryStaples(prev => pantrySet.has(lower) ? prev : [...prev, lower]);
   }, [updateStaples, setPantryStaples, pantrySet]);
-
-  const assignUncategorized = useCallback((item, groupLabel) => {
-    addStapleItem(groupLabel, item);
-  }, [addStapleItem]);
-
 
   const togglePantry = useCallback(item => {
     const lower = item.toLowerCase();
@@ -388,27 +350,30 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     setFridgeIngredients(prev => fridgeSet.has(lower) ? prev.filter(x => x !== lower) : [...prev, lower]);
   }, [fridgeSet, setFridgeIngredients]);
 
-  const addFridgeFromSearch = () => {
+  // Quick-add: marks as owned without modifying the fridge catalog
+  const quickAddToFridge = () => {
     const val = fridgeSearch.toLowerCase().trim();
     if (!val) return;
-    if (allStapleItems.has(val)) {
-      setFridgeSearch(''); setFridgeSearchFocused(false); return;
-    }
     if (!fridgeSet.has(val)) setFridgeIngredients(prev => [...prev, val]);
-    // If not in any suggestion group, add to Miscellaneous so user can drag it later
-    const inAnyGroup = fridgeConfig.some(g => g.items.includes(val));
-    if (!inAnyGroup) {
-      updateFridge(prev => {
-        const hasMisc = prev.some(g => g.label === 'Miscellaneous');
-        if (hasMisc) {
-          return prev.map(g => g.label === 'Miscellaneous' && !g.items.includes(val)
-            ? { ...g, items: [...g.items, val] } : g);
-        }
-        return [...prev, { label: 'Miscellaneous', items: [val] }];
-      });
-    }
     setFridgeSearch('');
     setFridgeSearchFocused(false);
+  };
+
+  // Full add: creates a catalog entry + marks as owned
+  const commitAddIngForm = () => {
+    if (!addIngForm) return;
+    const lower = addIngForm.name.toLowerCase().trim();
+    if (!lower) return;
+    if (!fridgeSet.has(lower)) setFridgeIngredients(prev => [...prev, lower]);
+    const group = addIngForm.group || 'Miscellaneous';
+    updateFridge(prev => {
+      const hasGroup = prev.some(g => g.label === group);
+      if (hasGroup) return prev.map(g =>
+        g.label === group && !g.items.includes(lower) ? { ...g, items: [...g.items, lower] } : g
+      );
+      return [...prev, { label: group, items: [lower] }];
+    });
+    setAddIngForm(null);
   };
 
   const moveToStaples = useCallback((groupLabel, item) => {
@@ -440,20 +405,6 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
   const deleteUncategorizedPantry = useCallback((item) => {
     setPantryStaples(prev => prev.filter(x => x !== item));
   }, [setPantryStaples]);
-
-  const addToFridgeFromRecipe = useCallback((item) => {
-    const lower = item.toLowerCase().trim();
-    if (!lower) return;
-    if (!fridgeSet.has(lower)) setFridgeIngredients(prev => [...prev, lower]);
-    const inAnyGroup = fridgeConfig.some(g => g.items.includes(lower));
-    if (!inAnyGroup) {
-      updateFridge(prev => {
-        const hasMisc = prev.some(g => g.label === 'Miscellaneous');
-        if (hasMisc) return prev.map(g => g.label === 'Miscellaneous' && !g.items.includes(lower) ? { ...g, items: [...g.items, lower] } : g);
-        return [...prev, { label: 'Miscellaneous', items: [lower] }];
-      });
-    }
-  }, [fridgeSet, setFridgeIngredients, fridgeConfig, updateFridge]);
 
   // ── Drag handlers for fridge suggestion groups ────────────────────────────
 
@@ -488,7 +439,7 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
     return matches;
   }, [fridgeSearch, fridgeConfig, recipeIngredients, allStapleItems]);
 
-  const showSearchDropdown = fridgeSearchFocused && !!fridgeSearch && searchDropdown && searchDropdown.length > 0;
+  const showSearchDropdown = fridgeSearchFocused && !!fridgeSearch;
 
   useEffect(() => {
     const handler = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) setFridgeSearchFocused(false); };
@@ -531,22 +482,26 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
           <div className="kitchen-fridge-input-row">
             <input
               className="kitchen-fridge-input"
-              placeholder="Search or add to fridge…"
+              placeholder="Search fridge…"
               value={fridgeSearch}
               onChange={e => setFridgeSearch(e.target.value)}
               onFocus={() => setFridgeSearchFocused(true)}
               onKeyDown={e => {
-                if (e.key === 'Enter') { e.preventDefault(); addFridgeFromSearch(); }
+                if (e.key === 'Enter') { e.preventDefault(); quickAddToFridge(); }
                 if (e.key === 'Escape') { setFridgeSearch(''); setFridgeSearchFocused(false); }
-                if (e.key === 'ArrowDown' && showSearchDropdown) e.preventDefault();
               }}
             />
+            <button
+              className="kitchen-fridge-add-btn"
+              onClick={quickAddToFridge}
+              title="Add to fridge"
+            >+ Add to Fridge</button>
           </div>
 
           {/* Autocomplete dropdown — clean list style, appears when typing */}
           {showSearchDropdown && (
             <ul className="kitchen-fridge-autocomplete">
-              {searchDropdown.map(item => (
+              {(searchDropdown || []).map(item => (
                 <li key={item}>
                   <button
                     className={`kitchen-fridge-autocomplete__item ${fridgeSet.has(item) ? 'kitchen-fridge-autocomplete__item--active' : ''}`}
@@ -560,18 +515,47 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
                   </button>
                 </li>
               ))}
-              {fridgeSearch && !searchDropdown.find(i => i === fridgeSearch.toLowerCase().trim()) && (
+              {fridgeSearch && !(searchDropdown || []).find(i => i === fridgeSearch.toLowerCase().trim()) && (
                 <li>
                   <button
                     className="kitchen-fridge-autocomplete__item kitchen-fridge-autocomplete__item--new"
-                    onMouseDown={e => { e.preventDefault(); addFridgeFromSearch(); }}
+                    onMouseDown={e => {
+                      e.preventDefault();
+                      setAddIngForm({ name: fridgeSearch.trim(), group: '' });
+                      setFridgeSearch('');
+                      setFridgeSearchFocused(false);
+                    }}
                   >
                     <span className="kitchen-fridge-autocomplete__icon">+</span>
-                    Add "{fridgeSearch.trim()}"
+                    Add "{fridgeSearch.trim()}" as ingredient
                   </button>
                 </li>
               )}
             </ul>
+          )}
+
+          {/* Inline add-ingredient form */}
+          {addIngForm && (
+            <div className="kitchen-add-ing-form">
+              <input
+                className="kitchen-custom-input"
+                value={addIngForm.name}
+                placeholder="Name"
+                autoFocus
+                onChange={e => setAddIngForm(f => ({ ...f, name: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') commitAddIngForm(); if (e.key === 'Escape') setAddIngForm(null); }}
+              />
+              <select
+                className="kitchen-group-select"
+                value={addIngForm.group}
+                onChange={e => setAddIngForm(f => ({ ...f, group: e.target.value }))}
+              >
+                <option value="">No section (misc)</option>
+                {fridgeConfig.map(g => <option key={g.label} value={g.label}>{g.label}</option>)}
+              </select>
+              <button className="kitchen-custom-add-btn" onClick={commitAddIngForm}>Add</button>
+              <button className="btn btn--ghost btn--sm" onClick={() => setAddIngForm(null)}>✕</button>
+            </div>
           )}
         </div>
 
@@ -637,10 +621,6 @@ export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pa
               groupLabels={staplesConfig.map(g => g.label)}
               onAssign={assignUncategorizedPantry}
               onDelete={deleteUncategorizedPantry}
-            />
-            <UncategorizedGroup
-              items={uncategorized}
-              onAddToFridge={addToFridgeFromRecipe}
             />
           </div>
         )}

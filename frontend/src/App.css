@@ -734,6 +734,37 @@ body {
 .grocery-recipe-chip__ready { color: var(--sage); font-size: 11px; }
 .grocery-loading { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--warm-gray); margin-bottom: 12px; }
 .grocery-error { color: var(--terracotta); font-size: 13px; margin-bottom: 12px; }
+
+/* ── From your recipes section ── */
+.grocery-from-recipes {
+  background: var(--warm-white); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px;
+}
+.grocery-from-recipes__label {
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--warm-gray); margin: 0 0 10px;
+}
+.grocery-from-recipes__chips { display: flex; flex-direction: column; gap: 6px; }
+.grocery-ing-chip {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 8px 10px; border-radius: 8px;
+  background: var(--bg); border: 1px solid var(--border);
+}
+.grocery-ing-chip__name {
+  flex: 1; font-size: 0.9rem; color: var(--text);
+  text-transform: capitalize;
+}
+.grocery-ing-chip__acts { display: flex; gap: 4px; flex-shrink: 0; }
+.grocery-ing-chip__btn {
+  width: 28px; height: 28px; border-radius: 7px; border: none;
+  cursor: pointer; font-size: 0.85rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.12s;
+}
+.grocery-ing-chip__btn:hover { opacity: 0.8; }
+.grocery-ing-chip__btn--add { background: var(--terracotta); color: #fff; font-size: 1rem; }
+.grocery-ing-chip__btn--star { background: var(--parchment); color: var(--terracotta); font-size: 0.9rem; }
+.grocery-ing-chip__btn--dismiss { background: var(--parchment); color: var(--warm-gray); font-size: 0.8rem; }
 .grocery-list { background: var(--warm-white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
 .grocery-list-header,
 .grocery-list__header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
@@ -8501,6 +8532,22 @@ html, body {
   font-size: 0.9rem; color: var(--text); outline: none;
 }
 .kitchen-fridge-input:focus { border-color: var(--terracotta); }
+
+.kitchen-fridge-add-btn {
+  flex-shrink: 0; padding: 9px 14px; border-radius: 10px;
+  border: 1.5px solid var(--terracotta); background: var(--terracotta);
+  color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  white-space: nowrap; transition: background 0.15s;
+}
+.kitchen-fridge-add-btn:hover { background: var(--terracotta-dark); border-color: var(--terracotta-dark); }
+
+.kitchen-add-ing-form {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  margin-top: 8px; padding: 12px 14px; border-radius: 10px;
+  background: var(--warm-white); border: 1.5px solid var(--border);
+}
+.kitchen-add-ing-form .kitchen-custom-input { flex: 1; min-width: 140px; }
+.kitchen-add-ing-form .kitchen-group-select { flex: 1; min-width: 120px; max-width: 160px; }
 
 /* ── Suggestions dropdown ── */
 .kitchen-suggestions {
