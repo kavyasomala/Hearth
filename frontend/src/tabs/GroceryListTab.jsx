@@ -3,8 +3,6 @@ import { Icon } from '../icons';
 import { API } from '../constants';
 import { haptic, pluralizeIng, consolidateItems } from '../utils';
 
-const DISMISSED_KEY = 'hearth_dismissed_recipe_ings';
-
 const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients, setFridgeIngredients, setPantryStaples }) => {
   const [categories, setCategories] = useState([]);
   const [recipeNames, setRecipeNames] = useState([]);
@@ -12,35 +10,6 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
   const [checked, setChecked] = useState(new Set());
   const [error, setError] = useState(null);
   const [hideInKitchen, setHideInKitchen] = useState(false);
-  const [dismissed, setDismissed] = useState(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]')); }
-    catch { return new Set(); }
-  });
-
-  const dismissItem = (item) => {
-    setDismissed(prev => {
-      const next = new Set(prev);
-      next.add(item);
-      try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...next])); } catch {}
-      return next;
-    });
-  };
-
-  // Ingredients from all recipes not yet tracked
-  const recipeIngredients = useMemo(() => {
-    const names = new Set();
-    for (const r of recipes) {
-      for (const ing of (r.ingredients || [])) {
-        const lower = (typeof ing === 'string' ? ing : '').toLowerCase().trim();
-        if (lower) names.add(lower);
-      }
-    }
-    return names;
-  }, [recipes]);
-
-  const ingredientsToGet = useMemo(() =>
-    [...recipeIngredients].filter(n => !allMyIngredients.has(n) && !dismissed.has(n)).sort(),
-  [recipeIngredients, allMyIngredients, dismissed]);
 
   const makeSoonRecipes = useMemo(() => recipes.filter(r => makeSoonIds.includes(r.id)), [recipes, makeSoonIds]);
 
@@ -153,37 +122,6 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
           <div className="grocery-empty__icon"><Icon name="timer" size={40} color="var(--warm-gray)" strokeWidth={1.5} /></div>
           <h3 className="grocery-empty__title">No recipes in Make Soon</h3>
           <p className="grocery-empty__sub">Tap <span style={{display:'inline-flex',alignItems:'center',verticalAlign:'middle',margin:'0 2px'}}><Icon name="timer" size={13} strokeWidth={2} /></span> on any recipe to add it to Make Soon — your grocery list will build automatically.</p>
-        </div>
-      )}
-
-      {/* From your recipes — show ingredients not yet in kitchen */}
-      {ingredientsToGet.length > 0 && (
-        <div className="grocery-from-recipes">
-          <p className="grocery-from-recipes__label">From your recipes</p>
-          <div className="grocery-from-recipes__chips">
-            {ingredientsToGet.map(item => (
-              <div key={item} className="grocery-ing-chip">
-                <span className="grocery-ing-chip__name">{item}</span>
-                <div className="grocery-ing-chip__acts">
-                  <button
-                    className="grocery-ing-chip__btn grocery-ing-chip__btn--add"
-                    onClick={() => setFridgeIngredients(p => p.includes(item) ? p : [...p, item])}
-                    title="Add to grocery list"
-                  >+</button>
-                  <button
-                    className="grocery-ing-chip__btn grocery-ing-chip__btn--star"
-                    onClick={() => setPantryStaples(p => p.includes(item) ? p : [...p, item])}
-                    title="Add to staples"
-                  >★</button>
-                  <button
-                    className="grocery-ing-chip__btn grocery-ing-chip__btn--dismiss"
-                    onClick={() => dismissItem(item)}
-                    title="Dismiss"
-                  >✕</button>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
