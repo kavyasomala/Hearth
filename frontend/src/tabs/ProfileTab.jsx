@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Icon } from '../icons';
 import { API, DIETARY_OPTIONS, STAR_LABELS } from '../constants';
-import { LS, getDaysInMonth, getFirstDayOfMonth } from '../utils';
+import { getDaysInMonth, getFirstDayOfMonth } from '../utils';
 import { supabase } from '../supabase';
 
 // ─── Collapsible Section ──────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ const Section = ({ icon, title, badge, defaultOpen = false, children }) => {
 };
 
 // ─── Profile Tab ─────────────────────────────────────────────────────────────
-const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser, onLogout, onAuthUserUpdate, darkMode = false, setDarkMode, tabBarTabs, setTabBarTabs }) => {
+const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser, onLogout, onAuthUserUpdate, darkMode = false, setDarkMode, tabBarTabs, setTabBarTabs, feedbackList = [], setFeedbackList }) => {
   const apiFetch = authFetch || fetch;
   const isAdmin = authUser?.role === 'admin';
 
@@ -39,9 +39,8 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const [editError, setEditError] = useState('');
   const [editSuccess, setEditSuccess] = useState('');
 
-  // ── Feedback ──
+  // ── Feedback ── (list is owned by App and persisted in users.preferences)
   const [feedbackText, setFeedbackText] = useState('');
-  const [feedbackList, setFeedbackList] = useState(() => LS.get('feedbackReports', []));
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   // ── Account deletion ──
@@ -206,9 +205,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const submitFeedback = () => {
     if (!feedbackText.trim()) return;
     const entry = { id: Date.now(), text: feedbackText.trim(), date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), done: false };
-    const next = [entry, ...feedbackList];
-    setFeedbackList(next);
-    LS.set('feedbackReports', next);
+    setFeedbackList(prev => [entry, ...prev]);
     setFeedbackText('');
     setFeedbackSubmitted(true);
     setTimeout(() => setFeedbackSubmitted(false), 2500);
@@ -556,7 +553,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
               <span className="settings-section__title" style={{ margin: 0 }}>Your reports <span style={{ fontWeight: 400, color: 'var(--warm-gray)' }}>({feedbackList.filter(b => !b.done).length} open)</span></span>
               {feedbackList.some(b => b.done) && (
                 <button className="btn btn--ghost btn--sm" style={{ fontSize: 11, padding: '3px 10px' }}
-                  onClick={() => { const next = feedbackList.filter(b => !b.done); setFeedbackList(next); LS.set('feedbackReports', next); }}>
+                  onClick={() => setFeedbackList(prev => prev.filter(b => !b.done))}>
                   Clear resolved
                 </button>
               )}
@@ -564,14 +561,14 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
             {feedbackList.map(bug => (
               <div key={bug.id} className={`feedback-item ${bug.done ? 'feedback-item--done' : ''}`}>
                 <button className="feedback-item__check" data-done={bug.done}
-                  onClick={() => { const next = feedbackList.map(b => b.id === bug.id ? { ...b, done: !b.done } : b); setFeedbackList(next); LS.set('feedbackReports', next); }}>
+                  onClick={() => setFeedbackList(prev => prev.map(b => b.id === bug.id ? { ...b, done: !b.done } : b))}>
                   {bug.done ? '✓' : ''}
                 </button>
                 <div className="feedback-item__body">
                   <p className="feedback-item__text">{bug.text}</p>
                   <p className="feedback-item__date">{bug.date}</p>
                 </div>
-                <button className="editor-remove-btn" onClick={() => { const next = feedbackList.filter(b => b.id !== bug.id); setFeedbackList(next); LS.set('feedbackReports', next); }}>✕</button>
+                <button className="editor-remove-btn" onClick={() => setFeedbackList(prev => prev.filter(b => b.id !== bug.id))}>✕</button>
               </div>
             ))}
           </div>

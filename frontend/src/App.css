@@ -2622,11 +2622,19 @@ body {
   background: var(--terracotta); border-color: var(--terracotta);
   color: #fff; font-weight: 600;
 }
-.ing-resolver__map-wrap { position: relative; }
+.ing-resolver__edit-row {
+  display: flex; gap: 6px; margin: 6px 0 2px;
+}
+.ing-resolver__edit-amt  { width: 72px; flex-shrink: 0; }
+.ing-resolver__edit-unit { width: 80px; flex-shrink: 0; }
+.ing-resolver__edit-prep { flex: 1; }
+.ing-resolver__new-wrap  { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.ing-resolver__new-hint  { font-size: 0.8rem; color: var(--warm-gray); white-space: nowrap; }
+.ing-resolver__edit-name { flex: 1; }
+.ing-resolver__map-wrap { position: relative; margin-top: 6px; }
 .ing-resolver__search { width: 100%; box-sizing: border-box; }
 .ing-resolver__dropdown { position: static; margin-top: 4px; }
 .ing-resolver__selected { font-size: 0.8rem; color: var(--sage); margin: 4px 0 0; font-weight: 500; }
-.ing-resolver__new-hint { font-size: 0.8rem; color: var(--warm-gray); margin: 0; font-style: italic; }
 .ing-resolver__footer {
   padding: 14px 24px; display: flex; gap: 10px; align-items: center;
   border-top: 1px solid var(--border);

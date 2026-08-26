@@ -29,6 +29,16 @@ const META_LINE    = /^(prep|cook|total|ready|servings?|serves?|yield|calories?|
 // Amount: integer, decimal, fraction (1/2), or unicode vulgar fractions
 const AMT_RE       = /^([¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\d+(?:[.,]\d+)?(?:\s*[\/⁄]\s*\d+)?(?:\s*[-–]\s*\d+(?:[.,]\d+)?(?:\s*[\/⁄]\s*\d+)?)?)\s*/;
 
+// Words that can precede an ingredient name as preparation descriptors
+const PREP_WORDS = new Set([
+  'chopped','diced','minced','sliced','grated','shredded','crushed','crumbled',
+  'roasted','toasted','frozen','dried','cooked','boiled','fried','sautéed','sauteed',
+  'melted','softened','beaten','peeled','pitted','seeded','stemmed','cored',
+  'halved','quartered','mashed','pressed','torn','rinsed','drained',
+  'roughly','finely','coarsely','thinly','thickly','lightly','freshly',
+  'ripe','overripe','raw','warm','room-temperature','large','small','medium',
+]);
+
 function parseIngLine(raw) {
   let line = raw.replace(/^[-•·*–]\s*/, '').trim();
   let amount = '', unit = '', prepNote = '';
@@ -43,7 +53,16 @@ function parseIngLine(raw) {
     if (UNITS.has(norm)) { unit = firstWord; line = line.slice(firstWord.length).trim(); }
   }
 
-  // Prep note: after comma or inside parens
+  // Strip leading prep adjectives (e.g. "chopped pecans" → name=pecans, prep=chopped)
+  // Only strip if at least one word remains as the ingredient name
+  const leadingPrep = [];
+  let words = line.split(/\s+/);
+  while (words.length > 1 && PREP_WORDS.has(words[0].toLowerCase().replace(/,\.?$/, ''))) {
+    leadingPrep.push(words.shift().replace(/,\.?$/, ''));
+  }
+  if (leadingPrep.length > 0) line = words.join(' ');
+
+  // Prep note: after comma or inside parens (trailing)
   const commaIdx = line.indexOf(',');
   const parenIdx = line.indexOf('(');
   let splitAt = -1;
@@ -52,13 +71,17 @@ function parseIngLine(raw) {
   else if (parenIdx > 0) splitAt = parenIdx;
 
   if (splitAt > 0) {
-    prepNote = line.slice(splitAt).replace(/[(),]/g, '').trim();
+    const trailing = line.slice(splitAt).replace(/[(),]/g, '').trim();
+    prepNote = trailing;
     line     = line.slice(0, splitAt).trim();
   }
 
+  // Combine leading + trailing prep notes
+  const combined = [leadingPrep.join(' '), prepNote].filter(Boolean).join(', ');
+
   const name = line.toLowerCase().trim();
   if (!name) return null;
-  return { name, amount, unit: unit.replace(/s\.?$/, ''), prep_note: prepNote, optional: /optional/i.test(raw) };
+  return { name, amount, unit: unit.replace(/s\.?$/, ''), prep_note: combined, optional: /optional/i.test(raw) };
 }
 
 function parseRecipeText(text) {
@@ -155,21 +178,25 @@ function fuzzyMatch(parsedName, catalogArr) {
 }
 
 // ─── Ingredient Resolver ──────────────────────────────────────────────────────
+// unknowns: full parsed ingredient objects { name, amount, unit, prep_note, ... }
+// onResolve receives: { [originalLowerName]: { action, mappedTo, name, amount, unit, prep_note } }
 
 function IngredientResolver({ unknowns, allIngredients, onResolve, onCancel }) {
-  // resolutions: { [originalName]: { action: 'map'|'new', mappedTo: string } }
   const [resolutions, setResolutions] = useState(() =>
-    Object.fromEntries(unknowns.map(name => [name, { action: 'new', mappedTo: name }]))
+    Object.fromEntries(unknowns.map(ing => [
+      ing.name.toLowerCase(),
+      { action: 'new', mappedTo: ing.name, name: ing.name, amount: ing.amount || '', unit: ing.unit || '', prep_note: ing.prep_note || '' },
+    ]))
   );
   const [searches, setSearches] = useState(() =>
-    Object.fromEntries(unknowns.map(name => [name, '']))
+    Object.fromEntries(unknowns.map(ing => [ing.name.toLowerCase(), '']))
   );
 
-  const setResolution = (name, update) =>
-    setResolutions(prev => ({ ...prev, [name]: { ...prev[name], ...update } }));
+  const setRes = (key, update) =>
+    setResolutions(prev => ({ ...prev, [key]: { ...prev[key], ...update } }));
 
-  const getSuggestions = (name, searchText) => {
-    const q = (searchText || name).toLowerCase().trim();
+  const getSuggestions = (key, searchText) => {
+    const q = (searchText || key).toLowerCase().trim();
     if (!q) return [];
     return allIngredients
       .map(ing => {
@@ -188,52 +215,66 @@ function IngredientResolver({ unknowns, allIngredients, onResolve, onCancel }) {
     <div className="ing-resolver">
       <div className="ing-resolver__hd">
         <h3 className="ing-resolver__title">Review Unrecognized Ingredients</h3>
-        <p className="ing-resolver__sub">These ingredients weren't found in your kitchen catalog. Map them to existing ones or add them as new.</p>
+        <p className="ing-resolver__sub">These weren't found in your kitchen catalog. Fix details, map to an existing ingredient, or add as new.</p>
       </div>
       <div className="ing-resolver__list">
-        {unknowns.map(name => {
-          const res = resolutions[name];
-          const search = searches[name];
-          const suggestions = getSuggestions(name, search);
+        {unknowns.map(ing => {
+          const key = ing.name.toLowerCase();
+          const res = resolutions[key];
+          const search = searches[key];
+          const suggestions = getSuggestions(key, search);
           return (
-            <div key={name} className="ing-resolver__row">
+            <div key={key} className="ing-resolver__row">
               <div className="ing-resolver__original">
                 <span className="ing-resolver__original-label">Parsed as</span>
-                <span className="ing-resolver__original-name">"{name}"</span>
+                <span className="ing-resolver__original-name">"{ing.name}"</span>
               </div>
+
+              {/* Editable parsed details */}
+              <div className="ing-resolver__edit-row">
+                <input className="editor-input ing-resolver__edit-amt" placeholder="Amt"
+                  value={res.amount} onChange={e => setRes(key, { amount: e.target.value })} />
+                <input className="editor-input ing-resolver__edit-unit" placeholder="Unit"
+                  value={res.unit} onChange={e => setRes(key, { unit: e.target.value })} />
+                <input className="editor-input ing-resolver__edit-prep" placeholder="Prep note"
+                  value={res.prep_note} onChange={e => setRes(key, { prep_note: e.target.value })} />
+              </div>
+
               <div className="ing-resolver__actions">
                 <button
                   className={`ing-resolver__tab${res.action === 'new' ? ' ing-resolver__tab--active' : ''}`}
-                  onClick={() => setResolution(name, { action: 'new', mappedTo: name })}
-                >
-                  Add as new
-                </button>
+                  onClick={() => setRes(key, { action: 'new', mappedTo: res.name })}
+                >Add as new</button>
                 <button
                   className={`ing-resolver__tab${res.action === 'map' ? ' ing-resolver__tab--active' : ''}`}
-                  onClick={() => setResolution(name, { action: 'map', mappedTo: '' })}
-                >
-                  Map to existing
-                </button>
+                  onClick={() => setRes(key, { action: 'map', mappedTo: '' })}
+                >Map to existing</button>
               </div>
+
+              {res.action === 'new' && (
+                <div className="ing-resolver__new-wrap">
+                  <span className="ing-resolver__new-hint">Catalog name:</span>
+                  <input className="editor-input ing-resolver__edit-name" placeholder="Ingredient name"
+                    value={res.name} onChange={e => setRes(key, { name: e.target.value })} />
+                </div>
+              )}
+
               {res.action === 'map' && (
                 <div className="ing-resolver__map-wrap">
                   <input
                     className="editor-input ing-resolver__search"
-                    placeholder="Search ingredients…"
+                    placeholder="Search existing ingredients…"
                     value={search}
-                    onChange={e => setSearches(prev => ({ ...prev, [name]: e.target.value }))}
+                    onChange={e => setSearches(prev => ({ ...prev, [key]: e.target.value }))}
                     autoFocus
                   />
                   {suggestions.length > 0 && (
                     <ul className="ing-ac-dropdown ing-resolver__dropdown">
                       {suggestions.map(s => (
-                        <li
-                          key={s}
+                        <li key={s}
                           className={`ing-ac-option${res.mappedTo === s ? ' ing-ac-option--active' : ''}`}
-                          onMouseDown={() => { setResolution(name, { action: 'map', mappedTo: s }); setSearches(prev => ({ ...prev, [name]: s })); }}
-                        >
-                          {s}
-                        </li>
+                          onMouseDown={() => { setRes(key, { action: 'map', mappedTo: s }); setSearches(prev => ({ ...prev, [key]: s })); }}
+                        >{s}</li>
                       ))}
                     </ul>
                   )}
@@ -241,9 +282,6 @@ function IngredientResolver({ unknowns, allIngredients, onResolve, onCancel }) {
                     <p className="ing-resolver__selected">Will use: <strong>{res.mappedTo}</strong></p>
                   )}
                 </div>
-              )}
-              {res.action === 'new' && (
-                <p className="ing-resolver__new-hint">"{name}" will be added to your kitchen catalog</p>
               )}
             </div>
           );
@@ -259,7 +297,7 @@ function IngredientResolver({ unknowns, allIngredients, onResolve, onCancel }) {
   );
 }
 
-const AddRecipeTab = ({ allIngredients, inventoryConfig, setInventoryConfig, onSaved, cookbooks = [], authFetch }) => {
+const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved, cookbooks = [], authFetch }) => {
   const apiFetch = authFetch || fetch;
   const sensors = DRAG_SENSORS();
   const [showModal, setShowModal] = useState(false);
@@ -314,15 +352,18 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, setInventoryConfig, onS
       });
       recipe.ingredients = resolved;
 
-      // Collect unknowns after auto-matching
-      const unknowns = resolved
-        .map(i => i.name?.toLowerCase().trim())
-        .filter(n => n && !catalogNames.has(n));
-      const unique = [...new Set(unknowns)];
+      // Collect unknowns (full objects, deduplicated by name)
+      const seen = new Set();
+      const unknownObjs = resolved.filter(i => {
+        const n = i.name?.toLowerCase().trim();
+        if (!n || catalogNames.has(n) || seen.has(n)) return false;
+        seen.add(n);
+        return true;
+      });
 
       setParsedData(recipe);
-      if (unique.length > 0) {
-        setUnknownIngs(unique);
+      if (unknownObjs.length > 0) {
+        setUnknownIngs(unknownObjs);
         setShowResolver(true);
       } else {
         setImportedFrom('text');
@@ -333,36 +374,31 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, setInventoryConfig, onS
     finally { setParsing(false); }
   };
 
-  const applyResolutions = (resolutions) => {
+  const applyResolutions = async (resolutions) => {
     if (!parsedData) return;
-    // Add "new" ingredients to catalog
+    // Add "new" ingredients to the catalog using the (possibly edited) name
     const newIngs = Object.entries(resolutions)
       .filter(([, r]) => r.action === 'new')
-      .map(([name]) => name);
-    if (newIngs.length > 0 && setInventoryConfig) {
-      setInventoryConfig(prev => {
-        const next = [...prev];
-        for (const name of newIngs) {
-          const cat = autoCategory(name);
-          const existing = next.find(g => g.label === cat);
-          if (existing) {
-            if (!existing.items.includes(name)) existing.items = [...existing.items, name];
-          } else {
-            next.push({ label: cat, items: [name] });
-          }
-        }
-        try { localStorage.setItem('hearth_inventory_config', JSON.stringify(next)); } catch {}
-        return next;
-      });
+      .map(([, r]) => r.name || r.mappedTo)
+      .filter(Boolean);
+    if (newIngs.length > 0 && addIngredient) {
+      await Promise.all(newIngs.map(name => addIngredient(name, autoCategory(name))));
     }
-    // Remap ingredient names
+    // Apply resolutions: use edited amount/unit/prep_note + resolved name
     const resolved = {
       ...parsedData,
       ingredients: (parsedData.ingredients || []).map(ing => {
         const original = ing.name?.toLowerCase().trim();
         const res = resolutions[original];
-        if (res?.action === 'map' && res.mappedTo) return { ...ing, name: res.mappedTo };
-        return ing;
+        if (!res) return ing;
+        const finalName = res.action === 'map' ? res.mappedTo : (res.name || original);
+        return {
+          ...ing,
+          name:      finalName,
+          amount:    res.amount    !== undefined ? res.amount    : ing.amount,
+          unit:      res.unit      !== undefined ? res.unit      : ing.unit,
+          prep_note: res.prep_note !== undefined ? res.prep_note : ing.prep_note,
+        };
       }),
     };
     setShowResolver(false);

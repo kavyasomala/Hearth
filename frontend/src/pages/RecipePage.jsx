@@ -380,6 +380,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const [draftMeta, setDraftMeta] = useState({});
   const [showMetaModal, setShowMetaModal] = useState(false);
   const [draftCookbook, setDraftCookbook] = useState({ cookbook: '', reference: '' });
+  // Snapshot taken when edit mode is entered — used to detect real changes before warning
+  const editSnapshotRef = useRef(null);
 
   const isEdit = (s) => editingSection === s;
 
@@ -403,6 +405,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         flat.push({ ...ing, _id: `ing-${i}` });
       }
       setDraftIngs(flat);
+      editSnapshotRef.current = JSON.stringify(flat);
     }
     if (section === 'instructions') {
       // Build flat list: group headers interleaved with steps that carry their own group_label.
@@ -445,6 +448,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
         }
       }
       setDraftSteps(flat);
+      editSnapshotRef.current = JSON.stringify(flat);
     }
     if (section === 'notes')        setDraftNotes((notes || []).map((n, idx) => ({ ...n, _id: `note-${idx}`, text: n.text ?? n.body_text ?? '' })));
     if (section === 'cookbook')      setDraftCookbook({ cookbook: recipe.cookbook || '', reference: recipe.reference || '' });
@@ -459,7 +463,13 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
     setEditingSection(section);
   };
 
-  const cancelEdit = () => { setEditingSection(null); setSaveError(null); };
+  const cancelEdit = () => { setEditingSection(null); setSaveError(null); editSnapshotRef.current = null; };
+
+  const hasUnsavedChanges = () => {
+    if (editingSection === 'ingredients') return JSON.stringify(draftIngs) !== editSnapshotRef.current;
+    if (editingSection === 'instructions') return JSON.stringify(draftSteps) !== editSnapshotRef.current;
+    return false;
+  };
 
   const openMetaModal = () => {
     setDraftMeta({
@@ -1102,7 +1112,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     <>
                       <button className="ing-modal__save-btn" onClick={() => saveSection('ingredients', () => setShowIngredientsModal(false))} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
                       <button className="ing-modal__close" onClick={() => {
-                        if (window.confirm('Discard unsaved changes?')) { setShowIngredientsModal(false); cancelEdit(); }
+                        if (!hasUnsavedChanges() || window.confirm('Discard unsaved changes?')) { setShowIngredientsModal(false); cancelEdit(); }
                       }}>✕</button>
                     </>
                   ) : (

@@ -31,6 +31,24 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejec
 const q    = (sql, params) => pool.query(sql, params);
 const uuid = () => crypto.randomUUID();
 
+// Resolve an ingredient name to a row in the canonical catalog, creating it if new.
+// Matching is case-insensitive (unique index on lower(name)); an existing row keeps
+// its category unless this call supplies one and the row has none.
+// `client` may be a pool client (inside a transaction) or the pool itself.
+async function findOrCreateIngredient(client, name, category) {
+  const clean = (name || '').trim();
+  if (!clean) return null;
+  const { rows: [row] } = await client.query(
+    `INSERT INTO ingredients (name, category)
+     VALUES ($1, $2)
+     ON CONFLICT (lower(name))
+       DO UPDATE SET category = COALESCE(ingredients.category, EXCLUDED.category)
+     RETURNING id, name, category`,
+    [clean, category || null]
+  );
+  return row;
+}
+
 // â”€â”€â”€ Schema â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function initDB() {
@@ -44,8 +62,17 @@ async function initDB() {
       avatar_url    TEXT,
       role          TEXT NOT NULL DEFAULT 'guest'
                       CHECK (role IN ('admin','guest','suspended')),
+      preferences   JSONB NOT NULL DEFAULT '{}',
       deleted_at    TIMESTAMPTZ,
       created_at    TIMESTAMPTZ DEFAULT NOW()
+    )`,
+
+    // Canonical ingredient catalog — recipe_ingredients and user_kitchen both FK here
+    `CREATE TABLE IF NOT EXISTS ingredients (
+      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name       TEXT NOT NULL,
+      category   TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
     )`,
 
     `CREATE TABLE IF NOT EXISTS recipes (
@@ -69,15 +96,15 @@ async function initDB() {
     )`,
 
     `CREATE TABLE IF NOT EXISTS recipe_ingredients (
-      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      recipe_id   UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-      name        TEXT NOT NULL,
-      amount      TEXT,
-      unit        TEXT,
-      prep_note   TEXT,
-      optional    BOOLEAN DEFAULT FALSE,
-      group_label TEXT,
-      order_index INTEGER DEFAULT 0
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      recipe_id     UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+      ingredient_id UUID NOT NULL REFERENCES ingredients(id) ON DELETE RESTRICT,
+      amount        TEXT,
+      unit          TEXT,
+      prep_note     TEXT,
+      optional      BOOLEAN NOT NULL DEFAULT FALSE,
+      group_label   TEXT,
+      order_index   INTEGER DEFAULT 0
     )`,
 
     `CREATE TABLE IF NOT EXISTS recipe_steps (
@@ -131,11 +158,11 @@ async function initDB() {
     )`,
 
     `CREATE TABLE IF NOT EXISTS user_kitchen (
-      user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      ingredient_name TEXT NOT NULL,
-      storage_type    TEXT DEFAULT 'fridge'
-                        CHECK (storage_type IN ('fridge','freezer','pantry')),
-      PRIMARY KEY (user_id, ingredient_name)
+      user_id       UUID    NOT NULL REFERENCES users(id)       ON DELETE CASCADE,
+      ingredient_id UUID    NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+      have          BOOLEAN NOT NULL DEFAULT TRUE,
+      storage_type  TEXT    CHECK (storage_type IN ('fridge','freezer','pantry')),
+      PRIMARY KEY (user_id, ingredient_id)
     )`,
 
     `CREATE TABLE IF NOT EXISTS user_favorites (
@@ -224,8 +251,12 @@ async function initDB() {
 
   // â”€â”€ Indexes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const indexes = [
+    // Ingredient catalog â€” case-insensitive uniqueness on name
+    `CREATE UNIQUE INDEX IF NOT EXISTS ingredients_name_lower_idx ON ingredients (lower(name))`,
+
     // Recipe children â€” most queried FKs
-    `CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe ON recipe_ingredients(recipe_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe     ON recipe_ingredients(recipe_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_ingredient ON recipe_ingredients(ingredient_id)`,
     `CREATE INDEX IF NOT EXISTS idx_recipe_steps_recipe       ON recipe_steps(recipe_id)`,
     `CREATE INDEX IF NOT EXISTS idx_recipe_notes_recipe       ON recipe_notes(recipe_id)`,
 
@@ -236,7 +267,8 @@ async function initDB() {
     // User data â€” always filtered by user
     `CREATE INDEX IF NOT EXISTS idx_user_favorites_user  ON user_favorites(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_user_make_soon_user  ON user_make_soon(user_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_user_kitchen_user    ON user_kitchen(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_user_kitchen_user       ON user_kitchen(user_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_user_kitchen_ingredient ON user_kitchen(ingredient_id)`,
     `CREATE INDEX IF NOT EXISTS idx_cook_log_user_date   ON user_cook_log(user_id, cooked_at DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_meal_plans_user_date ON meal_plans(user_id, planned_date)`,
 
@@ -577,11 +609,12 @@ app.get('/api/recipes', async (req, res) => {
              r.cover_image_url, r.status, r.reference, r.source_url,
              r.tags, r.created_by, r.visibility, r.created_at, r.updated_at,
              COALESCE(
-               json_agg(ri.name ORDER BY ri.order_index)
-               FILTER (WHERE ri.name IS NOT NULL), '[]'
+               json_agg(i.name ORDER BY ri.order_index)
+               FILTER (WHERE i.name IS NOT NULL), '[]'
              ) AS ingredients
       FROM recipes r
       LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id
+      LEFT JOIN ingredients i         ON i.id = ri.ingredient_id
       GROUP BY r.id
       ORDER BY r.name ASC
     `);
@@ -596,7 +629,12 @@ app.get('/api/recipes/:id', async (req, res) => {
   try {
     const { rows: [recipe] } = await q('SELECT * FROM recipes WHERE id = $1', [req.params.id]);
     if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
-    const { rows: ings  } = await q('SELECT * FROM recipe_ingredients WHERE recipe_id = $1 ORDER BY order_index ASC', [req.params.id]);
+    const { rows: ings  } = await q(
+      `SELECT ri.*, i.name, i.category
+         FROM recipe_ingredients ri
+         JOIN ingredients i ON i.id = ri.ingredient_id
+        WHERE ri.recipe_id = $1
+        ORDER BY ri.order_index ASC`, [req.params.id]);
     const { rows: steps } = await q('SELECT * FROM recipe_steps       WHERE recipe_id = $1 ORDER BY step_number ASC',  [req.params.id]);
     const { rows: notes } = await q('SELECT id, order_index, body_text AS text FROM recipe_notes WHERE recipe_id = $1 ORDER BY order_index ASC', [req.params.id]);
     res.json({
@@ -639,11 +677,17 @@ app.post('/api/recipes', authenticateToken, async (req, res) => {
     );
     if (Array.isArray(ingredients)) {
       for (const ing of ingredients) {
-        if (!ing.name?.trim()) continue;
+        // Accept an explicit catalog id, or resolve/create the ingredient by name
+        let ingredientId = ing.ingredient_id || null;
+        if (!ingredientId) {
+          const row = await findOrCreateIngredient(client, ing.name, ing.category);
+          if (!row) continue;
+          ingredientId = row.id;
+        }
         await client.query(
-          `INSERT INTO recipe_ingredients (recipe_id,name,amount,unit,prep_note,optional,group_label,order_index)
+          `INSERT INTO recipe_ingredients (recipe_id,ingredient_id,amount,unit,prep_note,optional,group_label,order_index)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-          [id, ing.name.trim().toLowerCase(), ing.amount||null, ing.unit||null,
+          [id, ingredientId, ing.amount||null, ing.unit||null,
            ing.prep_note||null, Boolean(ing.optional), ing.group_label||null, ing.order_index??0]
         );
       }
@@ -714,11 +758,16 @@ app.put('/api/recipes/:id', authenticateToken, async (req, res) => {
     if (ingredients !== undefined) {
       await client.query('DELETE FROM recipe_ingredients WHERE recipe_id = $1', [id]);
       for (const ing of ingredients) {
-        if (!ing.name?.trim()) continue;
+        let ingredientId = ing.ingredient_id || null;
+        if (!ingredientId) {
+          const row = await findOrCreateIngredient(client, ing.name, ing.category);
+          if (!row) continue;
+          ingredientId = row.id;
+        }
         await client.query(
-          `INSERT INTO recipe_ingredients (recipe_id,name,amount,unit,prep_note,optional,group_label,order_index)
+          `INSERT INTO recipe_ingredients (recipe_id,ingredient_id,amount,unit,prep_note,optional,group_label,order_index)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-          [id, ing.name.trim().toLowerCase(), ing.amount||null, ing.unit||null,
+          [id, ingredientId, ing.amount||null, ing.unit||null,
            ing.prep_note||null, Boolean(ing.optional), ing.group_label||null, ing.order_index??0]
         );
       }
@@ -890,6 +939,110 @@ app.delete('/api/cooking-notes/:id', authenticateToken, requireAdmin, async (req
 
 // â”€â”€â”€ User Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+// ─── Ingredient catalog ───────────────────────────────────────────────────────
+
+app.get('/api/ingredients', async (req, res) => {
+  try {
+    const { rows } = await q('SELECT id, name, category FROM ingredients ORDER BY lower(name) ASC');
+    res.json({ ingredients: rows });
+  } catch (err) {
+    console.error('GET /api/ingredients error:', err);
+    res.status(500).json({ error: 'Failed to load ingredients' });
+  }
+});
+
+// Find-or-create — safe to call with names that already exist.
+// Accepts either { name, category } or { ingredients: [{name, category}, ...] }
+app.post('/api/ingredients', authenticateToken, async (req, res) => {
+  const { name, category, ingredients } = req.body;
+
+  if (Array.isArray(ingredients)) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const created = [];
+      for (const item of ingredients) {
+        const row = await findOrCreateIngredient(client, item?.name, item?.category);
+        if (row) created.push(row);
+      }
+      await client.query('COMMIT');
+      return res.status(201).json({ ingredients: created });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      console.error('POST /api/ingredients (bulk) error:', err);
+      return res.status(500).json({ error: err.message });
+    } finally { client.release(); }
+  }
+
+  if (!name?.trim()) return res.status(400).json({ error: 'Ingredient name is required' });
+  try {
+    const ingredient = await findOrCreateIngredient(pool, name, category);
+    res.status(201).json({ ingredient });
+  } catch (err) {
+    console.error('POST /api/ingredients error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/ingredients/:id', authenticateToken, async (req, res) => {
+  const { name, category } = req.body;
+  try {
+    const { rows: [ingredient] } = await q(
+      `UPDATE ingredients
+          SET name     = COALESCE($1, name),
+              category = COALESCE($2, category)
+        WHERE id = $3
+        RETURNING id, name, category`,
+      [name?.trim() || null, category || null, req.params.id]
+    );
+    if (!ingredient) return res.status(404).json({ error: 'Ingredient not found' });
+    res.json({ ingredient });
+  } catch (err) {
+    console.error('PUT /api/ingredients/:id error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Blocked by ON DELETE RESTRICT if any recipe still uses this ingredient
+app.delete('/api/ingredients/:id', authenticateToken, async (req, res) => {
+  try {
+    const result = await q('DELETE FROM ingredients WHERE id = $1', [req.params.id]);
+    if (!result.rowCount) return res.status(404).json({ error: 'Ingredient not found' });
+    res.json({ deleted: true });
+  } catch (err) {
+    if (err.code === '23503') {
+      return res.status(409).json({ error: 'This ingredient is still used by one or more recipes.' });
+    }
+    console.error('DELETE /api/ingredients/:id error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── User preferences ─────────────────────────────────────────────────────────
+
+app.get('/api/user/preferences', authenticateToken, async (req, res) => {
+  const { rows: [row] } = await q('SELECT preferences FROM users WHERE id = $1', [req.user.id]);
+  res.json({ preferences: row?.preferences || {} });
+});
+
+// Shallow-merges the posted keys into the stored object
+app.put('/api/user/preferences', authenticateToken, async (req, res) => {
+  const { preferences } = req.body;
+  if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) {
+    return res.status(400).json({ error: 'preferences must be an object' });
+  }
+  try {
+    const { rows: [row] } = await q(
+      'UPDATE users SET preferences = preferences || $1::jsonb WHERE id = $2 RETURNING preferences',
+      [JSON.stringify(preferences), req.user.id]
+    );
+    res.json({ preferences: row?.preferences || {} });
+  } catch (err) {
+    console.error('PUT /api/user/preferences error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/user/favorites', authenticateToken, async (req, res) => {
   const { rows } = await q('SELECT recipe_id FROM user_favorites WHERE user_id = $1 ORDER BY added_at DESC', [req.user.id]);
   res.json({ favorites: rows.map(r => r.recipe_id) });
@@ -931,10 +1084,17 @@ app.put('/api/user/make-soon', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/user/kitchen', authenticateToken, async (req, res) => {
-  const { rows } = await q('SELECT ingredient_name, storage_type FROM user_kitchen WHERE user_id = $1', [req.user.id]);
+  const { rows } = await q(
+    `SELECT uk.ingredient_id, i.name, i.category, uk.have, uk.storage_type
+       FROM user_kitchen uk
+       JOIN ingredients i ON i.id = uk.ingredient_id
+      WHERE uk.user_id = $1
+      ORDER BY lower(i.name) ASC`, [req.user.id]);
   res.json({ kitchen: rows });
 });
 
+// Full replace of the user's kitchen rows. Items may carry an ingredient_id, or a
+// name that gets resolved against the catalog (created if it doesn't exist yet).
 app.put('/api/user/kitchen', authenticateToken, async (req, res) => {
   const { kitchen } = req.body;
   if (!Array.isArray(kitchen)) return res.status(400).json({ error: 'kitchen must be an array' });
@@ -943,10 +1103,18 @@ app.put('/api/user/kitchen', authenticateToken, async (req, res) => {
     await client.query('BEGIN');
     await client.query('DELETE FROM user_kitchen WHERE user_id = $1', [req.user.id]);
     for (const item of kitchen) {
-      if (!item.ingredient_name?.trim()) continue;
+      let ingredientId = item.ingredient_id || null;
+      if (!ingredientId) {
+        const row = await findOrCreateIngredient(client, item.name, item.category);
+        if (!row) continue;
+        ingredientId = row.id;
+      }
       await client.query(
-        'INSERT INTO user_kitchen (user_id,ingredient_name,storage_type) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
-        [req.user.id, item.ingredient_name.toLowerCase().trim(), item.storage_type||'fridge']
+        `INSERT INTO user_kitchen (user_id,ingredient_id,have,storage_type)
+         VALUES ($1,$2,$3,$4)
+         ON CONFLICT (user_id, ingredient_id) DO UPDATE
+           SET have = EXCLUDED.have, storage_type = EXCLUDED.storage_type`,
+        [req.user.id, ingredientId, item.have !== false, item.storage_type || null]
       );
     }
     await client.query('COMMIT');
@@ -987,11 +1155,13 @@ app.post('/api/grocery-list', async (req, res) => {
   try {
     const { rows } = await q(`
       SELECT r.id AS recipe_id, r.name AS recipe_name,
-             i.name AS ingredient_name, i.amount, i.unit, i.prep_note, i.optional
+             ing.name AS ingredient_name, ing.category AS ingredient_category,
+             ri.amount, ri.unit, ri.prep_note, ri.optional
       FROM recipes r
-      JOIN recipe_ingredients i ON i.recipe_id = r.id
+      JOIN recipe_ingredients ri ON ri.recipe_id = r.id
+      JOIN ingredients ing       ON ing.id = ri.ingredient_id
       WHERE r.id = ANY($1)
-      ORDER BY i.name ASC
+      ORDER BY ing.name ASC
     `, [recipeIds]);
 
     if (!rows.length) return res.json({ categories: [], recipeNames: [] });
@@ -1003,7 +1173,9 @@ app.post('/api/grocery-list', async (req, res) => {
       const key = `${row.ingredient_name.toLowerCase().trim()}||${(row.unit||'').toLowerCase().trim()}`;
       if (!itemMap.has(key)) {
         itemMap.set(key, { name: row.ingredient_name, amounts: [], rawAmounts: [], unit: row.unit||'',
-          prep_note: row.prep_note||'', optional: Boolean(row.optional), recipes: [], category: categorise(row.ingredient_name) });
+          prep_note: row.prep_note||'', optional: Boolean(row.optional), recipes: [],
+          // Prefer the catalog's category; fall back to keyword guessing for older rows
+          category: row.ingredient_category || categorise(row.ingredient_name) });
       }
       const entry = itemMap.get(key);
       if (!entry.recipes.includes(row.recipe_name)) entry.recipes.push(row.recipe_name);
@@ -1097,7 +1269,12 @@ app.get('/api/share/:token', async (req, res) => {
       [req.params.token]
     );
     if (!recipe) return res.status(404).json({ error: 'Recipe not found or link is no longer active' });
-    const { rows: ings  } = await q('SELECT * FROM recipe_ingredients WHERE recipe_id=$1 ORDER BY order_index', [recipe.id]);
+    const { rows: ings  } = await q(
+      `SELECT ri.*, i.name, i.category
+         FROM recipe_ingredients ri
+         JOIN ingredients i ON i.id = ri.ingredient_id
+        WHERE ri.recipe_id = $1
+        ORDER BY ri.order_index`, [recipe.id]);
     const { rows: steps } = await q('SELECT * FROM recipe_steps       WHERE recipe_id=$1 ORDER BY step_number', [recipe.id]);
     const { rows: notes } = await q('SELECT id, order_index, body_text AS text FROM recipe_notes WHERE recipe_id=$1 ORDER BY order_index', [recipe.id]);
     res.json({
@@ -1122,11 +1299,12 @@ app.post('/api/share/:token/save', authenticateToken, async (req, res) => {
       "INSERT INTO recipes (name,cuisine,time_minutes,servings,calories,cover_image_url,status,reference,source_url,tags,created_by,visibility,source_attribution) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'private',$12) RETURNING id",
       [src.name, src.cuisine, src.time_minutes, src.servings, src.calories, src.cover_image_url, src.status, src.reference, src.source_url, src.tags, req.user.id, attribution]
     );
+    // Ingredient rows point at the shared catalog, so the copy reuses the same ids
     const { rows: ings } = await q('SELECT * FROM recipe_ingredients WHERE recipe_id=$1 ORDER BY order_index', [src.id]);
     for (const ing of ings) {
       await client.query(
-        'INSERT INTO recipe_ingredients (recipe_id,name,amount,unit,prep_note,optional,group_label,order_index) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-        [newId, ing.name, ing.amount, ing.unit, ing.prep_note, ing.optional, ing.group_label, ing.order_index]
+        'INSERT INTO recipe_ingredients (recipe_id,ingredient_id,amount,unit,prep_note,optional,group_label,order_index) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+        [newId, ing.ingredient_id, ing.amount, ing.unit, ing.prep_note, ing.optional, ing.group_label, ing.order_index]
       );
     }
     const { rows: steps } = await q('SELECT * FROM recipe_steps WHERE recipe_id=$1 ORDER BY step_number', [src.id]);
@@ -1231,7 +1409,10 @@ app.get('/r/:token', async (req, res) => {
     }
     const sharerName = recipe.sharer_name || 'Someone';
     const metaParts = [recipe.cuisine, recipe.time_minutes && `${recipe.time_minutes} min`, recipe.servings && `${recipe.servings} servings`].filter(Boolean).join(' · ');
-    const { rows: ings } = await q('SELECT name FROM recipe_ingredients WHERE recipe_id=$1 ORDER BY order_index LIMIT 8', [recipe.id]);
+    const { rows: ings } = await q(
+      `SELECT i.name FROM recipe_ingredients ri
+         JOIN ingredients i ON i.id = ri.ingredient_id
+        WHERE ri.recipe_id = $1 ORDER BY ri.order_index LIMIT 8`, [recipe.id]);
     const ingText = ings.map(i => i.name).join(', ') + (ings.length >= 8 ? '…' : '');
     const img = recipe.cover_image_url;
     const ogImg = img ? `<meta property="og:image" content="${escapeHtml(img)}"/>` : '';

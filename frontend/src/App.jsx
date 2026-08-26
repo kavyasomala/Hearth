@@ -3,11 +3,11 @@ import './App.css';
 
 import { Icon } from './icons';
 import { API, PROGRESS_FILTERS, GEO_CUISINES, CUISINE_ICON, TAG_FILTERS } from './constants';
-import { LS, toNum, checkDietaryConflicts } from './utils';
+import { toNum, checkDietaryConflicts } from './utils';
 import { ErrorBoundary, HScrollRow } from './components/ui';
 import RecipeCard from './components/RecipeCard';
 import MarkCookedModal from './components/MarkCookedModal';
-import KitchenTab, { loadInventoryConfig } from './KitchenTab';
+import KitchenTab, { groupIngredients, SEED_INGREDIENTS } from './KitchenTab';
 import RecipePage from './pages/RecipePage';
 import RecipeEditor from './pages/RecipeEditor';
 import ProfileTab from './tabs/ProfileTab';
@@ -196,6 +196,18 @@ const CreateUserModal = ({ onClose, authFetch }) => {
 
 // --- Main App ----------------------------------------------------------------
 // ─── Main App ────────────────────────────────────────────────────────────────
+
+// Shape of users.preferences; server values are merged over this on load.
+const DEFAULT_PREFS = {
+  darkMode: false,
+  tabBarTabs: ['home', 'recipes', 'kitchen', 'grocery'],
+  units: 'metric',
+  dietaryFilters: [],
+  hideIncompatible: false,
+  customCuisines: [],
+  feedbackReports: [],
+};
+
 function AppInner() {
   // --- Auth ------------------------------------------------------------------
   const [session, setSession] = useState(null);
@@ -337,29 +349,75 @@ function AppInner() {
     viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
   }, []);
   // --- Data ------------------------------------------------------------------
-  const [inventoryConfig, setInventoryConfig] = useState(() => loadInventoryConfig());
-  // allIngredients is the canonical ingredient list — sourced from the Kitchen catalog,
+  // The ingredient catalog lives in the DB (`ingredients` table) and is the single
+  // source of truth for both the Kitchen tab and the recipe editors.
+  const [ingredients, setIngredients] = useState([]);   // [{ id, name, category }]
+  const inventoryConfig = useMemo(() => groupIngredients(ingredients), [ingredients]);
+  // allIngredients is the canonical ingredient list — sourced from the catalog,
   // so only catalog items can be added to recipes (no arbitrary free-text).
   const allIngredients = useMemo(
-    () => inventoryConfig.flatMap(g => g.items.map(name => ({ name }))),
-    [inventoryConfig]
+    () => ingredients.map(i => ({ id: i.id, name: i.name })),
+    [ingredients]
   );
   const [recipes, setRecipes] = useState([]);
-  const [inventoryHave, setInventoryHave] = useState(() => {
-    // Migrate old fridgeIngredients + pantryStaples into one inventoryHave array
-    const existing = LS.get('inventoryHave', null);
-    if (existing !== null) return existing;
-    const fridge = LS.get('fridgeIngredients', []);
-    const pantry = LS.get('pantryStaples', []);
-    return [...new Set([...fridge, ...pantry].map(s => s.toLowerCase().trim()).filter(Boolean))];
-  });
+  // Names the user currently has on hand — hydrated from /api/user/kitchen
+  const [inventoryHave, setInventoryHave] = useState([]);
+
+  // --- Ingredient catalog CRUD (optimistic, then reconciled with the server) ---
+  const addIngredient = useCallback(async (name, category) => {
+    const clean = (name || '').toLowerCase().trim();
+    if (!clean) return null;
+    const existing = ingredients.find(i => i.name.toLowerCase() === clean);
+    if (existing) return existing;
+    if (!authToken) return null;
+    try {
+      const res = await authFetch(`${API}/api/ingredients`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: clean, category }),
+      });
+      if (!res.ok) return null;
+      const { ingredient } = await res.json();
+      setIngredients(prev =>
+        prev.some(i => i.id === ingredient.id) ? prev : [...prev, ingredient]
+      );
+      return ingredient;
+    } catch { return null; }
+  }, [ingredients, authToken, authFetch]);
+
+  const updateIngredient = useCallback(async (id, patch) => {
+    setIngredients(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i));
+    if (!authToken) return;
+    try {
+      await authFetch(`${API}/api/ingredients/${id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+    } catch {}
+  }, [authToken, authFetch]);
+
+  const deleteIngredient = useCallback(async (id) => {
+    const prevList = ingredients;
+    setIngredients(prev => prev.filter(i => i.id !== id));
+    if (!authToken) return;
+    try {
+      const res = await authFetch(`${API}/api/ingredients/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        // Most likely still referenced by a recipe — put it back and say so
+        setIngredients(prevList);
+        const d = await res.json().catch(() => ({}));
+        setError(d.error || 'Could not delete that ingredient.');
+      }
+    } catch { setIngredients(prevList); }
+  }, [ingredients, authToken, authFetch]);
+
   // Sync kitchen to backend whenever it changes (debounced)
   const kitchenSyncTimer = useRef(null);
   const syncKitchenToAPI = useCallback((have) => {
     if (!authToken) return;
     clearTimeout(kitchenSyncTimer.current);
     kitchenSyncTimer.current = setTimeout(() => {
-      const kitchen = have.map(n => ({ ingredient_name: n, storage_type: 'have' }));
+      // Send names; the server resolves them against the catalog
+      const kitchen = have.map(n => ({ name: n, have: true }));
       authFetch(`${API}/api/user/kitchen`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kitchen }),
@@ -383,15 +441,12 @@ function AppInner() {
   const [maxMinutes, setMaxMinutes] = useState(null);     // null = off
   const [activeCookbooks, setActiveCookbooks] = useState([]); // cookbook titles + '__uncategorized'
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [customCuisines, setCustomCuisines] = useState(() => LS.get('customCuisines', []));
   // --- User Preferences & Interactions ---------------------------------------
-  const [heartedIds, setHeartedIds] = useState(() => LS.get('heartedIds', []));
-  const [makeSoonIds, setMakeSoonIds] = useState(() => LS.get('makeSoonIds', []));
+  const [heartedIds, setHeartedIds] = useState([]);
+  const [makeSoonIds, setMakeSoonIds] = useState([]);
   const [cookingRecipe, setCookingRecipe] = useState(null); // recipe object to mark cooked
   const [libraryPage, setLibraryPage] = useState(1);
   const [libraryLayout, setLibraryLayout] = useState('grid'); // 'grid' | 'list'
-
-  useEffect(() => { LS.set('customCuisines', customCuisines); }, [customCuisines]);
 
   const toggleHeart = useCallback((id) => {
     setHeartedIds(prev => {
@@ -410,32 +465,62 @@ function AppInner() {
   }, [authToken, authFetch]);
 
   // --- Settings & Appearance -------------------------------------------------
-  const [darkMode, setDarkModeRaw] = useState(() => LS.get('darkMode', false));
-  const setDarkMode = (v) => { setDarkModeRaw(v); LS.set('darkMode', v); };
+  // All of these persist to users.preferences (JSONB) via /api/user/preferences.
+  const [prefs, setPrefs] = useState(DEFAULT_PREFS);
+  const prefsLoaded   = useRef(false);
+  const prefsSyncTimer = useRef(null);
 
-  const [tabBarTabs, setTabBarTabsRaw] = useState(() => LS.get('tabBarTabs', ['home', 'recipes', 'kitchen', 'grocery']));
-  const setTabBarTabs = (v) => { setTabBarTabsRaw(v); LS.set('tabBarTabs', v); };
+  // Debounced write-through; never fires before the server values have landed,
+  // so a slow load can't clobber stored prefs with the defaults.
+  const savePref = useCallback((patch) => {
+    setPrefs(prev => {
+      const next = { ...prev, ...patch };
+      if (prefsLoaded.current && authToken) {
+        clearTimeout(prefsSyncTimer.current);
+        prefsSyncTimer.current = setTimeout(() => {
+          authFetch(`${API}/api/user/preferences`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ preferences: next }),
+          }).catch(() => {});
+        }, 600);
+      }
+      return next;
+    });
+  }, [authToken, authFetch]);
+
+  const darkMode         = prefs.darkMode;
+  const tabBarTabs       = prefs.tabBarTabs;
+  const units            = prefs.units;
+  const dietaryFilters   = prefs.dietaryFilters;
+  const hideIncompatible = prefs.hideIncompatible;
+  const customCuisines   = prefs.customCuisines;
+
+  const setDarkMode         = (v) => savePref({ darkMode: v });
+  const setTabBarTabs       = (v) => savePref({ tabBarTabs: v });
+  const setUnits            = (v) => savePref({ units: v });
+  const setHideIncompatible = (v) => savePref({ hideIncompatible: v });
+  const setDietaryFilters   = (fn) =>
+    savePref({ dietaryFilters: typeof fn === 'function' ? fn(prefs.dietaryFilters) : fn });
+  const setCustomCuisines   = (fn) =>
+    savePref({ customCuisines: typeof fn === 'function' ? fn(prefs.customCuisines) : fn });
+
+  const feedbackList    = prefs.feedbackReports;
+  const setFeedbackList = (fn) =>
+    savePref({ feedbackReports: typeof fn === 'function' ? fn(prefs.feedbackReports) : fn });
 
   // Apply dark mode to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
-  const [units, setUnitsRaw] = useState(() => LS.get('units', 'metric'));
-  const [dietaryFilters, setDietaryFiltersRaw] = useState(() => LS.get('dietaryFilters', []));
-  const [hideIncompatible, setHideIncompatibleRaw] = useState(() => LS.get('hideIncompatible', false));
-  const setHideIncompatible = (v) => { setHideIncompatibleRaw(v); LS.set('hideIncompatible', v); };
   // --- App-Level Data (loaded from API) --------------------------------------
   const [cookbooks, setCookbooks] = useState([]);
   const [cookLog, setCookLog] = useState([]);
   const [cookingNotes, setCookingNotes] = useState([]);
-  const setUnits = (v) => { setUnitsRaw(v); LS.set('units', v); };
-  const setDietaryFilters = (fn) => setDietaryFiltersRaw(prev => { const next = typeof fn === 'function' ? fn(prev) : fn; LS.set('dietaryFilters', next); return next; });
 
   const kitchenLoadedFromAPI = useRef(false);
 
   useEffect(() => {
-    LS.set('inventoryHave', inventoryHave);
     if (kitchenLoadedFromAPI.current) {
       syncKitchenToAPI(inventoryHave);
     }
@@ -443,38 +528,59 @@ function AppInner() {
 
   const loadData = useCallback(async () => {
     try {
-      const [recipeRes, notesRes, cbRes] = await Promise.all([
+      const [recipeRes, notesRes, cbRes, ingRes] = await Promise.all([
         fetch(`${API}/api/recipes`),
         authFetch ? authFetch(`${API}/api/cooking-notes`) : fetch(`${API}/api/cooking-notes`),
         fetch(`${API}/api/cookbooks`),
+        fetch(`${API}/api/ingredients`),
       ]);
       if (!recipeRes.ok) throw new Error('Failed to load data');
       const { recipes: recipeData } = await recipeRes.json();
       if (notesRes.ok) { const d = await notesRes.json(); setCookingNotes(d.notes || []); }
       if (cbRes.ok) { const d = await cbRes.json(); setCookbooks(d.cookbooks || d || []); }
+      let catalog = [];
+      if (ingRes.ok) { const d = await ingRes.json(); catalog = d.ingredients || []; setIngredients(catalog); }
       // time_minutes is now an INTEGER in the DB; derive a display string so all existing
       // recipe.time reads continue to work without touching every component.
       setRecipes(recipeData.map(r => ({ ...r, time: r.time_minutes ? `${r.time_minutes} min` : '' })));
 
       // Load user-specific data if logged in
       if (authToken) {
-        const [logRes, favsRes, soonRes] = await Promise.all([
+        const [logRes, favsRes, soonRes, prefsRes] = await Promise.all([
           authFetch(`${API}/api/user/cook-log`),
           authFetch(`${API}/api/user/favorites`),
           authFetch(`${API}/api/user/make-soon`),
+          authFetch(`${API}/api/user/preferences`),
         ]);
         if (logRes.ok)  { const d = await logRes.json();  setCookLog(d.entries || []); }
         if (favsRes.ok) { const d = await favsRes.json(); setHeartedIds(d.favorites || []); }
         if (soonRes.ok) { const d = await soonRes.json(); setMakeSoonIds(d.makeSoon || []); }
+        // Settings live in users.preferences — merge over defaults so new keys work
+        if (prefsRes.ok) {
+          const d = await prefsRes.json();
+          setPrefs({ ...DEFAULT_PREFS, ...(d.preferences || {}) });
+        }
+        prefsLoaded.current = true;
         // Re-fetch cooking notes with auth
         try { const r = await authFetch(`${API}/api/cooking-notes`); if (r.ok) { const d = await r.json(); setCookingNotes(d.notes || []); } } catch {}
-        // Load kitchen from API — ALWAYS overrides localStorage so devices stay in sync
+        // Seed the catalog the first time this account has no ingredients yet
+        if (!catalog.length) {
+          try {
+            const seedRes = await authFetch(`${API}/api/ingredients`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ingredients: SEED_INGREDIENTS }),
+            });
+            if (seedRes.ok) { const s = await seedRes.json(); setIngredients(s.ingredients || []); }
+          } catch {}
+        }
+        // Kitchen "have" state is server-owned so devices stay in sync
         try {
           const kitRes = await authFetch(`${API}/api/user/kitchen`);
           if (kitRes.ok) {
             const { kitchen } = await kitRes.json();
-            // Accept all storage_type values (fridge/pantry from old data, have from new)
-            const have = [...new Set(kitchen.map(k => k.ingredient_name.toLowerCase().trim()).filter(Boolean))];
+            const have = [...new Set(
+              kitchen.filter(k => k.have !== false).map(k => k.name.toLowerCase().trim()).filter(Boolean)
+            )];
             kitchenLoadedFromAPI.current = false;
             setInventoryHave(have);
             setTimeout(() => { kitchenLoadedFromAPI.current = true; }, 200);
@@ -905,7 +1011,12 @@ function AppInner() {
       )}
 
       {view === 'kitchen' && (
-        <KitchenTab inventoryHave={inventoryHave} setInventoryHave={setInventoryHave} inventoryConfig={inventoryConfig} setInventoryConfig={setInventoryConfig} />
+        <KitchenTab
+          inventoryHave={inventoryHave} setInventoryHave={setInventoryHave}
+          inventoryConfig={inventoryConfig} ingredients={ingredients}
+          addIngredient={addIngredient} updateIngredient={updateIngredient}
+          deleteIngredient={deleteIngredient}
+        />
       )}
 
       {/* ======================================================
@@ -1333,7 +1444,7 @@ function AppInner() {
         <AddRecipeTab
           allIngredients={allIngredients}
           inventoryConfig={inventoryConfig}
-          setInventoryConfig={setInventoryConfig}
+          addIngredient={addIngredient}
           cookbooks={cookbooks}
           authFetch={authFetch}
           onSaved={(newRecipe) => {
@@ -1382,6 +1493,8 @@ function AppInner() {
           setDarkMode={setDarkMode}
           tabBarTabs={tabBarTabs}
           setTabBarTabs={setTabBarTabs}
+          feedbackList={feedbackList}
+          setFeedbackList={setFeedbackList}
         />
       )}
 

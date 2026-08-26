@@ -3,8 +3,7 @@ import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, Tou
 
 // ─── Category system ──────────────────────────────────────────────────────────
 
-const INVENTORY_KEY  = 'hearth_inventory_config';
-const CATEGORY_ORDER = ['Produce','Dairy & Eggs','Meat & Fish','Frozen','Oils & Fats','Sauces & Condiments','Spices & Herbs','Grains & Pasta','Canned & Legumes','Baking','Other'];
+const CATEGORY_ORDER =['Produce','Dairy & Eggs','Meat & Fish','Frozen','Oils & Fats','Sauces & Condiments','Spices & Herbs','Grains & Pasta','Canned & Legumes','Baking','Other'];
 
 const KEYWORD_CATEGORY = {
   'spring onion':'Produce','sweet potato':'Produce','bell pepper':'Produce','bok choy':'Produce','bean sprout':'Produce','pak choi':'Produce','brussels sprout':'Produce','baby spinach':'Produce','cherry tomato':'Produce','sun-dried tomato':'Produce',
@@ -61,29 +60,31 @@ const DEFAULT_INVENTORY = [
   { label: 'Baking', items: ['sugar','brown sugar','baking powder','baking soda','vanilla extract','dark chocolate','cocoa powder'] },
 ];
 
-export function loadInventoryConfig() {
-  try { const raw = localStorage.getItem(INVENTORY_KEY); if (raw) return JSON.parse(raw); } catch {}
-  const catMap = {};
-  const add = (label, items) => {
-    const mapped = OLD_LABEL_MAP[label] || label;
-    if (!catMap[mapped]) catMap[mapped] = new Set();
-    items.forEach(i => catMap[mapped].add(norm(i)));
-  };
-  try { (JSON.parse(localStorage.getItem('hearth_fridge_config') || '[]')).forEach(g => add(g.label, g.items)); } catch {}
-  try { (JSON.parse(localStorage.getItem('hearth_staples_config') || '[]')).forEach(g => add(g.label, g.items)); } catch {}
-  const hasData = Object.values(catMap).some(s => s.size > 0);
-  const source = hasData ? catMap : Object.fromEntries(DEFAULT_INVENTORY.map(g => [g.label, new Set(g.items)]));
-  const config = [
-    ...CATEGORY_ORDER.filter(c => source[c]).map(c => ({ label: c, items: [...source[c]] })),
-    ...Object.keys(source).filter(k => !CATEGORY_ORDER.includes(k) && source[k].size > 0).map(k => ({ label: k, items: [...source[k]] })),
+// Group the flat catalog from /api/ingredients into the display shape the
+// Kitchen UI uses: [{ label, items: [name] }] in CATEGORY_ORDER, extras last.
+export function groupIngredients(ingredients) {
+  const source = {};
+  for (const ing of ingredients || []) {
+    const label = OLD_LABEL_MAP[ing.category] || ing.category || 'Other';
+    if (!source[label]) source[label] = [];
+    source[label].push(ing.name);
+  }
+  for (const label of Object.keys(source)) {
+    source[label].sort((a, b) => a.localeCompare(b));
+  }
+  return [
+    ...CATEGORY_ORDER.filter(c => source[c]?.length).map(c => ({ label: c, items: source[c] })),
+    ...Object.keys(source)
+      .filter(k => !CATEGORY_ORDER.includes(k) && source[k].length)
+      .sort()
+      .map(k => ({ label: k, items: source[k] })),
   ];
-  try { localStorage.setItem(INVENTORY_KEY, JSON.stringify(config)); } catch {}
-  return config;
 }
 
-function saveConfig(config) {
-  try { localStorage.setItem(INVENTORY_KEY, JSON.stringify(config)); } catch {}
-}
+// Flat seed list used the first time a user has an empty catalog.
+export const SEED_INGREDIENTS = DEFAULT_INVENTORY.flatMap(
+  g => g.items.map(name => ({ name: norm(name), category: g.label }))
+);
 
 // ─── InventoryPill ─────────────────────────────────────────────────────────────
 
@@ -207,7 +208,10 @@ function AddIngredientForm({ config, onAdd, onClose }) {
 
 // ─── KitchenTab ───────────────────────────────────────────────────────────────
 
-export default function KitchenTab({ inventoryHave, setInventoryHave, inventoryConfig, setInventoryConfig }) {
+export default function KitchenTab({
+  inventoryHave, setInventoryHave, inventoryConfig,
+  ingredients = [], addIngredient, updateIngredient, deleteIngredient,
+}) {
   const [search, setSearch]           = useState('');
   const [addFormOpen, setAddFormOpen] = useState(false);
   const [activeDragId, setActiveDragId] = useState(null);
@@ -218,9 +222,12 @@ export default function KitchenTab({ inventoryHave, setInventoryHave, inventoryC
     useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 8 } }),
   );
 
-  const updateConfig = useCallback(fn => {
-    setInventoryConfig(prev => { const next = fn(prev); saveConfig(next); return next; });
-  }, [setInventoryConfig]);
+  // Catalog rows are keyed by name in the UI; this resolves back to the row id
+  const idByName = useMemo(() => {
+    const m = new Map();
+    for (const ing of ingredients) m.set(norm(ing.name), ing.id);
+    return m;
+  }, [ingredients]);
 
   const haveSet = useMemo(() => new Set(inventoryHave), [inventoryHave]);
 
@@ -231,38 +238,24 @@ export default function KitchenTab({ inventoryHave, setInventoryHave, inventoryC
   }, [haveSet, setInventoryHave]);
 
   const deleteItem = useCallback((groupLabel, item) => {
-    updateConfig(prev =>
-      prev
-        .map(g => g.label === groupLabel ? { ...g, items: g.items.filter(i => i !== item) } : g)
-        .filter(g => g.items.length > 0)
-    );
+    const id = idByName.get(norm(item));
+    if (id) deleteIngredient(id);
     setInventoryHave(prev => prev.filter(x => x !== item));
-  }, [updateConfig, setInventoryHave]);
+  }, [idByName, deleteIngredient, setInventoryHave]);
 
   const addItem = useCallback((name, category) => {
-    const allItems = inventoryConfig.flatMap(g => g.items);
-    if (!allItems.includes(name)) {
-      updateConfig(prev => {
-        const existing = prev.find(g => g.label === category);
-        if (existing) return prev.map(g => g.label === category ? { ...g, items: [...g.items, name] } : g);
-        const newGroup  = { label: category, items: [name] };
-        const idx       = CATEGORY_ORDER.indexOf(category);
-        if (idx === -1) return [...prev, newGroup];
-        const insertAfter = prev.findIndex(g => CATEGORY_ORDER.indexOf(g.label) > idx);
-        if (insertAfter === -1) return [...prev, newGroup];
-        const next = [...prev]; next.splice(insertAfter, 0, newGroup); return next;
-      });
-    }
+    addIngredient(name, category);
     // Always mark as "have" when adding
     if (!haveSet.has(name)) setInventoryHave(prev => [...prev, name]);
     setAddFormOpen(false);
-  }, [inventoryConfig, haveSet, updateConfig, setInventoryHave]);
+  }, [addIngredient, haveSet, setInventoryHave]);
 
   // ── Drag handlers ──────────────────────────────────────────────────────────
 
   const handleDragStart = ({ active }) => setActiveDragId(active.id);
   const handleDragOver  = ({ over })  => setOverGroupId(over ? over.id : null);
 
+  // Dropping a pill on another group re-categorises that catalog row
   const handleDragEnd = ({ active, over }) => {
     setActiveDragId(null);
     setOverGroupId(null);
@@ -270,13 +263,8 @@ export default function KitchenTab({ inventoryHave, setInventoryHave, inventoryC
     const { item, fromGroup } = active.data.current;
     const toGroup = over.id;
     if (fromGroup === toGroup) return;
-    updateConfig(prev =>
-      prev.map(g => {
-        if (g.label === fromGroup) return { ...g, items: g.items.filter(i => i !== item) };
-        if (g.label === toGroup)   return { ...g, items: [...g.items, item] };
-        return g;
-      }).filter(g => g.items.length > 0)
-    );
+    const id = idByName.get(norm(item));
+    if (id) updateIngredient(id, { category: toGroup });
   };
 
   // ── Filter ─────────────────────────────────────────────────────────────────
