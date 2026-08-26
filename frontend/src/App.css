@@ -2443,6 +2443,10 @@ body {
 }
 .ing-modal__save-btn:hover { background: var(--terracotta-dark); }
 .ing-modal__save-btn:disabled { opacity: 0.6; }
+.ing-modal__save-error {
+  width: 100%; padding: 6px 16px 0;
+  font-size: 0.8rem; color: var(--terracotta); display: flex; align-items: center; gap: 5px;
+}
 
 .ing-modal__body {
   overflow-y: auto;
@@ -2583,6 +2587,50 @@ body {
   vertical-align: middle;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Paste-text card */
+.add-tab__paste-wrap { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.add-tab__paste-area {
+  width: 100%; padding: 10px 12px; border-radius: 8px;
+  border: 1.5px solid var(--border); background: var(--bg);
+  font-size: 0.85rem; color: var(--text); font-family: var(--font-body);
+  resize: vertical; outline: none; line-height: 1.5;
+  transition: border-color 0.15s; box-sizing: border-box;
+}
+.add-tab__paste-area:focus { border-color: var(--terracotta); }
+
+/* Ingredient resolver */
+.ing-resolver { display: flex; flex-direction: column; }
+.ing-resolver__hd { padding: 20px 24px 12px; border-bottom: 1px solid var(--border); }
+.ing-resolver__title { font-family: var(--font-display); font-size: 1.15rem; margin: 0 0 4px; }
+.ing-resolver__sub { font-size: 0.83rem; color: var(--warm-gray); margin: 0; }
+.ing-resolver__list { overflow-y: auto; max-height: 50vh; display: flex; flex-direction: column; gap: 1px; }
+.ing-resolver__row {
+  padding: 14px 24px; border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.ing-resolver__original { display: flex; align-items: center; gap: 8px; }
+.ing-resolver__original-label { font-size: 0.72rem; color: var(--ash); text-transform: uppercase; letter-spacing: 0.05em; }
+.ing-resolver__original-name { font-size: 0.9rem; font-weight: 600; color: var(--charcoal); }
+.ing-resolver__actions { display: flex; gap: 6px; }
+.ing-resolver__tab {
+  padding: 5px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+  background: var(--bg); font-size: 0.8rem; color: var(--warm-gray);
+  cursor: pointer; font-family: var(--font-body); transition: all 0.12s;
+}
+.ing-resolver__tab--active {
+  background: var(--terracotta); border-color: var(--terracotta);
+  color: #fff; font-weight: 600;
+}
+.ing-resolver__map-wrap { position: relative; }
+.ing-resolver__search { width: 100%; box-sizing: border-box; }
+.ing-resolver__dropdown { position: static; margin-top: 4px; }
+.ing-resolver__selected { font-size: 0.8rem; color: var(--sage); margin: 4px 0 0; font-weight: 500; }
+.ing-resolver__new-hint { font-size: 0.8rem; color: var(--warm-gray); margin: 0; font-style: italic; }
+.ing-resolver__footer {
+  padding: 14px 24px; display: flex; gap: 10px; align-items: center;
+  border-top: 1px solid var(--border);
+}
 
 /* Banner shown inside modal after import */
 .create-modal__import-banner {

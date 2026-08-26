@@ -61,7 +61,7 @@ const DEFAULT_INVENTORY = [
   { label: 'Baking', items: ['sugar','brown sugar','baking powder','baking soda','vanilla extract','dark chocolate','cocoa powder'] },
 ];
 
-function loadInventoryConfig() {
+export function loadInventoryConfig() {
   try { const raw = localStorage.getItem(INVENTORY_KEY); if (raw) return JSON.parse(raw); } catch {}
   const catMap = {};
   const add = (label, items) => {
@@ -207,8 +207,7 @@ function AddIngredientForm({ config, onAdd, onClose }) {
 
 // ─── KitchenTab ───────────────────────────────────────────────────────────────
 
-export default function KitchenTab({ inventoryHave, setInventoryHave }) {
-  const [config, setConfig]           = useState(() => loadInventoryConfig());
+export default function KitchenTab({ inventoryHave, setInventoryHave, inventoryConfig, setInventoryConfig }) {
   const [search, setSearch]           = useState('');
   const [addFormOpen, setAddFormOpen] = useState(false);
   const [activeDragId, setActiveDragId] = useState(null);
@@ -220,8 +219,8 @@ export default function KitchenTab({ inventoryHave, setInventoryHave }) {
   );
 
   const updateConfig = useCallback(fn => {
-    setConfig(prev => { const next = fn(prev); saveConfig(next); return next; });
-  }, []);
+    setInventoryConfig(prev => { const next = fn(prev); saveConfig(next); return next; });
+  }, [setInventoryConfig]);
 
   const haveSet = useMemo(() => new Set(inventoryHave), [inventoryHave]);
 
@@ -241,7 +240,7 @@ export default function KitchenTab({ inventoryHave, setInventoryHave }) {
   }, [updateConfig, setInventoryHave]);
 
   const addItem = useCallback((name, category) => {
-    const allItems = config.flatMap(g => g.items);
+    const allItems = inventoryConfig.flatMap(g => g.items);
     if (!allItems.includes(name)) {
       updateConfig(prev => {
         const existing = prev.find(g => g.label === category);
@@ -257,7 +256,7 @@ export default function KitchenTab({ inventoryHave, setInventoryHave }) {
     // Always mark as "have" when adding
     if (!haveSet.has(name)) setInventoryHave(prev => [...prev, name]);
     setAddFormOpen(false);
-  }, [config, haveSet, updateConfig, setInventoryHave]);
+  }, [inventoryConfig, haveSet, updateConfig, setInventoryHave]);
 
   // ── Drag handlers ──────────────────────────────────────────────────────────
 
@@ -283,14 +282,14 @@ export default function KitchenTab({ inventoryHave, setInventoryHave }) {
   // ── Filter ─────────────────────────────────────────────────────────────────
 
   const filteredConfig = useMemo(() => {
-    if (!search.trim()) return config;
+    if (!search.trim()) return inventoryConfig;
     const q = search.toLowerCase().trim();
-    return config
+    return inventoryConfig
       .map(g => ({ ...g, items: g.items.filter(i => i.includes(q)) }))
       .filter(g => g.items.length > 0);
-  }, [config, search]);
+  }, [inventoryConfig, search]);
 
-  const allItems  = useMemo(() => config.flatMap(g => g.items), [config]);
+  const allItems  = useMemo(() => inventoryConfig.flatMap(g => g.items), [inventoryConfig]);
   const haveCount = useMemo(() => allItems.filter(i => haveSet.has(i)).length, [allItems, haveSet]);
   const activeDragItem = activeDragId ? activeDragId.split('::')[1] : null;
 
@@ -321,7 +320,7 @@ export default function KitchenTab({ inventoryHave, setInventoryHave }) {
       </div>
 
       {addFormOpen && (
-        <AddIngredientForm config={config} onAdd={addItem} onClose={() => setAddFormOpen(false)} />
+        <AddIngredientForm config={inventoryConfig} onAdd={addItem} onClose={() => setAddFormOpen(false)} />
       )}
 
       <DndContext

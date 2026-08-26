@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -7,8 +7,259 @@ import { API, TAG_FILTERS, ALL_CUISINES } from '../constants';
 import { haptic } from '../utils';
 import { AutoGrowTextarea, DRAG_SENSORS } from '../components/ui';
 import { IngFlatRow, IngGroupRow, StepSortableItem, CookbookAutocomplete } from '../components/IngredientEditor';
+import { autoCategory } from '../KitchenTab';
 
-const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) => {
+// ─── Local recipe text parser ─────────────────────────────────────────────────
+
+const UNITS = new Set([
+  'cup','cups','c','tbsp','tablespoon','tablespoons','tsp','teaspoon','teaspoons',
+  'oz','ounce','ounces','lb','lbs','pound','pounds','g','gram','grams','kg','kilogram','kilograms',
+  'ml','milliliter','milliliters','l','liter','liters','qt','quart','quarts',
+  'pt','pint','pints','gal','gallon','gallons',
+  'clove','cloves','head','heads','stalk','stalks','bunch','bunches',
+  'can','cans','package','packages','pkg','slice','slices','piece','pieces',
+  'handful','pinch','dash','splash','sprig','sprigs','fillet','fillets',
+  'strip','strips','sheet','sheets','jar','jars','bag','bags','stick','sticks',
+  'knob','block','rasher','rashers',
+]);
+
+const INSTR_HEADER = /^(instructions?|directions?|method|steps?|how to (make|prepare|cook)|preparation|procedure)\s*:?\s*$/i;
+const ING_HEADER   = /^(ingredients?)\s*:?\s*$/i;
+const META_LINE    = /^(prep|cook|total|ready|servings?|serves?|yield|calories?|time|makes?|active)\b/i;
+// Amount: integer, decimal, fraction (1/2), or unicode vulgar fractions
+const AMT_RE       = /^([¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\d+(?:[.,]\d+)?(?:\s*[\/⁄]\s*\d+)?(?:\s*[-–]\s*\d+(?:[.,]\d+)?(?:\s*[\/⁄]\s*\d+)?)?)\s*/;
+
+function parseIngLine(raw) {
+  let line = raw.replace(/^[-•·*–]\s*/, '').trim();
+  let amount = '', unit = '', prepNote = '';
+
+  const amtM = line.match(AMT_RE);
+  if (amtM) { amount = amtM[1].trim(); line = line.slice(amtM[0].length).trim(); }
+
+  // Unit word (only if amount was found)
+  if (amount) {
+    const firstWord = line.split(/\s+/)[0] || '';
+    const norm = firstWord.toLowerCase().replace(/\.$/, '');
+    if (UNITS.has(norm)) { unit = firstWord; line = line.slice(firstWord.length).trim(); }
+  }
+
+  // Prep note: after comma or inside parens
+  const commaIdx = line.indexOf(',');
+  const parenIdx = line.indexOf('(');
+  let splitAt = -1;
+  if (commaIdx > 0 && parenIdx > 0) splitAt = Math.min(commaIdx, parenIdx);
+  else if (commaIdx > 0) splitAt = commaIdx;
+  else if (parenIdx > 0) splitAt = parenIdx;
+
+  if (splitAt > 0) {
+    prepNote = line.slice(splitAt).replace(/[(),]/g, '').trim();
+    line     = line.slice(0, splitAt).trim();
+  }
+
+  const name = line.toLowerCase().trim();
+  if (!name) return null;
+  return { name, amount, unit: unit.replace(/s\.?$/, ''), prep_note: prepNote, optional: /optional/i.test(raw) };
+}
+
+function parseRecipeText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Find where instructions begin
+  let instrAt = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (INSTR_HEADER.test(lines[i]))                          { instrAt = i; break; }
+    if (/^1[\.\)]\s+\S/.test(lines[i]) && i > 0)             { instrAt = i; break; }
+  }
+
+  let ingSection  = instrAt >= 0 ? lines.slice(0, instrAt)  : lines;
+  let stepSection = instrAt >= 0 ? lines.slice(instrAt)      : [];
+
+  // Heuristic split when no header: last ingredient-looking line → steps after
+  if (instrAt < 0) {
+    let lastIngAt = -1;
+    for (let i = 0; i < ingSection.length; i++) {
+      if (AMT_RE.test(ingSection[i].replace(/^[-•·*–]\s*/, ''))) lastIngAt = i;
+    }
+    if (lastIngAt >= 0 && lastIngAt < ingSection.length - 1) {
+      stepSection = ingSection.slice(lastIngAt + 1);
+      ingSection  = ingSection.slice(0, lastIngAt + 1);
+    }
+  }
+
+  // Metadata + name from ingSection
+  let name = '', servings = null, timeMinutes = null;
+  const ingLines = [];
+  let pastIngHeader = false;
+
+  for (const line of ingSection) {
+    if (ING_HEADER.test(line))  { pastIngHeader = true; continue; }
+    if (INSTR_HEADER.test(line)) break;
+
+    const srvM = line.match(/(?:serves?|servings?|makes?|yield)\s*:?\s*(\d+)/i);
+    if (srvM) { servings = parseInt(srvM[1]); continue; }
+
+    const timeM = line.match(/(\d+)\s*(?:–\s*\d+\s*)?(?:min(?:ute)?s?)/i);
+    if (timeM && META_LINE.test(line)) { timeMinutes = parseInt(timeM[1]); continue; }
+
+    if (META_LINE.test(line)) continue;
+
+    const stripped = line.replace(/^[-•·*–]\s*/, '');
+    if (AMT_RE.test(stripped) || pastIngHeader) {
+      ingLines.push(line);
+    } else if (!name) {
+      name = line;  // first non-meta, non-amount line = title
+    }
+  }
+
+  const ingredients = ingLines.map(parseIngLine).filter(Boolean);
+
+  // Steps
+  const steps = [];
+  let stepNum = 1, buf = '';
+  for (const line of stepSection) {
+    if (INSTR_HEADER.test(line)) continue;
+    const numM = line.match(/^(\d+)[\.\)]\s+([\s\S]+)/);
+    if (numM) {
+      if (buf) { steps.push({ step_number: stepNum++, body_text: buf.trim() }); buf = ''; }
+      buf = numM[2];
+    } else {
+      buf = buf ? buf + ' ' + line : line;
+    }
+  }
+  if (buf.trim()) steps.push({ step_number: stepNum, body_text: buf.trim() });
+
+  return { name, servings, time_minutes: timeMinutes, ingredients, steps, notes: [] };
+}
+
+// Fuzzy-match a parsed ingredient name against the catalog.
+// Returns { match: string, score: number } or null.
+function fuzzyMatch(parsedName, catalogArr) {
+  const lower = parsedName.toLowerCase().trim();
+  const words = lower.split(/\s+/).filter(w => w.length > 2); // skip short filler words
+  let best = null, bestScore = 0;
+
+  for (const catName of catalogArr) {
+    const cat = catName.toLowerCase();
+    let score = 0;
+    if (cat === lower)            score = 100;
+    else if (lower.includes(cat)) score = 85;
+    else if (cat.includes(lower)) score = 80;
+    else {
+      const catWords = cat.split(/\s+/);
+      const hits = words.filter(w => catWords.some(cw => cw.includes(w) || w.includes(cw)));
+      score = words.length ? (hits.length / Math.max(words.length, catWords.length)) * 65 : 0;
+    }
+    if (score > bestScore) { bestScore = score; best = catName; }
+  }
+  return bestScore >= 40 ? { match: best, score: bestScore } : null;
+}
+
+// ─── Ingredient Resolver ──────────────────────────────────────────────────────
+
+function IngredientResolver({ unknowns, allIngredients, onResolve, onCancel }) {
+  // resolutions: { [originalName]: { action: 'map'|'new', mappedTo: string } }
+  const [resolutions, setResolutions] = useState(() =>
+    Object.fromEntries(unknowns.map(name => [name, { action: 'new', mappedTo: name }]))
+  );
+  const [searches, setSearches] = useState(() =>
+    Object.fromEntries(unknowns.map(name => [name, '']))
+  );
+
+  const setResolution = (name, update) =>
+    setResolutions(prev => ({ ...prev, [name]: { ...prev[name], ...update } }));
+
+  const getSuggestions = (name, searchText) => {
+    const q = (searchText || name).toLowerCase().trim();
+    if (!q) return [];
+    return allIngredients
+      .map(ing => {
+        const n = (typeof ing === 'string' ? ing : ing?.name) ?? '';
+        const lower = n.toLowerCase();
+        if (!lower.includes(q) && !q.includes(lower.slice(0, 3))) return null;
+        return { name: n, score: lower.startsWith(q) ? 0 : 1 };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 6)
+      .map(x => x.name);
+  };
+
+  return (
+    <div className="ing-resolver">
+      <div className="ing-resolver__hd">
+        <h3 className="ing-resolver__title">Review Unrecognized Ingredients</h3>
+        <p className="ing-resolver__sub">These ingredients weren't found in your kitchen catalog. Map them to existing ones or add them as new.</p>
+      </div>
+      <div className="ing-resolver__list">
+        {unknowns.map(name => {
+          const res = resolutions[name];
+          const search = searches[name];
+          const suggestions = getSuggestions(name, search);
+          return (
+            <div key={name} className="ing-resolver__row">
+              <div className="ing-resolver__original">
+                <span className="ing-resolver__original-label">Parsed as</span>
+                <span className="ing-resolver__original-name">"{name}"</span>
+              </div>
+              <div className="ing-resolver__actions">
+                <button
+                  className={`ing-resolver__tab${res.action === 'new' ? ' ing-resolver__tab--active' : ''}`}
+                  onClick={() => setResolution(name, { action: 'new', mappedTo: name })}
+                >
+                  Add as new
+                </button>
+                <button
+                  className={`ing-resolver__tab${res.action === 'map' ? ' ing-resolver__tab--active' : ''}`}
+                  onClick={() => setResolution(name, { action: 'map', mappedTo: '' })}
+                >
+                  Map to existing
+                </button>
+              </div>
+              {res.action === 'map' && (
+                <div className="ing-resolver__map-wrap">
+                  <input
+                    className="editor-input ing-resolver__search"
+                    placeholder="Search ingredients…"
+                    value={search}
+                    onChange={e => setSearches(prev => ({ ...prev, [name]: e.target.value }))}
+                    autoFocus
+                  />
+                  {suggestions.length > 0 && (
+                    <ul className="ing-ac-dropdown ing-resolver__dropdown">
+                      {suggestions.map(s => (
+                        <li
+                          key={s}
+                          className={`ing-ac-option${res.mappedTo === s ? ' ing-ac-option--active' : ''}`}
+                          onMouseDown={() => { setResolution(name, { action: 'map', mappedTo: s }); setSearches(prev => ({ ...prev, [name]: s })); }}
+                        >
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {res.mappedTo && (
+                    <p className="ing-resolver__selected">Will use: <strong>{res.mappedTo}</strong></p>
+                  )}
+                </div>
+              )}
+              {res.action === 'new' && (
+                <p className="ing-resolver__new-hint">"{name}" will be added to your kitchen catalog</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="ing-resolver__footer">
+        <button className="btn btn--primary" onClick={() => onResolve(resolutions)}>
+          Continue to recipe →
+        </button>
+        <button className="btn btn--ghost btn--sm" onClick={onCancel}>Back</button>
+      </div>
+    </div>
+  );
+}
+
+const AddRecipeTab = ({ allIngredients, inventoryConfig, setInventoryConfig, onSaved, cookbooks = [], authFetch }) => {
   const apiFetch = authFetch || fetch;
   const sensors = DRAG_SENSORS();
   const [showModal, setShowModal] = useState(false);
@@ -26,10 +277,101 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
   const [saveError, setSaveError] = useState(null);
   const [imgPreviewError, setImgPreviewError] = useState(false);
 
-  const [importUrl, setImportUrl]     = useState('');
-  const [importing, setImporting]     = useState(false);
-  const [importError, setImportError] = useState(null);
-  const [importedFrom, setImportedFrom] = useState(null); // hostname shown in modal banner
+  const [importUrl, setImportUrl]       = useState('');
+  const [importing, setImporting]       = useState(false);
+  const [importError, setImportError]   = useState(null);
+  const [importedFrom, setImportedFrom] = useState(null);
+
+  // Text import
+  const [pasteText, setPasteText]         = useState('');
+  const [parsing, setParsing]             = useState(false);
+  const [parseError, setParseError]       = useState(null);
+  const [parsedData, setParsedData]       = useState(null);   // raw parsed recipe from API
+  const [unknownIngs, setUnknownIngs]     = useState([]);     // names not in allIngredients
+  const [showResolver, setShowResolver]   = useState(false);
+
+  // Lowercase set for membership checks; original-case array for fuzzy matching
+  const catalogNames = useMemo(
+    () => new Set((inventoryConfig || []).flatMap(g => g.items.map(n => n.toLowerCase()))),
+    [inventoryConfig]
+  );
+  const catalogArr = useMemo(
+    () => (inventoryConfig || []).flatMap(g => g.items),
+    [inventoryConfig]
+  );
+
+  const parseFromText = () => {
+    if (!pasteText.trim()) return;
+    setParsing(true); setParseError(null);
+    try {
+      const recipe = parseRecipeText(pasteText.trim());
+
+      // Fuzzy-match each ingredient name against catalog
+      const resolved = recipe.ingredients.map(ing => {
+        const m = fuzzyMatch(ing.name, catalogArr);
+        if (m && m.score >= 80) return { ...ing, name: m.match };  // auto-apply high-confidence
+        return ing;  // low/medium — goes to resolver
+      });
+      recipe.ingredients = resolved;
+
+      // Collect unknowns after auto-matching
+      const unknowns = resolved
+        .map(i => i.name?.toLowerCase().trim())
+        .filter(n => n && !catalogNames.has(n));
+      const unique = [...new Set(unknowns)];
+
+      setParsedData(recipe);
+      if (unique.length > 0) {
+        setUnknownIngs(unique);
+        setShowResolver(true);
+      } else {
+        setImportedFrom('text');
+        openModalWithData(recipe);
+        setPasteText('');
+      }
+    } catch (e) { setParseError(e.message); }
+    finally { setParsing(false); }
+  };
+
+  const applyResolutions = (resolutions) => {
+    if (!parsedData) return;
+    // Add "new" ingredients to catalog
+    const newIngs = Object.entries(resolutions)
+      .filter(([, r]) => r.action === 'new')
+      .map(([name]) => name);
+    if (newIngs.length > 0 && setInventoryConfig) {
+      setInventoryConfig(prev => {
+        const next = [...prev];
+        for (const name of newIngs) {
+          const cat = autoCategory(name);
+          const existing = next.find(g => g.label === cat);
+          if (existing) {
+            if (!existing.items.includes(name)) existing.items = [...existing.items, name];
+          } else {
+            next.push({ label: cat, items: [name] });
+          }
+        }
+        try { localStorage.setItem('hearth_inventory_config', JSON.stringify(next)); } catch {}
+        return next;
+      });
+    }
+    // Remap ingredient names
+    const resolved = {
+      ...parsedData,
+      ingredients: (parsedData.ingredients || []).map(ing => {
+        const original = ing.name?.toLowerCase().trim();
+        const res = resolutions[original];
+        if (res?.action === 'map' && res.mappedTo) return { ...ing, name: res.mappedTo };
+        return ing;
+      }),
+    };
+    setShowResolver(false);
+    setUnknownIngs([]);
+    setParsedData(null);
+    setImportedFrom('text');
+    openModalWithData(resolved);
+    setPasteText('');
+  };
 
   const setDetail = (k, v) => setDetails(prev => ({ ...prev, [k]: v }));
   const toggleTag = (tag) => setDetails(prev => ({
@@ -172,6 +514,20 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
         <p className="add-tab__sub">Grow your collection</p>
       </div>
 
+      {/* Ingredient resolver overlay */}
+      {showResolver && (
+        <div className="create-modal-overlay" onClick={e => e.stopPropagation()}>
+          <div className="create-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
+            <IngredientResolver
+              unknowns={unknownIngs}
+              allIngredients={allIngredients}
+              onResolve={applyResolutions}
+              onCancel={() => { setShowResolver(false); setUnknownIngs([]); setParsedData(null); }}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="add-tab__cards">
         <button className="add-tab__card" onClick={openModal}>
           <span className="add-tab__card-icon"><Icon name="note" size={28} strokeWidth={1.5} /></span>
@@ -203,25 +559,62 @@ const AddRecipeTab = ({ allIngredients, onSaved, cookbooks = [], authFetch }) =>
           </div>
           {importError && <p className="add-tab__import-error">{importError}</p>}
         </div>
+
+        {/* Text paste import */}
+        <div className="add-tab__card add-tab__card--import add-tab__card--text">
+          <span className="add-tab__card-icon"><Icon name="fileText" size={28} strokeWidth={1.5} /></span>
+          <h3 className="add-tab__card-title">Paste Recipe Text</h3>
+          <p className="add-tab__card-desc">Paste any recipe text — from a blog, cookbook scan, message, anywhere</p>
+          <div className="add-tab__paste-wrap" onClick={e => e.stopPropagation()}>
+            <textarea
+              className="add-tab__paste-area"
+              placeholder="Paste the full recipe here — ingredients, steps, everything…"
+              value={pasteText}
+              onChange={e => { setPasteText(e.target.value); setParseError(null); }}
+              rows={5}
+              disabled={parsing}
+            />
+            <button
+              className="btn btn--primary btn--sm add-tab__import-btn"
+              onClick={parseFromText}
+              disabled={parsing || !pasteText.trim()}
+            >
+              {parsing ? <><span className="add-tab__import-spinner" /> Parsing…</> : 'Parse recipe'}
+            </button>
+          </div>
+          {parseError && <p className="add-tab__import-error">{parseError}</p>}
+        </div>
       </div>
 
       {/* -- Create Recipe Modal -- */}
       {showModal && (
-        <div className="create-modal-overlay" onClick={closeModal}>
+        <div className="create-modal-overlay" onClick={() => {
+          if (details.name || ings.some(i => i.name) || steps.some(s => s.body_text)) {
+            if (!window.confirm('Discard this recipe?')) return;
+          }
+          closeModal();
+        }}>
           <div className="create-modal" onClick={e => e.stopPropagation()}>
 
             {/* Modal header */}
             <div className="create-modal__header">
               <h2 className="create-modal__title">
-                <Icon name={importedFrom ? 'link' : 'note'} size={18} strokeWidth={2} />
-                {importedFrom ? `Imported from ${importedFrom}` : 'New Recipe'}
+                <Icon name={importedFrom === 'text' ? 'fileText' : importedFrom ? 'link' : 'note'} size={18} strokeWidth={2} />
+                {importedFrom === 'text' ? 'Parsed from text' : importedFrom ? `Imported from ${importedFrom}` : 'New Recipe'}
               </h2>
-              <button className="ing-modal__close" onClick={closeModal}>✕</button>
+              <button className="ing-modal__close" onClick={() => {
+                if (details.name || ings.some(i => i.name) || steps.some(s => s.body_text)) {
+                  if (!window.confirm('Discard this recipe?')) return;
+                }
+                closeModal();
+              }}>✕</button>
             </div>
             {importedFrom && (
               <div className="create-modal__import-banner">
                 <Icon name="info" size={13} strokeWidth={2} />
-                Ingredients are pre-filled as written — review and split out amounts before saving.
+                {importedFrom === 'text'
+                  ? 'Parsed by AI — review ingredients and steps carefully before saving.'
+                  : 'Ingredients are pre-filled as written — review and split out amounts before saving.'}
               </div>
             )}
 

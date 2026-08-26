@@ -1089,7 +1089,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
               paddingLeft: isMobile ? 0 : 16,
               paddingRight: isMobile ? 0 : 16,
             }}
-            onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}
+            onClick={() => {
+                // Prevent accidental close while editing — force explicit Save or Cancel
+                if (!isEdit('ingredients')) { setShowIngredientsModal(false); }
+              }}
           >
             <div className="ing-modal ing-modal--wide" style={{ maxWidth: mw, maxHeight: mh, width: isMobile ? '100%' : undefined }} onClick={e => e.stopPropagation()}>
               <div className="ing-modal__header">
@@ -1097,13 +1100,18 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 <div className="ing-modal__header-actions">
                   {isEdit('ingredients') ? (
                     <>
-                      <button className="ing-modal__save-btn" onClick={async () => { await saveSection('ingredients'); setShowIngredientsModal(false); }} disabled={saving}>{saving ? '...' : '✓ Save'}</button>
-                      <button className="ing-modal__close" onClick={() => { setShowIngredientsModal(false); cancelEdit(); }}>✕</button>
+                      <button className="ing-modal__save-btn" onClick={() => saveSection('ingredients', () => setShowIngredientsModal(false))} disabled={saving}>{saving ? '…' : '✓ Save'}</button>
+                      <button className="ing-modal__close" onClick={() => {
+                        if (window.confirm('Discard unsaved changes?')) { setShowIngredientsModal(false); cancelEdit(); }
+                      }}>✕</button>
                     </>
                   ) : (
                     <button className="ing-modal__close" onClick={() => setShowIngredientsModal(false)}>✕</button>
                   )}
                 </div>
+                {saveError && isEdit('ingredients') && (
+                  <p className="ing-modal__save-error"><Icon name="alertTriangle" size={13} strokeWidth={2} /> {saveError}</p>
+                )}
               </div>
               <div className="ing-modal__body">
                 <DndContext

@@ -54,11 +54,11 @@ const IngredientAutocomplete = ({ value, onChange, allIngredients }) => {
         setOpen(false);
         const typed = (value ?? '').toLowerCase().trim();
         if (!typed || !allIngredients.length) return;
-        const hasMatch = allIngredients.some(ing => {
+        const hasExact = allIngredients.some(ing => {
           const name = (typeof ing === 'string' ? ing : ing?.name) ?? '';
-          return name.toLowerCase().includes(typed) || typed.includes(name.toLowerCase());
+          return name.toLowerCase() === typed;
         });
-        if (!hasMatch) onChange('');
+        if (!hasExact) onChange('');
       }, 150)} onKeyDown={onKeyDown} placeholder="soy sauce" autoComplete="off" />
       {open && suggestions.length > 0 && (
         <ul className="ing-ac-dropdown">

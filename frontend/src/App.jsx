@@ -7,7 +7,7 @@ import { LS, toNum, checkDietaryConflicts } from './utils';
 import { ErrorBoundary, HScrollRow } from './components/ui';
 import RecipeCard from './components/RecipeCard';
 import MarkCookedModal from './components/MarkCookedModal';
-import KitchenTab from './KitchenTab';
+import KitchenTab, { loadInventoryConfig } from './KitchenTab';
 import RecipePage from './pages/RecipePage';
 import RecipeEditor from './pages/RecipeEditor';
 import ProfileTab from './tabs/ProfileTab';
@@ -337,7 +337,13 @@ function AppInner() {
     viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
   }, []);
   // --- Data ------------------------------------------------------------------
-  const [allIngredients, setAllIngredients] = useState([]);
+  const [inventoryConfig, setInventoryConfig] = useState(() => loadInventoryConfig());
+  // allIngredients is the canonical ingredient list — sourced from the Kitchen catalog,
+  // so only catalog items can be added to recipes (no arbitrary free-text).
+  const allIngredients = useMemo(
+    () => inventoryConfig.flatMap(g => g.items.map(name => ({ name }))),
+    [inventoryConfig]
+  );
   const [recipes, setRecipes] = useState([]);
   const [inventoryHave, setInventoryHave] = useState(() => {
     // Migrate old fridgeIngredients + pantryStaples into one inventoryHave array
@@ -446,10 +452,6 @@ function AppInner() {
       const { recipes: recipeData } = await recipeRes.json();
       if (notesRes.ok) { const d = await notesRes.json(); setCookingNotes(d.notes || []); }
       if (cbRes.ok) { const d = await cbRes.json(); setCookbooks(d.cookbooks || d || []); }
-      // Autocomplete pool: kitchen items first (exact match guaranteed), then recipe ingredients
-      // Kitchen items are loaded separately via /api/user/kitchen after this block
-      const recipeIngNames = [...new Set(recipeData.flatMap(r => r.ingredients || []))].sort();
-      setAllIngredients(recipeIngNames.map(name => ({ name })));
       // time_minutes is now an INTEGER in the DB; derive a display string so all existing
       // recipe.time reads continue to work without touching every component.
       setRecipes(recipeData.map(r => ({ ...r, time: r.time_minutes ? `${r.time_minutes} min` : '' })));
@@ -903,7 +905,7 @@ function AppInner() {
       )}
 
       {view === 'kitchen' && (
-        <KitchenTab inventoryHave={inventoryHave} setInventoryHave={setInventoryHave} />
+        <KitchenTab inventoryHave={inventoryHave} setInventoryHave={setInventoryHave} inventoryConfig={inventoryConfig} setInventoryConfig={setInventoryConfig} />
       )}
 
       {/* ======================================================
@@ -1330,6 +1332,8 @@ function AppInner() {
       {view === 'add' && (
         <AddRecipeTab
           allIngredients={allIngredients}
+          inventoryConfig={inventoryConfig}
+          setInventoryConfig={setInventoryConfig}
           cookbooks={cookbooks}
           authFetch={authFetch}
           onSaved={(newRecipe) => {
