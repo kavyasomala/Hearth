@@ -50,7 +50,16 @@ const IngredientAutocomplete = ({ value, onChange, allIngredients }) => {
 
   return (
     <div className="ing-ac-wrap" ref={wrapperRef}>
-      <input className="editor-input" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} onKeyDown={onKeyDown} placeholder="soy sauce" autoComplete="off" />
+      <input className="editor-input" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => {
+        setOpen(false);
+        const typed = (value ?? '').toLowerCase().trim();
+        if (!typed || !allIngredients.length) return;
+        const hasMatch = allIngredients.some(ing => {
+          const name = (typeof ing === 'string' ? ing : ing?.name) ?? '';
+          return name.toLowerCase().includes(typed) || typed.includes(name.toLowerCase());
+        });
+        if (!hasMatch) onChange('');
+      }, 150)} onKeyDown={onKeyDown} placeholder="soy sauce" autoComplete="off" />
       {open && suggestions.length > 0 && (
         <ul className="ing-ac-dropdown">
           {suggestions.map((ing, i) => {

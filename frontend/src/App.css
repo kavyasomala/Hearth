@@ -8558,19 +8558,28 @@ html, body {
   box-sizing: border-box;
 }
 .inv-add-form__name:focus { border-color: var(--terracotta); }
-.inv-add-form__row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.inv-add-form__cat {
-  flex: 1; min-width: 140px; padding: 9px 10px; border-radius: 8px;
-  border: 1.5px solid var(--border); background: var(--bg);
-  font-size: 0.85rem; color: var(--text); outline: none; font-family: var(--font-body);
+.inv-add-form__suggest {
+  font-size: 0.8rem; color: var(--warm-gray); margin: 0;
 }
-.inv-add-form__cat:focus { border-color: var(--terracotta); }
-.inv-add-form__have-label {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 0.85rem; color: var(--warm-gray); cursor: pointer; white-space: nowrap;
-  accent-color: var(--terracotta);
+.inv-add-form__suggest strong { color: var(--charcoal); }
+
+/* Category button grid */
+.inv-cat-buttons {
+  display: flex; flex-wrap: wrap; gap: 6px;
 }
-.inv-add-form__btns { display: flex; gap: 8px; }
+.inv-cat-btn {
+  padding: 5px 12px; border-radius: 20px; border: 1.5px solid var(--border);
+  background: var(--bg); font-size: 0.78rem; color: var(--warm-gray);
+  cursor: pointer; font-family: var(--font-body); transition: all 0.12s;
+  white-space: nowrap;
+}
+.inv-cat-btn:hover { border-color: var(--terracotta-light); color: var(--charcoal); }
+.inv-cat-btn--active {
+  background: var(--terracotta); border-color: var(--terracotta);
+  color: #fff; font-weight: 600;
+}
+
+.inv-add-form__btns { display: flex; gap: 8px; margin-top: 2px; }
 .inv-add-form__submit {
   padding: 8px 20px; border-radius: 8px;
   background: var(--terracotta); border: none; color: #fff;
@@ -8583,14 +8592,15 @@ html, body {
 /* Category groups */
 .inv-groups { padding: 0 22px 100px; display: flex; flex-direction: column; gap: 2px; }
 
-.inv-group { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 6px; }
+.inv-group {
+  border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
+  margin-bottom: 6px; transition: border-color 0.15s, background 0.15s;
+}
+.inv-group--over { border-color: var(--sage); background: var(--insight-sage-bg); }
 .inv-group__hd {
   display: flex; align-items: center; gap: 8px;
-  width: 100%; padding: 11px 14px; background: var(--warm-white);
-  border: none; cursor: pointer; text-align: left;
-  font-family: var(--font-body);
+  padding: 11px 14px; background: var(--warm-white);
 }
-.inv-group__hd:hover { background: var(--parchment); }
 .inv-group__label {
   flex: 1; font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.06em; color: var(--warm-gray);
@@ -8598,8 +8608,6 @@ html, body {
 .inv-group__tally {
   font-size: 0.75rem; color: var(--ash); font-weight: 500; font-variant-numeric: tabular-nums;
 }
-.inv-group__arrow { font-size: 0.7rem; color: var(--ash); transition: transform 0.2s; }
-.inv-group__arrow--open { transform: rotate(180deg); }
 .inv-group__pills {
   display: flex; flex-wrap: wrap; gap: 8px;
   padding: 10px 14px 12px; background: var(--bg);
@@ -8618,19 +8626,26 @@ html, body {
   border-color: var(--sage); background: var(--insight-sage-bg);
   opacity: 1;
 }
+.inv-pill--dragging { opacity: 0.3 !important; }
+.inv-pill--overlay {
+  opacity: 1 !important; box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+  cursor: grabbing;
+}
 .inv-pill__name {
-  padding: 5px 10px 5px 10px; border: none; background: none;
-  font-size: 0.85rem; color: var(--text); cursor: pointer;
+  padding: 5px 8px 5px 10px; border: none; background: none;
+  font-size: 0.85rem; color: var(--text); cursor: grab;
   font-family: var(--font-body); display: flex; align-items: center; gap: 5px;
 }
 .inv-pill--have .inv-pill__name { color: var(--charcoal); font-weight: 500; }
 .inv-pill__check { font-size: 0.7rem; color: var(--sage); }
 .inv-pill__rm {
-  padding: 5px 8px 5px 2px; border: none; background: none;
+  max-width: 0; overflow: hidden; padding: 5px 0; border: none; background: none;
   font-size: 0.7rem; color: var(--ash); cursor: pointer; opacity: 0;
-  transition: opacity 0.15s;
+  white-space: nowrap;
+  transition: max-width 0.2s ease, opacity 0.15s, padding 0.2s ease;
 }
-.inv-pill:hover .inv-pill__rm { opacity: 1; }
+.inv-pill:hover .inv-pill__rm { max-width: 24px; opacity: 0.7; padding: 5px 8px 5px 2px; }
+.inv-pill:hover .inv-pill__rm:hover { opacity: 1; color: var(--terracotta); }
 .inv-pill:hover { border-color: var(--terracotta-light); }
 .inv-pill--have:hover { border-color: var(--sage); }
 
