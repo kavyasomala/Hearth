@@ -1,257 +1,200 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, DragOverlay, useDroppable, useDraggable } from '@dnd-kit/core';
+import { useState, useMemo, useCallback } from 'react';
 
-// ─── Defaults ─────────────────────────────────────────────────────────────────
+// ─── Category system ──────────────────────────────────────────────────────────
 
-const DEFAULT_STAPLES = [
-  { label: 'Oils & Fats', items: ['olive oil', 'vegetable oil', 'sesame oil', 'coconut oil', 'ghee'] },
-  { label: 'Sauces & Condiments', items: ['soy sauce', 'fish sauce', 'oyster sauce', 'hoisin sauce', 'worcestershire sauce', 'hot sauce', 'sriracha', 'ketchup', 'mustard', 'dijon mustard', 'mayonnaise', 'tomato paste', 'passata', 'canned tomatoes', 'pesto', 'tahini', 'peanut butter'] },
-  { label: 'Vinegars', items: ['balsamic vinegar', 'rice vinegar', 'apple cider vinegar', 'white vinegar'] },
-  { label: 'Sweeteners & Baking', items: ['honey', 'maple syrup', 'sugar', 'brown sugar', 'flour', 'cornstarch', 'baking powder', 'baking soda', 'vanilla extract'] },
-  { label: 'Spices & Herbs', items: ['salt', 'black pepper', 'white pepper', 'cumin', 'coriander', 'turmeric', 'paprika', 'smoked paprika', 'chilli flakes', 'cayenne', 'cinnamon', 'nutmeg', 'cardamom', 'garlic powder', 'onion powder', 'oregano', 'dried thyme', 'dried rosemary', 'dried basil', 'bay leaves', 'garam masala', 'curry powder', 'five spice', 'msg'] },
-  { label: 'Grains & Pasta', items: ['white rice', 'brown rice', 'basmati rice', 'pasta', 'spaghetti', 'noodles', 'udon', 'ramen', 'couscous', 'quinoa', 'oats', 'breadcrumbs', 'panko', 'tortillas'] },
-  { label: 'Legumes & Canned', items: ['lentils', 'chickpeas', 'black beans', 'kidney beans', 'cannellini beans', 'coconut milk', 'chicken stock', 'vegetable stock', 'beef stock'] },
-];
+const INVENTORY_KEY   = 'hearth_inventory_config';
+const CATEGORY_ORDER  = ['Produce','Dairy & Eggs','Meat & Fish','Frozen','Oils & Fats','Sauces & Condiments','Spices & Herbs','Grains & Pasta','Canned & Legumes','Baking','Other'];
 
-const DEFAULT_FRIDGE_SUGGESTIONS = [
-  { label: 'Produce', items: ['onion', 'garlic', 'ginger', 'lemon', 'lime', 'tomato', 'carrot', 'celery', 'bell pepper', 'spinach', 'potato', 'mushrooms', 'zucchini', 'broccoli', 'cucumber', 'avocado', 'spring onion', 'kale', 'sweet potato'] },
-  { label: 'Dairy & Eggs', items: ['eggs', 'milk', 'butter', 'cheddar', 'parmesan', 'feta', 'mozzarella', 'cream', 'sour cream', 'yogurt', 'cream cheese'] },
-  { label: 'Meat & Fish', items: ['chicken breast', 'chicken thighs', 'ground beef', 'salmon', 'bacon', 'pork', 'shrimp', 'tuna', 'sausage'] },
-  { label: 'Freezer', items: ['frozen peas', 'frozen spinach', 'frozen shrimp', 'frozen berries', 'frozen edamame', 'frozen corn', 'bread'] },
-];
+// Keyword → category. Sorted longest-first so "cream cheese" beats "cream".
+const KEYWORD_CATEGORY = {
+  // Produce
+  'spring onion':'Produce','sweet potato':'Produce','bell pepper':'Produce','bok choy':'Produce','bean sprout':'Produce','pak choi':'Produce','brussels sprout':'Produce','baby spinach':'Produce','cherry tomato':'Produce','sun-dried tomato':'Produce',
+  'artichoke':'Produce','arugula':'Produce','asparagus':'Produce','avocado':'Produce','banana':'Produce','beet':'Produce','blueberry':'Produce','broccoli':'Produce','cabbage':'Produce','carrot':'Produce','cauliflower':'Produce','celery':'Produce','chard':'Produce','cherry':'Produce','cilantro':'Produce','corn':'Produce','cucumber':'Produce','eggplant':'Produce','endive':'Produce','fennel':'Produce','garlic':'Produce','ginger':'Produce','grape':'Produce','jalapeño':'Produce','jalapeno':'Produce','kale':'Produce','leek':'Produce','lemon':'Produce','lettuce':'Produce','lime':'Produce','mango':'Produce','mint':'Produce','mushroom':'Produce','onion':'Produce','orange':'Produce','parsley':'Produce','peach':'Produce','pear':'Produce','pineapple':'Produce','plum':'Produce','potato':'Produce','pumpkin':'Produce','radish':'Produce','raspberry':'Produce','rocket':'Produce','scallion':'Produce','shallot':'Produce','spinach':'Produce','squash':'Produce','strawberry':'Produce','tomato':'Produce','turnip':'Produce','watercress':'Produce','yam':'Produce','zucchini':'Produce','chive':'Produce','dill':'Produce','basil':'Produce','coriander leaf':'Produce',
+  // Dairy & Eggs
+  'cream cheese':'Dairy & Eggs','sour cream':'Dairy & Eggs','half and half':'Dairy & Eggs','cream fraiche':'Dairy & Eggs','creme fraiche':'Dairy & Eggs','cottage cheese':'Dairy & Eggs',
+  'butter':'Dairy & Eggs','buttermilk':'Dairy & Eggs','cheddar':'Dairy & Eggs','cheese':'Dairy & Eggs','cream':'Dairy & Eggs','egg':'Dairy & Eggs','feta':'Dairy & Eggs','fromage':'Dairy & Eggs','ghee':'Dairy & Eggs','gouda':'Dairy & Eggs','gruyere':'Dairy & Eggs','kefir':'Dairy & Eggs','mascarpone':'Dairy & Eggs','milk':'Dairy & Eggs','mozzarella':'Dairy & Eggs','parmesan':'Dairy & Eggs','provolone':'Dairy & Eggs','quark':'Dairy & Eggs','ricotta':'Dairy & Eggs','yogurt':'Dairy & Eggs','brie':'Dairy & Eggs','manchego':'Dairy & Eggs','whey':'Dairy & Eggs',
+  // Meat & Fish
+  'chicken breast':'Meat & Fish','chicken thigh':'Meat & Fish','chicken wing':'Meat & Fish','ground beef':'Meat & Fish','ground pork':'Meat & Fish','ground turkey':'Meat & Fish','ground lamb':'Meat & Fish','short rib':'Meat & Fish','fish sauce':'Sauces & Condiments',
+  'anchovy':'Meat & Fish','bacon':'Meat & Fish','bass':'Meat & Fish','beef':'Meat & Fish','brisket':'Meat & Fish','chicken':'Meat & Fish','chorizo':'Meat & Fish','clam':'Meat & Fish','cod':'Meat & Fish','crab':'Meat & Fish','duck':'Meat & Fish','ham':'Meat & Fish','halibut':'Meat & Fish','lamb':'Meat & Fish','liver':'Meat & Fish','lobster':'Meat & Fish','mackerel':'Meat & Fish','meatball':'Meat & Fish','mussel':'Meat & Fish','octopus':'Meat & Fish','oyster':'Meat & Fish','pancetta':'Meat & Fish','pepperoni':'Meat & Fish','pork':'Meat & Fish','prawn':'Meat & Fish','prosciutto':'Meat & Fish','ribs':'Meat & Fish','salami':'Meat & Fish','salmon':'Meat & Fish','sardine':'Meat & Fish','sausage':'Meat & Fish','scallop':'Meat & Fish','seitan':'Meat & Fish','shrimp':'Meat & Fish','sirloin':'Meat & Fish','snapper':'Meat & Fish','squid':'Meat & Fish','steak':'Meat & Fish','tempeh':'Meat & Fish','tilapia':'Meat & Fish','tofu':'Meat & Fish','trout':'Meat & Fish','tuna':'Meat & Fish','turkey':'Meat & Fish','veal':'Meat & Fish','venison':'Meat & Fish',
+  // Frozen
+  'frozen':'Frozen','ice cream':'Frozen','sorbet':'Frozen','gelato':'Frozen',
+  // Oils & Fats
+  'olive oil':'Oils & Fats','sesame oil':'Oils & Fats','coconut oil':'Oils & Fats','vegetable oil':'Oils & Fats','canola oil':'Oils & Fats','avocado oil':'Oils & Fats','sunflower oil':'Oils & Fats','peanut oil':'Oils & Fats',
+  'lard':'Oils & Fats','shortening':'Oils & Fats','suet':'Oils & Fats',
+  // Sauces & Condiments — check multi-word first
+  'soy sauce':'Sauces & Condiments','oyster sauce':'Sauces & Condiments','hoisin sauce':'Sauces & Condiments','hot sauce':'Sauces & Condiments','worcestershire sauce':'Sauces & Condiments','worcestershire':'Sauces & Condiments','coconut aminos':'Sauces & Condiments','rice vinegar':'Sauces & Condiments','apple cider vinegar':'Sauces & Condiments','balsamic vinegar':'Sauces & Condiments','white vinegar':'Sauces & Condiments','red wine vinegar':'Sauces & Condiments','dijon mustard':'Sauces & Condiments','peanut butter':'Sauces & Condiments','almond butter':'Sauces & Condiments','tomato paste':'Sauces & Condiments','tomato sauce':'Sauces & Condiments','maple syrup':'Sauces & Condiments','golden syrup':'Sauces & Condiments','corn syrup':'Sauces & Condiments',
+  'aioli':'Sauces & Condiments','balsamic':'Sauces & Condiments','chutney':'Sauces & Condiments','dressing':'Sauces & Condiments','gochujang':'Sauces & Condiments','harissa':'Sauces & Condiments','hoisin':'Sauces & Condiments','honey':'Sauces & Condiments','jam':'Sauces & Condiments','jelly':'Sauces & Condiments','ketchup':'Sauces & Condiments','marmalade':'Sauces & Condiments','mayo':'Sauces & Condiments','mayonnaise':'Sauces & Condiments','miso':'Sauces & Condiments','molasses':'Sauces & Condiments','mustard':'Sauces & Condiments','passata':'Sauces & Condiments','pesto':'Sauces & Condiments','ponzu':'Sauces & Condiments','relish':'Sauces & Condiments','sambal':'Sauces & Condiments','sriracha':'Sauces & Condiments','tahini':'Sauces & Condiments','teriyaki':'Sauces & Condiments','treacle':'Sauces & Condiments','vinaigrette':'Sauces & Condiments','vinegar':'Sauces & Condiments','agave':'Sauces & Condiments',
+  // Spices & Herbs
+  'smoked paprika':'Spices & Herbs','chilli flake':'Spices & Herbs','garlic powder':'Spices & Herbs','onion powder':'Spices & Herbs','curry powder':'Spices & Herbs','five spice':'Spices & Herbs','garam masala':'Spices & Herbs','ras el hanout':'Spices & Herbs','mixed spice':'Spices & Herbs','baking spice':'Spices & Herbs','dried thyme':'Spices & Herbs','dried rosemary':'Spices & Herbs','dried basil':'Spices & Herbs','dried herb':'Spices & Herbs','black pepper':'Spices & Herbs','white pepper':'Spices & Herbs','cayenne pepper':'Spices & Herbs','star anise':'Spices & Herbs','celery salt':'Spices & Herbs','fennel seed':'Spices & Herbs','bay leaf':'Spices & Herbs','bay leaves':'Spices & Herbs',
+  'allspice':'Spices & Herbs','asafoetida':'Spices & Herbs','cardamom':'Spices & Herbs','cayenne':'Spices & Herbs','cinnamon':'Spices & Herbs','clove':'Spices & Herbs','coriander':'Spices & Herbs','cumin':'Spices & Herbs','fenugreek':'Spices & Herbs','juniper':'Spices & Herbs','mace':'Spices & Herbs','msg':'Spices & Herbs','nutmeg':'Spices & Herbs','oregano':'Spices & Herbs','paprika':'Spices & Herbs','pepper':'Spices & Herbs','saffron':'Spices & Herbs','sage':'Spices & Herbs','salt':'Spices & Herbs','sumac':'Spices & Herbs','thyme':'Spices & Herbs','turmeric':'Spices & Herbs','rosemary':'Spices & Herbs','tarragon':'Spices & Herbs','za\'atar':'Spices & Herbs','zaatar':'Spices & Herbs','caraway':'Spices & Herbs','spice':'Spices & Herbs',
+  // Grains & Pasta
+  'basmati rice':'Grains & Pasta','brown rice':'Grains & Pasta','white rice':'Grains & Pasta','bread crumb':'Grains & Pasta','sourdough':'Grains & Pasta',
+  'barley':'Grains & Pasta','bread':'Grains & Pasta','breadcrumb':'Grains & Pasta','bun':'Grains & Pasta','cereal':'Grains & Pasta','couscous':'Grains & Pasta','cracker':'Grains & Pasta','farro':'Grains & Pasta','fettuccine':'Grains & Pasta','flour':'Grains & Pasta','freekeh':'Grains & Pasta','granola':'Grains & Pasta','linguine':'Grains & Pasta','muesli':'Grains & Pasta','noodle':'Grains & Pasta','oat':'Grains & Pasta','panko':'Grains & Pasta','pasta':'Grains & Pasta','penne':'Grains & Pasta','pita':'Grains & Pasta','polenta':'Grains & Pasta','quinoa':'Grains & Pasta','ramen':'Grains & Pasta','rice':'Grains & Pasta','rigatoni':'Grains & Pasta','roll':'Grains & Pasta','rye':'Grains & Pasta','spelt':'Grains & Pasta','spaghetti':'Grains & Pasta','tortilla':'Grains & Pasta','udon':'Grains & Pasta','wheat':'Grains & Pasta','wrap':'Grains & Pasta',
+  // Canned & Legumes
+  'black bean':'Canned & Legumes','kidney bean':'Canned & Legumes','white bean':'Canned & Legumes','pinto bean':'Canned & Legumes','butter bean':'Canned & Legumes','navy bean':'Canned & Legumes','cannellini bean':'Canned & Legumes','split pea':'Canned & Legumes','coconut milk':'Canned & Legumes','chicken stock':'Canned & Legumes','vegetable stock':'Canned & Legumes','beef stock':'Canned & Legumes','chicken broth':'Canned & Legumes','vegetable broth':'Canned & Legumes','beef broth':'Canned & Legumes','diced tomato':'Canned & Legumes','crushed tomato':'Canned & Legumes','canned tomato':'Canned & Legumes',
+  'bean':'Canned & Legumes','broth':'Canned & Legumes','canned':'Canned & Legumes','chickpea':'Canned & Legumes','edamame':'Canned & Legumes','legume':'Canned & Legumes','lentil':'Canned & Legumes','soy bean':'Canned & Legumes','stock':'Canned & Legumes',
+  // Baking
+  'baking powder':'Baking','baking soda':'Baking','brown sugar':'Baking','caster sugar':'Baking','icing sugar':'Baking','powdered sugar':'Baking','dark chocolate':'Baking','milk chocolate':'Baking','white chocolate':'Baking','chocolate chip':'Baking','vanilla extract':'Baking','cream of tartar':'Baking','corn starch':'Baking','food coloring':'Baking',
+  'bicarbonate':'Baking','cake':'Baking','cocoa':'Baking','chocolate':'Baking','confectioner':'Baking','gelatin':'Baking','pectin':'Baking','sugar':'Baking','vanilla':'Baking','yeast':'Baking','cornstarch':'Baking',
+};
 
-// All items in the default staples list — used to classify recipe ingredients
-const ALL_DEFAULT_STAPLE_ITEMS = new Set(DEFAULT_STAPLES.flatMap(g => g.items));
+const KEYWORD_ENTRIES = Object.entries(KEYWORD_CATEGORY).sort((a, b) => b[0].length - a[0].length);
 
-function loadLS(key, defaults) {
-  try { const r = localStorage.getItem(key); if (r) return JSON.parse(r); } catch {}
-  return defaults.map(g => ({ label: g.label, items: [...g.items] }));
+function autoCategory(name) {
+  const lower = name.toLowerCase().trim();
+  for (const [kw, cat] of KEYWORD_ENTRIES) {
+    if (lower.includes(kw) || kw.includes(lower)) return cat;
+  }
+  return 'Other';
 }
-function saveLS(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
 
-const STAPLES_KEY = 'hearth_staples_config';
-const FRIDGE_KEY  = 'hearth_fridge_config';
+function norm(str) { return str.toLowerCase().trim(); }
 
-// ─── StaplePill ───────────────────────────────────────────────────────────────
+// ─── Migration & storage ──────────────────────────────────────────────────────
 
-function StaplePill({ item, active, onToggle, onDelete }) {
+const OLD_LABEL_MAP = {
+  'Freezer': 'Frozen',
+  'Vinegars': 'Sauces & Condiments',
+  'Sweeteners & Baking': 'Baking',
+  'Legumes & Canned': 'Canned & Legumes',
+  'Miscellaneous': 'Other',
+};
+
+const DEFAULT_INVENTORY = [
+  { label: 'Produce', items: ['onion','garlic','ginger','lemon','lime','tomato','carrot','celery','bell pepper','spinach','potato','mushrooms','zucchini','broccoli','cucumber','avocado','spring onion','kale','sweet potato'] },
+  { label: 'Dairy & Eggs', items: ['eggs','milk','butter','cheddar','parmesan','feta','mozzarella','cream','sour cream','yogurt','cream cheese'] },
+  { label: 'Meat & Fish', items: ['chicken breast','chicken thighs','ground beef','salmon','bacon','pork','shrimp','tuna','sausage'] },
+  { label: 'Frozen', items: ['frozen peas','frozen spinach','frozen shrimp','frozen berries','frozen edamame','frozen corn'] },
+  { label: 'Oils & Fats', items: ['olive oil','vegetable oil','sesame oil','coconut oil','ghee'] },
+  { label: 'Sauces & Condiments', items: ['soy sauce','fish sauce','oyster sauce','hoisin sauce','worcestershire sauce','hot sauce','sriracha','ketchup','mustard','dijon mustard','mayonnaise','tomato paste','passata','pesto','tahini','peanut butter','balsamic vinegar','rice vinegar','apple cider vinegar','honey','maple syrup'] },
+  { label: 'Spices & Herbs', items: ['salt','black pepper','cumin','coriander','turmeric','paprika','smoked paprika','chilli flakes','cayenne','cinnamon','nutmeg','cardamom','garlic powder','onion powder','oregano','dried thyme','dried rosemary','dried basil','bay leaves','garam masala','curry powder','five spice','msg'] },
+  { label: 'Grains & Pasta', items: ['white rice','basmati rice','pasta','spaghetti','noodles','udon','ramen','couscous','quinoa','oats','breadcrumbs','panko','tortillas','flour'] },
+  { label: 'Canned & Legumes', items: ['lentils','chickpeas','black beans','kidney beans','cannellini beans','coconut milk','chicken stock','vegetable stock','beef stock','canned tomatoes'] },
+  { label: 'Baking', items: ['honey','maple syrup','sugar','brown sugar','baking powder','baking soda','vanilla extract','dark chocolate','cocoa powder'] },
+];
+
+function loadInventoryConfig() {
+  try {
+    const raw = localStorage.getItem(INVENTORY_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+
+  // Migrate from old keys
+  const catMap = {};
+  const add = (label, items) => {
+    const mapped = OLD_LABEL_MAP[label] || label;
+    if (!catMap[mapped]) catMap[mapped] = new Set();
+    items.forEach(i => catMap[mapped].add(norm(i)));
+  };
+  try { (JSON.parse(localStorage.getItem('hearth_fridge_config') || '[]')).forEach(g => add(g.label, g.items)); } catch {}
+  try { (JSON.parse(localStorage.getItem('hearth_staples_config') || '[]')).forEach(g => add(g.label, g.items)); } catch {}
+
+  const hasData = Object.values(catMap).some(s => s.size > 0);
+  const source = hasData ? catMap : Object.fromEntries(DEFAULT_INVENTORY.map(g => [g.label, new Set(g.items)]));
+
+  const config = [
+    ...CATEGORY_ORDER.filter(c => source[c]).map(c => ({ label: c, items: [...source[c]] })),
+    ...Object.keys(source).filter(k => !CATEGORY_ORDER.includes(k) && source[k].size > 0).map(k => ({ label: k, items: [...source[k]] })),
+  ];
+
+  try { localStorage.setItem(INVENTORY_KEY, JSON.stringify(config)); } catch {}
+  return config;
+}
+
+function saveConfig(config) {
+  try { localStorage.setItem(INVENTORY_KEY, JSON.stringify(config)); } catch {}
+}
+
+// ─── InventoryPill ────────────────────────────────────────────────────────────
+
+function InventoryPill({ item, have, onToggle, onDelete }) {
   return (
-    <span className={`kpill ${active ? 'kpill--active' : ''}`}>
-      <button className="kpill__toggle" onClick={onToggle}>
-        {active && <span className="kpill__check-mark">✓</span>}
+    <span className={`inv-pill${have ? ' inv-pill--have' : ''}`}>
+      <button className="inv-pill__name" onClick={onToggle}>
+        {have && <span className="inv-pill__check">✓</span>}
         {item}
       </button>
-      <button className="kpill__rm" onPointerDown={e => e.stopPropagation()} onClick={onDelete} title="Remove from list">✕</button>
+      <button className="inv-pill__rm" onPointerDown={e => e.stopPropagation()} onClick={onDelete} title="Remove">✕</button>
     </span>
   );
 }
 
-// ─── PillGroup ────────────────────────────────────────────────────────────────
+// ─── CategoryGroup ────────────────────────────────────────────────────────────
 
-function PillGroup({ label, items, activeSet, onToggle, onDelete }) {
+function CategoryGroup({ group, haveSet, onToggle, onDelete }) {
+  const [open, setOpen] = useState(true);
+  const haveCount = group.items.filter(i => haveSet.has(i)).length;
+
   return (
-    <div className="kitchen-pill-group">
-      <p className="kitchen-checklist__group-label">{label}</p>
-      <div className="kitchen-checklist__items">
-        {items.map(item => (
-          <StaplePill key={item} item={item} active={activeSet.has(item)}
-            onToggle={() => onToggle(item)} onDelete={() => onDelete(label, item)} />
-        ))}
-      </div>
+    <div className="inv-group">
+      <button className="inv-group__hd" onClick={() => setOpen(p => !p)}>
+        <span className="inv-group__label">{group.label}</span>
+        <span className="inv-group__tally">{haveCount}/{group.items.length}</span>
+        <span className={`inv-group__arrow${open ? ' inv-group__arrow--open' : ''}`}>▾</span>
+      </button>
+      {open && (
+        <div className="inv-group__pills">
+          {group.items.map(item => (
+            <InventoryPill
+              key={item}
+              item={item}
+              have={haveSet.has(item)}
+              onToggle={() => onToggle(item)}
+              onDelete={() => onDelete(group.label, item)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── StaplesAddBar — single add control at the top of the staples section ─────
-function StaplesAddBar({ groups, onAdd, onAddUncategorized }) {
-  const [open, setOpen]   = useState(false);
-  const [name, setName]   = useState('');
-  const [group, setGroup] = useState('');
+// ─── AddIngredientForm ────────────────────────────────────────────────────────
+
+function AddIngredientForm({ config, onAdd, onClose }) {
+  const [name, setName]       = useState('');
+  const [category, setCategory] = useState('');
+  const [markHave, setMarkHave] = useState(true);
+
+  const suggested = useMemo(() => name.trim() ? autoCategory(name.trim()) : '', [name]);
+  const resolvedCat = category || suggested || 'Other';
 
   const commit = () => {
-    const v = name.trim().toLowerCase();
-    if (!v) return;
-    if (group) onAdd(group, v);
-    else onAddUncategorized(v);
-    setName(''); setGroup(''); setOpen(false);
+    const lower = norm(name);
+    if (!lower) return;
+    onAdd(lower, resolvedCat, markHave);
+    setName(''); setCategory('');
   };
 
-  if (!open) return (
-    <button className="kitchen-section-addbtn" onClick={() => setOpen(true)}>+ Add Staple</button>
-  );
+  const extraCats = config.map(g => g.label).filter(l => !CATEGORY_ORDER.includes(l));
 
   return (
-    <div className="kitchen-section-addform">
-      <input autoFocus className="kitchen-custom-input" value={name}
-        placeholder="e.g. miso paste"
+    <div className="inv-add-form">
+      <input
+        autoFocus
+        className="inv-add-form__name"
+        placeholder="Ingredient name…"
+        value={name}
         onChange={e => setName(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setOpen(false); setName(''); } }} />
-      <select className="kitchen-group-select" value={group} onChange={e => setGroup(e.target.value)}>
-        <option value="">Uncategorized (default)</option>
-        {groups.map(g => <option key={g.label} value={g.label}>{g.label}</option>)}
-      </select>
-      <button className="kitchen-custom-add-btn" onClick={commit}>Add</button>
-      <button className="btn btn--ghost btn--sm" onClick={() => { setOpen(false); setName(''); }}>✕</button>
-    </div>
-  );
-}
-
-// ─── UncategorizedPantryGroup — staples not yet assigned to a group ─────────────
-
-function UncategorizedPantryGroup({ items, groupLabels, onAssign, onDelete }) {
-  const [openFor, setOpenFor] = useState(null);
-  if (!items.length) return null;
-  return (
-    <div className="kitchen-pill-group">
-      <p className="kitchen-checklist__group-label">Uncategorized</p>
-      <p className="kitchen-uncategorized-hint">Tap to assign to a group</p>
-      <div className="kitchen-checklist__items">
-        {items.map(item => (
-          <span key={item} className="kitchen-uncat-wrap">
-            <button
-              className="kitchen-chip kitchen-chip--uncat kitchen-chip--owned"
-              onClick={() => setOpenFor(openFor === item ? null : item)}
-            >
-              ✓ {item} <span className="kitchen-chip__arrow">▾</span>
-            </button>
-            {openFor === item && (
-              <div className="kitchen-uncat-picker">
-                {groupLabels.map(label => (
-                  <button key={label} className="kitchen-uncat-option"
-                    onClick={() => { onAssign(item, label); setOpenFor(null); }}>
-                    → {label}
-                  </button>
-                ))}
-                <button className="kitchen-uncat-option kitchen-uncat-option--delete"
-                  onClick={() => { onDelete(item); setOpenFor(null); }}>
-                  ✕ Remove
-                </button>
-              </div>
-            )}
-          </span>
-        ))}
+        onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') onClose(); }}
+      />
+      <div className="inv-add-form__row">
+        <select className="inv-add-form__cat" value={category} onChange={e => setCategory(e.target.value)}>
+          {suggested
+            ? <option value="">{suggested} (suggested)</option>
+            : <option value="">Select category…</option>
+          }
+          {CATEGORY_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
+          {extraCats.map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+        <label className="inv-add-form__have-label">
+          <input type="checkbox" checked={markHave} onChange={e => setMarkHave(e.target.checked)} />
+          In stock
+        </label>
       </div>
-    </div>
-  );
-}
-
-// ─── DraggablePill — a fridge suggestion pill that can be dragged ─────────────
-
-function DraggablePill({ id, item, groupLabel, active, onToggle, onDelete, onEdit, onMoveToStaples }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id,
-    data: { item, fromGroup: groupLabel },
-  });
-  const [editing, setEditing] = useState(false);
-  const [editVal, setEditVal] = useState(item);
-  const [showMenu, setShowMenu] = useState(false);
-  const pillRef = useRef(null);
-
-  useEffect(() => {
-    if (!showMenu) return;
-    const dismiss = (e) => {
-      if (pillRef.current && pillRef.current.contains(e.target)) return;
-      setShowMenu(false);
-    };
-    window.addEventListener('touchstart', dismiss, { capture: true });
-    return () => window.removeEventListener('touchstart', dismiss, { capture: true });
-  }, [showMenu]);
-
-  const commitEdit = () => {
-    const v = editVal.trim().toLowerCase();
-    if (v && v !== item) onEdit(groupLabel, item, v);
-    setEditing(false);
-  };
-
-  if (editing) {
-    return (
-      <span className="kpill kpill--editing">
-        <input
-          autoFocus
-          className="kpill__edit-input"
-          value={editVal}
-          onChange={e => setEditVal(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(false); }}
-          onBlur={commitEdit}
-          size={Math.max(item.length, editVal.length) + 2}
-        />
-      </span>
-    );
-  }
-
-  return (
-    <span
-      ref={(el) => { setNodeRef(el); pillRef.current = el; }}
-      className={`kpill ${active ? 'kpill--active' : ''} ${isDragging ? 'kpill--dragging' : ''} ${showMenu ? 'kpill--menu-open' : ''}`}
-      style={{ opacity: isDragging ? 0.25 : 1, touchAction: 'none' }}
-      onDoubleClick={() => { setEditing(true); setEditVal(item); }}
-    >
-      <button
-        className="kpill__toggle"
-        {...listeners}
-        {...attributes}
-        onClick={() => { navigator.vibrate?.(3); onToggle(); setShowMenu(false); }}
-      >
-        {active && <span className="kpill__check-mark">✓</span>}
-        {item}
-      </button>
-      <button
-        className="kpill__mv"
-        tabIndex={-1}
-        onPointerDown={e => e.stopPropagation()}
-        onClick={e => { e.stopPropagation(); onMoveToStaples(); setShowMenu(false); }}
-        title="Move to Pantry"
-      >★</button>
-      <button
-        className="kpill__rm"
-        tabIndex={-1}
-        onPointerDown={e => e.stopPropagation()}
-        onClick={e => { e.stopPropagation(); onDelete(); }}
-        title="Remove"
-      >✕</button>
-      <button
-        className="kpill__more"
-        tabIndex={-1}
-        onPointerDown={e => e.stopPropagation()}
-        onClick={e => {
-          e.stopPropagation();
-          navigator.vibrate?.([8, 4, 8]);
-          setShowMenu(m => !m);
-        }}
-        aria-label="More actions"
-      >···</button>
-    </span>
-  );
-}
-
-// ─── DroppableGroup — a fridge suggestion group that accepts drops ────────────
-
-function DroppableGroup({ group, fridgeSet, onToggle, onDelete, onEdit, onMoveToStaples, isOver }) {
-  const { setNodeRef } = useDroppable({ id: group.label });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`kitchen-pill-group ${isOver ? 'kitchen-pill-group--drop-target' : ''}`}
-    >
-      <p className="kitchen-checklist__group-label">
-        {group.label}
-        {isOver && <span className="kitchen-drop-hint"> · drop here</span>}
-      </p>
-      <div className="kitchen-checklist__items">
-        {group.items.map(item => (
-          <DraggablePill
-            key={item}
-            id={`${group.label}::${item}`}
-            item={item}
-            groupLabel={group.label}
-            active={fridgeSet.has(item)}
-            onToggle={() => onToggle(item)}
-            onDelete={() => onDelete(group.label, item)}
-            onEdit={onEdit}
-            onMoveToStaples={() => onMoveToStaples(group.label, item)}
-          />
-        ))}
+      <div className="inv-add-form__btns">
+        <button className="inv-add-form__submit" onClick={commit} disabled={!name.trim()}>Add</button>
+        <button className="btn btn--ghost btn--sm" onClick={onClose}>Cancel</button>
       </div>
     </div>
   );
@@ -259,372 +202,125 @@ function DroppableGroup({ group, fridgeSet, onToggle, onDelete, onEdit, onMoveTo
 
 // ─── KitchenTab ───────────────────────────────────────────────────────────────
 
-export default function KitchenTab({ fridgeIngredients, setFridgeIngredients, pantryStaples, setPantryStaples, recipes = [] }) {
-  const [fridgeOpen,    setFridgeOpen]    = useState(true);
-  const [staplesOpen,   setStaplesOpen]   = useState(false);
-  const [staplesConfig, setStaplesConfig] = useState(() => loadLS(STAPLES_KEY, DEFAULT_STAPLES));
-  const [fridgeConfig,  setFridgeConfig]  = useState(() => loadLS(FRIDGE_KEY,  DEFAULT_FRIDGE_SUGGESTIONS));
-  const [activeDragId,  setActiveDragId]  = useState(null);
-  const [overGroupId,   setOverGroupId]   = useState(null);
+export default function KitchenTab({ inventoryHave, setInventoryHave }) {
+  const [config, setConfig] = useState(() => loadInventoryConfig());
+  const [search, setSearch]       = useState('');
+  const [addFormOpen, setAddFormOpen] = useState(false);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 8 } })
-  );
-
-  // Fridge search — only used for the dropdown overlay; doesn't affect the expanded pill grid
-  const [fridgeSearch,        setFridgeSearch]        = useState('');
-  const [fridgeSearchFocused, setFridgeSearchFocused] = useState(false);
-  const [addIngForm,          setAddIngForm]          = useState(null); // { name, group }
-  const searchRef = useRef(null);
-
-  const pantrySet  = useMemo(() => new Set(pantryStaples.map(s => s.toLowerCase())), [pantryStaples]);
-  const fridgeSet  = useMemo(() => new Set(fridgeIngredients.map(s => s.toLowerCase())), [fridgeIngredients]);
-  const allStapleItems = useMemo(() => new Set(staplesConfig.flatMap(g => g.items)), [staplesConfig]);
-  const allFridgeConfigItems = useMemo(() => new Set(fridgeConfig.flatMap(g => g.items)), [fridgeConfig]);
-
-  // Recipe ingredients
-  const recipeIngredients = useMemo(() => {
-    const names = new Set();
-    for (const r of recipes) for (const ing of (r.ingredients || [])) names.add(ing.toLowerCase().trim());
-    return names;
-  }, [recipes]);
-
-  // ── Staples mutations ─────────────────────────────────────────────────────
-
-  const updateStaples = useCallback(fn => {
-    setStaplesConfig(prev => { const next = fn(prev); saveLS(STAPLES_KEY, next); return next; });
+  const updateConfig = useCallback(fn => {
+    setConfig(prev => { const next = fn(prev); saveConfig(next); return next; });
   }, []);
 
-  const deleteStapleItem = useCallback((groupLabel, item) => {
-    updateStaples(prev => prev.map(g => g.label === groupLabel ? { ...g, items: g.items.filter(i => i !== item) } : g));
-    setPantryStaples(prev => prev.filter(x => x !== item.toLowerCase()));
-  }, [updateStaples, setPantryStaples]);
+  const haveSet = useMemo(() => new Set(inventoryHave), [inventoryHave]);
 
-  const addStapleItem = useCallback((groupLabel, item) => {
-    const lower = item.toLowerCase().trim();
-    if (!lower) return;
-    updateStaples(prev => {
-      const exists = prev.some(g => g.label === groupLabel);
-      if (exists) return prev.map(g => g.label === groupLabel && !g.items.includes(lower) ? { ...g, items: [...g.items, lower] } : g);
-      return [...prev, { label: groupLabel, items: [lower] }];
+  const toggleHave = useCallback(item => {
+    setInventoryHave(prev =>
+      haveSet.has(item) ? prev.filter(x => x !== item) : [...prev, item]
+    );
+  }, [haveSet, setInventoryHave]);
+
+  const deleteItem = useCallback((groupLabel, item) => {
+    updateConfig(prev =>
+      prev.map(g => g.label === groupLabel
+        ? { ...g, items: g.items.filter(i => i !== item) }
+        : g
+      ).filter(g => g.items.length > 0)
+    );
+    setInventoryHave(prev => prev.filter(x => x !== item));
+  }, [updateConfig, setInventoryHave]);
+
+  const addItem = useCallback((name, category, markHave) => {
+    // Deduplicate — if it's already in catalog, just toggle have
+    const allItems = config.flatMap(g => g.items);
+    if (allItems.includes(name)) {
+      if (markHave && !haveSet.has(name)) setInventoryHave(prev => [...prev, name]);
+      setAddFormOpen(false);
+      return;
+    }
+    updateConfig(prev => {
+      const existing = prev.find(g => g.label === category);
+      if (existing) {
+        return prev.map(g => g.label === category ? { ...g, items: [...g.items, name] } : g);
+      }
+      const newGroup = { label: category, items: [name] };
+      const idx = CATEGORY_ORDER.indexOf(category);
+      if (idx === -1) return [...prev, newGroup];
+      const insertAfter = prev.findIndex(g => CATEGORY_ORDER.indexOf(g.label) > idx);
+      if (insertAfter === -1) return [...prev, newGroup];
+      const next = [...prev];
+      next.splice(insertAfter, 0, newGroup);
+      return next;
     });
-    setPantryStaples(prev => pantrySet.has(lower) ? prev : [...prev, lower]);
-  }, [updateStaples, setPantryStaples, pantrySet]);
+    if (markHave) setInventoryHave(prev => [...prev, name]);
+    setAddFormOpen(false);
+  }, [config, haveSet, updateConfig, setInventoryHave]);
 
-  const togglePantry = useCallback(item => {
-    const lower = item.toLowerCase();
-    setPantryStaples(prev => pantrySet.has(lower) ? prev.filter(x => x !== lower) : [...prev, lower]);
-  }, [pantrySet, setPantryStaples]);
+  const filteredConfig = useMemo(() => {
+    if (!search.trim()) return config;
+    const q = search.toLowerCase().trim();
+    return config
+      .map(g => ({ ...g, items: g.items.filter(i => i.includes(q)) }))
+      .filter(g => g.items.length > 0);
+  }, [config, search]);
 
-  // ── Fridge mutations ──────────────────────────────────────────────────────
-
-  const updateFridge = useCallback(fn => {
-    setFridgeConfig(prev => { const next = fn(prev); saveLS(FRIDGE_KEY, next); return next; });
-  }, []);
-
-  const deleteFridgeSuggestion = useCallback((groupLabel, item) => {
-    updateFridge(prev => prev.map(g => g.label === groupLabel ? { ...g, items: g.items.filter(i => i !== item) } : g));
-  }, [updateFridge]);
-
-  const addFridgeSuggestion = useCallback((groupLabel, item) => {
-    const lower = item.toLowerCase().trim();
-    if (!lower) return;
-    updateFridge(prev => prev.map(g =>
-      g.label === groupLabel && !g.items.includes(lower) ? { ...g, items: [...g.items, lower] } : g
-    ));
-  }, [updateFridge]);
-
-  const editFridgeSuggestion = useCallback((groupLabel, oldItem, newItem) => {
-    const lower = newItem.toLowerCase().trim();
-    if (!lower || lower === oldItem) return;
-    updateFridge(prev => prev.map(g =>
-      g.label === groupLabel ? { ...g, items: g.items.map(i => i === oldItem ? lower : i) } : g
-    ));
-    setFridgeIngredients(prev => prev.map(x => x === oldItem ? lower : x));
-  }, [updateFridge, setFridgeIngredients]);
-
-  const toggleFridge = useCallback(item => {
-    const lower = item.toLowerCase().trim();
-    if (!lower) return;
-    setFridgeIngredients(prev => fridgeSet.has(lower) ? prev.filter(x => x !== lower) : [...prev, lower]);
-  }, [fridgeSet, setFridgeIngredients]);
-
-  // Quick-add: marks as owned without modifying the fridge catalog
-  const quickAddToFridge = () => {
-    const val = fridgeSearch.toLowerCase().trim();
-    if (!val) return;
-    if (!fridgeSet.has(val)) setFridgeIngredients(prev => [...prev, val]);
-    setFridgeSearch('');
-    setFridgeSearchFocused(false);
-  };
-
-  // Full add: creates a catalog entry + marks as owned
-  const commitAddIngForm = () => {
-    if (!addIngForm) return;
-    const lower = addIngForm.name.toLowerCase().trim();
-    if (!lower) return;
-    if (!fridgeSet.has(lower)) setFridgeIngredients(prev => [...prev, lower]);
-    const group = addIngForm.group || 'Miscellaneous';
-    updateFridge(prev => {
-      const hasGroup = prev.some(g => g.label === group);
-      if (hasGroup) return prev.map(g =>
-        g.label === group && !g.items.includes(lower) ? { ...g, items: [...g.items, lower] } : g
-      );
-      return [...prev, { label: group, items: [lower] }];
-    });
-    setAddIngForm(null);
-  };
-
-  const moveToStaples = useCallback((groupLabel, item) => {
-    updateFridge(prev => prev.map(g =>
-      g.label === groupLabel ? { ...g, items: g.items.filter(i => i !== item) } : g
-    ).filter(g => !(g.label === 'Miscellaneous' && g.items.length === 0)));
-    setFridgeIngredients(prev => prev.filter(x => x !== item));
-    // Add to pantryStaples without assigning to a group — appears as Uncategorized
-    setPantryStaples(prev => pantrySet.has(item) ? prev : [...prev, item]);
-  }, [updateFridge, setFridgeIngredients, setPantryStaples, pantrySet]);
-
-  // Pantry staples that haven't been assigned to any staplesConfig group yet
-  const uncategorizedPantryStaples = useMemo(() =>
-    pantryStaples.filter(s => !allStapleItems.has(s.toLowerCase())),
-  [pantryStaples, allStapleItems]);
-
-  const addUncategorizedStaple = useCallback((item) => {
-    const lower = item.toLowerCase().trim();
-    if (!lower) return;
-    setPantryStaples(prev => prev.includes(lower) ? prev : [...prev, lower]);
-  }, [setPantryStaples]);
-
-  const assignUncategorizedPantry = useCallback((item, groupLabel) => {
-    addStapleItem(groupLabel, item);
-    // Remove from free-floating pantryStaples so it's only tracked via the group
-    // (addStapleItem re-adds it, so the net effect is: it moves into the group display)
-  }, [addStapleItem]);
-
-  const deleteUncategorizedPantry = useCallback((item) => {
-    setPantryStaples(prev => prev.filter(x => x !== item));
-  }, [setPantryStaples]);
-
-  // ── Drag handlers for fridge suggestion groups ────────────────────────────
-
-  const handleDragStart = ({ active }) => setActiveDragId(active.id);
-  const handleDragOver  = ({ over })   => setOverGroupId(over ? over.id : null);
-
-  const handleDragEnd = ({ active, over }) => {
-    setActiveDragId(null);
-    setOverGroupId(null);
-    if (!over || !active.data.current) return;
-    const { item, fromGroup } = active.data.current;
-    const toGroup = over.id;
-    if (fromGroup === toGroup) return;
-    updateFridge(prev => prev.map(g => {
-      if (g.label === fromGroup) return { ...g, items: g.items.filter(i => i !== item) };
-      if (g.label === toGroup && !g.items.includes(item)) return { ...g, items: [...g.items, item] };
-      return g;
-    // Remove Miscellaneous group if empty after move
-    }).filter(g => !(g.label === 'Miscellaneous' && g.items.length === 0)));
-  };
-
-  // ── Search dropdown content (only shown when typing) ──────────────────────
-
-  const searchDropdown = useMemo(() => {
-    const q = fridgeSearch.toLowerCase().trim();
-    if (!q) return null;
-    const allFridgeItems = fridgeConfig.flatMap(g => g.items);
-    const matches = [
-      ...allFridgeItems.filter(i => i.includes(q) && !allStapleItems.has(i)),
-      ...[...recipeIngredients].filter(n => n.includes(q) && !allFridgeItems.includes(n) && !allStapleItems.has(n)),
-    ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 20);
-    return matches;
-  }, [fridgeSearch, fridgeConfig, recipeIngredients, allStapleItems]);
-
-  const showSearchDropdown = fridgeSearchFocused && !!fridgeSearch;
-
-  useEffect(() => {
-    const handler = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) setFridgeSearchFocused(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const totalTracked  = fridgeIngredients.length + pantryStaples.length;
-  const staplesMarked = pantryStaples.filter(s => allStapleItems.has(s)).length;
+  const allItems  = useMemo(() => config.flatMap(g => g.items), [config]);
+  const haveCount = useMemo(() => allItems.filter(i => haveSet.has(i)).length, [allItems, haveSet]);
 
   return (
     <main className="view kitchen-view">
       <div className="kitchen-header">
         <div>
           <h2 className="kitchen-title">My Kitchen</h2>
-          <p className="kitchen-subtitle">{totalTracked} ingredient{totalTracked !== 1 ? 's' : ''} tracked</p>
+          <p className="kitchen-subtitle">
+            {haveCount} of {allItems.length} in stock
+          </p>
         </div>
-        {totalTracked > 0 && (
-          <button className="btn btn--ghost btn--sm" onClick={() => { setFridgeIngredients([]); setPantryStaples([]); }}>
-            Clear all
+        {haveCount > 0 && (
+          <button className="btn btn--ghost btn--sm" onClick={() => setInventoryHave([])}>
+            Clear stock
           </button>
         )}
       </div>
 
-      {/* ── Fridge & Freezer ─────────────────────────────────────────────────── */}
-      <section className="kitchen-section kitchen-section--collapsible">
-        {/* Header — collapses/expands the pill groups only */}
-        <button className="kitchen-section__header kitchen-section__header--btn" onClick={() => setFridgeOpen(p => !p)}>
-          <div>
-            <h3 className="kitchen-section__title">Groceries</h3>
-            <p className="kitchen-section__sub">
-              {fridgeIngredients.length > 0 ? `${fridgeIngredients.length} item${fridgeIngredients.length !== 1 ? 's' : ''} · perishables & fresh · drives "What can I make?"` : 'Perishables, produce & fresh · search above to add'}
-            </p>
-          </div>
-          <span className={`kitchen-section__arrow ${fridgeOpen ? 'kitchen-section__arrow--open' : ''}`}>▾</span>
+      <div className="inv-toolbar">
+        <input
+          className="inv-search"
+          placeholder="Search ingredients…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <button className="inv-add-btn" onClick={() => setAddFormOpen(p => !p)}>
+          {addFormOpen ? 'Cancel' : '+ Add'}
         </button>
+      </div>
 
-        {/* Search bar — always visible regardless of collapse state */}
-        <div className="kitchen-fridge-search-wrap" ref={searchRef}>
-          <div className="kitchen-fridge-input-row">
-            <input
-              className="kitchen-fridge-input"
-              placeholder="Search fridge…"
-              value={fridgeSearch}
-              onChange={e => setFridgeSearch(e.target.value)}
-              onFocus={() => setFridgeSearchFocused(true)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') { e.preventDefault(); quickAddToFridge(); }
-                if (e.key === 'Escape') { setFridgeSearch(''); setFridgeSearchFocused(false); }
-              }}
-            />
-            <button
-              className="kitchen-fridge-add-btn"
-              onClick={quickAddToFridge}
-              title="Add to fridge"
-            >+ Add to Fridge</button>
-          </div>
+      {addFormOpen && (
+        <AddIngredientForm
+          config={config}
+          onAdd={addItem}
+          onClose={() => setAddFormOpen(false)}
+        />
+      )}
 
-          {/* Autocomplete dropdown — clean list style, appears when typing */}
-          {showSearchDropdown && (
-            <ul className="kitchen-fridge-autocomplete">
-              {(searchDropdown || []).map(item => (
-                <li key={item}>
-                  <button
-                    className={`kitchen-fridge-autocomplete__item ${fridgeSet.has(item) ? 'kitchen-fridge-autocomplete__item--active' : ''}`}
-                    onMouseDown={e => { e.preventDefault(); toggleFridge(item); setFridgeSearch(''); setFridgeSearchFocused(false); }}
-                  >
-                    <span className="kitchen-fridge-autocomplete__icon">
-                      {fridgeSet.has(item) ? '✓' : '+'}
-                    </span>
-                    {item}
-                    {fridgeSet.has(item) && <span className="kitchen-fridge-autocomplete__badge">in fridge</span>}
-                  </button>
-                </li>
-              ))}
-              {fridgeSearch && !(searchDropdown || []).find(i => i === fridgeSearch.toLowerCase().trim()) && (
-                <li>
-                  <button
-                    className="kitchen-fridge-autocomplete__item kitchen-fridge-autocomplete__item--new"
-                    onMouseDown={e => {
-                      e.preventDefault();
-                      setAddIngForm({ name: fridgeSearch.trim(), group: '' });
-                      setFridgeSearch('');
-                      setFridgeSearchFocused(false);
-                    }}
-                  >
-                    <span className="kitchen-fridge-autocomplete__icon">+</span>
-                    Add "{fridgeSearch.trim()}" as ingredient
-                  </button>
-                </li>
-              )}
-            </ul>
-          )}
-
-          {/* Inline add-ingredient form */}
-          {addIngForm && (
-            <div className="kitchen-add-ing-form">
-              <input
-                className="kitchen-custom-input"
-                value={addIngForm.name}
-                placeholder="Name"
-                autoFocus
-                onChange={e => setAddIngForm(f => ({ ...f, name: e.target.value }))}
-                onKeyDown={e => { if (e.key === 'Enter') commitAddIngForm(); if (e.key === 'Escape') setAddIngForm(null); }}
-              />
-              <select
-                className="kitchen-group-select"
-                value={addIngForm.group}
-                onChange={e => setAddIngForm(f => ({ ...f, group: e.target.value }))}
-              >
-                <option value="">No section (misc)</option>
-                {fridgeConfig.map(g => <option key={g.label} value={g.label}>{g.label}</option>)}
-              </select>
-              <button className="kitchen-custom-add-btn" onClick={commitAddIngForm}>Add</button>
-              <button className="btn btn--ghost btn--sm" onClick={() => setAddIngForm(null)}>✕</button>
-            </div>
-          )}
-        </div>
-
-
-
-        {/* Collapsible pill groups with drag-and-drop */}
-        {fridgeOpen && (
-          <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="kitchen-fridge-groups">
-              {fridgeConfig.map(group => (
-                <DroppableGroup
-                  key={group.label}
-                  group={group}
-                  fridgeSet={fridgeSet}
-                  onToggle={toggleFridge}
-                  onDelete={deleteFridgeSuggestion}
-                  onEdit={editFridgeSuggestion}
-                  onMoveToStaples={moveToStaples}
-                  isOver={overGroupId === group.label}
-                />
-              ))}
-            </div>
-            <DragOverlay>
-              {activeDragId && (() => {
-                const item = activeDragId.split('::')[1];
-                return <span className="kpill kpill--drag-overlay"><span className="kpill__toggle">{item}</span></span>;
-              })()}
-            </DragOverlay>
-          </DndContext>
-        )}
-      </section>
-
-      {/* ── Staples ──────────────────────────────────────────────────────────── */}
-      <section className="kitchen-section kitchen-section--collapsible">
-        <button className="kitchen-section__header kitchen-section__header--btn" onClick={() => setStaplesOpen(p => !p)}>
-          <div>
-            <h3 className="kitchen-section__title">Staples</h3>
-            <p className="kitchen-section__sub">Oils, sauces, grains, spices · {staplesMarked} marked</p>
-          </div>
-          <span className={`kitchen-section__arrow ${staplesOpen ? 'kitchen-section__arrow--open' : ''}`}>▾</span>
-        </button>
-
-        {staplesOpen && (
-          <div className="kitchen-checklist">
-            <StaplesAddBar groups={staplesConfig} onAdd={addStapleItem} onAddUncategorized={addUncategorizedStaple} />
-            {staplesConfig.map(group => (
-              <PillGroup
-                key={group.label}
-                label={group.label}
-                items={group.items}
-                activeSet={pantrySet}
-                onToggle={togglePantry}
-                onDelete={deleteStapleItem}
-              />
-            ))}
-            <UncategorizedPantryGroup
-              items={uncategorizedPantryStaples}
-              groupLabels={staplesConfig.map(g => g.label)}
-              onAssign={assignUncategorizedPantry}
-              onDelete={deleteUncategorizedPantry}
-            />
+      <div className="inv-groups">
+        {filteredConfig.map(group => (
+          <CategoryGroup
+            key={group.label}
+            group={group}
+            haveSet={haveSet}
+            onToggle={toggleHave}
+            onDelete={deleteItem}
+          />
+        ))}
+        {filteredConfig.length === 0 && search && (
+          <div className="inv-empty-search">
+            <p>No ingredients matching "{search}"</p>
+            <button className="inv-add-btn" onClick={() => { setAddFormOpen(true); setSearch(''); }}>
+              + Add as new ingredient
+            </button>
           </div>
         )}
-      </section>
+      </div>
     </main>
   );
 }

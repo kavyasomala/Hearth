@@ -3,7 +3,7 @@ import { Icon } from '../icons';
 import { API } from '../constants';
 import { haptic, pluralizeIng, consolidateItems } from '../utils';
 
-const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients, setFridgeIngredients, setPantryStaples }) => {
+const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients, setInventoryHave }) => {
   const [categories, setCategories] = useState([]);
   const [recipeNames, setRecipeNames] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -23,24 +23,20 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
     setChecked(prev => {
       const next = new Set(prev);
       if (next.has(key)) {
-        // Unchecking: remove from kitchen too
         next.delete(key);
-        setFridgeIngredients(prev2 => prev2.filter(x => x !== lower));
-        setPantryStaples(prev2 => prev2.filter(x => x !== lower));
+        setInventoryHave(prev2 => prev2.filter(x => x !== lower));
       } else {
         next.add(key);
-        // Auto-add to fridge (grocery → fridge first; user can upgrade to staples from Kitchen tab)
-        setFridgeIngredients(prev2 => prev2.includes(lower) ? prev2 : [...prev2, lower]);
+        setInventoryHave(prev2 => prev2.includes(lower) ? prev2 : [...prev2, lower]);
       }
       return next;
     });
   };
 
-  // Remove an ingredient that's in kitchen (came from kitchen, not manually checked)
+  // Remove an ingredient from kitchen
   const removeFromKitchen = (itemName) => {
     const lower = itemName.toLowerCase().trim();
-    setFridgeIngredients(prev => prev.filter(x => x !== lower));
-    setPantryStaples(prev => prev.filter(x => x !== lower));
+    setInventoryHave(prev => prev.filter(x => x !== lower));
   };
 
   useEffect(() => {

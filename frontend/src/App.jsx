@@ -339,18 +339,21 @@ function AppInner() {
   // --- Data ------------------------------------------------------------------
   const [allIngredients, setAllIngredients] = useState([]);
   const [recipes, setRecipes] = useState([]);
-  const [fridgeIngredients, setFridgeIngredients] = useState(() => LS.get('fridgeIngredients', []));
-  const [pantryStaples, setPantryStaples] = useState(() => LS.get('pantryStaples', []));
+  const [inventoryHave, setInventoryHave] = useState(() => {
+    // Migrate old fridgeIngredients + pantryStaples into one inventoryHave array
+    const existing = LS.get('inventoryHave', null);
+    if (existing !== null) return existing;
+    const fridge = LS.get('fridgeIngredients', []);
+    const pantry = LS.get('pantryStaples', []);
+    return [...new Set([...fridge, ...pantry].map(s => s.toLowerCase().trim()).filter(Boolean))];
+  });
   // Sync kitchen to backend whenever it changes (debounced)
   const kitchenSyncTimer = useRef(null);
-  const syncKitchenToAPI = useCallback((fridge, pantry) => {
+  const syncKitchenToAPI = useCallback((have) => {
     if (!authToken) return;
     clearTimeout(kitchenSyncTimer.current);
     kitchenSyncTimer.current = setTimeout(() => {
-      const kitchen = [
-        ...fridge.map(n => ({ ingredient_name: n, storage_type: 'fridge' })),
-        ...pantry.map(n => ({ ingredient_name: n, storage_type: 'pantry' })),
-      ];
+      const kitchen = have.map(n => ({ ingredient_name: n, storage_type: 'have' }));
       authFetch(`${API}/api/user/kitchen`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kitchen }),
@@ -426,18 +429,11 @@ function AppInner() {
   const kitchenLoadedFromAPI = useRef(false);
 
   useEffect(() => {
-    LS.set('fridgeIngredients', fridgeIngredients);
-    // Only sync to API after the initial load is done (prevent overwriting server data with stale localStorage)
+    LS.set('inventoryHave', inventoryHave);
     if (kitchenLoadedFromAPI.current) {
-      syncKitchenToAPI(fridgeIngredients, pantryStaples);
+      syncKitchenToAPI(inventoryHave);
     }
-  }, [fridgeIngredients]); // eslint-disable-line
-  useEffect(() => {
-    LS.set('pantryStaples', pantryStaples);
-    if (kitchenLoadedFromAPI.current) {
-      syncKitchenToAPI(fridgeIngredients, pantryStaples);
-    }
-  }, [pantryStaples]); // eslint-disable-line
+  }, [inventoryHave]); // eslint-disable-line
 
   const loadData = useCallback(async () => {
     try {
@@ -475,13 +471,10 @@ function AppInner() {
           const kitRes = await authFetch(`${API}/api/user/kitchen`);
           if (kitRes.ok) {
             const { kitchen } = await kitRes.json();
-            const fridge = kitchen.filter(k => k.storage_type === 'fridge').map(k => k.ingredient_name);
-            const pantry = kitchen.filter(k => k.storage_type === 'pantry').map(k => k.ingredient_name);
-            // Temporarily disable sync so loading from API doesn't write stale data back
+            // Accept all storage_type values (fridge/pantry from old data, have from new)
+            const have = [...new Set(kitchen.map(k => k.ingredient_name.toLowerCase().trim()).filter(Boolean))];
             kitchenLoadedFromAPI.current = false;
-            setFridgeIngredients(fridge);
-            setPantryStaples(pantry);
-            // Re-enable sync after state settles
+            setInventoryHave(have);
             setTimeout(() => { kitchenLoadedFromAPI.current = true; }, 200);
           }
         } catch {}
@@ -492,7 +485,7 @@ function AppInner() {
 
   useEffect(() => { if (!authLoading) loadData(); }, [loadData, authLoading]); // eslint-disable-line
 
-  const allMyIngredients = useMemo(() => new Set([...fridgeIngredients, ...pantryStaples].map(i => i.toLowerCase().trim())), [fridgeIngredients, pantryStaples]);
+  const allMyIngredients = useMemo(() => new Set(inventoryHave.map(i => i.toLowerCase().trim())), [inventoryHave]);
 
   const matches = useMemo(() => {
     if (allMyIngredients.size === 0) return [];
@@ -910,7 +903,7 @@ function AppInner() {
       )}
 
       {view === 'kitchen' && (
-        <KitchenTab fridgeIngredients={fridgeIngredients} setFridgeIngredients={setFridgeIngredients} pantryStaples={pantryStaples} setPantryStaples={setPantryStaples} recipes={recipes} />
+        <KitchenTab inventoryHave={inventoryHave} setInventoryHave={setInventoryHave} />
       )}
 
       {/* ======================================================
@@ -1330,7 +1323,7 @@ function AppInner() {
         );
       })()}
 
-      {view === 'grocery' && <GroceryListTab recipes={recipes} makeSoonIds={makeSoonIds} allMyIngredients={allMyIngredients} allIngredients={allIngredients} setFridgeIngredients={setFridgeIngredients} setPantryStaples={setPantryStaples} />}
+      {view === 'grocery' && <GroceryListTab recipes={recipes} makeSoonIds={makeSoonIds} allMyIngredients={allMyIngredients} allIngredients={allIngredients} setInventoryHave={setInventoryHave} />}
 
       {view === 'plan' && <MealPlanTab session={session} recipes={recipes} onOpenRecipe={openRecipe} />}
 
