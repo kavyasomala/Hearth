@@ -2,6 +2,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 :root {
+  /* Widest the content ever gets before .view starts centring it */
+  --content-max: 1240px;
+
   /* Page header scale — one source of truth for every tab's title block.
      Older per-tab title rules reference these so they stay in step. */
   --page-title-size:    1.75rem;
@@ -233,7 +236,11 @@ body {
 .view {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 20px 100px;
+  /* The side padding grows to absorb whatever is left over past --content-max,
+     which centres every tab's content without needing a wrapper element.
+     Without this, content stretched the full viewport — on a wide monitor that
+     left cards stranded in the top-left corner with metres of empty space. */
+  padding: 16px max(20px, calc((100% - var(--content-max)) / 2)) 100px;
 }
 
 /* ─── Buttons ────────────────────────────────────────────────────────────── */
@@ -841,8 +848,21 @@ body {
   flex-direction: column;
   gap: 0;
 }
+/* Below 1024px this stays a single stacked column; above it the secondary
+   content moves into a sidebar so the primary column isn't left half-empty. */
+.home-grid { display: flex; flex-direction: column; gap: 0; }
 .home-main { min-width: 0; }
-.home-sidebar { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 16px; }
+.home-sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+@media (min-width: 1024px) {
+  .home-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 330px;
+    gap: 30px;
+    align-items: start;
+  }
+  .home-sidebar { position: sticky; top: 16px; }
+}
 
 /* Insights Card */
 .insights-card, .quick-actions-card {
@@ -1847,6 +1867,40 @@ body {
 .home-tonight__empty-title { margin: 4px 0 0; font-weight: 600; color: var(--charcoal); }
 .home-tonight__empty-sub { margin: 0; font-size: 0.82rem; }
 
+/* ─── Home: sidebar cards ────────────────────────────────────────────────── */
+.home-card {
+  padding: 16px 18px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--warm-white);
+  box-shadow: var(--shadow);
+}
+.home-card__title {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: 1rem; font-weight: 700; color: var(--charcoal);
+}
+.home-card__stat { margin: 0 0 8px; font-size: 0.85rem; color: var(--text); }
+.home-card__stat strong,
+.home-card__list strong { color: var(--terracotta); font-variant-numeric: tabular-nums; }
+.home-card__list {
+  list-style: none; margin: 0 0 12px; padding: 0;
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 0.85rem; color: var(--text);
+}
+.home-card__actions { display: flex; flex-direction: column; gap: 6px; }
+.home-quick {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 9px 12px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  background: none; cursor: pointer;
+  font-family: var(--font-body); font-size: 0.85rem; font-weight: 500;
+  color: var(--text); text-align: left;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+.home-quick:hover { border-color: var(--terracotta); color: var(--terracotta); background: var(--parchment); }
+.home-quick--full { justify-content: center; font-weight: 600; }
+
 /* ─── Home: week strip ───────────────────────────────────────────────────── */
 .home-week {
   display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;
@@ -1877,6 +1931,22 @@ body {
 }
 .home-week__meal--none { color: var(--ash); }
 .home-week__more { font-size: 0.58rem; color: var(--warm-gray); }
+
+/* In the narrow sidebar, 7 columns would crush each day to ~40px — run the
+   week as a vertical list there instead, which also gives meal names room. */
+@media (min-width: 1024px) {
+  .home-sidebar .home-week { grid-template-columns: 1fr; gap: 4px; }
+  .home-sidebar .home-week__day {
+    flex-direction: row; align-items: center; justify-content: flex-start;
+    gap: 10px; min-height: 0; padding: 8px 12px; text-align: left;
+  }
+  .home-sidebar .home-week__dow { width: 32px; flex-shrink: 0; }
+  .home-sidebar .home-week__num { width: 22px; flex-shrink: 0; text-align: right; font-size: 0.95rem; }
+  .home-sidebar .home-week__meal {
+    margin: 0; flex: 1; text-align: left; font-size: 0.75rem; -webkit-line-clamp: 1;
+  }
+  .home-sidebar .home-section { margin-bottom: 0; }
+}
 
 @media (max-width: 640px) {
   .home-hello { align-items: flex-start; flex-direction: column; gap: 14px; }
@@ -1933,23 +2003,46 @@ body {
   max-width: 62ch;
 }
 
-/* Pre-existing per-tab titles now inherit the same scale instead of each
-   picking their own between 18px and 2rem. */
+/* Every tab's page title, unified. These previously ranged 18px to 2rem, with
+   Kitchen missing the display font entirely and Meal Plan using a different
+   ink colour — all of it now comes from the tokens above. */
 .cn-tab__title,
 .add-tab__title,
 .recipes-page-header__title,
-.profile-header__title {
+.kitchen-title,
+.mp-title,
+.fridge-title,
+.cookbooks-title {
+  font-family: var(--font-display) !important;
   font-size: var(--page-title-size) !important;
   font-weight: var(--page-title-weight) !important;
   line-height: 1.15;
+  color: var(--charcoal) !important;
+  margin: 0;
 }
+
+/* Matching space beneath each header block */
 .cn-tab__header,
 .add-tab__header,
-.recipes-page-header { margin-bottom: var(--page-header-gap) !important; }
+.recipes-page-header,
+.kitchen-header,
+.fridge-header,
+.cookbooks-header { margin-bottom: var(--page-header-gap) !important; }
+
+/* Meal Plan positioned its header with padding rather than margin */
+.mp-header { padding: 0 0 var(--page-header-gap) !important; }
+
 /* Add was the only centred header; left-align it with everything else */
 .add-tab__header { text-align: left !important; }
+
+/* Cookbooks set its own horizontal padding, breaking the shared .view gutter */
+.cookbooks-tab { padding-left: 0 !important; padding-right: 0 !important; }
+
 .cn-tab__subtitle,
-.add-tab__sub { font-size: var(--page-subtitle-size) !important; }
+.add-tab__sub,
+.kitchen-subtitle,
+.fridge-subtitle,
+.cookbooks-subtitle { font-size: var(--page-subtitle-size) !important; color: var(--warm-gray) !important; }
 
 @media (max-width: 640px) {
   :root { --page-title-size: 1.5rem; --page-header-gap: 16px; }

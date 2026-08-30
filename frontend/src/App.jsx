@@ -1050,20 +1050,25 @@ function AppInner() {
       {view === 'home' && (
         <main className="view home-view">
 
+          <StatBar
+            displayName={authUser?.display_name || authUser?.username}
+            cookLog={cookLog}
+            recipeCount={recipes.length}
+          />
+
+          <div className="home-grid">
           {/* -- Left column -- */}
           <div className="home-main">
 
-            <StatBar
-              displayName={authUser?.display_name || authUser?.username}
-              cookLog={cookLog}
-              recipeCount={recipes.length}
-            />
-
-            {/* Tonight's pick — drawn from the best kitchen matches, reshuffleable */}
+            {/* Tonight's pick — best kitchen matches, reshuffleable.
+                `matches` is already sorted best-first, so take the top few
+                rather than a fixed score cutoff: with a sparse kitchen the best
+                match may only be 33%, and a 0.5 gate left the hero empty while
+                the row below happily showed the same recipe. */}
             {(() => {
               const candidates = matches
-                .filter(m => m.matchScore >= 0.5)
-                .slice(0, 12)
+                .filter(m => m.matchScore > 0)
+                .slice(0, 10)
                 .map(m => ({ match: m, recipe: recipes.find(r => r.id === m.id) }))
                 .filter(c => c.recipe);
               return (
@@ -1148,8 +1153,6 @@ function AppInner() {
               );
             })()}
 
-            <WeekStrip mealPlans={mealPlans} onOpenPlan={() => setView('plan')} />
-
             {/* -- Favorites -- */}
             {(() => {
               const favs = recipes.filter(r => heartedIds.includes(r.id));
@@ -1203,7 +1206,54 @@ function AppInner() {
               );
             })()}
 
-                    </div>{/* end home-main */}
+          </div>{/* end home-main */}
+
+          {/* -- Right column: at-a-glance, secondary to the recipe rows -- */}
+          <aside className="home-sidebar">
+            <WeekStrip mealPlans={mealPlans} onOpenPlan={() => setView('plan')} />
+
+            <div className="home-card">
+              <h3 className="home-card__title">Jump back in</h3>
+              <div className="home-card__actions">
+                <button className="home-quick" onClick={() => setView('add')}>
+                  <Icon name="plus" size={15} strokeWidth={2} /> Add a recipe
+                </button>
+                <button className="home-quick" onClick={() => setView('kitchen')}>
+                  <Icon name="chefHat" size={15} strokeWidth={2} /> Update kitchen
+                </button>
+                <button className="home-quick" onClick={() => setView('grocery')}>
+                  <Icon name="cart" size={15} strokeWidth={2} /> Grocery list
+                </button>
+                <button className="home-quick" onClick={() => setView('cookbooks')}>
+                  <Icon name="bookMarked" size={15} strokeWidth={2} /> Cookbooks
+                </button>
+              </div>
+            </div>
+
+            {/* Kitchen coverage — a reason to keep the inventory current */}
+            {allMyIngredients.size > 0 && (
+              <div className="home-card">
+                <h3 className="home-card__title">Your kitchen</h3>
+                <p className="home-card__stat">
+                  <strong>{allMyIngredients.size}</strong> ingredients on hand
+                </p>
+                {(() => {
+                  const ready = matches.filter(m => m.canMake).length;
+                  const close = matches.filter(m => !m.canMake && m.matchScore >= 0.7).length;
+                  return (
+                    <ul className="home-card__list">
+                      <li><strong>{ready}</strong> recipe{ready === 1 ? '' : 's'} ready to cook</li>
+                      <li><strong>{close}</strong> almost there</li>
+                    </ul>
+                  );
+                })()}
+                <button className="home-quick home-quick--full" onClick={() => setView('kitchen')}>
+                  Manage kitchen →
+                </button>
+              </div>
+            )}
+          </aside>
+          </div>{/* end home-grid */}
         </main>
       )}
 
