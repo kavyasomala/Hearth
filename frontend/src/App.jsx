@@ -6,6 +6,7 @@ import { API, PROGRESS_FILTERS, GEO_CUISINES, CUISINE_ICON, TAG_FILTERS } from '
 import { toNum, checkDietaryConflicts } from './utils';
 import { ErrorBoundary, HScrollRow } from './components/ui';
 import RecipeCard from './components/RecipeCard';
+import { StatBar, TonightHero, WeekStrip } from './components/HomeDashboard';
 import MarkCookedModal from './components/MarkCookedModal';
 import KitchenTab, { groupIngredients, SEED_INGREDIENTS, autoCategory } from './KitchenTab';
 import { IngredientCatalogProvider } from './IngredientCatalogContext';
@@ -531,6 +532,7 @@ function AppInner() {
   const [cookbooks, setCookbooks] = useState([]);
   const [cookLog, setCookLog] = useState([]);
   const [cookingNotes, setCookingNotes] = useState([]);
+  const [mealPlans, setMealPlans] = useState([]);   // upcoming week, for the home strip
 
   const kitchenLoadedFromAPI = useRef(false);
 
@@ -567,6 +569,14 @@ function AppInner() {
           authFetch(`${API}/api/user/preferences`),
         ]);
         if (logRes.ok)  { const d = await logRes.json();  setCookLog(d.entries || []); }
+        // Next 7 days only — the home strip never shows more than that
+        try {
+          const today = new Date();
+          const end   = new Date(today); end.setDate(end.getDate() + 7);
+          const iso   = (d) => d.toISOString().slice(0, 10);
+          const mpRes = await authFetch(`${API}/api/meal-plans?start=${iso(today)}&end=${iso(end)}`);
+          if (mpRes.ok) setMealPlans(await mpRes.json() || []);
+        } catch {}
         if (favsRes.ok) { const d = await favsRes.json(); setHeartedIds(d.favorites || []); }
         if (soonRes.ok) { const d = await soonRes.json(); setMakeSoonIds(d.makeSoon || []); }
         // Settings live in users.preferences — merge over defaults so new keys work
@@ -1043,6 +1053,29 @@ function AppInner() {
           {/* -- Left column -- */}
           <div className="home-main">
 
+            <StatBar
+              displayName={authUser?.display_name || authUser?.username}
+              cookLog={cookLog}
+              recipeCount={recipes.length}
+            />
+
+            {/* Tonight's pick — drawn from the best kitchen matches, reshuffleable */}
+            {(() => {
+              const candidates = matches
+                .filter(m => m.matchScore >= 0.5)
+                .slice(0, 12)
+                .map(m => ({ match: m, recipe: recipes.find(r => r.id === m.id) }))
+                .filter(c => c.recipe);
+              return (
+                <TonightHero
+                  candidates={candidates}
+                  hasKitchen={allMyIngredients.size > 0}
+                  onOpen={openRecipe}
+                  onGoKitchen={() => setView('kitchen')}
+                />
+              );
+            })()}
+
             {/* -- â± Make Soon -- */}
             {(() => {
               const makeSoonRecipes = recipes.filter(r => makeSoonIds.includes(r.id));
@@ -1111,6 +1144,61 @@ function AppInner() {
                         })}
                     </HScrollRow>
                   ) : <p className="home-no-matches">No matches yet -- try adding more ingredients in the Kitchen tab.</p>}
+                </div>
+              );
+            })()}
+
+            <WeekStrip mealPlans={mealPlans} onOpenPlan={() => setView('plan')} />
+
+            {/* -- Favorites -- */}
+            {(() => {
+              const favs = recipes.filter(r => heartedIds.includes(r.id));
+              if (!favs.length) return null;
+              return (
+                <div className="home-section">
+                  <div className="home-section__header">
+                    <h2 className="home-section__title">Your favorites</h2>
+                    <button className="btn btn--ghost btn--sm home-section__view-all"
+                      onClick={() => { setActiveTags([]); setActiveCuisines([]); setActiveProgresses(['__favorite']); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>
+                      View all →
+                    </button>
+                  </div>
+                  <HScrollRow count={favs.length}>
+                    {favs.map(r => (
+                      <RecipeCard key={r.id} recipe={r} match={matchById.get(r.id)} onClick={openRecipe}
+                        isHearted={true} onToggleHeart={() => toggleHeart(r.id)}
+                        isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)}
+                        onMarkCooked={(recipe) => setCookingRecipe(recipe)} allIngredients={allIngredients} />
+                    ))}
+                  </HScrollRow>
+                </div>
+              );
+            })()}
+
+            {/* -- Recently added -- */}
+            {(() => {
+              const recent = [...recipes]
+                .filter(r => r.created_at)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .slice(0, 12);
+              if (recent.length < 2) return null;
+              return (
+                <div className="home-section">
+                  <div className="home-section__header">
+                    <h2 className="home-section__title">Recently added</h2>
+                    <button className="btn btn--ghost btn--sm home-section__view-all"
+                      onClick={() => { setActiveTags([]); setActiveCuisines([]); setActiveProgresses([]); setActiveCookbooks([]); setLibrarySearch(''); setLibraryPage(1); setView('recipes'); }}>
+                      View all →
+                    </button>
+                  </div>
+                  <HScrollRow count={recent.length}>
+                    {recent.map(r => (
+                      <RecipeCard key={r.id} recipe={r} match={matchById.get(r.id)} onClick={openRecipe}
+                        isHearted={heartedIds.includes(r.id)} onToggleHeart={() => toggleHeart(r.id)}
+                        isMakeSoon={makeSoonIds.includes(r.id)} onToggleMakeSoon={() => toggleMakeSoon(r.id)}
+                        onMarkCooked={(recipe) => setCookingRecipe(recipe)} allIngredients={allIngredients} />
+                    ))}
+                  </HScrollRow>
                 </div>
               );
             })()}

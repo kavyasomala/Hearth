@@ -2,6 +2,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 :root {
+  /* Page header scale — one source of truth for every tab's title block.
+     Older per-tab title rules reference these so they stay in step. */
+  --page-title-size:    1.75rem;
+  --page-title-weight:  700;
+  --page-subtitle-size: 0.9rem;
+  --page-header-gap:    20px;
+
   /* Earthy & Warm — deeper terracotta, olive green, beeswax */
   --cream: #FBF5E8;
   --warm-white: #F7EDDB;
@@ -1762,6 +1769,192 @@ body {
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
+/* ─── Home: greeting + stats ─────────────────────────────────────────────── */
+.home-hello {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 20px; flex-wrap: wrap;
+  margin: 0 0 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.home-hello__greeting {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
+  font-weight: 700; line-height: 1.1; color: var(--charcoal);
+}
+.home-hello__sub { margin: 6px 0 0; font-size: 0.9rem; color: var(--warm-gray); }
+.home-hello__stats { display: flex; gap: 26px; }
+.home-stat { display: flex; flex-direction: column; align-items: flex-start; }
+.home-stat__num {
+  font-family: var(--font-display); font-size: 1.6rem; font-weight: 700;
+  line-height: 1; color: var(--terracotta); font-variant-numeric: tabular-nums;
+}
+.home-stat__label {
+  margin-top: 3px; font-size: 0.68rem; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--ash);
+}
+
+/* ─── Home: tonight's pick ───────────────────────────────────────────────── */
+.home-tonight { margin: 0 0 30px; }
+.home-tonight__card {
+  position: relative; display: block; width: 100%;
+  min-height: 210px; padding: 0; overflow: hidden;
+  border: none; border-radius: var(--radius); cursor: pointer;
+  background-size: cover; background-position: center;
+  background-color: var(--parchment);
+  box-shadow: var(--shadow); text-align: left;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.home-tonight__card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.home-tonight__noimg {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; color: var(--ash);
+}
+.home-tonight__scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(30,22,16,0.86) 0%, rgba(30,22,16,0.45) 45%, rgba(30,22,16,0.08) 100%);
+}
+.home-tonight__body {
+  position: relative; display: flex; flex-direction: column; gap: 5px;
+  padding: 18px 20px; min-height: 210px; justify-content: flex-end;
+}
+.home-tonight__eyebrow {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.82); font-weight: 600;
+}
+.home-tonight__name {
+  font-family: var(--font-display); font-size: 1.5rem; font-weight: 700;
+  line-height: 1.15; color: #fff; text-wrap: balance;
+}
+.home-tonight__meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.78rem; color: rgba(255,255,255,0.86); }
+.home-tonight__meta span:not(:last-child)::after { content: ' ·'; margin-left: 10px; opacity: 0.6; }
+.home-tonight__reroll {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 8px; padding: 6px 14px;
+  border: 1.5px solid var(--border); border-radius: 20px; background: none;
+  font-family: var(--font-body); font-size: 0.78rem; font-weight: 600;
+  color: var(--text); cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+.home-tonight__reroll:hover { border-color: var(--terracotta); color: var(--terracotta); }
+.home-tonight--empty .home-tonight__empty-inner {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 34px 20px; text-align: center;
+  border: 1.5px dashed var(--border); border-radius: var(--radius);
+  color: var(--warm-gray); cursor: pointer;
+}
+.home-tonight__empty-title { margin: 4px 0 0; font-weight: 600; color: var(--charcoal); }
+.home-tonight__empty-sub { margin: 0; font-size: 0.82rem; }
+
+/* ─── Home: week strip ───────────────────────────────────────────────────── */
+.home-week {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;
+}
+.home-week__day {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 4px; min-height: 84px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--warm-white); cursor: pointer; overflow: hidden;
+  font-family: var(--font-body);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+.home-week__day:hover { border-color: var(--terracotta-light); }
+.home-week__day--today { border-color: var(--terracotta); background: var(--parchment); }
+.home-week__day--has  { background: var(--parchment); }
+.home-week__dow {
+  font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ash);
+}
+.home-week__num {
+  font-family: var(--font-display); font-size: 1.05rem; font-weight: 700;
+  color: var(--charcoal); line-height: 1;
+}
+.home-week__day--today .home-week__num { color: var(--terracotta); }
+.home-week__meal {
+  margin-top: 2px; font-size: 0.63rem; line-height: 1.2; color: var(--text);
+  text-align: center; display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.home-week__meal--none { color: var(--ash); }
+.home-week__more { font-size: 0.58rem; color: var(--warm-gray); }
+
+@media (max-width: 640px) {
+  .home-hello { align-items: flex-start; flex-direction: column; gap: 14px; }
+  .home-hello__stats { gap: 22px; }
+  .home-tonight__card, .home-tonight__body { min-height: 175px; }
+  .home-tonight__name { font-size: 1.25rem; }
+  .home-week { gap: 4px; }
+  .home-week__day { padding: 8px 2px; min-height: 72px; }
+  .home-week__meal { font-size: 0.56rem; -webkit-line-clamp: 2; }
+}
+
+[data-theme="dark"] .home-week__day { background: var(--warm-white); }
+[data-theme="dark"] .home-week__day--today,
+[data-theme="dark"] .home-week__day--has { background: var(--parchment); }
+
+/* ─── Page header (shared by every tab) ──────────────────────────────────── */
+.page-header {
+  margin: 0 0 var(--page-header-gap);
+}
+.page-header--compact { --page-header-gap: 12px; }
+
+.page-header__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+}
+.page-header__title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--page-title-size);
+  font-weight: var(--page-title-weight);
+  line-height: 1.15;
+  color: var(--charcoal);
+  text-wrap: balance;
+}
+.page-header__icon { color: var(--terracotta); flex-shrink: 0; }
+.page-header__title em { font-style: normal; color: var(--terracotta); }
+.page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.page-header__subtitle {
+  margin: 6px 0 0;
+  font-size: var(--page-subtitle-size);
+  color: var(--warm-gray);
+  line-height: 1.45;
+  max-width: 62ch;
+}
+
+/* Pre-existing per-tab titles now inherit the same scale instead of each
+   picking their own between 18px and 2rem. */
+.cn-tab__title,
+.add-tab__title,
+.recipes-page-header__title,
+.profile-header__title {
+  font-size: var(--page-title-size) !important;
+  font-weight: var(--page-title-weight) !important;
+  line-height: 1.15;
+}
+.cn-tab__header,
+.add-tab__header,
+.recipes-page-header { margin-bottom: var(--page-header-gap) !important; }
+/* Add was the only centred header; left-align it with everything else */
+.add-tab__header { text-align: left !important; }
+.cn-tab__subtitle,
+.add-tab__sub { font-size: var(--page-subtitle-size) !important; }
+
+@media (max-width: 640px) {
+  :root { --page-title-size: 1.5rem; --page-header-gap: 16px; }
+}
+
 /* ─── Backup & Restore panel ─────────────────────────────────────────────── */
 .restore-panel__select {
   width: 100%;
@@ -8114,7 +8307,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .profile-view,
   .cn-tab,
   .cookbooks-tab {
-    padding-bottom: calc(0px + env(safe-area-inset-bottom, 0px)) !important;
+    /* These scroll inside .app__scroll, which sits ABOVE the tab bar — the bar
+       reserves the home-indicator inset itself. Adding it here too appended
+       phantom scrollable space below the content in the installed app. */
+    padding-bottom: 0 !important;
   }
   /* Individual section last-child gaps */
   .home-section:last-of-type { margin-bottom: 0 !important; padding-bottom: 0 !important; }
@@ -8140,7 +8336,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     justify-content: center;
     gap: 2px;
     padding-top: 6px;
-    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    /* No safe-area inset here — .mobile-tab-bar already reserves it. Adding it
+       at both levels doubled the gap (~68px on iPhone) once installed to the
+       home screen, where the inset is non-zero. In a browser tab it reads 0,
+       which is why this only showed up in the standalone app. */
+    padding-bottom: 6px;
     width: 100%;
   }
 }

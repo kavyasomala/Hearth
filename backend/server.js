@@ -23,7 +23,21 @@ const supabaseAdmin = createClient(
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: 'https://hearth-z2lo.onrender.com' }));
+// Allowing localhost lets the app be developed against the real API. Auth is a
+// Bearer token rather than a cookie, so CORS isn't the security boundary here —
+// a request without a valid token is rejected regardless of where it came from.
+const ALLOWED_ORIGINS = [
+  process.env.FRONTEND_URL || 'https://hearth-z2lo.onrender.com',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+];
+app.use(cors({
+  origin: (origin, cb) =>
+    // No Origin header = curl, health checks, server-to-server
+    (!origin || ALLOWED_ORIGINS.includes(origin))
+      ? cb(null, true)
+      : cb(new Error(`Origin ${origin} is not allowed`)),
+}));
 app.use(express.json());
 
 // â”€â”€â”€ Database â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -510,8 +524,37 @@ function extractJsonLd(html) {
   return null;
 }
 
+// Recipe sites embed HTML entities in their JSON-LD, so a 9" skillet arrives as
+// `9&quot;` and lands in the database literally unless it's decoded here.
+const HTML_ENTITIES = {
+  quot: '"', amp: '&', lt: '<', gt: '>', apos: "'", nbsp: ' ',
+  ndash: '–', mdash: '—', hellip: '…', deg: '°', middot: '·', bull: '•',
+  lsquo: '‘', rsquo: '’', ldquo: '“', rdquo: '”', sbquo: '‚',
+  frac12: '½', frac14: '¼', frac34: '¾', frac13: '⅓', frac23: '⅔',
+  times: '×', divide: '÷', minus: '−', plusmn: '±',
+  eacute: 'é', egrave: 'è', ecirc: 'ê', agrave: 'à', acirc: 'â', ccedil: 'ç',
+  uuml: 'ü', ouml: 'ö', auml: 'ä', ntilde: 'ñ', iacute: 'í', oacute: 'ó', uacute: 'ú',
+};
+
+function decodeEntities(str) {
+  return String(str ?? '')
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+      try { return String.fromCodePoint(parseInt(hex, 16)); } catch { return _; }
+    })
+    .replace(/&#(\d+);/g, (_, dec) => {
+      try { return String.fromCodePoint(parseInt(dec, 10)); } catch { return _; }
+    })
+    .replace(/&([a-z][a-z0-9]*);/gi, (m, name) => HTML_ENTITIES[name.toLowerCase()] ?? m);
+}
+
+// Strip tags, decode entities, collapse whitespace. Use for every imported string.
+const cleanText = (str) =>
+  decodeEntities(String(str ?? '').replace(/<[^>]+>/g, ' '))
+    .replace(/\s+/g, ' ')
+    .trim();
+
 function normalizeImport(data, sourceUrl) {
-  const name = (data.name || '').trim();
+  const name = cleanText(data.name);
 
   let cover_image_url = '';
   if (data.image) {
@@ -533,7 +576,7 @@ function normalizeImport(data, sourceUrl) {
 
   // Keep ingredients as raw strings â€” user reviews in the editor
   const ingredients = (data.recipeIngredient || [])
-    .map((raw, i) => ({ _id: `i${i}`, name: String(raw).trim(), amount: '', unit: '', prep_note: '', optional: false, group_label: '' }))
+    .map((raw, i) => ({ _id: `i${i}`, name: cleanText(raw), amount: '', unit: '', prep_note: '', optional: false, group_label: '' }))
     .filter(ing => ing.name);
 
   const steps = [];
@@ -542,24 +585,25 @@ function normalizeImport(data, sourceUrl) {
     for (const item of (items || [])) {
       const types = [].concat(item['@type'] || []);
       if (typeof item === 'string') {
-        if (item.trim()) steps.push({ _id: `s${sn}`, step_number: sn++, body_text: item.trim(), group_label: label, timer_seconds: null });
+        const t = cleanText(item);
+        if (t) steps.push({ _id: `s${sn}`, step_number: sn++, body_text: t, group_label: label, timer_seconds: null });
       } else if (types.includes('HowToStep')) {
-        const text = (item.text || item.name || '').replace(/<[^>]+>/g, '').trim();
+        const text = cleanText(item.text || item.name);
         if (text) steps.push({ _id: `s${sn}`, step_number: sn++, body_text: text, group_label: label, timer_seconds: null });
       } else if (types.includes('HowToSection')) {
-        flattenSteps(item.itemListElement || [], (item.name || '').trim());
+        flattenSteps(item.itemListElement || [], cleanText(item.name));
       }
     }
   };
   flattenSteps(data.recipeInstructions || []);
 
   const rawCuisine = data.recipeCuisine || '';
-  const cuisine = (Array.isArray(rawCuisine) ? rawCuisine[0] : rawCuisine).trim();
+  const cuisine = cleanText(Array.isArray(rawCuisine) ? rawCuisine[0] : rawCuisine);
 
   let tags = [];
   if (data.keywords) {
     const kws = Array.isArray(data.keywords) ? data.keywords : String(data.keywords).split(/[,;]/);
-    tags = kws.map(k => k.trim()).filter(Boolean).slice(0, 10);
+    tags = kws.map(k => cleanText(k)).filter(Boolean).slice(0, 10);
   }
   if (data.recipeCategory) {
     const cats = [].concat(data.recipeCategory).map(c => c.trim()).filter(Boolean);
