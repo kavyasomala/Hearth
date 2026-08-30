@@ -376,6 +376,10 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
     if (section === 'title')        setDraftName(recipe.name || '');
     if (section === 'image')        setDraftImageInput(recipe.coverImage || '');
     if (section === 'ingredients') {
+      // The editor shows the stored amounts, so drop any serving scale first —
+      // otherwise the summary silently disagrees with what you just typed.
+      setScaledServings(null);
+      setServingDraft(null);
       // Build flat list: group separator rows interspersed with ingredient rows
       const ings = bodyIngredients || [];
       const flat = [];
@@ -631,16 +635,13 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const currentServings = scaledServings ?? baseServings;
   const scale = baseServings && currentServings ? currentServings / baseServings : 1;
 
-  // Servings can go fractional (quarter batches), so step in quarters below 2
-  // and whole servings above it, and never round a quarter away to zero.
-  const servingStep = (v) => (v <= 2 ? 0.25 : 1);
+  // Quarters only below one serving; whole servings from there up.
+  // The two directions differ at exactly 1, so 1 steps down to 3/4 but up to 2.
   const clampServings = (n) => Math.min(99, Math.max(0.25, Math.round(n * 100) / 100));
   const stepServings = (dir) => setScaledServings(v => {
-    const cur = v ?? baseServings;
-    const next = dir < 0
-      ? cur - servingStep(cur - 0.01)   // stepping down out of 2 lands on 1.75
-      : cur + servingStep(cur);
-    return clampServings(next);
+    const cur  = v ?? baseServings;
+    const step = dir < 0 ? (cur <= 1 ? 0.25 : 1) : (cur < 1 ? 0.25 : 1);
+    return clampServings(cur + dir * step);
   });
 
   // Typed servings — accepts "3", "0.5" or "1/2"
@@ -1250,6 +1251,20 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   <button className="rp2__scale-reset-link" onClick={() => setScaledServings(null)}>↺ Reset</button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Scaled amounts differ from what's stored — say so plainly */}
+          {scale !== 1 && (
+            <div className="rp2__scaled-banner">
+              <Icon name="alertTriangle" size={13} strokeWidth={2} />
+              <span>
+                Showing amounts for <strong>{formatAmount(currentServings)}</strong> servings,
+                not the saved {baseServings}.
+              </span>
+              <button className="rp2__scaled-banner-reset" onClick={() => setScaledServings(null)}>
+                Show original
+              </button>
             </div>
           )}
 

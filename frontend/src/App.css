@@ -1762,6 +1762,39 @@ body {
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
+/* Shown whenever displayed amounts are scaled away from the saved ones */
+.rp2__scaled-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--terracotta-light);
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--parchment);
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+.rp2__scaled-banner strong { color: var(--terracotta); }
+.rp2__scaled-banner-reset {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1.5px solid var(--terracotta);
+  border-radius: 20px;
+  background: none;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--terracotta);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.rp2__scaled-banner-reset:hover { background: var(--terracotta); color: #fff; }
+
 /* The count doubles as a text field — type a servings number directly */
 .rp2__scale-count-input {
   width: 4ch;
