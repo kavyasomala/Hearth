@@ -124,6 +124,33 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
       {error && <p className="grocery-error"><Icon name="alertTriangle" size={14} strokeWidth={2} /> {error}</p>}
       {loading && <div className="grocery-loading"><div className="loading-spinner" /><p>Building your list...</p></div>}
 
+      {/* Make Soon has recipes but none of them produced any items. Previously
+          this rendered nothing at all — a blank page with no explanation. The
+          usual cause is a recipe that has no ingredients saved yet. */}
+      {!loading && !error && makeSoonRecipes.length > 0 && consolidatedCategories.length === 0 && (() => {
+        const empty = makeSoonRecipes.filter(r => !(r.ingredients || []).length);
+        return (
+          <div className="grocery-empty">
+            <div className="grocery-empty__icon">
+              <Icon name="list" size={40} color="var(--warm-gray)" strokeWidth={1.5} />
+            </div>
+            <h3 className="grocery-empty__title">Nothing to shop for yet</h3>
+            {empty.length > 0 ? (
+              <p className="grocery-empty__sub">
+                {empty.length === makeSoonRecipes.length ? 'These recipes have' : 'Some recipes have'} no
+                ingredients saved yet
+                {empty.length <= 3 && <> — <strong>{empty.map(r => r.name).join(', ')}</strong></>}.
+                Open {empty.length === 1 ? 'it' : 'them'} and add ingredients, and they'll show up here.
+              </p>
+            ) : (
+              <p className="grocery-empty__sub">
+                Everything these recipes need is already in your kitchen.
+              </p>
+            )}
+          </div>
+        );
+      })()}
+
       {!loading && consolidatedCategories.length > 0 && (
         <>
           <div className="grocery-progress-bar-wrap">

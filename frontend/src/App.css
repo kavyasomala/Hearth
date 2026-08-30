@@ -2,8 +2,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 :root {
-  /* Widest the content ever gets before .view starts centring it */
-  --content-max: 1240px;
+  /* Widest the content ever gets before .view starts centring it.
+     Reading-oriented tabs stop at --content-max; grid-heavy ones (Kitchen's
+     pill wall, the Plan calendar) opt into --content-max-wide, where extra
+     width genuinely helps rather than just stretching text. */
+  --content-max: 1600px;
+  --content-max-wide: 1880px;
 
   /* Page header scale — one source of truth for every tab's title block.
      Older per-tab title rules reference these so they stay in step. */
@@ -2035,8 +2039,11 @@ body {
 /* Add was the only centred header; left-align it with everything else */
 .add-tab__header { text-align: left !important; }
 
-/* Cookbooks set its own horizontal padding, breaking the shared .view gutter */
-.cookbooks-tab { padding-left: 0 !important; padding-right: 0 !important; }
+/* Cookbooks declares its own padding shorthand later in the file, which wins
+   over .view entirely — so it needs the centring formula restated, not zeroed. */
+.cookbooks-tab {
+  padding: 0 max(28px, calc((100% - var(--content-max)) / 2)) 48px !important;
+}
 
 .cn-tab__subtitle,
 .add-tab__sub,
@@ -8916,7 +8923,13 @@ html, body {
    KitchenTab — new three-section kitchen tracker
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.kitchen-view { padding: 20px 24px 80px; }
+/* Kitchen is a dense pill wall — it reads better wide, so it opts into the
+   wider cap rather than the text-oriented one, but still gets a real gutter
+   instead of running to the screen edge. */
+.kitchen-view {
+  --content-max: var(--content-max-wide);
+  padding: 20px max(24px, calc((100% - var(--content-max)) / 2)) 80px;
+}
 
 .kitchen-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -10511,7 +10524,10 @@ html, body {
 .meal-plan-view {
   display: flex;
   flex-direction: column;
-  padding: 0;
+  /* Was padding: 0, which ran the calendar edge-to-edge. The calendar wants
+     width, so it uses the wide cap; bottom stays 0 for the flex fill. */
+  --content-max: var(--content-max-wide);
+  padding: 16px max(20px, calc((100% - var(--content-max)) / 2)) 0;
   min-height: 0;
   flex: 1;
 }
