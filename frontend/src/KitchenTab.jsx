@@ -88,11 +88,41 @@ export const SEED_INGREDIENTS = DEFAULT_INVENTORY.flatMap(
 
 // ─── InventoryPill ─────────────────────────────────────────────────────────────
 
-function InventoryPill({ item, groupLabel, have, onToggle, onDelete }) {
+function InventoryPill({ item, groupLabel, have, onToggle, onDelete, onRename }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState(item);
+
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${groupLabel}::${item}`,
     data: { item, fromGroup: groupLabel },
+    disabled: editing,
   });
+
+  const startEdit = () => { setDraft(item); setEditing(true); };
+  const commit = () => {
+    const next = norm(draft);
+    setEditing(false);
+    if (next && next !== item) onRename(item, next);
+    else setDraft(item);
+  };
+
+  if (editing) {
+    return (
+      <span className="inv-pill inv-pill--editing">
+        <input
+          autoFocus
+          className="inv-pill__edit"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={e => {
+            if (e.key === 'Enter')  { e.preventDefault(); commit(); }
+            if (e.key === 'Escape') { setDraft(item); setEditing(false); }
+          }}
+        />
+      </span>
+    );
+  }
 
   return (
     <span
@@ -105,10 +135,17 @@ function InventoryPill({ item, groupLabel, have, onToggle, onDelete }) {
         {...listeners}
         {...attributes}
         onClick={onToggle}
+        onDoubleClick={e => { e.stopPropagation(); startEdit(); }}
       >
         {have && <span className="inv-pill__check">✓</span>}
         {item}
       </button>
+      <button
+        className="inv-pill__edit-btn"
+        onPointerDown={e => e.stopPropagation()}
+        onClick={e => { e.stopPropagation(); startEdit(); }}
+        title="Rename — updates every recipe using this ingredient"
+      >✎</button>
       <button
         className="inv-pill__rm"
         onPointerDown={e => e.stopPropagation()}
@@ -121,7 +158,7 @@ function InventoryPill({ item, groupLabel, have, onToggle, onDelete }) {
 
 // ─── CategoryGroup ─────────────────────────────────────────────────────────────
 
-function CategoryGroup({ group, haveSet, onToggle, onDelete, isOver }) {
+function CategoryGroup({ group, haveSet, onToggle, onDelete, onRename, isOver }) {
   const { setNodeRef } = useDroppable({ id: group.label });
   const haveCount = group.items.filter(i => haveSet.has(i)).length;
 
@@ -143,6 +180,7 @@ function CategoryGroup({ group, haveSet, onToggle, onDelete, isOver }) {
             have={haveSet.has(item)}
             onToggle={() => onToggle(item)}
             onDelete={() => onDelete(group.label, item)}
+            onRename={onRename}
           />
         ))}
       </div>
@@ -152,8 +190,8 @@ function CategoryGroup({ group, haveSet, onToggle, onDelete, isOver }) {
 
 // ─── AddIngredientForm ─────────────────────────────────────────────────────────
 
-function AddIngredientForm({ config, onAdd, onClose }) {
-  const [name, setName]         = useState('');
+function AddIngredientForm({ config, onAdd, onClose, initialName = '' }) {
+  const [name, setName]         = useState(initialName);
   const [category, setCategory] = useState('');
 
   const suggested = useMemo(() => name.trim() ? autoCategory(name.trim()) : '', [name]);
@@ -214,6 +252,7 @@ export default function KitchenTab({
 }) {
   const [search, setSearch]           = useState('');
   const [addFormOpen, setAddFormOpen] = useState(false);
+  const [prefillName, setPrefillName] = useState('');   // seeds the add form from a failed search
   const [activeDragId, setActiveDragId] = useState(null);
   const [overGroupId, setOverGroupId]   = useState(null);
 
@@ -242,6 +281,16 @@ export default function KitchenTab({
     if (id) deleteIngredient(id);
     setInventoryHave(prev => prev.filter(x => x !== item));
   }, [idByName, deleteIngredient, setInventoryHave]);
+
+  // Renaming the catalog row updates every recipe that references it, since
+  // recipe_ingredients points at the ingredient id rather than storing a name.
+  const renameItem = useCallback((oldName, newName) => {
+    const id = idByName.get(norm(oldName));
+    if (!id) return;
+    if (idByName.has(norm(newName))) return;   // name already taken
+    updateIngredient(id, { name: newName });
+    setInventoryHave(prev => prev.map(x => x === oldName ? newName : x));
+  }, [idByName, updateIngredient, setInventoryHave]);
 
   const addItem = useCallback((name, category) => {
     addIngredient(name, category);
@@ -302,13 +351,20 @@ export default function KitchenTab({
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        <button className="inv-add-btn" onClick={() => setAddFormOpen(p => !p)}>
+        <button className="inv-add-btn" onClick={() => { setPrefillName(''); setAddFormOpen(p => !p); }}>
           {addFormOpen ? 'Cancel' : '+ Add'}
         </button>
       </div>
 
       {addFormOpen && (
-        <AddIngredientForm config={inventoryConfig} onAdd={addItem} onClose={() => setAddFormOpen(false)} />
+        // key remounts the form so a new prefill re-seeds the name field
+        <AddIngredientForm
+          key={prefillName}
+          initialName={prefillName}
+          config={inventoryConfig}
+          onAdd={addItem}
+          onClose={() => { setAddFormOpen(false); setPrefillName(''); }}
+        />
       )}
 
       <DndContext
@@ -325,14 +381,15 @@ export default function KitchenTab({
               haveSet={haveSet}
               onToggle={toggleHave}
               onDelete={deleteItem}
+              onRename={renameItem}
               isOver={overGroupId === group.label}
             />
           ))}
           {filteredConfig.length === 0 && search && (
             <div className="inv-empty-search">
               <p>No ingredients matching "{search}"</p>
-              <button className="inv-add-btn" onClick={() => { setAddFormOpen(true); setSearch(''); }}>
-                + Add as new ingredient
+              <button className="inv-add-btn" onClick={() => { setPrefillName(norm(search)); setAddFormOpen(true); setSearch(''); }}>
+                + Add "{search.trim()}" as new ingredient
               </button>
             </div>
           )}

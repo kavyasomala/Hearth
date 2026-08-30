@@ -1729,6 +1729,33 @@ body {
   flex-direction: column;
   gap: 12px;
 }
+/* Batch multiplier row — ¼× ½× 1× 2× 3× */
+.rp2__scale-quick {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.rp2__scale-quick-btn {
+  min-width: 44px;
+  padding: 6px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: var(--warm-white);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+.rp2__scale-quick-btn:hover { border-color: var(--terracotta-light); }
+.rp2__scale-quick-btn--active {
+  background: var(--terracotta);
+  border-color: var(--terracotta);
+  color: #fff;
+}
+
 .rp2__scale-controls {
   display: flex;
   align-items: center;
@@ -2063,6 +2090,13 @@ body {
 .ing-ac-option { padding: 8px 12px; font-size: 13px; color: var(--charcoal); border-radius: 6px; cursor: pointer; transition: background var(--transition); }
 .ing-ac-option strong { color: var(--terracotta); font-weight: 700; }
 .ing-ac-option--active { background: var(--parchment); }
+/* "Add X to kitchen" row — sits below the matches, set apart by a rule */
+.ing-ac-option--create {
+  display: flex; align-items: center; gap: 6px;
+  border-top: 1px solid var(--border); margin-top: 4px; padding-top: 10px;
+  color: var(--sage); font-weight: 500;
+}
+.ing-ac-option--create strong { color: var(--sage); }
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -5964,6 +5998,7 @@ button, [role="button"] { cursor: pointer; }
 [data-theme="dark"] .ing-ac-dropdown       { background: var(--warm-white); border-color: var(--border); }
 [data-theme="dark"] .ing-ac-option:hover,
 [data-theme="dark"] .ing-ac-option--active { background: var(--parchment); }
+[data-theme="dark"] .ing-ac-option--create { border-top-color: var(--border); }
 [data-theme="dark"] .login-modal           { background: var(--warm-white); }
 
 /* Recipe page */
@@ -8704,6 +8739,23 @@ html, body {
 .inv-pill:hover .inv-pill__rm:hover { opacity: 1; color: var(--terracotta); }
 .inv-pill:hover { border-color: var(--terracotta-light); }
 .inv-pill--have:hover { border-color: var(--sage); }
+
+/* Rename affordance — same zero-width-until-hover treatment as the remove ✕ */
+.inv-pill__edit-btn {
+  max-width: 0; overflow: hidden; padding: 5px 0; border: none; background: none;
+  font-size: 0.7rem; color: var(--ash); cursor: pointer; opacity: 0;
+  white-space: nowrap;
+  transition: max-width 0.2s ease, opacity 0.15s, padding 0.2s ease;
+}
+.inv-pill:hover .inv-pill__edit-btn { max-width: 20px; opacity: 0.7; padding: 5px 2px; }
+.inv-pill:hover .inv-pill__edit-btn:hover { opacity: 1; color: var(--sage); }
+
+.inv-pill--editing { padding: 0; border-color: var(--terracotta); }
+.inv-pill__edit {
+  border: none; background: none; outline: none;
+  font-family: var(--font-body); font-size: 0.85rem; color: var(--charcoal);
+  padding: 5px 10px; width: 11ch; min-width: 80px;
+}
 
 /* Empty search state */
 .inv-empty-search {

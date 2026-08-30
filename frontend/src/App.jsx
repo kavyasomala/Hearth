@@ -7,7 +7,8 @@ import { toNum, checkDietaryConflicts } from './utils';
 import { ErrorBoundary, HScrollRow } from './components/ui';
 import RecipeCard from './components/RecipeCard';
 import MarkCookedModal from './components/MarkCookedModal';
-import KitchenTab, { groupIngredients, SEED_INGREDIENTS } from './KitchenTab';
+import KitchenTab, { groupIngredients, SEED_INGREDIENTS, autoCategory } from './KitchenTab';
+import { IngredientCatalogProvider } from './IngredientCatalogContext';
 import RecipePage from './pages/RecipePage';
 import RecipeEditor from './pages/RecipeEditor';
 import ProfileTab from './tabs/ProfileTab';
@@ -373,7 +374,7 @@ function AppInner() {
     try {
       const res = await authFetch(`${API}/api/ingredients`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: clean, category }),
+        body: JSON.stringify({ name: clean, category: category || autoCategory(clean) }),
       });
       if (!res.ok) return null;
       const { ingredient } = await res.json();
@@ -385,15 +386,25 @@ function AppInner() {
   }, [ingredients, authToken, authFetch]);
 
   const updateIngredient = useCallback(async (id, patch) => {
+    const prevList = ingredients;
     setIngredients(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i));
     if (!authToken) return;
     try {
-      await authFetch(`${API}/api/ingredients/${id}`, {
+      const res = await authFetch(`${API}/api/ingredients/${id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
       });
-    } catch {}
-  }, [authToken, authFetch]);
+      if (!res.ok) { setIngredients(prevList); return; }
+      // A rename changes the name every recipe displays, so re-pull the list
+      if (patch.name) {
+        const r = await fetch(`${API}/api/recipes`);
+        if (r.ok) {
+          const { recipes: data } = await r.json();
+          setRecipes(data.map(x => ({ ...x, time: x.time_minutes ? `${x.time_minutes} min` : '' })));
+        }
+      }
+    } catch { setIngredients(prevList); }
+  }, [ingredients, authToken, authFetch]);
 
   const deleteIngredient = useCallback(async (id) => {
     const prevList = ingredients;
@@ -409,6 +420,9 @@ function AppInner() {
       }
     } catch { setIngredients(prevList); }
   }, [ingredients, authToken, authFetch]);
+
+  // Lets the ingredient autocomplete create catalog entries inline (see context)
+  const catalogCtx = useMemo(() => ({ addIngredient }), [addIngredient]);
 
   // Sync kitchen to backend whenever it changes (debounced)
   const kitchenSyncTimer = useRef(null);
@@ -727,6 +741,7 @@ function AppInner() {
   );
 
   return (
+    <IngredientCatalogProvider value={catalogCtx}>
     <div className="app">
       {!session && <LoginModal />}
       {/* app__scroll wraps everything EXCEPT the tab bar so keyboard never moves the bar */}
@@ -1561,6 +1576,7 @@ function AppInner() {
           ))}
       </nav>
     </div>
+    </IngredientCatalogProvider>
   );
 }
 

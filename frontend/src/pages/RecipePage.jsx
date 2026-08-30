@@ -5,7 +5,7 @@ import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } 
 import { CSS } from '@dnd-kit/utilities';
 import { Icon } from '../icons';
 import { API, TAG_FILTERS, COMMON_UNITS, STAR_LABELS, GEO_CUISINES } from '../constants';
-import { haptic, pct, toNum, pluralizeIng, checkDietaryConflicts, unitType, formatWeight, formatVolume } from '../utils';
+import { haptic, pct, toNum, pluralizeIng, checkDietaryConflicts, unitType, formatWeight, formatVolume, scaleAmount, formatAmount } from '../utils';
 import { DRAG_SENSORS, AutoGrowTextarea, Badge, SectionPencil, AnchoredPopover, useAnchoredPopover } from '../components/ui';
 import { HeroImage, HeroTagsButton } from '../components/HeroComponents';
 import MarkCookedModal from '../components/MarkCookedModal';
@@ -16,33 +16,6 @@ import {
   SortableItem, StepSortableItem, StepGroupRow,
   IngFlatRow, IngGroupRow,
 } from '../components/IngredientEditor';
-
-// --- Amount scaling helpers -----------------------------------------------
-function parseAmount(str) {
-  if (str == null || str === '') return NaN;
-  const s = String(str).trim();
-  const mixed = s.match(/^(\d+(?:\.\d+)?)\s+(\d+)\/(\d+)$/);
-  if (mixed) return +mixed[1] + +mixed[2] / +mixed[3];
-  const frac = s.match(/^(\d+)\/(\d+)$/);
-  if (frac) return +frac[1] / +frac[2];
-  return parseFloat(s);
-}
-
-function formatAmount(n) {
-  if (!isFinite(n) || n < 0) return String(n);
-  const whole = Math.floor(n);
-  const rem = n - whole;
-  if (rem < 0.04) return String(whole || 0);
-  if (rem > 0.96) return String(whole + 1);
-  const FRACS = [[1,8],[1,4],[1,3],[3,8],[1,2],[5,8],[2,3],[3,4],[7,8]];
-  for (const [num, den] of FRACS) {
-    if (Math.abs(rem - num / den) < 0.05) {
-      return whole ? `${whole} ${num}/${den}` : `${num}/${den}`;
-    }
-  }
-  const d = Math.round(n * 10) / 10;
-  return String(d);
-}
 
 // --- Step Item with integrated timer --------------------------------------
 const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNotes = [] }) => {
@@ -646,6 +619,18 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const currentServings = scaledServings ?? baseServings;
   const scale = baseServings && currentServings ? currentServings / baseServings : 1;
 
+  // Servings can go fractional (quarter batches), so step in quarters below 2
+  // and whole servings above it, and never round a quarter away to zero.
+  const servingStep = (v) => (v <= 2 ? 0.25 : 1);
+  const stepServings = (dir) => setScaledServings(v => {
+    const cur = v ?? baseServings;
+    const next = dir < 0
+      ? cur - servingStep(cur - 0.01)   // stepping down out of 2 lands on 1.75
+      : cur + servingStep(cur);
+    return Math.min(99, Math.max(0.25, Math.round(next * 100) / 100));
+  });
+  const QUICK_SCALES = [[0.25, '¼'], [0.5, '½'], [1, '1'], [2, '2'], [3, '3']];
+
   // Dietary conflict warnings
   const dietaryWarnings = checkDietaryConflicts(bodyIngredients || [], dietaryFilters);
 
@@ -1203,7 +1188,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   title="Scale recipe servings"
                 >
                   <Icon name="utensils" size={11} strokeWidth={2} />
-                  {currentServings} srv
+                  {formatAmount(currentServings)} srv
                 </button>
                 {scale !== 1 && (
                   <button className="rp2__scale-reset" onClick={() => { setScaledServings(null); }} title="Reset to original servings">↺</button>
@@ -1214,18 +1199,35 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           </div>
           {showScalePanel && baseServings && (
             <div className="rp2__scale-panel">
+              {/* Batch multipliers — the fast path for a half or quarter batch */}
+              <div className="rp2__scale-quick">
+                {QUICK_SCALES.map(([mult, label]) => {
+                  const target = Math.round(baseServings * mult * 100) / 100;
+                  return (
+                    <button
+                      key={mult}
+                      className={`rp2__scale-quick-btn${Math.abs(scale - mult) < 0.001 ? ' rp2__scale-quick-btn--active' : ''}`}
+                      onClick={() => setScaledServings(mult === 1 ? null : Math.max(0.25, target))}
+                      title={`${label}× batch`}
+                    >
+                      {label}×
+                    </button>
+                  );
+                })}
+              </div>
               <div className="rp2__scale-controls">
-                <button className="rp2__scale-stepper" onClick={() => setScaledServings(v => Math.max(1, (v ?? baseServings) - 1))}>−</button>
-                <span className="rp2__scale-count">{currentServings}</span>
-                <button className="rp2__scale-stepper" onClick={() => setScaledServings(v => Math.min(99, (v ?? baseServings) + 1))}>+</button>
+                <button className="rp2__scale-stepper" onClick={() => stepServings(-1)}>−</button>
+                <span className="rp2__scale-count">{formatAmount(currentServings)}</span>
+                <button className="rp2__scale-stepper" onClick={() => stepServings(1)}>+</button>
               </div>
               <input
                 type="range"
                 className="rp2__scale-slider"
-                min={1}
+                min={0.25}
+                step={0.25}
                 max={Math.max(20, baseServings * 4)}
                 value={currentServings}
-                onChange={e => setScaledServings(parseInt(e.target.value))}
+                onChange={e => setScaledServings(parseFloat(e.target.value))}
               />
               <div className="rp2__scale-footer">
                 <span className="rp2__scale-label">Original: {baseServings} servings</span>
@@ -1244,8 +1246,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                     {items.map((ing, idx) => {
                       const key = `${label}-${idx}`;
                       const isChecked = checkedIngredients.has(key);
-                      const rawAmt = parseAmount(ing.amount);
-                      const scaledAmt = !isNaN(rawAmt) && scale !== 1 ? formatAmount(rawAmt * scale) : ing.amount;
+                      // Also canonicalises at scale 1, so a stored "0.5" shows as "1/2"
+                      const scaledAmt = scaleAmount(ing.amount, scale);
                       const amountStr = [scaledAmt, ing.unit].filter(Boolean).join(' ');
                       return (
                         <IngredientItem

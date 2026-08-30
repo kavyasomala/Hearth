@@ -5,13 +5,19 @@ import { DndContext, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Icon } from '../icons';
 import { COMMON_UNITS } from '../constants';
-import { haptic } from '../utils';
+import { haptic, normalizeAmount } from '../utils';
 import { AutoGrowTextarea, DRAG_SENSORS } from './ui';
+import { useIngredientCatalog } from '../IngredientCatalogContext';
 
 const IngredientAutocomplete = ({ value, onChange, allIngredients }) => {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
+  const creatingRef = useRef(false);
   const wrapperRef = useRef(null);
+  const { addIngredient } = useIngredientCatalog();
+  // Names created from this field. The parent catalog updates asynchronously, so
+  // the blur check would otherwise clear a name the instant after creating it.
+  const justCreatedRef = useRef(new Set());
 
   const suggestions = useMemo(() => {
     const val = value ?? '';
@@ -32,6 +38,20 @@ const IngredientAutocomplete = ({ value, onChange, allIngredients }) => {
       .map(x => x.ing);
   }, [value, allIngredients]);
 
+  const isKnown = useCallback((name) => {
+    const t = (name || '').toLowerCase().trim();
+    if (!t) return false;
+    if (justCreatedRef.current.has(t)) return true;
+    return allIngredients.some(ing =>
+      ((typeof ing === 'string' ? ing : ing?.name) ?? '').toLowerCase() === t
+    );
+  }, [allIngredients]);
+
+  const typed = (value ?? '').trim();
+  // Offer to create only when the field has text that isn't already in the catalog
+  const canCreate = !!typed && !!addIngredient && !isKnown(typed);
+  const optionCount = suggestions.length + (canCreate ? 1 : 0);
+
   useEffect(() => { setHighlighted(0); }, [suggestions]);
   useEffect(() => {
     const handler = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false); };
@@ -40,11 +60,28 @@ const IngredientAutocomplete = ({ value, onChange, allIngredients }) => {
   }, []);
 
   const select = (ing) => { onChange(ing); setOpen(false); };
+
+  const createAndSelect = useCallback(async () => {
+    const name = typed.toLowerCase();
+    if (!name) return;
+    justCreatedRef.current.add(name);
+    creatingRef.current = true;
+    onChange(name);
+    setOpen(false);
+    const created = await addIngredient(name);   // category auto-detected upstream
+    creatingRef.current = false;
+    if (created?.name) onChange(created.name);
+    else justCreatedRef.current.delete(name);    // creation failed — let blur clear it
+  }, [typed, addIngredient, onChange]);
+
   const onKeyDown = (e) => {
-    if (!open || !suggestions.length) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, suggestions.length - 1)); }
+    if (!open || !optionCount) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, optionCount - 1)); }
     if (e.key === 'ArrowUp')   { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); }
-    if (e.key === 'Enter' && suggestions[highlighted]) { e.preventDefault(); select(suggestions[highlighted]); }
+    if (e.key === 'Enter') {
+      if (highlighted < suggestions.length) { e.preventDefault(); select(suggestions[highlighted]); }
+      else if (canCreate)                   { e.preventDefault(); createAndSelect(); }
+    }
     if (e.key === 'Escape') setOpen(false);
   };
 
@@ -52,15 +89,12 @@ const IngredientAutocomplete = ({ value, onChange, allIngredients }) => {
     <div className="ing-ac-wrap" ref={wrapperRef}>
       <input className="editor-input" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => {
         setOpen(false);
-        const typed = (value ?? '').toLowerCase().trim();
-        if (!typed || !allIngredients.length) return;
-        const hasExact = allIngredients.some(ing => {
-          const name = (typeof ing === 'string' ? ing : ing?.name) ?? '';
-          return name.toLowerCase() === typed;
-        });
-        if (!hasExact) onChange('');
+        const t = (value ?? '').toLowerCase().trim();
+        if (!t || !allIngredients.length) return;
+        if (creatingRef.current) return;
+        if (!isKnown(t)) onChange('');
       }, 150)} onKeyDown={onKeyDown} placeholder="soy sauce" autoComplete="off" />
-      {open && suggestions.length > 0 && (
+      {open && optionCount > 0 && (
         <ul className="ing-ac-dropdown">
           {suggestions.map((ing, i) => {
             const q = (value ?? '').toLowerCase();
@@ -71,6 +105,16 @@ const IngredientAutocomplete = ({ value, onChange, allIngredients }) => {
               </li>
             );
           })}
+          {canCreate && (
+            <li
+              className={`ing-ac-option ing-ac-option--create ${highlighted === suggestions.length ? 'ing-ac-option--active' : ''}`}
+              onMouseDown={createAndSelect}
+              onMouseEnter={() => setHighlighted(suggestions.length)}
+            >
+              <Icon name="plus" size={13} strokeWidth={2.5} />
+              Add <strong>{typed}</strong> to kitchen
+            </li>
+          )}
         </ul>
       )}
     </div>
@@ -235,7 +279,17 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
       <div className="ing-flat-row__fields">
         {/* Row 1 */}
         <div className="ing-flat-row__row1">
-          <input className="editor-input ing-flat-row__qty" value={ing.amount} onChange={e => onUpdate('amount', e.target.value)} placeholder="Qty" />
+          {/* Canonicalise on blur so 0.5 and 1/2 both settle on "1/2" */}
+          <input
+            className="editor-input ing-flat-row__qty"
+            value={ing.amount}
+            onChange={e => onUpdate('amount', e.target.value)}
+            onBlur={e => {
+              const norm = normalizeAmount(e.target.value);
+              if (norm !== e.target.value) onUpdate('amount', norm);
+            }}
+            placeholder="Qty"
+          />
           <div className="ing-flat-row__unit-wrap">
             <UnitAutocomplete value={ing.unit} onChange={v => onUpdate('unit', v)} />
           </div>
