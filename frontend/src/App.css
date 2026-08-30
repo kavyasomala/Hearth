@@ -1762,6 +1762,42 @@ body {
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
+/* ─── Backup & Restore panel ─────────────────────────────────────────────── */
+.restore-panel__grid {
+  display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0;
+}
+.restore-panel__col {
+  flex: 1; min-width: 140px;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--parchment);
+}
+.restore-panel__col-label {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ash); margin-bottom: 4px;
+}
+.restore-panel__stat { font-size: 0.88rem; font-weight: 600; color: var(--charcoal); font-variant-numeric: tabular-nums; }
+.restore-panel__taken { font-size: 0.72rem; color: var(--warm-gray); margin-top: 4px; }
+.restore-panel__alert,
+.restore-panel__error,
+.restore-panel__ok {
+  display: flex; align-items: flex-start; gap: 6px;
+  font-size: 0.8rem; line-height: 1.4; margin: 10px 0 0;
+}
+.restore-panel__alert { color: var(--terracotta); font-weight: 500; }
+.restore-panel__error { color: var(--terracotta); }
+.restore-panel__ok    { color: var(--sage); font-weight: 500; }
+.restore-panel__open  { margin-top: 10px; }
+.restore-panel__confirm {
+  margin-top: 12px; padding: 12px;
+  border: 1.5px solid var(--terracotta); border-radius: var(--radius-sm);
+  background: var(--parchment);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.restore-panel__label { font-size: 0.78rem; color: var(--text); }
+.restore-panel__actions { display: flex; gap: 8px; }
+
 /* Shown whenever displayed amounts are scaled away from the saved ones */
 .rp2__scaled-banner {
   display: flex;

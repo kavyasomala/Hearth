@@ -43,6 +43,14 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
+  // ── Backup & restore ──
+  const [backupStatus, setBackupStatus]   = useState(null);
+  const [backupErr, setBackupErr]         = useState('');
+  const [restoreOpen, setRestoreOpen]     = useState(false);
+  const [restoreConfirm, setRestoreConfirm] = useState('');
+  const [restoring, setRestoring]         = useState(false);
+  const [restoreResult, setRestoreResult] = useState(null);
+
   // ── Account deletion ──
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -201,6 +209,60 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
   const displayName = authUser?.display_name || authUser?.username || '';
+
+  // Load backup status once, for admins only
+  useEffect(() => {
+    if (!isAdmin || !authFetch) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await authFetch(`${API}/api/admin/backup-status`);
+        const d = await r.json();
+        if (cancelled) return;
+        if (d.configured) setBackupStatus(d);
+        else setBackupErr(d.error || 'Backup is not configured on the server.');
+      } catch (e) {
+        if (!cancelled) setBackupErr('Could not reach the server to check backups.');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAdmin, authFetch]);
+
+  const runRestore = async () => {
+    setRestoring(true);
+    setRestoreResult(null);
+    try {
+      const r = await authFetch(`${API}/api/admin/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: restoreConfirm }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Restore failed');
+
+      // Hand the pre-restore snapshot to the user before anything else can go wrong
+      if (d.safetySnapshot) {
+        const blob = new Blob([JSON.stringify(d.safetySnapshot, null, 2)], { type: 'application/json' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url;
+        a.download = `hearth-before-restore-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      setRestoreResult({
+        ok: true,
+        message: `Restored ${d.recipes} recipes and ${d.ingredients} ingredients. Reload to see them.`,
+      });
+      setRestoreOpen(false);
+      setRestoreConfirm('');
+    } catch (e) {
+      setRestoreResult({ ok: false, message: e.message });
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   const submitFeedback = () => {
     if (!feedbackText.trim()) return;
@@ -574,6 +636,98 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
           </div>
         )}
       </Section>
+
+      {/* ── Backup & Restore (admin only) ────────────────────────── */}
+      {isAdmin && (
+        <Section icon="archive" title="Backup &amp; Restore">
+          <div className="settings-section">
+            <h4 className="settings-section__title">Latest backup</h4>
+            <p className="settings-section__hint">
+              Your database is backed up every night and stored encrypted. If Supabase ever
+              loses your data, restore it here.
+            </p>
+
+            {backupStatus === null && !backupErr && (
+              <p className="settings-section__hint">Checking…</p>
+            )}
+            {backupErr && (
+              <p className="restore-panel__error">
+                <Icon name="alertTriangle" size={13} strokeWidth={2} /> {backupErr}
+              </p>
+            )}
+
+            {backupStatus?.configured && (
+              <>
+                <div className="restore-panel__grid">
+                  <div className="restore-panel__col">
+                    <span className="restore-panel__col-label">In the backup</span>
+                    <span className="restore-panel__stat">{backupStatus.backup.recipes} recipes</span>
+                    <span className="restore-panel__stat">{backupStatus.backup.ingredients} ingredients</span>
+                    <span className="restore-panel__stat">{backupStatus.backup.authUsers} logins</span>
+                    <span className="restore-panel__taken">{backupStatus.backup.takenAt}</span>
+                  </div>
+                  <div className="restore-panel__col">
+                    <span className="restore-panel__col-label">Live right now</span>
+                    <span className="restore-panel__stat">{backupStatus.live.recipes} recipes</span>
+                    <span className="restore-panel__stat">{backupStatus.live.ingredients} ingredients</span>
+                  </div>
+                </div>
+
+                {backupStatus.live.recipes === 0 && backupStatus.backup.recipes > 0 && (
+                  <p className="restore-panel__alert">
+                    <Icon name="alertTriangle" size={13} strokeWidth={2} />
+                    Your database is empty but the backup has {backupStatus.backup.recipes} recipes.
+                    Restoring will bring them back.
+                  </p>
+                )}
+
+                {!restoreOpen ? (
+                  <button className="btn btn--ghost btn--sm restore-panel__open"
+                    onClick={() => { setRestoreOpen(true); setRestoreResult(null); }}>
+                    Restore from backup…
+                  </button>
+                ) : (
+                  <div className="restore-panel__confirm">
+                    <p className="settings-section__hint">
+                      This replaces every recipe, ingredient, and note with the backup's contents.
+                      A safety snapshot of your current data is downloaded first, so this is
+                      reversible. Logins are added back, never overwritten.
+                    </p>
+                    <label className="restore-panel__label">Type <strong>RESTORE</strong> to confirm</label>
+                    <input
+                      className="editor-input"
+                      value={restoreConfirm}
+                      onChange={e => setRestoreConfirm(e.target.value)}
+                      placeholder="RESTORE"
+                      autoFocus
+                    />
+                    <div className="restore-panel__actions">
+                      <button
+                        className="btn btn--primary btn--sm"
+                        disabled={restoreConfirm !== 'RESTORE' || restoring}
+                        onClick={runRestore}
+                      >
+                        {restoring ? 'Restoring…' : 'Restore now'}
+                      </button>
+                      <button className="btn btn--ghost btn--sm"
+                        onClick={() => { setRestoreOpen(false); setRestoreConfirm(''); }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {restoreResult && (
+                  <p className={restoreResult.ok ? 'restore-panel__ok' : 'restore-panel__error'}>
+                    <Icon name={restoreResult.ok ? 'check' : 'alertTriangle'} size={13} strokeWidth={2} />
+                    {restoreResult.message}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </Section>
+      )}
 
       {/* ── What's Coming ────────────────────────────────────────── */}
       <Section icon="zap" title="What's Coming">

@@ -1,0 +1,49 @@
+name: Keep Supabase Awake
+
+# Supabase free-tier projects pause after ~7 days with no database activity, and
+# a long-paused project can be torn down. That is what wiped the app after two
+# weeks of not using it. A tiny daily query counts as activity and prevents the
+# pause entirely — this is the fix for the cause, not the symptom.
+
+on:
+  schedule:
+    - cron: '0 12 * * *'   # noon UTC, deliberately far from the 6 AM backup
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL secret is not set."
+            exit 1
+          fi
+          # psql 16 (preinstalled) is fine here — a SELECT has no version constraint
+          recipes=$(psql "$DATABASE_URL" -tAc 'SELECT count(*) FROM public.recipes;')
+          echo "Database awake. recipes=$recipes"
+
+          # Zero rows means reachable but empty — the wipe scenario. Surface it
+          # loudly rather than reporting a cheerful green check.
+          if [ "$recipes" -eq 0 ]; then
+            echo "::warning::Database is reachable but contains ZERO recipes."
+            echo "If that is unexpected, restore from backups/ — see Settings → Restore in the app."
+          fi
+
+      - name: Ping backend
+        run: |
+          set -euo pipefail
+          # Render free tier also idles; this keeps the API warm and confirms it serves
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 \
+            https://hearth-z2lo.onrender.com/api/recipes || echo 000)
+          echo "Backend /api/recipes -> HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::warning::Backend did not return 200 (got $code)."
+          fi

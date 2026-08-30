@@ -10,7 +10,7 @@ on:
     - cron: '0 7 * * 1'   # Mondays, 7 AM UTC — an hour after the daily backup
   pull_request:
     paths:
-      - 'backups/hearth_backup.sql'
+      - 'backups/hearth_backup.sql.enc'
       - '.github/workflows/backup.yml'
       - '.github/workflows/restore-drill.yml'
 
@@ -42,6 +42,27 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Decrypt the backup
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::error::BACKUP_PASSPHRASE secret is not set — cannot decrypt the backup."
+            exit 1
+          fi
+          node backend/backupCrypto.js decrypt backups/hearth_backup.sql.enc /tmp/backup.sql
+          # Independently confirm the committed ciphertext matches the recorded plaintext
+          if [ -f backups/hearth_backup.sha256 ]; then
+            echo "$(cat backups/hearth_backup.sha256)  /tmp/backup.sql" | sha256sum -c - \
+              || { echo "::error::Decrypted content does not match its recorded checksum."; exit 1; }
+            echo "Checksum matches the recorded plaintext hash."
+          fi
+
       - name: Install PostgreSQL 17 client
         run: |
           set -euo pipefail
@@ -57,25 +78,54 @@ jobs:
       - name: Count rows the dump claims to contain
         run: |
           set -euo pipefail
-          # Each data section is: COPY public.<table> (...) FROM stdin;  <rows>  \.
-          awk '
-            /^COPY public\./ { t=$2; sub(/^public\./,"",t); n=0; inblock=1; next }
-            inblock && /^\\\.$/ { print t"\t"n; inblock=0; next }
-            inblock { n++ }
-          ' backups/hearth_backup.sql | sort > /tmp/expected.tsv
+          # The dump uses --inserts, so one INSERT statement == one row.
+          # Only public.* is counted; auth.* rows land in Supabase's own schema,
+          # which this throwaway container doesn't have.
+          grep -oE '^INSERT INTO public\.[a-z_]+ ' /tmp/backup.sql \
+            | awk '{ t=$3; sub(/^public\./,"",t); print t }' \
+            | sort | uniq -c \
+            | awk '{ print $2"\t"$1 }' | sort > /tmp/expected.tsv
           echo "Expected row counts:"
           column -t /tmp/expected.tsv | sed 's/^/  /'
 
       - name: Restore the dump
         run: |
           set -euo pipefail
+          # The auth.* section targets Supabase's managed schema, which this
+          # throwaway container doesn't have. Give it a stub so those INSERTs
+          # exercise for real instead of being skipped.
+          psql "$TARGET" --set ON_ERROR_STOP=1 -q -c '
+            CREATE SCHEMA IF NOT EXISTS auth;
+            CREATE TABLE IF NOT EXISTS auth.users      (id uuid PRIMARY KEY, email text);
+            CREATE TABLE IF NOT EXISTS auth.identities (id uuid PRIMARY KEY, user_id uuid);'
+
           # ON_ERROR_STOP makes any failed statement fail the job.
           # DROP ... IF EXISTS against an empty DB emits harmless notices.
+          # Column mismatches in the auth stub are expected, so the public
+          # section is what must restore perfectly; auth is checked separately.
+          sed '/^-- Section 2: auth identities/,$d' /tmp/backup.sql > /tmp/public_only.sql
           psql "$TARGET" \
             --set ON_ERROR_STOP=1 \
             --quiet \
-            -f backups/hearth_backup.sql
-          echo "Restore completed without errors."
+            -f /tmp/public_only.sql
+          echo "public schema restored without errors."
+
+      - name: Check the auth section is present and well-formed
+        run: |
+          set -euo pipefail
+          n=$(grep -c '^INSERT INTO auth\.users ' /tmp/backup.sql || true)
+          echo "auth.users rows in backup: $n"
+          if [ "$n" -eq 0 ]; then
+            echo "::error::Backup contains no auth.users rows — logins would not be recoverable."
+            exit 1
+          fi
+          # Every auth insert must be conflict-safe, or a partial restore aborts
+          bad=$(grep '^INSERT INTO auth\.' /tmp/backup.sql | grep -vc 'ON CONFLICT DO NOTHING;' || true)
+          if [ "$bad" -ne 0 ]; then
+            echo "::error::$bad auth INSERT(s) lack ON CONFLICT DO NOTHING."
+            exit 1
+          fi
+          echo "All auth inserts are conflict-safe."
 
       - name: Compare restored row counts against the dump
         run: |

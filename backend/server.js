@@ -11,6 +11,7 @@ const cors       = require('cors');
 const crypto     = require('crypto');
 const { Pool }   = require('pg');
 const { createClient } = require('@supabase/supabase-js');
+const { decrypt: decryptBackup } = require('./backupCrypto');
 require('dotenv').config();
 
 const supabaseAdmin = createClient(
@@ -938,6 +939,98 @@ app.delete('/api/cooking-notes/:id', authenticateToken, requireAdmin, async (req
 });
 
 // â”€â”€â”€ User Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+// ─── Backup & restore ─────────────────────────────────────────────────────────
+// Recovers the app after a Supabase wipe. Admin-only and deliberately awkward:
+// it takes a safety dump first and demands a typed confirmation.
+
+const BACKUP_URL =
+  'https://raw.githubusercontent.com/kavyasomala/Hearth/main/backups/hearth_backup.sql.enc';
+
+async function fetchLatestBackup() {
+  const res = await fetch(`${BACKUP_URL}?t=${Date.now()}`);   // bust the CDN cache
+  if (!res.ok) throw new Error(`Could not download backup (HTTP ${res.status})`);
+  const encrypted = Buffer.from(await res.arrayBuffer());
+  const pass = process.env.BACKUP_PASSPHRASE;
+  if (!pass) throw new Error('BACKUP_PASSPHRASE is not configured on this server');
+  return decryptBackup(encrypted, pass);   // throws on a wrong passphrase
+}
+
+// What the restore would do, without doing it
+app.get('/api/admin/backup-status', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const [live, sql] = await Promise.all([
+      q('SELECT (SELECT count(*) FROM recipes) AS recipes, (SELECT count(*) FROM ingredients) AS ingredients'),
+      fetchLatestBackup(),
+    ]);
+    const count = (re) => (sql.match(re) || []).length;
+    const stamp = sql.match(/^-- Hearth backup (.+)$/m);
+
+    res.json({
+      configured: true,
+      live: {
+        recipes:     Number(live.rows[0].recipes),
+        ingredients: Number(live.rows[0].ingredients),
+      },
+      backup: {
+        takenAt:     stamp ? stamp[1] : 'unknown',
+        recipes:     count(/^INSERT INTO public\.recipes /gm),
+        ingredients: count(/^INSERT INTO public\.ingredients /gm),
+        authUsers:   count(/^INSERT INTO auth\.users /gm),
+        bytes:       sql.length,
+      },
+    });
+  } catch (err) {
+    console.error('GET /api/admin/backup-status error:', err);
+    res.json({ configured: false, error: err.message });
+  }
+});
+
+app.post('/api/admin/restore', authenticateToken, requireAdmin, async (req, res) => {
+  if (req.body?.confirm !== 'RESTORE') {
+    return res.status(400).json({ error: 'Type RESTORE to confirm this action.' });
+  }
+
+  let client;
+  try {
+    const sql = await fetchLatestBackup();
+    if (!/PostgreSQL database dump complete/.test(sql)) {
+      return res.status(500).json({ error: 'Backup looks truncated; refusing to restore.' });
+    }
+
+    // Safety dump first — a mistaken restore stays reversible. Held in memory
+    // and returned to the caller, so it survives even if this process dies.
+    const safety = await q(`
+      SELECT json_build_object(
+        'takenAt',     now(),
+        'recipes',     (SELECT COALESCE(json_agg(r), '[]') FROM recipes r),
+        'ingredients', (SELECT COALESCE(json_agg(i), '[]') FROM ingredients i),
+        'recipe_ingredients', (SELECT COALESCE(json_agg(ri), '[]') FROM recipe_ingredients ri),
+        'recipe_steps',(SELECT COALESCE(json_agg(s), '[]') FROM recipe_steps s),
+        'recipe_notes',(SELECT COALESCE(json_agg(n), '[]') FROM recipe_notes n)
+      ) AS snapshot`).then(r => r.rows[0].snapshot).catch(() => null);
+
+    client = await pool.connect();
+    // One transaction: a failure part-way leaves the database exactly as it was
+    await client.query('BEGIN');
+    await client.query(sql);
+    await client.query('COMMIT');
+
+    const after = await q('SELECT (SELECT count(*) FROM recipes) AS recipes, (SELECT count(*) FROM ingredients) AS ingredients');
+    res.json({
+      restored: true,
+      recipes:     Number(after.rows[0].recipes),
+      ingredients: Number(after.rows[0].ingredients),
+      safetySnapshot: safety,   // client saves this to disk
+    });
+  } catch (err) {
+    if (client) { try { await client.query('ROLLBACK'); } catch {} }
+    console.error('POST /api/admin/restore error:', err);
+    res.status(500).json({ error: `Restore failed and was rolled back: ${err.message}` });
+  } finally {
+    if (client) client.release();
+  }
+});
 
 // ─── Ingredient catalog ───────────────────────────────────────────────────────
 
