@@ -1,0 +1,114 @@
+name: Backup Restore Drill
+
+# Proves the committed dump can actually be restored. An untested backup is a
+# guess, not a backup. Runs against a throwaway Postgres container — it never
+# connects to Supabase, so it cannot touch production data.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 7 * * 1'   # Mondays, 7 AM UTC — an hour after the daily backup
+  pull_request:
+    paths:
+      - 'backups/hearth_backup.sql'
+      - '.github/workflows/backup.yml'
+      - '.github/workflows/restore-drill.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  restore-drill:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: drill
+          POSTGRES_DB: drill
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Local throwaway container — not Supabase, no secret involved
+      TARGET: postgresql://postgres:drill@localhost:5432/drill
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install PostgreSQL 17 client
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Count rows the dump claims to contain
+        run: |
+          set -euo pipefail
+          # Each data section is: COPY public.<table> (...) FROM stdin;  <rows>  \.
+          awk '
+            /^COPY public\./ { t=$2; sub(/^public\./,"",t); n=0; inblock=1; next }
+            inblock && /^\\\.$/ { print t"\t"n; inblock=0; next }
+            inblock { n++ }
+          ' backups/hearth_backup.sql | sort > /tmp/expected.tsv
+          echo "Expected row counts:"
+          column -t /tmp/expected.tsv | sed 's/^/  /'
+
+      - name: Restore the dump
+        run: |
+          set -euo pipefail
+          # ON_ERROR_STOP makes any failed statement fail the job.
+          # DROP ... IF EXISTS against an empty DB emits harmless notices.
+          psql "$TARGET" \
+            --set ON_ERROR_STOP=1 \
+            --quiet \
+            -f backups/hearth_backup.sql
+          echo "Restore completed without errors."
+
+      - name: Compare restored row counts against the dump
+        run: |
+          set -euo pipefail
+          : > /tmp/actual.tsv
+          while IFS=$'\t' read -r tbl _; do
+            n=$(psql "$TARGET" -tAc "SELECT count(*) FROM public.\"$tbl\";")
+            printf '%s\t%s\n' "$tbl" "$n" >> /tmp/actual.tsv
+          done < /tmp/expected.tsv
+          sort -o /tmp/actual.tsv /tmp/actual.tsv
+
+          echo "table | expected | restored"
+          if diff -q /tmp/expected.tsv /tmp/actual.tsv > /dev/null; then
+            join -t $'\t' /tmp/expected.tsv /tmp/actual.tsv | awk -F'\t' '{print "  ✓ "$1"  "$2" = "$3}'
+            echo ""
+            echo "Restore verified — every table matches the dump."
+          else
+            echo "::error::Restored row counts do not match the dump."
+            diff /tmp/expected.tsv /tmp/actual.tsv || true
+            exit 1
+          fi
+
+      - name: Sanity-check the app's core data
+        run: |
+          set -euo pipefail
+          # Guards against a dump that restores cleanly but is actually empty
+          recipes=$(psql "$TARGET" -tAc 'SELECT count(*) FROM public.recipes;')
+          ingredients=$(psql "$TARGET" -tAc 'SELECT count(*) FROM public.ingredients;')
+          echo "recipes: $recipes | ingredients: $ingredients"
+          if [ "$recipes" -eq 0 ]; then
+            echo "::error::Restored database has zero recipes."
+            exit 1
+          fi
+          echo ""
+          echo "Recipes recovered from the backup:"
+          psql "$TARGET" -tAc 'SELECT name FROM public.recipes ORDER BY name;' | sed 's/^/  - /'

@@ -118,12 +118,29 @@ jobs:
             exit 1
           fi
 
+          # --schema=public is essential. A whole-database dump also captures
+          # Supabase's own auth/storage/realtime schemas, and combined with
+          # --clean that would emit DROP SCHEMA auth on restore — destroying
+          # every login. The app's 14 tables live entirely in public and have
+          # no foreign keys outside it, so this is both safe and sufficient.
+          #
+          # --clean --if-exists emits DROP ahead of each CREATE so the dump can
+          # replay into a database that still has tables.
           pg_dump "$DATABASE_URL" \
+            --schema=public \
             --no-owner \
             --no-acl \
+            --clean \
+            --if-exists \
             --format=plain \
             --file=backups/hearth_backup.sql
           ls -lh backups/hearth_backup.sql
+
+          # A public-only dump must never contain Supabase-internal DDL
+          if grep -qE '^(CREATE|DROP) SCHEMA (auth|storage|realtime|vault)' backups/hearth_backup.sql; then
+            echo "::error::Dump contains Supabase-internal schemas — restoring it would break auth."
+            exit 1
+          fi
 
       - name: Verify dump is non-empty
         run: |
