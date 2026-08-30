@@ -5,7 +5,7 @@ import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } 
 import { CSS } from '@dnd-kit/utilities';
 import { Icon } from '../icons';
 import { API, TAG_FILTERS, COMMON_UNITS, STAR_LABELS, GEO_CUISINES } from '../constants';
-import { haptic, pct, toNum, pluralizeIng, checkDietaryConflicts, unitType, formatWeight, formatVolume, scaleAmount, formatAmount } from '../utils';
+import { haptic, pct, toNum, pluralizeIng, checkDietaryConflicts, unitType, formatWeight, formatVolume, scaleAmount, formatAmount, parseAmount } from '../utils';
 import { DRAG_SENSORS, AutoGrowTextarea, Badge, SectionPencil, AnchoredPopover, useAnchoredPopover } from '../components/ui';
 import { HeroImage, HeroTagsButton } from '../components/HeroComponents';
 import MarkCookedModal from '../components/MarkCookedModal';
@@ -274,11 +274,23 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   const wakeLockRef = useRef(null);
   const ingDndSensors = DRAG_SENSORS();
   const [scaledServings, setScaledServings] = useState(null);
+  const [servingDraft, setServingDraft] = useState(null);   // null = show the live value
   const [showScalePanel, setShowScalePanel] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const [shareToast, setShareToast] = useState(false);
   const [sharePop, setSharePop] = useState(false);
   const sharePopRef = useRef(null);
+
+  // This component is reused across recipes (no key on <RecipePage>), so every
+  // piece of per-recipe view state has to be cleared when the recipe changes —
+  // otherwise a scale set on one recipe silently multiplies the next one's amounts.
+  useEffect(() => {
+    setScaledServings(null);
+    setServingDraft(null);
+    setShowScalePanel(false);
+    setCheckedIngredients(new Set());
+    setDoneSteps(new Set());
+  }, [recipe?.id]);
 
   // Close share popover on outside click
   useEffect(() => {
@@ -622,14 +634,21 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
   // Servings can go fractional (quarter batches), so step in quarters below 2
   // and whole servings above it, and never round a quarter away to zero.
   const servingStep = (v) => (v <= 2 ? 0.25 : 1);
+  const clampServings = (n) => Math.min(99, Math.max(0.25, Math.round(n * 100) / 100));
   const stepServings = (dir) => setScaledServings(v => {
     const cur = v ?? baseServings;
     const next = dir < 0
       ? cur - servingStep(cur - 0.01)   // stepping down out of 2 lands on 1.75
       : cur + servingStep(cur);
-    return Math.min(99, Math.max(0.25, Math.round(next * 100) / 100));
+    return clampServings(next);
   });
-  const QUICK_SCALES = [[0.25, '¼'], [0.5, '½'], [1, '1'], [2, '2'], [3, '3']];
+
+  // Typed servings — accepts "3", "0.5" or "1/2"
+  const commitServingsInput = () => {
+    const n = parseAmount(servingDraft);
+    setServingDraft(null);
+    if (isFinite(n) && n > 0) setScaledServings(clampServings(n));
+  };
 
   // Dietary conflict warnings
   const dietaryWarnings = checkDietaryConflicts(bodyIngredients || [], dietaryFilters);
@@ -1199,25 +1218,21 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           </div>
           {showScalePanel && baseServings && (
             <div className="rp2__scale-panel">
-              {/* Batch multipliers — the fast path for a half or quarter batch */}
-              <div className="rp2__scale-quick">
-                {QUICK_SCALES.map(([mult, label]) => {
-                  const target = Math.round(baseServings * mult * 100) / 100;
-                  return (
-                    <button
-                      key={mult}
-                      className={`rp2__scale-quick-btn${Math.abs(scale - mult) < 0.001 ? ' rp2__scale-quick-btn--active' : ''}`}
-                      onClick={() => setScaledServings(mult === 1 ? null : Math.max(0.25, target))}
-                      title={`${label}× batch`}
-                    >
-                      {label}×
-                    </button>
-                  );
-                })}
-              </div>
               <div className="rp2__scale-controls">
                 <button className="rp2__scale-stepper" onClick={() => stepServings(-1)}>−</button>
-                <span className="rp2__scale-count">{formatAmount(currentServings)}</span>
+                <input
+                  className="rp2__scale-count rp2__scale-count-input"
+                  inputMode="decimal"
+                  aria-label="Servings"
+                  value={servingDraft ?? formatAmount(currentServings)}
+                  onChange={e => setServingDraft(e.target.value)}
+                  onFocus={e => { setServingDraft(formatAmount(currentServings)); e.target.select(); }}
+                  onBlur={commitServingsInput}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter')  { e.preventDefault(); e.target.blur(); }
+                    if (e.key === 'Escape') { setServingDraft(null); }
+                  }}
+                />
                 <button className="rp2__scale-stepper" onClick={() => stepServings(1)}>+</button>
               </div>
               <input
