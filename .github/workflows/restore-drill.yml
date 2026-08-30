@@ -91,13 +91,25 @@ jobs:
       - name: Restore the dump
         run: |
           set -euo pipefail
-          # The auth.* section targets Supabase's managed schema, which this
-          # throwaway container doesn't have. Give it a stub so those INSERTs
-          # exercise for real instead of being skipped.
-          psql "$TARGET" --set ON_ERROR_STOP=1 -q -c '
-            CREATE SCHEMA IF NOT EXISTS auth;
-            CREATE TABLE IF NOT EXISTS auth.users      (id uuid PRIMARY KEY, email text);
-            CREATE TABLE IF NOT EXISTS auth.identities (id uuid PRIMARY KEY, user_id uuid);'
+          # Supabase provides an auth schema that this throwaway container has
+          # no idea about. The public dump depends on it two ways:
+          #   - auth.users / auth.identities, targets of the Section 2 inserts
+          #   - auth.uid() / role() / email() / jwt(), called by 11 RLS policies
+          # Stub both. The functions return NULL because the drill only proves
+          # the dump replays — no policy is ever evaluated against a live session.
+          #
+          # Quoted heredoc (<<'SQL') so neither the shell nor YAML touches the
+          # $fn$ dollar-quoting or anything else in the body.
+          cat > /tmp/auth_stub.sql <<'SQL'
+          CREATE SCHEMA IF NOT EXISTS auth;
+          CREATE TABLE IF NOT EXISTS auth.users      (id uuid PRIMARY KEY, email text);
+          CREATE TABLE IF NOT EXISTS auth.identities (id uuid PRIMARY KEY, user_id uuid);
+          CREATE OR REPLACE FUNCTION auth.uid()   RETURNS uuid  LANGUAGE sql STABLE AS $fn$ SELECT NULL::uuid  $fn$;
+          CREATE OR REPLACE FUNCTION auth.role()  RETURNS text  LANGUAGE sql STABLE AS $fn$ SELECT NULL::text  $fn$;
+          CREATE OR REPLACE FUNCTION auth.email() RETURNS text  LANGUAGE sql STABLE AS $fn$ SELECT NULL::text  $fn$;
+          CREATE OR REPLACE FUNCTION auth.jwt()   RETURNS jsonb LANGUAGE sql STABLE AS $fn$ SELECT NULL::jsonb $fn$;
+          SQL
+          psql "$TARGET" --set ON_ERROR_STOP=1 -q -f /tmp/auth_stub.sql
 
           # ON_ERROR_STOP makes any failed statement fail the job.
           # DROP ... IF EXISTS against an empty DB emits harmless notices.
