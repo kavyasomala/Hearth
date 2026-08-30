@@ -5,27 +5,81 @@ on:
     - cron: '0 6 * * *'   # 6 AM UTC = 2 AM ET daily
   workflow_dispatch:        # also allows manual trigger from GitHub UI
 
+# The commit step pushes back to the repo, which needs write access.
+permissions:
+  contents: write
+
 jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Check DATABASE_URL secret is set
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL secret is not set on this repository."
+            echo "Add it under Settings → Secrets and variables → Actions."
+            echo "It must be the Supabase *Session Pooler* URL (port 5432) —"
+            echo "the direct db.<ref>.supabase.co host is IPv6-only and unreachable from Actions runners."
+            exit 1
+          fi
+
+      # ubuntu-latest ships pg_dump 16, but Supabase projects run 17.
+      # pg_dump refuses to dump a server newer than itself, so install a
+      # matching client from the official PostgreSQL apt repo.
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+          pg_dump --version
 
       - name: Dump Supabase database
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
+          set -euo pipefail
           mkdir -p backups
+          # Log the server version first — makes any future mismatch obvious
+          psql "$DATABASE_URL" -tAc 'SELECT version();'
           pg_dump "$DATABASE_URL" \
             --no-owner \
             --no-acl \
             --format=plain \
             --file=backups/hearth_backup.sql
+          ls -lh backups/hearth_backup.sql
+
+      - name: Verify dump is non-empty
+        run: |
+          set -euo pipefail
+          # A truncated dump is worse than no dump — it would overwrite a good one
+          if [ ! -s backups/hearth_backup.sql ]; then
+            echo "::error::Dump file is empty; refusing to commit it."
+            exit 1
+          fi
+          if ! grep -q "PostgreSQL database dump complete" backups/hearth_backup.sql; then
+            echo "::error::Dump is missing its completion marker — it may be truncated."
+            exit 1
+          fi
 
       - name: Commit backup
         run: |
+          set -euo pipefail
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add backups/hearth_backup.sql
-          git diff --cached --quiet || git commit -m "chore: daily DB backup $(date -u '+%Y-%m-%d')"
-          git push
+          if git diff --cached --quiet; then
+            echo "No changes since the last backup — nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: daily DB backup $(date -u '+%Y-%m-%d') [skip ci]"
+          # Another commit may have landed while the dump ran
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
