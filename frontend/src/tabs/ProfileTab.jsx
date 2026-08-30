@@ -22,6 +22,16 @@ const Section = ({ icon, title, badge, defaultOpen = false, children }) => {
 };
 
 // ─── Profile Tab ─────────────────────────────────────────────────────────────
+// Backup timestamps are ISO/UTC from the GitHub API; show them in local time
+const fmtBackupDate = (iso) => {
+  const d = new Date(iso);
+  if (isNaN(d)) return String(iso ?? '');
+  return d.toLocaleString(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+  });
+};
+
 const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser, onLogout, onAuthUserUpdate, darkMode = false, setDarkMode, tabBarTabs, setTabBarTabs, feedbackList = [], setFeedbackList }) => {
   const apiFetch = authFetch || fetch;
   const isAdmin = authUser?.role === 'admin';
@@ -46,10 +56,16 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   // ── Backup & restore ──
   const [backupStatus, setBackupStatus]   = useState(null);
   const [backupErr, setBackupErr]         = useState('');
+  const [selectedSha, setSelectedSha]     = useState('');
   const [restoreOpen, setRestoreOpen]     = useState(false);
   const [restoreConfirm, setRestoreConfirm] = useState('');
   const [restoring, setRestoring]         = useState(false);
   const [restoreResult, setRestoreResult] = useState(null);
+
+  const selectedVersion = useMemo(
+    () => backupStatus?.versions?.find(v => v.sha === selectedSha) || null,
+    [backupStatus, selectedSha]
+  );
 
   // ── Account deletion ──
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -219,8 +235,12 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
         const r = await authFetch(`${API}/api/admin/backup-status`);
         const d = await r.json();
         if (cancelled) return;
-        if (d.configured) setBackupStatus(d);
-        else setBackupErr(d.error || 'Backup is not configured on the server.');
+        if (d.configured) {
+          setBackupStatus(d);
+          setSelectedSha(d.defaultSha);   // newest version that actually has data
+        } else {
+          setBackupErr(d.error || 'Backup is not configured on the server.');
+        }
       } catch (e) {
         if (!cancelled) setBackupErr('Could not reach the server to check backups.');
       }
@@ -235,7 +255,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
       const r = await authFetch(`${API}/api/admin/restore`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirm: restoreConfirm }),
+        body: JSON.stringify({ confirm: restoreConfirm, sha: selectedSha }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Restore failed');
@@ -253,7 +273,9 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
 
       setRestoreResult({
         ok: true,
-        message: `Restored ${d.recipes} recipes and ${d.ingredients} ingredients. Reload to see them.`,
+        message: `Restored ${d.recipes} recipes and ${d.ingredients} ingredients`
+               + `${selectedVersion ? ` from ${fmtBackupDate(selectedVersion.date)}` : ''}.`
+               + ' Reload to see them.',
       });
       setRestoreOpen(false);
       setRestoreConfirm('');
@@ -658,13 +680,38 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
 
             {backupStatus?.configured && (
               <>
+                <label className="restore-panel__label" htmlFor="restore-version">Version to restore</label>
+                <select
+                  id="restore-version"
+                  className="editor-input restore-panel__select"
+                  value={selectedSha}
+                  onChange={e => setSelectedSha(e.target.value)}
+                >
+                  {backupStatus.versions.map((v, i) => (
+                    <option key={v.sha} value={v.sha}>
+                      {fmtBackupDate(v.date)}
+                      {v.recipes !== null ? ` — ${v.recipes} recipes, ${v.ingredients} ingredients` : ' — counts unknown'}
+                      {v.hasData === false ? '  ⚠ EMPTY' : ''}
+                      {i === 0 ? '  (newest)' : ''}
+                    </option>
+                  ))}
+                </select>
+
                 <div className="restore-panel__grid">
                   <div className="restore-panel__col">
-                    <span className="restore-panel__col-label">In the backup</span>
-                    <span className="restore-panel__stat">{backupStatus.backup.recipes} recipes</span>
-                    <span className="restore-panel__stat">{backupStatus.backup.ingredients} ingredients</span>
-                    <span className="restore-panel__stat">{backupStatus.backup.authUsers} logins</span>
-                    <span className="restore-panel__taken">{backupStatus.backup.takenAt}</span>
+                    <span className="restore-panel__col-label">Selected backup</span>
+                    <span className="restore-panel__stat">
+                      {selectedVersion?.recipes ?? '?'} recipes
+                    </span>
+                    <span className="restore-panel__stat">
+                      {selectedVersion?.ingredients ?? '?'} ingredients
+                    </span>
+                    <span className="restore-panel__stat">
+                      {selectedVersion?.logins ?? '?'} logins
+                    </span>
+                    <span className="restore-panel__taken">
+                      {selectedVersion ? fmtBackupDate(selectedVersion.date) : ''}
+                    </span>
                   </div>
                   <div className="restore-panel__col">
                     <span className="restore-panel__col-label">Live right now</span>
@@ -673,10 +720,24 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                   </div>
                 </div>
 
-                {backupStatus.live.recipes === 0 && backupStatus.backup.recipes > 0 && (
+                {backupStatus.latestIsEmpty && (
                   <p className="restore-panel__alert">
                     <Icon name="alertTriangle" size={13} strokeWidth={2} />
-                    Your database is empty but the backup has {backupStatus.backup.recipes} recipes.
+                    The newest backup is empty, so an older one with data is selected instead.
+                  </p>
+                )}
+
+                {selectedVersion?.hasData === false && (
+                  <p className="restore-panel__alert">
+                    <Icon name="alertTriangle" size={13} strokeWidth={2} />
+                    This version has no recipes — restoring it would empty your database.
+                  </p>
+                )}
+
+                {backupStatus.live.recipes === 0 && (selectedVersion?.recipes ?? 0) > 0 && (
+                  <p className="restore-panel__alert">
+                    <Icon name="alertTriangle" size={13} strokeWidth={2} />
+                    Your database is empty but this backup has {selectedVersion.recipes} recipes.
                     Restoring will bring them back.
                   </p>
                 )}
@@ -704,7 +765,7 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                     <div className="restore-panel__actions">
                       <button
                         className="btn btn--primary btn--sm"
-                        disabled={restoreConfirm !== 'RESTORE' || restoring}
+                        disabled={restoreConfirm !== 'RESTORE' || restoring || selectedVersion?.hasData === false}
                         onClick={runRestore}
                       >
                         {restoring ? 'Restoring…' : 'Restore now'}

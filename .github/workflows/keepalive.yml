@@ -40,10 +40,15 @@ jobs:
       - name: Ping backend
         run: |
           set -euo pipefail
-          # Render free tier also idles; this keeps the API warm and confirms it serves
-          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 \
-            https://hearth-z2lo.onrender.com/api/recipes || echo 000)
-          echo "Backend /api/recipes -> HTTP $code"
-          if [ "$code" != "200" ]; then
-            echo "::warning::Backend did not return 200 (got $code)."
-          fi
+          # hearthbackend is the API. hearth-z2lo is the FRONTEND and 404s on
+          # /api/* — it only appears in the backend's CORS allowlist.
+          # --max-time 90 because a cold Render free instance takes ~30-50s.
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 \
+            https://hearthbackend.onrender.com/health || echo 000)
+          echo "Backend /health -> HTTP $code"
+          case "$code" in
+            200) echo "Backend healthy." ;;
+            503) echo "::error::Backend returned 503 — the Render service is suspended or unavailable. Check the Render dashboard; pinging cannot wake a suspended service." ;;
+            000) echo "::warning::Backend unreachable (timeout or DNS failure)." ;;
+            *)   echo "::warning::Backend returned $code, expected 200." ;;
+          esac

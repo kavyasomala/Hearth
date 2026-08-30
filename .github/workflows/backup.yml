@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 6 * * *'   # 6 AM UTC = 2 AM ET daily
   workflow_dispatch:        # also allows manual trigger from GitHub UI
+    inputs:
+      allow_data_loss:
+        description: 'Commit even if recipe count dropped sharply (use after deleting recipes on purpose)'
+        type: boolean
+        default: false
 
 # The commit step pushes back to the repo, which needs write access.
 permissions:
@@ -121,6 +126,15 @@ jobs:
           # Restoring auth rows must never clobber accounts that already exist.
           sed -i 's/^INSERT INTO \(auth\.[a-z_]*\) \(.*\);$/INSERT INTO \1 \2 ON CONFLICT DO NOTHING;/' build/auth.sql
 
+          # pg_dump 17.6+ emits \restrict / \unrestrict — psql CLIENT meta-commands.
+          # The restore endpoint sends SQL straight to the server, which rejects
+          # them with: syntax error at or near "\". Drop them at dump time so the
+          # stored artifact is replayable by any client, psql or otherwise.
+          # [\] is a bracket expression matching one literal backslash. Written
+          # as \\ it does not survive the shell -> sed layers reliably, and the
+          # pattern silently matches nothing instead of erroring.
+          sed -i -E '/^[[:space:]]*[\](restrict|unrestrict)\b/d' build/public.sql build/auth.sql
+
           {
             echo "-- Hearth backup $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
             echo "-- Section 1: public schema (structure + data, destructive)"
@@ -129,6 +143,12 @@ jobs:
             echo "-- Section 2: auth identities (data only, non-destructive)"
             cat build/auth.sql
           } > build/hearth_backup.sql
+
+          # Fail loudly rather than shipping a dump the restore endpoint can't replay
+          if grep -qE '^[[:space:]]*[\](restrict|unrestrict)\b' build/hearth_backup.sql; then
+            echo "::error::psql meta-commands survived stripping — restore would fail."
+            exit 1
+          fi
 
           wc -c build/hearth_backup.sql
 
@@ -143,9 +163,55 @@ jobs:
             echo "::error::Dump contains Supabase-internal schema DDL — restoring it would break auth."
             exit 1
           fi
-          echo "recipes rows:     $(grep -c '^INSERT INTO public.recipes ' "$F" || true)"
-          echo "ingredients rows: $(grep -c '^INSERT INTO public.ingredients ' "$F" || true)"
-          echo "auth users rows:  $(grep -c '^INSERT INTO auth.users ' "$F" || true)"
+
+          # An empty database still produces a structurally valid dump, so byte
+          # size proves nothing. Count actual rows.
+          recipes=$(grep -c '^INSERT INTO public.recipes '     "$F" || true)
+          ingredients=$(grep -c '^INSERT INTO public.ingredients ' "$F" || true)
+          logins=$(grep -c '^INSERT INTO auth.users '          "$F" || true)
+          echo "recipes=$recipes ingredients=$ingredients logins=$logins"
+
+          {
+            echo "RECIPES=$recipes"
+            echo "INGREDIENTS=$ingredients"
+            echo "LOGINS=$logins"
+          } >> "$GITHUB_ENV"
+
+      # The whole point of a backup is to survive a wipe — but a nightly job that
+      # blindly commits will overwrite the last good backup with an empty one
+      # within 24 hours of a data loss. Compare against the previous run and stop.
+      - name: Refuse to overwrite a good backup with an empty one
+        run: |
+          set -euo pipefail
+          META=backups/backup-meta.json
+          prev_recipes=0
+          if [ -f "$META" ]; then
+            prev_recipes=$(node -e "
+              try { console.log(JSON.parse(require('fs').readFileSync('$META','utf8')).recipes ?? 0) }
+              catch { console.log(0) }")
+          fi
+          echo "previous backup had $prev_recipes recipes; this one has $RECIPES"
+
+          if [ "${{ inputs.allow_data_loss }}" = "true" ]; then
+            echo "::warning::allow_data_loss was set — skipping the drop check."
+            exit 0
+          fi
+
+          if [ "$prev_recipes" -gt 0 ] && [ "$RECIPES" -eq 0 ]; then
+            echo "::error::Database has 0 recipes but the last backup had $prev_recipes."
+            echo "Refusing to commit — this would destroy your newest good backup."
+            echo "If the data really is gone, restore from Settings -> Backup & Restore in the app."
+            echo "If you deleted them on purpose, re-run this workflow with allow_data_loss checked."
+            exit 1
+          fi
+
+          # Also catch a partial wipe: more than half the recipes vanishing
+          if [ "$prev_recipes" -ge 4 ] && [ "$RECIPES" -lt $(( prev_recipes / 2 )) ]; then
+            echo "::error::Recipe count fell from $prev_recipes to $RECIPES (>50% drop)."
+            echo "Refusing to commit. Re-run with allow_data_loss checked if this was intentional."
+            exit 1
+          fi
+          echo "Drop check passed."
 
       - name: Encrypt
         env:
@@ -165,6 +231,18 @@ jobs:
           # Ciphertext differs every run even when data is identical, so the
           # plaintext hash is what decides whether there's anything to commit.
           sha256sum build/hearth_backup.sql | cut -d' ' -f1 > backups/hearth_backup.sha256
+
+          # Row counts are not sensitive, and keeping them in plaintext lets the
+          # next run's drop check read them without needing the passphrase.
+          node -e "
+            require('fs').writeFileSync('backups/backup-meta.json', JSON.stringify({
+              takenAt:     new Date().toISOString(),
+              recipes:     Number(process.env.RECIPES),
+              ingredients: Number(process.env.INGREDIENTS),
+              logins:      Number(process.env.LOGINS),
+            }, null, 2) + '\n');
+          "
+          cat backups/backup-meta.json
           ls -lh backups/
 
       - name: Commit backup
@@ -179,12 +257,14 @@ jobs:
             rm -f backups/hearth_backup.sql
           fi
 
-          git add backups/hearth_backup.sql.enc backups/hearth_backup.sha256
-          if git diff --cached --quiet -- backups/hearth_backup.sha256 \
-             && git diff --cached --quiet --stat -- backups/hearth_backup.sql; then
+          git add backups/hearth_backup.sql.enc backups/hearth_backup.sha256 backups/backup-meta.json
+          if git diff --cached --quiet -- backups/hearth_backup.sha256; then
             echo "Data unchanged since last backup — nothing to commit."
             exit 0
           fi
-          git commit -m "chore: daily DB backup $(date -u '+%Y-%m-%d') [skip ci]"
+
+          # Counts go in the commit message so the app's version dropdown can be
+          # built from one GitHub API call, with no downloading or decrypting.
+          git commit -m "chore: daily DB backup $(date -u '+%Y-%m-%d') — ${RECIPES} recipes, ${INGREDIENTS} ingredients, ${LOGINS} logins [skip ci]"
           git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"

@@ -1763,6 +1763,12 @@ body {
   font-variant-numeric: tabular-nums;
 }
 /* ─── Backup & Restore panel ─────────────────────────────────────────────── */
+.restore-panel__select {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 6px 0 4px;
+  font-variant-numeric: tabular-nums;
+}
 .restore-panel__grid {
   display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0;
 }

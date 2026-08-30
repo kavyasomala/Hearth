@@ -944,27 +944,88 @@ app.delete('/api/cooking-notes/:id', authenticateToken, requireAdmin, async (req
 // Recovers the app after a Supabase wipe. Admin-only and deliberately awkward:
 // it takes a safety dump first and demands a typed confirmation.
 
-const BACKUP_URL =
-  'https://raw.githubusercontent.com/kavyasomala/Hearth/main/backups/hearth_backup.sql.enc';
+const BACKUP_REPO = 'kavyasomala/Hearth';
+const BACKUP_PATH = 'backups/hearth_backup.sql.enc';
+const backupRawUrl = (ref = 'main') =>
+  `https://raw.githubusercontent.com/${BACKUP_REPO}/${ref}/${BACKUP_PATH}`;
 
-async function fetchLatestBackup() {
-  const res = await fetch(`${BACKUP_URL}?t=${Date.now()}`);   // bust the CDN cache
+// Every backup commit records its row counts in the message, e.g.
+//   "chore: daily DB backup 2026-08-30 — 6 recipes, 129 ingredients, 4 logins"
+// so the whole version list is one API call — nothing downloaded or decrypted.
+function parseCounts(message) {
+  const n = (re) => { const m = message.match(re); return m ? Number(m[1]) : null; };
+  return {
+    recipes:     n(/(\d+)\s+recipes/i),
+    ingredients: n(/(\d+)\s+ingredients/i),
+    logins:      n(/(\d+)\s+logins/i),
+  };
+}
+
+async function listBackupVersions(limit = 30) {
+  const url = `https://api.github.com/repos/${BACKUP_REPO}/commits`
+            + `?path=${encodeURIComponent(BACKUP_PATH)}&per_page=${limit}`;
+  const res = await fetch(url, { headers: { Accept: 'application/vnd.github+json' } });
+  if (!res.ok) throw new Error(`Could not list backup versions (HTTP ${res.status})`);
+
+  return (await res.json()).map(c => {
+    const message = c.commit.message.split('\n')[0];
+    const counts  = parseCounts(message);
+    return {
+      sha:      c.sha,
+      shortSha: c.sha.slice(0, 7),
+      date:     c.commit.committer.date,
+      message,
+      ...counts,
+      // Older commits predate counts in the message; null means "unknown",
+      // which must not be mistaken for "empty".
+      hasData:  counts.recipes === null ? null : counts.recipes > 0,
+    };
+  });
+}
+
+// pg_dump 17.6+ wraps plain dumps in \restrict / \unrestrict. Those are psql
+// CLIENT meta-commands — `psql -f` acts on them, but we send SQL straight to the
+// server, which rejects them with: syntax error at or near "\".
+// Only whole-line meta-commands are stripped, so backslashes inside data survive.
+function stripPsqlMetaCommands(sql) {
+  const META = /^\s*\\(restrict|unrestrict|connect|encoding|set|echo|c)\b.*$/gm;
+  const found = sql.match(META);
+  if (found?.length) {
+    console.log(`restore: stripped ${found.length} psql meta-command(s):`,
+      found.map(l => l.trim().split(/\s+/)[0]).join(', '));
+  }
+  return sql.replace(META, '');
+}
+
+async function fetchBackup(ref = 'main') {
+  const res = await fetch(`${backupRawUrl(ref)}?t=${Date.now()}`);   // bust the CDN cache
   if (!res.ok) throw new Error(`Could not download backup (HTTP ${res.status})`);
   const encrypted = Buffer.from(await res.arrayBuffer());
   const pass = process.env.BACKUP_PASSPHRASE;
   if (!pass) throw new Error('BACKUP_PASSPHRASE is not configured on this server');
-  return decryptBackup(encrypted, pass);   // throws on a wrong passphrase
+  return stripPsqlMetaCommands(decryptBackup(encrypted, pass));   // throws on a wrong passphrase
 }
 
 // What the restore would do, without doing it
 app.get('/api/admin/backup-status', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const [live, sql] = await Promise.all([
+    const [live, versions] = await Promise.all([
       q('SELECT (SELECT count(*) FROM recipes) AS recipes, (SELECT count(*) FROM ingredients) AS ingredients'),
-      fetchLatestBackup(),
+      listBackupVersions(30),
     ]);
-    const count = (re) => (sql.match(re) || []).length;
-    const stamp = sql.match(/^-- Hearth backup (.+)$/m);
+
+    if (!process.env.BACKUP_PASSPHRASE) {
+      return res.json({ configured: false, error: 'BACKUP_PASSPHRASE is not configured on this server.' });
+    }
+    if (!versions.length) {
+      return res.json({ configured: false, error: 'No backups have been committed yet.' });
+    }
+
+    // Default to the newest version that actually has recipes. After a wipe the
+    // newest backup may itself be empty, and silently offering that one is the
+    // failure mode this whole feature exists to avoid. Unknown counts (older
+    // commits) are treated as candidates rather than skipped.
+    const preferred = versions.find(v => v.hasData !== false) || versions[0];
 
     res.json({
       configured: true,
@@ -972,13 +1033,11 @@ app.get('/api/admin/backup-status', authenticateToken, requireAdmin, async (req,
         recipes:     Number(live.rows[0].recipes),
         ingredients: Number(live.rows[0].ingredients),
       },
-      backup: {
-        takenAt:     stamp ? stamp[1] : 'unknown',
-        recipes:     count(/^INSERT INTO public\.recipes /gm),
-        ingredients: count(/^INSERT INTO public\.ingredients /gm),
-        authUsers:   count(/^INSERT INTO auth\.users /gm),
-        bytes:       sql.length,
-      },
+      versions,
+      defaultSha: preferred.sha,
+      // True when the newest backup is empty but an older one isn't — worth
+      // saying out loud, because "restore latest" would be the wrong move.
+      latestIsEmpty: versions[0].hasData === false && preferred.sha !== versions[0].sha,
     });
   } catch (err) {
     console.error('GET /api/admin/backup-status error:', err);
@@ -991,11 +1050,25 @@ app.post('/api/admin/restore', authenticateToken, requireAdmin, async (req, res)
     return res.status(400).json({ error: 'Type RESTORE to confirm this action.' });
   }
 
+  // A 40-char hex SHA, or 'main' for the newest
+  const ref = typeof req.body?.sha === 'string' && /^[0-9a-f]{7,40}$/.test(req.body.sha)
+    ? req.body.sha
+    : 'main';
+
   let client;
   try {
-    const sql = await fetchLatestBackup();
+    const sql = await fetchBackup(ref);
     if (!/PostgreSQL database dump complete/.test(sql)) {
       return res.status(500).json({ error: 'Backup looks truncated; refusing to restore.' });
+    }
+
+    // Never let a restore be the thing that empties the database
+    const incoming = (sql.match(/^INSERT INTO public\.recipes /gm) || []).length;
+    if (incoming === 0 && req.body?.allowEmpty !== true) {
+      return res.status(400).json({
+        error: 'That backup contains no recipes. Pick a version that has data, '
+             + 'or re-send with allowEmpty to restore it anyway.',
+      });
     }
 
     // Safety dump first — a mistaken restore stays reversible. Held in memory
@@ -1019,6 +1092,7 @@ app.post('/api/admin/restore', authenticateToken, requireAdmin, async (req, res)
     const after = await q('SELECT (SELECT count(*) FROM recipes) AS recipes, (SELECT count(*) FROM ingredients) AS ingredients');
     res.json({
       restored: true,
+      from:        ref,
       recipes:     Number(after.rows[0].recipes),
       ingredients: Number(after.rows[0].ingredients),
       safetySnapshot: safety,   // client saves this to disk
