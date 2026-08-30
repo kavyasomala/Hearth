@@ -15,23 +15,73 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Check DATABASE_URL secret is set
+      # Prints the connection's shape — host, port, user, database — but never
+      # the password. Secrets can't be read back from the GitHub UI, so this is
+      # how you confirm DATABASE_URL points where you think it does.
+      - name: Inspect DATABASE_URL (no password shown)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "::error::DATABASE_URL secret is not set on this repository."
             echo "Add it under Settings → Secrets and variables → Actions."
-            echo "It must be the Supabase *Session Pooler* URL (port 5432) —"
-            echo "the direct db.<ref>.supabase.co host is IPv6-only and unreachable from Actions runners."
             exit 1
           fi
 
-      # ubuntu-latest ships pg_dump 16, but Supabase projects run 17.
-      # pg_dump refuses to dump a server newer than itself, so install a
-      # matching client from the official PostgreSQL apt repo.
+          # postgresql://USER:PASSWORD@HOST:PORT/DBNAME
+          stripped="${DATABASE_URL#*://}"
+          creds="${stripped%%@*}"
+          hostpart="${stripped#*@}"
+          user="${creds%%:*}"
+          hostport="${hostpart%%/*}"
+          host="${hostport%%:*}"
+          port="${hostport##*:}"
+          dbname="${hostpart#*/}"
+          dbname="${dbname%%\?*}"
+
+          echo "user:     $user"
+          echo "host:     $host"
+          echo "port:     $port"
+          echo "database: $dbname"
+          echo ""
+
+          ok=true
+          case "$host" in
+            db.*.supabase.co)
+              echo "::error::This is the DIRECT Supabase host, which is IPv6-only."
+              echo "GitHub Actions runners are IPv4-only, so this can never connect."
+              echo "Use the Session Pooler URL instead (Supabase → Project Settings →"
+              echo "Database → Connection string → Session pooler)."
+              ok=false ;;
+            *.pooler.supabase.com)
+              echo "Host is the Supabase pooler — reachable over IPv4." ;;
+            *)
+              echo "::warning::Unrecognised host pattern; continuing anyway." ;;
+          esac
+
+          if [ "$port" = "6543" ]; then
+            echo "::error::Port 6543 is the pooler's TRANSACTION mode."
+            echo "pg_dump needs session-level features. Use port 5432 (session mode)."
+            ok=false
+          fi
+
+          # Resolve the host so a DNS failure is reported as a DNS failure
+          if ! getent hosts "$host" > /dev/null; then
+            echo "::error::Host '$host' does not resolve."
+            echo "Supabase renamed pooler hosts (aws-0-* → aws-1-*) for many projects;"
+            echo "re-copy the current connection string from the Supabase dashboard."
+            ok=false
+          else
+            echo "DNS resolves to: $(getent hosts "$host" | awk '{print $1}' | tr '\n' ' ')"
+          fi
+
+          [ "$ok" = true ] || exit 1
+
+      # ubuntu-latest ships pg_dump 16, but Supabase runs 17. pg_dump refuses to
+      # dump a server newer than itself, so install a matching client.
       - name: Install PostgreSQL 17 client
         run: |
+          set -euo pipefail
           sudo install -d /usr/share/postgresql-common/pgdg
           sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
             https://www.postgresql.org/media/keys/ACCC4CF8.asc
@@ -39,7 +89,11 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update
           sudo apt-get install -y postgresql-client-17
-          pg_dump --version
+
+          # PGDG installs into a versioned directory, but the runner's
+          # preinstalled PG16 owns /usr/bin/pg_dump and wins PATH resolution.
+          # $GITHUB_PATH prepends 17 for every subsequent step.
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
 
       - name: Dump Supabase database
         env:
@@ -47,8 +101,23 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p backups
-          # Log the server version first — makes any future mismatch obvious
-          psql "$DATABASE_URL" -tAc 'SELECT version();'
+
+          echo "pg_dump binary:  $(command -v pg_dump)"
+          echo "pg_dump version: $(pg_dump --version)"
+
+          server_full=$(psql "$DATABASE_URL" -tAc 'SHOW server_version;')
+          server_major=${server_full%%.*}
+          client_major=$(pg_dump --version | grep -oE '[0-9]+' | head -1)
+          echo "server major: $server_major | client major: $client_major"
+
+          # Catch the mismatch here with an actionable message rather than
+          # letting pg_dump fail with a bare "aborting because of version mismatch"
+          if [ "$client_major" -lt "$server_major" ]; then
+            echo "::error::pg_dump $client_major is older than server $server_major."
+            echo "Bump postgresql-client-$server_major in the install step above."
+            exit 1
+          fi
+
           pg_dump "$DATABASE_URL" \
             --no-owner \
             --no-acl \
