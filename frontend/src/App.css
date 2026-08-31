@@ -10,9 +10,12 @@
   /* Extra space between the bottom tab targets and the home indicator.
      Raise it if the bar still sits too low to reach comfortably; lower it if
      the bar feels too tall. This is the one number to tune. */
-  --tabbar-clearance: 12px;
+  --tabbar-clearance: 26px;
 
   --page-gutter: clamp(20px, 4vw, 88px);
+  /* Vertical start of every tab's content. Each view used to pick its own
+     (0 to 40px), so titles sat at a different height on each tab. */
+  --page-top: 20px;
   --content-max: 2400px;
   --content-max-wide: 2400px;
 
@@ -251,7 +254,7 @@ body {
      which centres every tab's content without needing a wrapper element.
      Without this, content stretched the full viewport — on a wide monitor that
      left cards stranded in the top-left corner with metres of empty space. */
-  padding: 16px max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 100px;
+  padding: var(--page-top) max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 100px;
 }
 
 /* ─── Buttons ────────────────────────────────────────────────────────────── */
@@ -1512,7 +1515,9 @@ body {
 @media (max-width: 900px) {
   .app { margin: 0; min-height: 100vh; border-radius: 0; }
   .recipe-page__header { grid-template-columns: 1fr; }
-  .view { padding-inline: 16px; }
+  /* padding-inline wins over the padding shorthand on .view, so this quietly
+     overrode the shared gutter below 900px. Use the token instead. */
+  .view { padding-inline: var(--page-gutter); }
 }
 
 /* ─── Heart button on recipe cards ──────────────────────────────────────── */
@@ -1800,6 +1805,67 @@ body {
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
+/* ─── Drag & drop ────────────────────────────────────────────────────────── */
+/* A real grip: two columns of dots drawn with a gradient, so it scales and
+   themes cleanly. Replaces a 10px "··" at 0.15 opacity that was almost
+   invisible and gave no hint the row could be reordered. */
+.drag-grip {
+  flex-shrink: 0;
+  width: 18px;
+  align-self: stretch;
+  min-height: 28px;
+  border: none;
+  background-color: transparent;
+  background-image: radial-gradient(currentColor 1.4px, transparent 1.5px);
+  background-size: 6px 6px;
+  background-position: center;
+  background-repeat: repeat-y;
+  color: var(--ash);
+  opacity: 0.35;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  border-radius: 4px;
+  transition: opacity var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
+}
+.drag-grip:hover { opacity: 0.85; color: var(--terracotta); background-color: var(--parchment); }
+.drag-grip:active { cursor: grabbing; }
+
+/* The row being dragged lifts off the page; siblings slide under it. */
+.ing-flat-row--dragging,
+.step-sortable-row--dragging {
+  box-shadow: 0 8px 22px rgba(30, 22, 16, 0.18);
+  border-color: var(--terracotta) !important;
+  background: var(--warm-white);
+  border-radius: var(--radius-sm);
+  opacity: 0.97;
+  cursor: grabbing;
+}
+.ing-flat-row--dragging .drag-grip,
+.step-sortable-row--dragging .drag-grip { opacity: 1; color: var(--terracotta); cursor: grabbing; }
+
+/* Reordering is a position change, so keep the motion honest and quick */
+.ing-flat-row, .step-sortable-row { transition: box-shadow 160ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ing-flat-row, .step-sortable-row, .drag-grip { transition: none; }
+}
+
+/* The step number doubles as its own drag handle — say so on hover */
+.editor-step-num--drag { cursor: grab; transition: background var(--transition-fast), color var(--transition-fast); }
+.editor-step-num--drag:hover  { background: var(--terracotta); color: #fff; }
+.editor-step-num--drag:active { cursor: grabbing; }
+
+/* Handles that sit in a row header need to lay out horizontally, not as a
+   full-height rail like the one on an ingredient row. */
+.step-group-row__drag,
+.ing-group-row__drag { align-self: center; min-height: 20px; }
+
+/* Touch targets need to be bigger than a mouse cursor needs */
+@media (max-width: 640px) {
+  .drag-grip { width: 26px; min-height: 40px; opacity: 0.5; }
+}
+
 /* ─── Home: greeting + stats ─────────────────────────────────────────────── */
 .home-hello {
   display: flex; align-items: flex-end; justify-content: space-between;
@@ -2049,7 +2115,7 @@ body {
 /* Cookbooks declares its own padding shorthand later in the file, which wins
    over .view entirely — so it needs the centring formula restated, not zeroed. */
 .cookbooks-tab {
-  padding: 0 max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 48px !important;
+  padding: var(--page-top) max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 48px !important;
 }
 
 .cn-tab__subtitle,
@@ -2857,12 +2923,34 @@ body {
 .add-tab {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 60px 24px 40px;
+  /* align-items:center squeezed everything into a centred column; stretch
+     lets it use the same gutter as every other tab. */
+  align-items: stretch;
+  padding: var(--page-top) max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 40px;
 }
 .add-tab__header {
   text-align: center;
   margin-bottom: 40px;
+}
+/* All three cards are pressable now, so the CTA reads as a centred action
+   rather than a link tucked in one card's corner. */
+.add-tab__card { cursor: pointer; }
+.add-tab__card-cta {
+  display: block;
+  margin-top: auto;
+  padding-top: 12px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--terracotta);
+}
+.add-tab__card:hover .add-tab__card-cta { text-decoration: underline; }
+.add-tab__modal { max-width: 520px; }
+.add-tab__modal--wide { max-width: 660px; }
+.add-tab__modal-hint {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: var(--warm-gray);
+  line-height: 1.45;
 }
 .add-tab__title {
   font-family: var(--font-display);
@@ -3874,7 +3962,9 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 32px 0 24px;
+  /* Was 32px 0 24px, which stacked on top of the shared header margin and
+     pushed the Cookbooks title lower than every other tab. */
+  padding: 0;
   gap: 16px;
 }
 .cookbooks-title {
@@ -5941,7 +6031,9 @@ body {
 }
 
 /* ─── Cooking Notes Tab ─────────────────────────────────────────────────────── */
-.cn-tab { padding: 24px 32px 80px; max-width: 1200px; margin: 0 auto; width: 100%; }
+/* Was max-width:1200px + margin:auto — a narrower container than every other
+   tab, which is why Notes sat in a column with wide empty margins. */
+.cn-tab { padding: var(--page-top) max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 80px; width: 100%; }
 .cn-tab__header { margin-bottom: 28px; }
 .cn-tab__title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .cn-tab__title { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; color: var(--charcoal); margin: 0; }
@@ -6013,7 +6105,7 @@ body {
 .rp2__step-hint-popover__img { max-width: 100%; border-radius: var(--radius-sm); margin-top: 8px; display: block; }
 
 @media (max-width: 600px) {
-  .cn-tab { padding: 16px 14px 80px; }
+  .cn-tab { padding: var(--page-top) var(--page-gutter) 80px; }
   .cn-group__cards { grid-template-columns: 1fr; }
   .rp2__step-hint-popover { width: 240px; right: -8px; }
 }
@@ -6865,7 +6957,7 @@ button, [role="button"] { cursor: pointer; }
     font-size: 12px !important;
     padding: 6px 12px !important;
   }
-  .cookbooks-title { font-size: 18px !important; }
+  .cookbooks-title { font-size: var(--page-title-size) !important; }
 }
 
 /* ── GROCERY HEADER — actions inline with title on mobile ── */
@@ -7394,7 +7486,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     top: 60px !important;   /* below app header */
     z-index: 10 !important;
     background: var(--parchment) !important;
-    padding: 12px 16px !important;
+    /* Sticky bar keeps vertical breathing room, but horizontal padding here
+       double-indented its title relative to every other tab. */
+    padding: 0 0 12px !important;
     margin: 0 -16px !important;
     width: calc(100% + 32px) !important;
     border-bottom: 1px solid var(--border) !important;
@@ -7650,9 +7744,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 }
 
 /* ── GROCERY: reduce gap between header and list title ── */
+/* Was margin-bottom:0 + padding-bottom:12px, which overrode the shared header
+   gap and made Grocery sit tighter than every other tab. */
 .grocery-header {
-  margin-bottom: 0 !important;
-  padding-bottom: 12px !important;
+  margin-bottom: var(--page-header-gap) !important;
+  padding-bottom: 0 !important;
 }
 .grocery-list {
   margin-top: 0 !important;
@@ -7913,7 +8009,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 
 /* ── GROCERY: mobile padding ── */
 @media (max-width: 640px) {
-  .view.grocery-view { padding-top: 16px !important; }
+  .view.grocery-view { padding-top: var(--page-top) !important; }
   .grocery-header { position: static !important; margin: 0 !important; width: 100% !important; top: unset !important; }
 }
 
@@ -8077,11 +8173,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
   .cookbooks-title,
   .add-tab__title,
   .cn-tab__title,
+  .kitchen-title,
+  .mp-title,
   .recipes-page-header__title,
   .grocery-view .fridge-title {
     font-family: var(--font-display) !important;
-    font-size: 22px !important;
-    font-weight: 700 !important;
+    font-size: var(--page-title-size) !important;
+    font-weight: var(--page-title-weight) !important;
     color: var(--charcoal) !important;
     margin: 0 0 2px !important;
     line-height: 1.2 !important;
@@ -8942,7 +9040,7 @@ html, body {
    instead of running to the screen edge. */
 .kitchen-view {
   --content-max: var(--content-max-wide);
-  padding: 20px max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 80px;
+  padding: var(--page-top) max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 80px;
 }
 
 .kitchen-header {
@@ -9221,7 +9319,7 @@ html, body {
 
 /* ── Responsive ── */
 @media (max-width: 600px) {
-  .kitchen-view { padding: 16px 0 100px; }
+  .kitchen-view { padding: var(--page-top) var(--page-gutter) 100px; }
   .kitchen-section__header { padding: 16px 16px; }
   .kitchen-active-chips { padding: 0 16px 14px; }
   .kitchen-fridge-input-wrap { padding: 0 16px 16px; }
@@ -10221,17 +10319,17 @@ html, body {
 .fridge-title,
 .cookbooks-title,
 .cn-tab__title,
-.add-tab__title { font-size: 22px !important; }
+.add-tab__title { font-size: var(--page-title-size) !important; }
 
 /* Add-recipe header was center-aligned; match the left-aligned tabs */
 .add-tab__header { text-align: left !important; }
 
+/* Small phones get a smaller title, but as a token step so every tab moves
+   together. This block previously hardcoded 19px !important on five titles
+   and left .recipes-page-header__title and .mp-title at the larger size,
+   which is why Recipes looked different from Kitchen and Plan. */
 @media (max-width: 600px) {
-  .kitchen-title,
-  .fridge-title,
-  .cookbooks-title,
-  .cn-tab__title,
-  .add-tab__title { font-size: 19px !important; }
+  :root { --page-title-size: 1.35rem; }
 }
 
 
@@ -10541,7 +10639,7 @@ html, body {
   /* Was padding: 0, which ran the calendar edge-to-edge. The calendar wants
      width, so it uses the wide cap; bottom stays 0 for the flex fill. */
   --content-max: var(--content-max-wide);
-  padding: 16px max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 0;
+  padding: var(--page-top) max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 0;
   min-height: 0;
   flex: 1;
 }

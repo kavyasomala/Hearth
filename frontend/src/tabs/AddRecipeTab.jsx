@@ -319,6 +319,8 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved,
   const [importing, setImporting]       = useState(false);
   const [importError, setImportError]   = useState(null);
   const [importedFrom, setImportedFrom] = useState(null);
+  const [showUrlModal, setShowUrlModal]   = useState(false);
+  const [showTextModal, setShowTextModal] = useState(false);
 
   // Text import
   const [pasteText, setPasteText]         = useState('');
@@ -364,9 +366,11 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved,
       setParsedData(recipe);
       if (unknownObjs.length > 0) {
         setUnknownIngs(unknownObjs);
+        setShowTextModal(false);
         setShowResolver(true);
       } else {
         setImportedFrom('text');
+        setShowTextModal(false);
         openModalWithData(recipe);
         setPasteText('');
       }
@@ -484,6 +488,7 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved,
       if (!res.ok) throw new Error(data.error || 'Import failed');
       try { setImportedFrom(new URL(importUrl.trim()).hostname.replace(/^www\./, '')); } catch {}
       setImportUrl('');
+      setShowUrlModal(false);
       openModalWithData(data.recipe);
     } catch (e) {
       setImportError(e.message);
@@ -564,63 +569,118 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved,
         </div>
       )}
 
+      {/* Three identical pressable cards — each opens its own popup, rather
+          than one being a button and the other two hiding inline forms. */}
       <div className="add-tab__cards">
         <button className="add-tab__card" onClick={openModal}>
           <span className="add-tab__card-icon"><Icon name="note" size={28} strokeWidth={1.5} /></span>
           <h3 className="add-tab__card-title">Add Manually</h3>
           <p className="add-tab__card-desc">Type in the name, ingredients, steps, and notes yourself</p>
-          <span className="add-tab__card-cta">Get started →</span>
+          <span className="add-tab__card-cta">Start writing</span>
         </button>
 
-        <div className="add-tab__card add-tab__card--import">
+        <button
+          className="add-tab__card"
+          onClick={() => { setImportError(null); setShowUrlModal(true); }}
+        >
           <span className="add-tab__card-icon"><Icon name="link" size={28} strokeWidth={1.5} /></span>
           <h3 className="add-tab__card-title">Import from URL</h3>
           <p className="add-tab__card-desc">Paste a link from AllRecipes, NYT Cooking, Serious Eats, and more</p>
-          <div className="add-tab__import-row" onClick={e => e.stopPropagation()}>
-            <input
-              className="editor-input add-tab__import-input"
-              value={importUrl}
-              onChange={e => { setImportUrl(e.target.value); setImportError(null); }}
-              onKeyDown={e => e.key === 'Enter' && !importing && importFromUrl()}
-              placeholder="https://..."
-              disabled={importing}
-            />
-            <button
-              className="btn btn--primary btn--sm add-tab__import-btn"
-              onClick={importFromUrl}
-              disabled={importing || !importUrl.trim()}
-            >
-              {importing ? <><span className="add-tab__import-spinner" /> Importing…</> : 'Import'}
-            </button>
-          </div>
-          {importError && <p className="add-tab__import-error">{importError}</p>}
-        </div>
+          <span className="add-tab__card-cta">Paste a link</span>
+        </button>
 
-        {/* Text paste import */}
-        <div className="add-tab__card add-tab__card--import add-tab__card--text">
+        <button
+          className="add-tab__card"
+          onClick={() => { setParseError(null); setShowTextModal(true); }}
+        >
           <span className="add-tab__card-icon"><Icon name="fileText" size={28} strokeWidth={1.5} /></span>
           <h3 className="add-tab__card-title">Paste Recipe Text</h3>
           <p className="add-tab__card-desc">Paste any recipe text — from a blog, cookbook scan, message, anywhere</p>
-          <div className="add-tab__paste-wrap" onClick={e => e.stopPropagation()}>
-            <textarea
-              className="add-tab__paste-area"
-              placeholder="Paste the full recipe here — ingredients, steps, everything…"
-              value={pasteText}
-              onChange={e => { setPasteText(e.target.value); setParseError(null); }}
-              rows={5}
-              disabled={parsing}
-            />
-            <button
-              className="btn btn--primary btn--sm add-tab__import-btn"
-              onClick={parseFromText}
-              disabled={parsing || !pasteText.trim()}
-            >
-              {parsing ? <><span className="add-tab__import-spinner" /> Parsing…</> : 'Parse recipe'}
-            </button>
-          </div>
-          {parseError && <p className="add-tab__import-error">{parseError}</p>}
-        </div>
+          <span className="add-tab__card-cta">Paste text</span>
+        </button>
       </div>
+
+      {/* ── Import from URL popup ── */}
+      {showUrlModal && (
+        <div className="create-modal-overlay" onClick={() => !importing && setShowUrlModal(false)}>
+          <div className="create-modal add-tab__modal" onClick={e => e.stopPropagation()}>
+            <div className="create-modal__header">
+              <h2 className="create-modal__title">
+                <Icon name="link" size={18} strokeWidth={2} /> Import from URL
+              </h2>
+              <button className="ing-modal__close" onClick={() => setShowUrlModal(false)} disabled={importing}>✕</button>
+            </div>
+            <div className="create-modal__body">
+              <label className="create-modal__field-label" htmlFor="import-url">Recipe link</label>
+              <input
+                id="import-url"
+                className="editor-input"
+                value={importUrl}
+                autoFocus
+                onChange={e => { setImportUrl(e.target.value); setImportError(null); }}
+                onKeyDown={e => e.key === 'Enter' && !importing && importUrl.trim() && importFromUrl()}
+                placeholder="https://..."
+                disabled={importing}
+              />
+              <p className="add-tab__modal-hint">
+                Works with most major recipe sites. We read the structured recipe data the site publishes.
+              </p>
+              {importError && <p className="add-tab__import-error">{importError}</p>}
+            </div>
+            <div className="create-modal__footer">
+              <button
+                className="btn btn--primary"
+                onClick={importFromUrl}
+                disabled={importing || !importUrl.trim()}
+              >
+                {importing ? <><span className="add-tab__import-spinner" /> Importing…</> : 'Import recipe'}
+              </button>
+              <button className="btn btn--ghost" onClick={() => setShowUrlModal(false)} disabled={importing}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Paste recipe text popup ── */}
+      {showTextModal && (
+        <div className="create-modal-overlay" onClick={() => !parsing && setShowTextModal(false)}>
+          <div className="create-modal add-tab__modal add-tab__modal--wide" onClick={e => e.stopPropagation()}>
+            <div className="create-modal__header">
+              <h2 className="create-modal__title">
+                <Icon name="fileText" size={18} strokeWidth={2} /> Paste Recipe Text
+              </h2>
+              <button className="ing-modal__close" onClick={() => setShowTextModal(false)} disabled={parsing}>✕</button>
+            </div>
+            <div className="create-modal__body">
+              <label className="create-modal__field-label" htmlFor="paste-text">Recipe text</label>
+              <textarea
+                id="paste-text"
+                className="add-tab__paste-area"
+                placeholder={"Paste the full recipe here — ingredients, steps, everything…\n\nExample:\n2 tbsp olive oil\n1 onion, diced\n\nInstructions\n1. Heat the oil…"}
+                value={pasteText}
+                autoFocus
+                onChange={e => { setPasteText(e.target.value); setParseError(null); }}
+                rows={12}
+                disabled={parsing}
+              />
+              <p className="add-tab__modal-hint">
+                Amounts and steps are detected automatically. You'll get to review everything before it saves.
+              </p>
+              {parseError && <p className="add-tab__import-error">{parseError}</p>}
+            </div>
+            <div className="create-modal__footer">
+              <button
+                className="btn btn--primary"
+                onClick={parseFromText}
+                disabled={parsing || !pasteText.trim()}
+              >
+                {parsing ? <><span className="add-tab__import-spinner" /> Parsing…</> : 'Parse recipe'}
+              </button>
+              <button className="btn btn--ghost" onClick={() => setShowTextModal(false)} disabled={parsing}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* -- Create Recipe Modal -- */}
       {showModal && (

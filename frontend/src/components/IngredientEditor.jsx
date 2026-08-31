@@ -178,7 +178,7 @@ const SortableItem = ({ id, children }) => {
   };
   return (
     <div ref={setNodeRef} style={style} className={`sortable-item ${isDragging ? 'sortable-item--dragging' : ''}`}>
-      <div className="sortable-handle" {...attributes} {...listeners}>⠿</div>
+      <div className="sortable-handle drag-grip" aria-label="Drag to reorder" {...attributes} {...listeners} />
       {children}
     </div>
   );
@@ -232,7 +232,7 @@ const StepGroupRow = ({ grp, onLabelChange, onRemove, onAddStep }) => {
   };
   return (
     <div className="step-group-row" ref={setNodeRef} style={style}>
-      <span className="step-group-row__drag" {...attributes} {...listeners}>⠿</span>
+      <span className="step-group-row__drag drag-grip" aria-label="Drag to reorder" {...attributes} {...listeners} />
       <input
         className="step-group-row__label-input"
         value={grp.name}
@@ -257,25 +257,21 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
     zIndex: isDragging ? 100 : undefined,
   };
   return (
-    <div className="ing-flat-row" ref={setNodeRef} style={style}>
-      {/* Invisible full-row drag handle — long press activates on mobile */}
-      <span 
-        className="ing-flat-row__drag" 
-        {...attributes} 
-        {...listeners} 
+    <div
+      className={`ing-flat-row${isDragging ? ' ing-flat-row--dragging' : ''}`}
+      ref={setNodeRef}
+      style={style}
+    >
+      {/* Grip handle — long press activates on mobile. Styling moved to CSS so
+          the drag state is a class instead of inline styles recomputed on
+          every render, and so the grip can be a real shape rather than "··". */}
+      <span
+        className="drag-grip"
+        aria-label="Drag to reorder"
+        {...attributes}
+        {...listeners}
         tabIndex={-1}
-        style={{
-          opacity: isDragging ? 0.4 : 0.15,
-          fontSize: 10,
-          color: 'var(--ash)',
-          letterSpacing: '0.05em',
-          cursor: 'grab',
-          userSelect: 'none',
-          touchAction: 'none',
-          flexShrink: 0,
-          transition: 'opacity 0.2s',
-        }}
-      >··</span>
+      />
       <div className="ing-flat-row__fields">
         {/* Row 1 */}
         <div className="ing-flat-row__row1">
@@ -324,7 +320,7 @@ const IngGroupRow = ({ ing, onLabelChange, onRemove, onAddIngredient }) => {
   };
   return (
     <div className="ing-group-row" ref={setNodeRef} style={style}>
-      <span className="ing-flat-row__drag ing-group-row__drag" {...attributes} {...listeners}>⠿</span>
+      <span className="ing-group-row__drag drag-grip" aria-label="Drag to reorder" {...attributes} {...listeners} />
       <input className="ing-group-row__label-input" value={ing.name} onChange={e => onLabelChange(e.target.value)} placeholder="Group name..." />
       <button className="ing-group-row__add-btn" onClick={onAddIngredient} title="Add ingredient to this group">＋</button>
       <button className="editor-remove-btn" onClick={onRemove} title="Remove group">✕</button>
