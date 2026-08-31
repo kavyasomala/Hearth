@@ -2,12 +2,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 :root {
-  /* Widest the content ever gets before .view starts centring it.
-     Reading-oriented tabs stop at --content-max; grid-heavy ones (Kitchen's
-     pill wall, the Plan calendar) opt into --content-max-wide, where extra
-     width genuinely helps rather than just stretching text. */
-  --content-max: 1600px;
-  --content-max-wide: 1880px;
+  /* Gutters scale with the viewport so content fills whatever screen it's on,
+     rather than sitting in a fixed-width column with dead space either side.
+     4vw keeps the margin proportional; the clamp stops it collapsing on phones
+     or ballooning on ultrawide. --content-max only bites past ~2400px so a
+     3840px display doesn't stretch a single row across a metre of glass. */
+  --page-gutter: clamp(20px, 4vw, 88px);
+  --content-max: 2400px;
+  --content-max-wide: 2400px;
 
   /* Page header scale — one source of truth for every tab's title block.
      Older per-tab title rules reference these so they stay in step. */
@@ -244,7 +246,7 @@ body {
      which centres every tab's content without needing a wrapper element.
      Without this, content stretched the full viewport — on a wide monitor that
      left cards stranded in the top-left corner with metres of empty space. */
-  padding: 16px max(20px, calc((100% - var(--content-max)) / 2)) 100px;
+  padding: 16px max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 100px;
 }
 
 /* ─── Buttons ────────────────────────────────────────────────────────────── */
@@ -2042,7 +2044,7 @@ body {
 /* Cookbooks declares its own padding shorthand later in the file, which wins
    over .view entirely — so it needs the centring formula restated, not zeroed. */
 .cookbooks-tab {
-  padding: 0 max(28px, calc((100% - var(--content-max)) / 2)) 48px !important;
+  padding: 0 max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 48px !important;
 }
 
 .cn-tab__subtitle,
@@ -8928,7 +8930,7 @@ html, body {
    instead of running to the screen edge. */
 .kitchen-view {
   --content-max: var(--content-max-wide);
-  padding: 20px max(24px, calc((100% - var(--content-max)) / 2)) 80px;
+  padding: 20px max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 80px;
 }
 
 .kitchen-header {
@@ -10527,7 +10529,7 @@ html, body {
   /* Was padding: 0, which ran the calendar edge-to-edge. The calendar wants
      width, so it uses the wide cap; bottom stays 0 for the flex fill. */
   --content-max: var(--content-max-wide);
-  padding: 16px max(20px, calc((100% - var(--content-max)) / 2)) 0;
+  padding: 16px max(var(--page-gutter), calc((100% - var(--content-max)) / 2)) 0;
   min-height: 0;
   flex: 1;
 }
