@@ -7,6 +7,11 @@
      4vw keeps the margin proportional; the clamp stops it collapsing on phones
      or ballooning on ultrawide. --content-max only bites past ~2400px so a
      3840px display doesn't stretch a single row across a metre of glass. */
+  /* Extra space between the bottom tab targets and the home indicator.
+     Raise it if the bar still sits too low to reach comfortably; lower it if
+     the bar feels too tall. This is the one number to tune. */
+  --tabbar-clearance: 12px;
+
   --page-gutter: clamp(20px, 4vw, 88px);
   --content-max: 2400px;
   --content-max-wide: 2400px;
@@ -8391,8 +8396,15 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     border-top: 1px solid var(--border);
     box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
     z-index: 200;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* The safe-area inset alone leaves the buttons flush against the home
+       indicator, where iOS claims touches for its own swipe-up gesture — so
+       they feel unreachable. --tabbar-clearance lifts them clear of it.
+       Counted ONCE here: applying it on __btn-inner as well is what made the
+       bar oversized to begin with. */
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--tabbar-clearance));
   }
+  /* A taller target is easier to hit near the edge of a large phone */
+  .mobile-tab-bar__btn { min-height: 48px; }
 }
 
 [data-theme="dark"] .mobile-tab-bar {
