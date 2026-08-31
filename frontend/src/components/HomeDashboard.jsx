@@ -4,7 +4,22 @@ import { Icon } from '../icons';
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
-const dayKey     = (d) => startOfDay(d).toISOString().slice(0, 10);
+
+// Local calendar date, NOT toISOString() — that converts to UTC first, which
+// shifts the day for anyone east of Greenwich and would mis-file their plans.
+const dayKey = (d) => {
+  const x = startOfDay(d);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+};
+
+// Sunday of the current calendar week. "This week" has to mean the week you're
+// in, not the next seven days — otherwise a meal planned for Sunday vanishes
+// from the strip on Monday, which is exactly when you'd look for it.
+export const startOfWeek = (d = new Date()) => {
+  const x = startOfDay(d);
+  x.setDate(x.getDate() - x.getDay());
+  return x;
+};
 
 function greeting() {
   const h = new Date().getHours();
@@ -142,9 +157,10 @@ function TonightHero({ candidates, onOpen, onGoKitchen, hasKitchen }) {
 function WeekStrip({ mealPlans, onOpenPlan }) {
   const days = useMemo(() => {
     const out = [];
-    const today = startOfDay(new Date());
+    const weekStart = startOfWeek();
+    const todayKey  = dayKey(new Date());
     for (let i = 0; i < 7; i++) {
-      const d = new Date(today);
+      const d = new Date(weekStart);
       d.setDate(d.getDate() + i);
       const key = dayKey(d);
       out.push({
@@ -152,7 +168,8 @@ function WeekStrip({ mealPlans, onOpenPlan }) {
         key,
         label: d.toLocaleDateString(undefined, { weekday: 'short' }),
         num:   d.getDate(),
-        isToday: i === 0,
+        isToday: key === todayKey,
+        isPast:  key < todayKey,
         meals: mealPlans.filter(m => String(m.planned_date).slice(0, 10) === key),
       });
     }
@@ -173,7 +190,7 @@ function WeekStrip({ mealPlans, onOpenPlan }) {
         {days.map(d => (
           <button
             key={d.key}
-            className={`home-week__day${d.isToday ? ' home-week__day--today' : ''}${d.meals.length ? ' home-week__day--has' : ''}`}
+            className={`home-week__day${d.isToday ? ' home-week__day--today' : ''}${d.meals.length ? ' home-week__day--has' : ''}${d.isPast ? ' home-week__day--past' : ''}`}
             onClick={onOpenPlan}
           >
             <span className="home-week__dow">{d.label}</span>

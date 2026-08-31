@@ -6,7 +6,7 @@ import { API, PROGRESS_FILTERS, GEO_CUISINES, CUISINE_ICON, TAG_FILTERS } from '
 import { toNum, checkDietaryConflicts } from './utils';
 import { ErrorBoundary, HScrollRow } from './components/ui';
 import RecipeCard from './components/RecipeCard';
-import { StatBar, TonightHero, WeekStrip } from './components/HomeDashboard';
+import { StatBar, TonightHero, WeekStrip, startOfWeek } from './components/HomeDashboard';
 import MarkCookedModal from './components/MarkCookedModal';
 import KitchenTab, { groupIngredients, SEED_INGREDIENTS, autoCategory } from './KitchenTab';
 import { IngredientCatalogProvider } from './IngredientCatalogContext';
@@ -569,12 +569,14 @@ function AppInner() {
           authFetch(`${API}/api/user/preferences`),
         ]);
         if (logRes.ok)  { const d = await logRes.json();  setCookLog(d.entries || []); }
-        // Next 7 days only — the home strip never shows more than that
+        // The current calendar week (Sun–Sat) — must start from Sunday, not
+        // today, or meals earlier in the week disappear from the home strip.
         try {
-          const today = new Date();
-          const end   = new Date(today); end.setDate(end.getDate() + 7);
-          const iso   = (d) => d.toISOString().slice(0, 10);
-          const mpRes = await authFetch(`${API}/api/meal-plans?start=${iso(today)}&end=${iso(end)}`);
+          const start = startOfWeek();
+          const end   = new Date(start); end.setDate(end.getDate() + 6);
+          // Local date parts, not toISOString(), which would shift the day
+          const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          const mpRes = await authFetch(`${API}/api/meal-plans?start=${iso(start)}&end=${iso(end)}`);
           if (mpRes.ok) setMealPlans(await mpRes.json() || []);
         } catch {}
         if (favsRes.ok) { const d = await favsRes.json(); setHeartedIds(d.favorites || []); }

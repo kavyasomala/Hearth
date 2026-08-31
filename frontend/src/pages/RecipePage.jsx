@@ -1236,13 +1236,17 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                 />
                 <button className="rp2__scale-stepper" onClick={() => stepServings(1)}>+</button>
               </div>
+              {/* Capped at 8 — the useful range for a household. Larger batches
+                  are still reachable by typing into the field above, which
+                  accepts up to 99. Clamped so a typed 40 doesn't break the
+                  slider's own bounds. */}
               <input
                 type="range"
                 className="rp2__scale-slider"
                 min={0.25}
                 step={0.25}
-                max={Math.max(20, baseServings * 4)}
-                value={currentServings}
+                max={8}
+                value={Math.min(currentServings, 8)}
                 onChange={e => setScaledServings(parseFloat(e.target.value))}
               />
               <div className="rp2__scale-footer">
@@ -1251,20 +1255,6 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                   <button className="rp2__scale-reset-link" onClick={() => setScaledServings(null)}>↺ Reset</button>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Scaled amounts differ from what's stored — say so plainly */}
-          {scale !== 1 && (
-            <div className="rp2__scaled-banner">
-              <Icon name="alertTriangle" size={13} strokeWidth={2} />
-              <span>
-                Showing amounts for <strong>{formatAmount(currentServings)}</strong> servings,
-                not the saved {baseServings}.
-              </span>
-              <button className="rp2__scaled-banner-reset" onClick={() => setScaledServings(null)}>
-                Show original
-              </button>
             </div>
           )}
 

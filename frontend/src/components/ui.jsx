@@ -119,7 +119,10 @@ export const HScrollRow = ({ children, count }) => {
     if (rowRef.current) rowRef.current.scrollBy({ left: dir * 260, behavior: 'smooth' });
   };
 
-  const showArrows = !isMobile && (count ?? React.Children.count(children)) > 4;
+  // Always render arrows on desktop so every row lines up the same way; they
+  // simply sit disabled when there's nothing to scroll. Previously rows with
+  // 4 or fewer cards had no arrows at all, so they didn't match the longer ones.
+  const showArrows = !isMobile;
 
   return (
     <div className="hscroll-wrap">

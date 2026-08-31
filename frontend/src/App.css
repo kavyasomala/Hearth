@@ -1992,6 +1992,9 @@ body {
 }
 .home-week__day:hover { border-color: var(--terracotta-light); }
 .home-week__day--today { border-color: var(--terracotta); background: var(--parchment); }
+/* Earlier days in the current week stay visible but recede */
+.home-week__day--past { opacity: 0.55; }
+.home-week__day--past.home-week__day--has { opacity: 0.75; }
 .home-week__day--has  { background: var(--parchment); }
 .home-week__dow {
   font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ash);
@@ -2170,38 +2173,6 @@ body {
 .restore-panel__label { font-size: 0.78rem; color: var(--text); }
 .restore-panel__actions { display: flex; gap: 8px; }
 
-/* Shown whenever displayed amounts are scaled away from the saved ones */
-.rp2__scaled-banner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 12px;
-  padding: 8px 12px;
-  border: 1.5px solid var(--terracotta-light);
-  border-left-width: 4px;
-  border-radius: var(--radius-sm);
-  background: var(--parchment);
-  color: var(--text);
-  font-size: 0.8rem;
-  line-height: 1.35;
-}
-.rp2__scaled-banner strong { color: var(--terracotta); }
-.rp2__scaled-banner-reset {
-  margin-left: auto;
-  flex-shrink: 0;
-  padding: 4px 10px;
-  border: 1.5px solid var(--terracotta);
-  border-radius: 20px;
-  background: none;
-  font-family: var(--font-body);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--terracotta);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-.rp2__scaled-banner-reset:hover { background: var(--terracotta); color: #fff; }
 
 /* The count doubles as a text field — type a servings number directly */
 .rp2__scale-count-input {
@@ -2923,6 +2894,9 @@ body {
 .add-tab {
   display: flex;
   flex-direction: column;
+  /* Fill the viewport so the cards can centre in the leftover space instead of
+     stacking under the header with a screen of emptiness below. */
+  min-height: 100%;
   /* align-items:center squeezed everything into a centred column; stretch
      lets it use the same gutter as every other tab. */
   align-items: stretch;
@@ -2963,17 +2937,24 @@ body {
   font-size: 1rem;
 }
 .add-tab__cards {
-  display: flex;
+  /* Was a 680px-capped flex row, which left the cards huddled at the left of a
+     wide screen. A grid of equal columns fills the width, and align-content
+     centres them in whatever vertical space is left below the header. */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 24px;
   width: 100%;
-  max-width: 680px;
-  flex-wrap: wrap;
-  justify-content: center;
+  max-width: 1500px;
+  margin-inline: auto;
+  flex: 1;
+  align-content: center;
 }
 .add-tab__card {
   flex: 1;
   min-width: 240px;
-  max-width: 320px;
+  /* No cap — the grid column already sets the width. The old 320px was
+     sized for a 680px flex row and just left gaps inside the grid. */
+  max-width: none;
   background: var(--warm-white);
   border: 2px solid var(--border);
   border-radius: 20px;
@@ -6934,7 +6915,7 @@ button, [role="button"] { cursor: pointer; }
   .add-tab__cards {
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    max-width: 900px !important;
+    max-width: 1500px !important;
   }
   .add-tab__card {
     min-width: 0 !important;
@@ -7245,7 +7226,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 
 /* ── Add tab: 3 cards in one row on desktop ── */
 .add-tab__cards--three {
-  max-width: 900px !important;
+  max-width: 1500px !important;
 }
 .add-tab__cards--three .add-tab__card {
   min-width: 200px !important;
@@ -10737,11 +10718,15 @@ html, body {
 }
 
 /* Calendar side */
+/* Column layout so .mp-grid can be told to fill the leftover height rather
+   than sitting at its natural size with empty page below it. */
 .mp-grid-wrap {
   flex: 1;
   min-width: 0;
-  padding: 0 12px 16px;
+  padding: 0 0 16px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Detail panel side — desktop sidebar */
@@ -10786,6 +10771,9 @@ html, body {
 .mp-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  /* Rows share the available height, but never shrink below a usable cell */
+  grid-auto-rows: minmax(90px, 1fr);
+  flex: 1;
   gap: 3px;
 }
 
