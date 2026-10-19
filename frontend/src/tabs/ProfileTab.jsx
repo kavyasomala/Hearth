@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Icon } from '../icons';
+import { DateField, localDateKey } from '../components/ui';
 import { API, DIETARY_OPTIONS, STAR_LABELS } from '../constants';
 import { getDaysInMonth, getFirstDayOfMonth } from '../utils';
 import { supabase } from '../supabase';
@@ -753,11 +754,14 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
             <div className="create-modal__body" style={{ gap: 14 }}>
               <div className="create-modal__field">
                 <label className="create-modal__field-label" htmlFor="entry-date">Date cooked</label>
-                <input
-                  id="entry-date" type="date" className="editor-input"
+                {/* max from local date parts: toISOString() is UTC and can
+                    block today's date for anyone west of Greenwich. */}
+                <DateField
+                  id="entry-date"
                   value={entryDraft.cooked_at}
-                  max={new Date().toISOString().slice(0, 10)}
-                  onChange={e => setEntryDraft(p => ({ ...p, cooked_at: e.target.value }))}
+                  max={localDateKey(new Date())}
+                  onChange={v => setEntryDraft(p => ({ ...p, cooked_at: v }))}
+                  ariaLabel="Date cooked"
                 />
               </div>
 

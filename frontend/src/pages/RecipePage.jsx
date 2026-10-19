@@ -5,8 +5,8 @@ import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } 
 import { CSS } from '@dnd-kit/utilities';
 import { Icon } from '../icons';
 import { API, TAG_FILTERS, COMMON_UNITS, STAR_LABELS, GEO_CUISINES } from '../constants';
-import { haptic, pct, toNum, pluralizeIng, checkDietaryConflicts, unitType, formatWeight, formatVolume, scaleAmount, formatAmount, parseAmount, normalizeUnit, normalizePrep } from '../utils';
-import { DRAG_SENSORS, AutoGrowTextarea, Badge, SectionPencil, AnchoredPopover, useAnchoredPopover } from '../components/ui';
+import { haptic, pct, toNum, checkDietaryConflicts, unitType, formatWeight, formatVolume, scaleAmount, formatAmount, parseAmount, normalizePrep, formatUnit, formatIngName } from '../utils';
+import { DRAG_SENSORS, AutoGrowTextarea, Badge, SectionPencil, AnchoredPopover, useAnchoredPopover, DateField } from '../components/ui';
 import { HeroImage, HeroTagsButton } from '../components/HeroComponents';
 import MarkCookedModal from '../components/MarkCookedModal';
 import ConvertRefButton from '../components/ConvertRefButton';
@@ -179,7 +179,7 @@ const IngredientItem = ({ ing, isChecked, amountStr, onToggle }) => (
     <div className="rp2__ing-text">
       <span className="rp2__ing-line">
         {amountStr && <span className="rp2__ing-amount">{amountStr} </span>}
-        <span className="rp2__ing-name">{pluralizeIng((ing.name || '').trim(), ing.amount)}{normalizePrep(ing.prep_note) ? <span className="rp2__ing-prep">, {normalizePrep(ing.prep_note)}</span> : ''}</span>
+        <span className="rp2__ing-name">{formatIngName(ing.name, ing.amount, ing.unit)}{normalizePrep(ing.prep_note) ? <span className="rp2__ing-prep">, {normalizePrep(ing.prep_note)}</span> : ''}</span>
         {ing.optional && <span className="rp2__ing-optional">optional</span>}
       </span>
     </div>
@@ -240,12 +240,7 @@ function PlanButton({ recipeId, session }) {
               <button className="rp2__plan-modal__close" onClick={() => setOpen(false)}>✕</button>
             </div>
             <p className="rp2__plan-modal__label">Date</p>
-            <input
-              className="rp2__plan-modal__date"
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-            />
+            <DateField value={date} onChange={setDate} ariaLabel="Date to cook this" dark />
             <div className="rp2__plan-modal__btns">
               <button className="rp2__plan-modal__confirm" onClick={addToPlan}>Add to plan</button>
               <button className="rp2__plan-modal__cancel" onClick={() => setOpen(false)}>Cancel</button>
@@ -1308,7 +1303,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       const isChecked = checkedIngredients.has(key);
                       // Also canonicalises at scale 1, so a stored "0.5" shows as "1/2"
                       const scaledAmt = scaleAmount(ing.amount, scale);
-                      const amountStr = [scaledAmt, normalizeUnit(ing.unit)].filter(Boolean).join(' ');
+                      const amountStr = [scaledAmt, formatUnit(ing.unit, scaledAmt)].filter(Boolean).join(' ');
                       return (
                         <IngredientItem
                           key={key}

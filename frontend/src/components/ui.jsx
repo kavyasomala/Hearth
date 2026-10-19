@@ -3,6 +3,8 @@ import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { createPortal } from 'react-dom';
+import { Icon } from '../icons';
 
 // 8px movement threshold prevents tap-to-select being eaten by drag
 export const DRAG_SENSORS = () => useSensors(
@@ -182,5 +184,163 @@ export const AutoGrowTextarea = ({ value, onChange, placeholder, className, styl
       rows={minRows}
       style={{ resize: 'none', overflow: 'hidden', width: '100%', display: 'block', ...style }}
     />
+  );
+};
+
+/* --- Date field with an in-app calendar ----------------------------------
+   The native <input type="date"> popup is drawn by the OS and cannot be
+   styled, so it always looked foreign next to everything else. This renders
+   its own calendar from the same tokens as the rest of the app.
+   Dates are handled as local "YYYY-MM-DD" keys throughout; toISOString()
+   converts to UTC first and can land a day off. */
+
+export const localDateKey = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// Parsed from parts rather than Date.parse, which reads a bare "YYYY-MM-DD"
+// as UTC midnight and so can render the previous day west of Greenwich.
+const keyToDate = (key) => {
+  const [y, m, d] = String(key || '').split('-').map(Number);
+  return (y && m && d) ? new Date(y, m - 1, d) : null;
+};
+
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+const CAL_W = 252, CAL_H = 314;
+
+export const DateField = ({ value, onChange, max, min, ariaLabel = 'Choose a date', id, dark = false }) => {
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState(() => keyToDate(value) || new Date());
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const wrapRef = useRef(null);
+  const btnRef = useRef(null);
+  const todayKey = localDateKey(new Date());
+
+  // Fixed coordinates off the trigger, because the calendar is portalled out
+  // of the modal: .create-modal__body scrolls, and an absolutely positioned
+  // popover inside it gets clipped at the modal edge.
+  const place = useCallback(() => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const below = r.bottom + 6;
+    const top = (below + CAL_H <= vh - 8 || r.top - CAL_H - 6 < 8)
+      ? Math.min(below, Math.max(8, vh - CAL_H - 8))   // below, nudged up if tight
+      : r.top - CAL_H - 6;                             // flipped above
+    setPos({ top, left: Math.min(Math.max(8, r.left), vw - CAL_W - 8) });
+  }, []);
+
+  // Reopening on a different value should land on that value's month.
+  useEffect(() => { if (open) setView(keyToDate(value) || new Date()); }, [open, value]);
+
+  useEffect(() => {
+    if (!open) return;
+    place();
+    const calRef = () => document.getElementById('cal-popover');
+    const onDocDown = (e) => {
+      if (!wrapRef.current?.contains(e.target) && !calRef()?.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
+    document.addEventListener('mousedown', onDocDown);
+    document.addEventListener('keydown', onKey, true);
+    // The trigger moves if the modal behind it scrolls, so follow it.
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      document.removeEventListener('mousedown', onDocDown);
+      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [open, place]);
+
+  const label = (() => {
+    if (value === todayKey) return 'Today';
+    const d = keyToDate(value);
+    return d ? d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+             : 'Pick a date';
+  })();
+
+  // Six fixed weeks, so the popover never changes height as you page months.
+  const cells = (() => {
+    const first = new Date(view.getFullYear(), view.getMonth(), 1);
+    const start = new Date(first);
+    start.setDate(start.getDate() - first.getDay());
+    return Array.from({ length: 42 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  })();
+
+  const blocked = (key) => (max && key > max) || (min && key < min);
+  const stepMonth = (n) => setView(v => new Date(v.getFullYear(), v.getMonth() + n, 1));
+  const pick = (key) => { if (!blocked(key)) { onChange(key); setOpen(false); } };
+
+  // Paging past the max month only ever shows disabled days.
+  const nextBlocked = max && localDateKey(new Date(view.getFullYear(), view.getMonth() + 1, 1)) > max;
+  const prevBlocked = min && localDateKey(new Date(view.getFullYear(), view.getMonth(), 0)) < min;
+
+  return (
+    <div className="date-field-wrap" ref={wrapRef}>
+      <button
+        ref={btnRef}
+        type="button" id={id}
+        className={`date-field${open ? ' date-field--open' : ''}${dark ? ' date-field--dark' : ''}`}
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="dialog" aria-expanded={open} aria-label={`${ariaLabel}: ${label}`}
+      >
+        <span className="date-field__icon"><Icon name="calendar" size={15} strokeWidth={2} /></span>
+        <span className="date-field__text">{label}</span>
+      </button>
+
+      {open && createPortal(
+        <div
+          id="cal-popover"
+          className={`cal${dark ? ' cal--dark' : ''}`}
+          role="dialog" aria-label={ariaLabel}
+          style={{ top: pos.top, left: pos.left }}
+        >
+          <div className="cal__hd">
+            <button type="button" className="cal__nav" onClick={() => stepMonth(-1)}
+              disabled={!!prevBlocked} aria-label="Previous month">‹</button>
+            <span className="cal__month">{MONTHS[view.getMonth()]} {view.getFullYear()}</span>
+            <button type="button" className="cal__nav" onClick={() => stepMonth(1)}
+              disabled={!!nextBlocked} aria-label="Next month">›</button>
+          </div>
+
+          <div className="cal__grid cal__grid--head" aria-hidden="true">
+            {WEEKDAYS.map((w, i) => <span key={i} className="cal__wd">{w}</span>)}
+          </div>
+
+          <div className="cal__grid">
+            {cells.map(d => {
+              const key = localDateKey(d);
+              const outside = d.getMonth() !== view.getMonth();
+              const cls = ['cal__day'];
+              if (outside)          cls.push('cal__day--outside');
+              if (key === todayKey) cls.push('cal__day--today');
+              if (key === value)    cls.push('cal__day--on');
+              return (
+                <button
+                  key={key} type="button" className={cls.join(' ')}
+                  disabled={blocked(key)} onClick={() => pick(key)}
+                  aria-current={key === todayKey ? 'date' : undefined}
+                >{d.getDate()}</button>
+              );
+            })}
+          </div>
+
+          {!blocked(todayKey) && (
+            <button type="button" className="cal__today" onClick={() => pick(todayKey)}>
+              Jump to today
+            </button>
+          )}
+        </div>,
+        document.body
+      )}
+    </div>
   );
 };

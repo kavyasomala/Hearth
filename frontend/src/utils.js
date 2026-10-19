@@ -145,6 +145,26 @@ const UNIT_CANON = {
   dash: ['dash'],
   handful: ['handful'],
   stick: ['stick'],
+  jar: ['jar'],
+  bag: ['bag'],
+  sheet: ['sheet'],
+  fillet: ['fillet'],
+  rasher: ['rasher'],
+  knob: ['knob'],
+  block: ['block'],
+  strip: ['strip'],
+  splash: ['splash'],
+};
+
+// Units written out in full agree with the amount; abbreviations never do
+// ("2 tbsp", not "2 tbsps"). Anything not listed here is left as it is.
+const UNIT_PLURAL = {
+  cup: 'cups', clove: 'cloves', can: 'cans', pkg: 'pkgs', slice: 'slices',
+  piece: 'pieces', bunch: 'bunches', stalk: 'stalks', head: 'heads',
+  sprig: 'sprigs', pinch: 'pinches', dash: 'dashes', handful: 'handfuls',
+  stick: 'sticks', jar: 'jars', bag: 'bags', sheet: 'sheets',
+  fillet: 'fillets', rasher: 'rashers', knob: 'knobs', block: 'blocks',
+  strip: 'strips', splash: 'splashes',
 };
 
 const UNIT_LOOKUP = (() => {
@@ -171,6 +191,30 @@ export function normalizeUnit(unit) {
   return UNIT_LOOKUP.get(key)            // exact ("tbsp", "cup")
       ?? UNIT_LOOKUP.get(key.replace(/s$/, ''))   // plural ("cups", "cloves")
       ?? key;                            // unknown units still land in lower case
+}
+
+// Display form of a unit: canonical spelling, agreeing with the amount.
+// "1 cup" / "2 cups", but "2 tbsp" stays abbreviated.
+export function formatUnit(unit, amount) {
+  const canon = normalizeUnit(unit);
+  if (!canon) return '';
+  const n = parseAmount(amount);
+  if (!isFinite(n) || Math.abs(n) <= 1) return canon;
+  return UNIT_PLURAL[canon] ?? canon;
+}
+
+// Collapses runs of whitespace and drops zero-width characters, which trim()
+// leaves behind. A stray one of these is what put a gap in front of the comma
+// between an ingredient and its prep note.
+export function cleanIngName(name) {
+  return String(name ?? '')
+    .replace(/[​-‍﻿]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    // A stored name should never end in punctuation; a trailing comma renders
+    // as "lime, , zested" once the prep note is appended.
+    .replace(/[,;:.]+$/, '')
+    .trim();
 }
 
 // Prep notes are free text, so only case and stray edge punctuation are
@@ -203,32 +247,77 @@ export const toNum = (v) => {
   return (!isNaN(n) && v !== '' && v !== null && v !== undefined) ? n : null;
 };
 
+// Mass nouns and already-plural staples: these never change with the amount,
+// in either direction.
+const NO_PLURALIZE = [
+  'water','milk','cream','oil','olive oil','coconut oil','sesame oil','vegetable oil','broth','stock',
+  'juice','wine','beer','vinegar','coconut milk','coconut cream','buttermilk','condensed milk',
+  'salt','pepper','sugar','flour','cornstarch','baking powder','baking soda','yeast','cocoa',
+  'cumin','turmeric','paprika','cinnamon','nutmeg','cardamom','cayenne','oregano','thyme',
+  'sauce','paste','honey','syrup','miso','tahini','butter','ghee','lard',
+  'cheese','parmesan','cheddar','feta','mozzarella','ricotta','cream cheese','brie','gouda',
+  'halloumi','creme fraiche','sour cream','yogurt','greek yogurt',
+  'rice','pasta','bread','oats','quinoa','couscous','polenta',
+  'beef','pork','lamb','turkey','duck','fish','salmon','tuna','cod','chicken','bacon',
+  'spinach','kale','lettuce','basil','parsley','coriander','cilantro','dill','chives',
+  'ginger','garlic','zest',
+  // Already plural, so neither direction should touch them
+  'greens','grits','sprinkles','capers','noodles','breadcrumbs',
+];
+
+// The handful of food words ending in -o that take -oes rather than -os.
+// Everything else (avocado, burrito, taco) just takes -s, so this is a list
+// rather than a rule.
+const O_ES = ['tomato', 'potato', 'mango', 'volcano'];
+const takesOes = (lower) => O_ES.some(w => lower === w || lower.endsWith(' ' + w));
+const isOesPlural = (lower) => O_ES.some(w => lower === w + 'es' || lower.endsWith(' ' + w + 'es'));
+
+const isUncountable = (lower) =>
+  NO_PLURALIZE.some(w => lower === w || lower.endsWith(' ' + w));
+
 export const pluralizeIng = (name, amount) => {
   if (!name) return name;
   const n = parseFloat(amount);
   if (isNaN(n) || n <= 1) return name;
   const lower = name.toLowerCase().trim();
-
-  const NO_PLURALIZE = [
-    'water','milk','cream','oil','olive oil','coconut oil','sesame oil','vegetable oil','broth','stock',
-    'juice','wine','beer','vinegar','coconut milk','coconut cream','buttermilk','condensed milk',
-    'salt','pepper','sugar','flour','cornstarch','baking powder','baking soda','yeast','cocoa',
-    'cumin','turmeric','paprika','cinnamon','nutmeg','cardamom','cayenne','oregano','thyme',
-    'sauce','paste','honey','syrup','miso','tahini','butter','ghee','lard',
-    'cheese','parmesan','cheddar','feta','mozzarella','ricotta','cream cheese','brie','gouda',
-    'halloumi','creme fraiche','sour cream','yogurt','greek yogurt',
-    'rice','pasta','bread','oats','quinoa','couscous','polenta',
-    'beef','pork','lamb','turkey','duck','fish','salmon','tuna','cod','chicken','bacon',
-    'spinach','kale','lettuce','basil','parsley','coriander','cilantro','dill','chives',
-    'ginger','garlic','zest',
-  ];
-  if (NO_PLURALIZE.some(w => lower === w || lower.endsWith(' ' + w))) return name;
+  if (isUncountable(lower)) return name;
   if (lower.endsWith('s')) return name;
+  if (takesOes(lower)) return name + 'es';
   if (lower.endsWith('ch') || lower.endsWith('sh') || lower.endsWith('x') || lower.endsWith('z')) return name + 'es';
   if (lower.endsWith('y') && !/[aeiou]y$/i.test(lower)) return name.slice(0, -1) + 'ies';
   if (lower.endsWith('fe')) return name.slice(0, -2) + 'ves';
   if (lower.endsWith('f') && !lower.endsWith('ff')) return name.slice(0, -1) + 'ves';
   return name + 's';
+};
+
+// Words that are already singular despite the trailing s, so stripping it
+// would produce nonsense ("hummu", "asparagu").
+const KEEPS_ITS_S = /(ss|us|is)$/;
+
+// The inverse of pluralizeIng, used when an amount drops back to one.
+// Deliberately cautious: anything it is not confident about is left alone,
+// since a wrong singular reads worse than an unchanged plural.
+export const singularizeIng = (name) => {
+  if (!name) return name;
+  const lower = name.toLowerCase().trim();
+  if (isUncountable(lower) || !lower.endsWith('s') || KEEPS_ITS_S.test(lower)) return name;
+  if (isOesPlural(lower)) return name.slice(0, -2);
+  if (lower.endsWith('ies') && lower.length > 4)  return name.slice(0, -3) + 'y';
+  if (lower.endsWith('ves')) return name.slice(0, -3) + (/(kni|li|wi)ves$/.test(lower) ? 'fe' : 'f');
+  if (/(ch|sh|x|z)es$/.test(lower)) return name.slice(0, -2);
+  return name.slice(0, -1);
+};
+
+// Display form of an ingredient name: number agreement against the amount.
+// With a unit the name is a measurement, so it stays singular ("2 cups
+// banana"); without one it is a count ("2 bananas", "1 banana").
+export const formatIngName = (name, amount, unit) => {
+  const clean = cleanIngName(name);
+  if (!clean) return clean;
+  if (normalizeUnit(unit)) return singularizeIng(clean);
+  const n = parseAmount(amount);
+  if (!isFinite(n)) return clean;
+  return Math.abs(n) > 1 ? pluralizeIng(clean, n) : singularizeIng(clean);
 };
 
 export const checkDietaryConflicts = (ingredients, dietaryFilters) => {

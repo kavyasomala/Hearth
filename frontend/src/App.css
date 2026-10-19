@@ -1674,8 +1674,14 @@ body {
 }
 .rp2__ing-optional-toggle input { accent-color: var(--terracotta); width: 13px; height: 13px; cursor: pointer; }
 .rp2__ing-edit-meta-row { display: flex; gap: 6px; }
-.rp2__ing-prep { flex: 2; font-size: 12px !important; padding: 5px 8px !important; }
-.rp2__ing-group { flex: 1; font-size: 12px !important; padding: 5px 8px !important; }
+/* The two input rules that used to live here were written for the old inline
+   ingredient editor, whose markup is gone (IngFlatRow replaced it). Being
+   unscoped and !important, they kept matching the DISPLAY elements that share
+   those class names: 8px of left padding pushed the prep note away from the
+   ingredient ("lime  , zested"), and both lost their intended type styling.
+   Scoped to .rp2__ing-edit-meta-row so they can only reach editor inputs. */
+.rp2__ing-edit-meta-row .rp2__ing-prep  { flex: 2; font-size: 12px !important; padding: 5px 8px !important; }
+.rp2__ing-edit-meta-row .rp2__ing-group { flex: 1; font-size: 12px !important; padding: 5px 8px !important; }
 
 /* ─── Inline step/note editor ────────────────────────────────────────────── */
 .rp2__inline-editor { display: flex; flex-direction: column; gap: 8px; }
@@ -2229,19 +2235,20 @@ body {
    -cursor effect would highlight the wrong stars. Selection state is enough. */
 .cook-edit__star:hover { color: #f5a623; }
 
-/* --- Date field: a real field, with the OS picker layered invisibly on top -- */
+/* --- Date field + in-app calendar ---------------------------------------- */
+.date-field-wrap { position: relative; display: inline-block; }
 .date-field {
-  position: relative; display: inline-flex; align-items: center; gap: 8px;
-  padding: 9px 36px 9px 12px;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 34px 9px 12px;
   border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-  background: var(--warm-white);
+  background: var(--warm-white); cursor: pointer;
   font-family: var(--font-body); font-size: 0.9rem; font-weight: 600;
-  color: var(--charcoal);
+  color: var(--charcoal); text-align: left; position: relative;
   transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 .date-field:hover { border-color: var(--terracotta-light); }
-/* The transparent input is the real control, so focus has to show on the shell */
-.date-field:focus-within { border-color: var(--terracotta); background: var(--parchment); }
+.date-field--open { border-color: var(--terracotta); background: var(--parchment); }
+.date-field:focus-visible { outline: 2px solid var(--terracotta); outline-offset: 2px; }
 .date-field__icon { display: inline-flex; color: var(--warm-gray); flex-shrink: 0; }
 .date-field__text { white-space: nowrap; }
 /* Caret drawn in CSS: the icon set has no chevron */
@@ -2251,24 +2258,93 @@ body {
   border-right: 1.5px solid var(--warm-gray); border-bottom: 1.5px solid var(--warm-gray);
   transform: rotate(45deg); pointer-events: none;
 }
-/* Covers the whole field so a tap anywhere opens the picker. Kept in the layout
-   (not display:none) because a hidden input will not open one. */
-.date-field__input {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  opacity: 0; border: none; padding: 0; margin: 0; cursor: pointer;
-  font: inherit; color: transparent; background: transparent;
+
+/* Portalled to <body> and positioned in JS: .create-modal__body scrolls, so
+   an absolutely positioned popover inside it is clipped at the modal edge. */
+.cal {
+  position: fixed; z-index: 9000;
+  width: 252px; padding: 12px;
+  background: var(--warm-white);
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 10px 28px rgba(42, 32, 16, 0.16);
 }
-.date-field__input::-webkit-calendar-picker-indicator {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  opacity: 0; cursor: pointer;
+.cal__hd {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
 }
+.cal__month {
+  font-family: var(--font-display); font-size: 0.95rem; font-weight: 700;
+  color: var(--charcoal);
+}
+.cal__nav {
+  width: 26px; height: 26px; padding: 0; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--border); border-radius: 50%;
+  background: none; color: var(--warm-gray); cursor: pointer; font-size: 15px;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+.cal__nav:hover:not(:disabled) { border-color: var(--terracotta); color: var(--terracotta); }
+.cal__nav:disabled { opacity: 0.3; cursor: default; }
+
+.cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal__grid--head { margin-bottom: 2px; }
+.cal__wd {
+  text-align: center; font-size: 0.64rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--warm-gray);
+}
+.cal__day {
+  aspect-ratio: 1; padding: 0; border: none; border-radius: 50%;
+  background: none; cursor: pointer;
+  font-family: var(--font-body); font-size: 0.8rem; font-weight: 600;
+  color: var(--charcoal);
+  font-variant-numeric: tabular-nums;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.cal__day:hover:not(:disabled) { background: var(--parchment); }
+/* Leading and trailing days of adjacent months stay clickable but recede */
+.cal__day--outside { color: var(--ash); font-weight: 500; }
+.cal__day--today { box-shadow: inset 0 0 0 1.5px var(--sage); }
+.cal__day--on { background: var(--terracotta); color: #fff; }
+.cal__day--on:hover:not(:disabled) { background: var(--terracotta); }
+.cal__day:disabled { opacity: 0.25; cursor: default; }
+
+.cal__today {
+  width: 100%; margin-top: 10px; padding: 6px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  background: none; cursor: pointer;
+  font-family: var(--font-body); font-size: 0.76rem; font-weight: 600;
+  color: var(--warm-gray);
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+.cal__today:hover { border-color: var(--terracotta); color: var(--terracotta); }
+
+/* Dark variant, for the meal-plan sheet (which is a dark iOS-style panel) */
+.date-field--dark {
+  border: 1px solid rgba(255,255,255,0.15); border-radius: 10px;
+  background: rgba(255,255,255,0.08); color: #fff;
+}
+.date-field--dark:hover { border-color: rgba(255,255,255,0.3); }
+.date-field--dark.date-field--open { border-color: var(--terracotta); background: rgba(255,255,255,0.12); }
+.date-field--dark .date-field__icon { color: rgba(255,255,255,0.5); }
+.date-field--dark::after { border-color: rgba(255,255,255,0.5); }
+
+.cal--dark { background: #26262a; border-color: rgba(255,255,255,0.14); }
+.cal--dark .cal__month { color: #fff; }
+.cal--dark .cal__wd { color: rgba(255,255,255,0.4); }
+.cal--dark .cal__nav { border-color: rgba(255,255,255,0.18); color: rgba(255,255,255,0.65); }
+.cal--dark .cal__nav:hover:not(:disabled) { border-color: var(--terracotta); color: var(--terracotta); }
+.cal--dark .cal__day { color: rgba(255,255,255,0.92); }
+.cal--dark .cal__day:hover:not(:disabled) { background: rgba(255,255,255,0.1); }
+.cal--dark .cal__day--outside { color: rgba(255,255,255,0.3); }
+.cal--dark .cal__day--on { background: var(--terracotta); color: #fff; }
+.cal--dark .cal__today { border-color: rgba(255,255,255,0.18); color: rgba(255,255,255,0.6); }
+.cal--dark .cal__today:hover { border-color: var(--terracotta); color: var(--terracotta); }
 
 .cooked-modal__date-section { margin-bottom: 14px; }
 .cooked-modal__label {
   display: block; margin-bottom: 6px;
   font-size: 0.8rem; font-weight: 600; color: var(--text);
 }
-.cooked-modal__date-input { width: 100%; box-sizing: border-box; }
 
 /* ─── Backup & Restore panel ─────────────────────────────────────────────── */
 .restore-panel__select {
@@ -3248,7 +3324,7 @@ body {
 .ing-resolver__map-wrap { position: relative; margin-top: 6px; }
 .ing-resolver__search { width: 100%; box-sizing: border-box; }
 .ing-resolver__dropdown { position: static; margin-top: 4px; }
-.ing-resolver__selected { font-size: 0.8rem; color: var(--sage); margin: 4px 0 0; font-weight: 500; }
+.ing-resolver__selected { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; color: var(--sage); margin: 4px 0 0; font-weight: 500; }
 .ing-resolver__footer {
   padding: 14px 24px; display: flex; gap: 10px; align-items: center;
   border-top: 1px solid var(--border);
@@ -11565,19 +11641,6 @@ html, body {
   color: rgba(255,255,255,0.45);
   margin: 0 0 8px;
 }
-.rp2__plan-modal__date {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 10px;
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-  font-size: 15px;
-  margin-bottom: 18px;
-  box-sizing: border-box;
-  color-scheme: dark;
-}
-.rp2__plan-modal__date:focus { outline: none; border-color: var(--terracotta); }
 .rp2__plan-modal__btns { display: flex; gap: 8px; }
 .rp2__plan-modal__confirm {
   flex: 1; padding: 11px; background: var(--terracotta); color: #fff;

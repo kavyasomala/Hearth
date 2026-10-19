@@ -1299,9 +1299,6 @@ function AppInner() {
                 <button className="home-quick" onClick={() => setView('add')}>
                   <Icon name="plus" size={15} strokeWidth={2} /> Add a recipe
                 </button>
-                <button className="home-quick" onClick={() => setView('kitchen')}>
-                  <Icon name="chefHat" size={15} strokeWidth={2} /> Update kitchen
-                </button>
                 <button className="home-quick" onClick={() => setView('grocery')}>
                   <Icon name="cart" size={15} strokeWidth={2} /> Grocery list
                 </button>

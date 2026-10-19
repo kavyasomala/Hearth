@@ -1,24 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Icon } from '../icons';
 import { API } from '../constants';
-
-// Local date parts, not toISOString(): that converts to UTC first and can
-// report the wrong calendar day.
-const localKey = (d) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-const TODAY_KEY = localKey(new Date());
-
-// "2026-10-19" -> "Sun, Oct 19". Parsed as parts so the string is never run
-// through Date's UTC-based ISO handling, which would shift it a day.
-const prettyDate = (key) => {
-  const [y, m, d] = (key || '').split('-').map(Number);
-  if (!y || !m || !d) return key;
-  if (key === TODAY_KEY) return 'Today';
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
-    weekday: 'short', month: 'short', day: 'numeric',
-  });
-};
+import { DateField, localDateKey } from './ui';
 
 const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpdateKitchen, authFetch }) => {
   const apiFetch = authFetch || fetch;
@@ -26,7 +9,7 @@ const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpda
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [notes, setNotes] = useState('');
-  const [cookedOn, setCookedOn] = useState(TODAY_KEY);
+  const [cookedOn, setCookedOn] = useState(() => localDateKey(new Date()));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -156,21 +139,12 @@ const perishableCatOf = (name) => {
 
             <div className="cooked-modal__date-section">
               <p className="cooked-modal__label">When did you make this?</p>
-              {/* The date input itself sits transparent on top of the button, so
-                  a tap anywhere opens the platform's own picker -- showPicker()
-                  is still unsupported on iOS Safari. */}
-              <div className="date-field">
-                <span className="date-field__icon"><Icon name="calendar" size={15} strokeWidth={2} /></span>
-                <span className="date-field__text">{prettyDate(cookedOn)}</span>
-                <input
-                  type="date"
-                  className="date-field__input"
-                  value={cookedOn}
-                  max={TODAY_KEY}
-                  onChange={e => e.target.value && setCookedOn(e.target.value)}
-                  aria-label="Date cooked"
-                />
-              </div>
+              <DateField
+                value={cookedOn}
+                onChange={setCookedOn}
+                max={localDateKey(new Date())}
+                ariaLabel="Date cooked"
+              />
             </div>
 
             <div className="cooked-modal__notes-section">

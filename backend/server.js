@@ -46,20 +46,96 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejec
 const q    = (sql, params) => pool.query(sql, params);
 const uuid = () => crypto.randomUUID();
 
+// Collapses whitespace runs and drops zero-width characters, which trim()
+// leaves behind. Must agree with cleanIngName in frontend/src/utils.js.
+function cleanIngName(name) {
+  return String(name ?? '')
+    .replace(/[​-‍﻿]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    // A stored name should never end in punctuation; a trailing comma renders
+    // as "lime, , zested" once the prep note is appended.
+    .replace(/[,;:.]+$/, '')
+    .trim();
+}
+
+// Mass nouns and already-plural staples, which keep their shape whatever the
+// amount. Mirrors NO_PLURALIZE in frontend/src/utils.js.
+const NO_PLURALIZE = [
+  'water','milk','cream','oil','olive oil','coconut oil','sesame oil','vegetable oil','broth','stock',
+  'juice','wine','beer','vinegar','coconut milk','coconut cream','buttermilk','condensed milk',
+  'salt','pepper','sugar','flour','cornstarch','baking powder','baking soda','yeast','cocoa',
+  'cumin','turmeric','paprika','cinnamon','nutmeg','cardamom','cayenne','oregano','thyme',
+  'sauce','paste','honey','syrup','miso','tahini','butter','ghee','lard',
+  'cheese','parmesan','cheddar','feta','mozzarella','ricotta','cream cheese','brie','gouda',
+  'halloumi','creme fraiche','sour cream','yogurt','greek yogurt',
+  'rice','pasta','bread','oats','quinoa','couscous','polenta',
+  'beef','pork','lamb','turkey','duck','fish','salmon','tuna','cod','chicken','bacon',
+  'spinach','kale','lettuce','basil','parsley','coriander','cilantro','dill','chives',
+  'ginger','garlic','zest',
+  'greens','grits','sprinkles','capers','noodles','breadcrumbs',
+];
+// The handful of food words ending in -o that take -oes rather than -os.
+// Everything else (avocado, burrito, taco) just takes -s, so this is a list
+// rather than a rule.
+const O_ES = ['tomato', 'potato', 'mango', 'volcano'];
+const takesOes = (lower) => O_ES.some(w => lower === w || lower.endsWith(' ' + w));
+const isOesPlural = (lower) => O_ES.some(w => lower === w + 'es' || lower.endsWith(' ' + w + 'es'));
+
+const isUncountable = (lower) =>
+  NO_PLURALIZE.some(w => lower === w || lower.endsWith(' ' + w));
+
+// Words already singular despite the trailing s ("hummus", "asparagus").
+const KEEPS_ITS_S = /(ss|us|is)$/;
+
+// Cautious singular: anything uncertain is left alone. Mirrors
+// singularizeIng in frontend/src/utils.js.
+function singularizeIng(name) {
+  if (!name) return name;
+  const lower = name.toLowerCase().trim();
+  if (isUncountable(lower) || !lower.endsWith('s') || KEEPS_ITS_S.test(lower)) return name;
+  if (isOesPlural(lower)) return name.slice(0, -2);
+  if (lower.endsWith('ies') && lower.length > 4)  return name.slice(0, -3) + 'y';
+  if (lower.endsWith('ves')) return name.slice(0, -3) + (/(kni|li|wi)ves$/.test(lower) ? 'fe' : 'f');
+  if (/(ch|sh|x|z)es$/.test(lower)) return name.slice(0, -2);
+  return name.slice(0, -1);
+}
+
 // Resolve an ingredient name to a row in the canonical catalog, creating it if new.
 // Matching is case-insensitive (unique index on lower(name)); an existing row keeps
 // its category unless this call supplies one and the row has none.
 // `client` may be a pool client (inside a transaction) or the pool itself.
 async function findOrCreateIngredient(client, name, category) {
-  const clean = (name || '').trim();
+  const clean = cleanIngName(name);
   if (!clean) return null;
+  const singular = singularizeIng(clean);
+
+  // Look for what was asked for, then for its singular, before creating
+  // anything. Catalogs used to end up holding both "sprig" and "sprigs" (and
+  // "banana"/"bananas"), which split kitchen matches and the grocery list in
+  // two. Existing rows are never renamed -- only new ones are stored singular.
+  const candidates = singular === clean ? [clean] : [clean, singular];
+  const { rows: found } = await client.query(
+    `SELECT id, name, category FROM ingredients WHERE lower(name) = ANY($1::text[])`,
+    [candidates.map(c => c.toLowerCase())]
+  );
+  if (found.length) {
+    // Prefer an exact hit; otherwise the singular row we just matched.
+    const row = found.find(r => r.name.toLowerCase() === clean.toLowerCase()) ?? found[0];
+    if (!row.category && category) {
+      await client.query('UPDATE ingredients SET category = $1 WHERE id = $2', [category, row.id]);
+      row.category = category;
+    }
+    return row;
+  }
+
   const { rows: [row] } = await client.query(
     `INSERT INTO ingredients (name, category)
      VALUES ($1, $2)
      ON CONFLICT (lower(name))
        DO UPDATE SET category = COALESCE(ingredients.category, EXCLUDED.category)
      RETURNING id, name, category`,
-    [clean, category || null]
+    [singular, category || null]
   );
   return row;
 }
@@ -91,6 +167,9 @@ const UNIT_CANON = {
   slice: ['slice'], piece: ['piece','pc'], bunch: ['bunch'],
   stalk: ['stalk','rib'], head: ['head'], sprig: ['sprig'],
   pinch: ['pinch'], dash: ['dash'], handful: ['handful'], stick: ['stick'],
+  jar: ['jar'], bag: ['bag'], sheet: ['sheet'], fillet: ['fillet'],
+  rasher: ['rasher'], knob: ['knob'], block: ['block'], strip: ['strip'],
+  splash: ['splash'],
 };
 const UNIT_LOOKUP = new Map();
 for (const [canon, forms] of Object.entries(UNIT_CANON)) {
@@ -438,7 +517,14 @@ const requireAdmin = (req, res, next) => {
 // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // tags and ingredients are native arrays from pg â€” no JSON.parse needed
-const fmtRecipe = r => ({ ...r, coverImage: r.cover_image_url });
+// Tags removed from the picker. Recipes saved before the change still carry
+// them in the column, and with no chip left to untoggle there would be no way
+// to clear one, so they are dropped on the way out and on the way in.
+const RETIRED_TAGS = new Set(['snack', 'marinade', 'sauce']);
+const liveTags = (tags) =>
+  (Array.isArray(tags) ? tags : []).filter(t => !RETIRED_TAGS.has(String(t).toLowerCase()));
+
+const fmtRecipe = r => ({ ...r, tags: liveTags(r.tags), coverImage: r.cover_image_url });
 
 // Returns cookbook.recipes as [{recipeId, name, page, image, tags, addedAt}] â€”
 // same shape the frontend CookbooksTab has always expected.
@@ -460,7 +546,13 @@ const COOKBOOK_SELECT = `
   LEFT JOIN cookbook_recipes cr ON cr.cookbook_id = c.id
   LEFT JOIN recipes r ON r.id = cr.recipe_id`;
 
-const fmtCookbook = r => ({ ...r, coverImage: r.cover_image, spineColor: r.spine_color });
+const fmtCookbook = r => ({
+  ...r,
+  // Entries carry a copy of the recipe's tags, so they need the same filter.
+  recipes: (r.recipes || []).map(e => ({ ...e, tags: liveTags(e.tags) })),
+  coverImage: r.cover_image,
+  spineColor: r.spine_color,
+});
 const SHARE_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const generateShareToken = () => {
   const bytes = crypto.randomBytes(8);
@@ -769,7 +861,7 @@ app.post('/api/recipes', authenticateToken, async (req, res) => {
         details.status               || null,
         details.reference ?? details.page_number ?? null,
         details.source_url           || null,
-        Array.isArray(details.tags) ? details.tags : [],
+        liveTags(details.tags),
         req.user.id,
         details.visibility || 'private',
       ]
@@ -843,7 +935,7 @@ app.put('/api/recipes/:id', authenticateToken, async (req, res) => {
       status: d => d.status || null,
       reference: d => d.reference ?? d.page_number ?? null,
       source_url: d => d.source_url || null,
-      tags: d => (Array.isArray(d.tags) ? d.tags : []),
+      tags: d => liveTags(d.tags),
       visibility: d => d.visibility || 'private',
     };
     // `time` and `page_number` are the names the editors use for two of these.

@@ -194,6 +194,11 @@ function IngredientResolver({ unknowns, allIngredients, onResolve, onCancel }) {
   const [searches, setSearches] = useState(() =>
     Object.fromEntries(unknowns.map(ing => [ing.name.toLowerCase(), '']))
   );
+  // Which row's suggestion list is open. Visibility used to be derived from
+  // the search text alone, so picking a suggestion (which fills the box with
+  // that name) left the list showing its own match and nothing looked like it
+  // had happened.
+  const [openList, setOpenList] = useState(null);
 
   const setRes = (key, update) =>
     setResolutions(prev => ({ ...prev, [key]: { ...prev[key], ...update } }));
@@ -250,7 +255,7 @@ function IngredientResolver({ unknowns, allIngredients, onResolve, onCancel }) {
                 >Add as new</button>
                 <button
                   className={`ing-resolver__tab${res.action === 'map' ? ' ing-resolver__tab--active' : ''}`}
-                  onClick={() => setRes(key, { action: 'map', mappedTo: '' })}
+                  onClick={() => { setRes(key, { action: 'map', mappedTo: '' }); setOpenList(key); }}
                 >Map to existing</button>
                 {/* Escape hatch for parser noise — "for garnish", a stray heading,
                     a duplicate line. Keeps junk out of the catalog entirely. */}
@@ -280,21 +285,32 @@ function IngredientResolver({ unknowns, allIngredients, onResolve, onCancel }) {
                     className="editor-input ing-resolver__search"
                     placeholder="Search existing ingredients…"
                     value={search}
-                    onChange={e => setSearches(prev => ({ ...prev, [key]: e.target.value }))}
+                    onChange={e => { setSearches(prev => ({ ...prev, [key]: e.target.value })); setOpenList(key); }}
+                    onFocus={() => setOpenList(key)}
+                    onBlur={() => setOpenList(cur => (cur === key ? null : cur))}
+                    onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setOpenList(null); } }}
                     autoFocus
                   />
-                  {suggestions.length > 0 && (
+                  {openList === key && suggestions.length > 0 && (
                     <ul className="ing-ac-dropdown ing-resolver__dropdown">
                       {suggestions.map(s => (
                         <li key={s}
                           className={`ing-ac-option${res.mappedTo === s ? ' ing-ac-option--active' : ''}`}
-                          onMouseDown={() => { setRes(key, { action: 'map', mappedTo: s }); setSearches(prev => ({ ...prev, [key]: s })); }}
+                          /* mousedown, not click: it fires before the input's
+                             blur, so the option is still mounted to be hit */
+                          onMouseDown={() => {
+                            setRes(key, { action: 'map', mappedTo: s });
+                            setSearches(prev => ({ ...prev, [key]: s }));
+                            setOpenList(null);
+                          }}
                         >{s}</li>
                       ))}
                     </ul>
                   )}
                   {res.mappedTo && (
-                    <p className="ing-resolver__selected">Will use: <strong>{res.mappedTo}</strong></p>
+                    <p className="ing-resolver__selected">
+                      <Icon name="check" size={12} strokeWidth={3} /> Will use: <strong>{res.mappedTo}</strong>
+                    </p>
                   )}
                 </div>
               )}

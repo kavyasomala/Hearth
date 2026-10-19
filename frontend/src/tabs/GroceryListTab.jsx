@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Icon } from '../icons';
 import { API } from '../constants';
-import { haptic, pluralizeIng, consolidateItems, normalizeUnit, normalizePrep } from '../utils';
+import { haptic, consolidateItems, normalizePrep, formatUnit, formatIngName } from '../utils';
 
 const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients, setInventoryHave }) => {
   const [categories, setCategories] = useState([]);
@@ -75,9 +75,9 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
       items.forEach(item => {
         const inKitchen = allMyIngredients.has(item.name.toLowerCase().trim());
         const tick = checked.has(`${cat.name}-${item.name}`) || inKitchen ? '✓' : '○';
-        const amount = [item.amount, normalizeUnit(item.unit)].filter(Boolean).join(' ');
+        const amount = [item.amount, formatUnit(item.unit, item.amount)].filter(Boolean).join(' ');
         const extra = item._extra ? ` + ${item._extra}` : '';
-        lines.push(`  ${tick} ${amount}${extra} ${item.name}${normalizePrep(item.prep_note) ? ` (${normalizePrep(item.prep_note)})` : ''}`);
+        lines.push(`  ${tick} ${amount}${extra} ${formatIngName(item.name, item.amount, item.unit)}${normalizePrep(item.prep_note) ? ` (${normalizePrep(item.prep_note)})` : ''}`);
       });
     });
     navigator.clipboard.writeText(lines.join('\n')).catch(() => {});
@@ -179,7 +179,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
                       const key = `${cat.name}-${item.name}`;
                       const inKitchen = allMyIngredients.has(item.name.toLowerCase().trim());
                       const isChecked = checked.has(key) || inKitchen;
-                      const amountStr = [item.amount, normalizeUnit(item.unit)].filter(Boolean).join(' ');
+                      const amountStr = [item.amount, formatUnit(item.unit, item.amount)].filter(Boolean).join(' ');
                       return (
                         <div
                           key={key}
@@ -196,7 +196,7 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
                             <span className="grocery-item__name">
                               {amountStr && <span className="grocery-item__amount">{amountStr}</span>}
                               {item._extra && <span className="grocery-item__extra"> + {item._extra}</span>}
-                              {' '}{item.name}
+                              {' '}{formatIngName(item.name, item.amount, item.unit)}
                             </span>
                             {normalizePrep(item.prep_note) && <span className="grocery-item__note">{normalizePrep(item.prep_note)}</span>}
                             {inKitchen && <span className="grocery-item__kitchen-tag">in kitchen · tap to remove</span>}

@@ -1,10 +1,15 @@
 export const API = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
+// Canonical singular spellings only. The list used to offer both "cup" and
+// "cups" (and clove/cloves, slice/slices, piece/pieces, sprig/sprigs,
+// fillet/fillets, sheet/sheets), so the same unit was stored two ways
+// depending on which one you happened to pick. Display pluralises against the
+// amount, so the picker never needs the plural form -- see formatUnit().
 export const COMMON_UNITS = [
-  'tsp', 'tbsp', 'cup', 'cups', 'ml', 'l', 'g', 'kg', 'oz', 'lb',
-  'pinch', 'handful', 'bunch', 'clove', 'cloves', 'slice', 'slices',
-  'piece', 'pieces', 'can', 'jar', 'bag', 'sprig', 'sprigs',
-  'rasher', 'fillet', 'fillets', 'sheet', 'sheets',
+  'tsp', 'tbsp', 'cup', 'fl oz', 'ml', 'l', 'g', 'kg', 'oz', 'lb',
+  'pinch', 'dash', 'handful', 'bunch', 'clove', 'slice', 'piece',
+  'can', 'jar', 'bag', 'pkg', 'sprig', 'stalk', 'head', 'stick',
+  'rasher', 'fillet', 'sheet',
 ];
 
 export const TAG_FILTERS = [
@@ -13,13 +18,10 @@ export const TAG_FILTERS = [
   { key: 'Drinks',     label: 'Drinks'     },
   { key: 'Pasta',      label: 'Pasta'      },
   { key: 'Soup',       label: 'Soup'       },
-  { key: 'Marinade',   label: 'Marinade'   },
   { key: 'Party',      label: 'Party'      },
   { key: 'Breakfast',  label: 'Breakfast'  },
-  { key: 'Snack',      label: 'Snack'      },
   { key: 'Salad',      label: 'Salad'      },
   { key: 'Bread',      label: 'Bread'      },
-  { key: 'Sauce',      label: 'Sauce'      },
   { key: 'Sides',      label: 'Sides'      },
 ];
 

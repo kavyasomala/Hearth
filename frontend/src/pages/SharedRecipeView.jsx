@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API } from '../constants';
 import { Icon } from '../icons';
-import { normalizeUnit, normalizePrep } from '../utils';
+import { normalizePrep, formatUnit, formatIngName } from '../utils';
 
 const SharedRecipeView = ({ token, authFetch, session, onRequestLogin }) => {
   const [loading, setLoading] = useState(true);
@@ -122,10 +122,10 @@ const SharedRecipeView = ({ token, authFetch, session, onRequestLogin }) => {
               {bodyIngredients.map(ing => (
                 <li key={ing.id} className="shared-view__ing">
                   {(ing.amount || ing.unit) && (
-                    <span className="shared-view__ing-qty">{[ing.amount, normalizeUnit(ing.unit)].filter(Boolean).join(' ')}</span>
+                    <span className="shared-view__ing-qty">{[ing.amount, formatUnit(ing.unit, ing.amount)].filter(Boolean).join(' ')}</span>
                   )}
                   <span className="shared-view__ing-name">
-                    {(ing.name || '').trim()}{normalizePrep(ing.prep_note) ? `, ${normalizePrep(ing.prep_note)}` : ''}
+                    {formatIngName(ing.name, ing.amount, ing.unit)}{normalizePrep(ing.prep_note) ? `, ${normalizePrep(ing.prep_note)}` : ''}
                     {ing.optional && <span className="shared-view__ing-opt"> (optional)</span>}
                   </span>
                 </li>
