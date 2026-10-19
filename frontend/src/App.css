@@ -2155,6 +2155,71 @@ body {
   :root { --page-title-size: 1.5rem; --page-header-gap: 16px; }
 }
 
+/* ─── Recipe page: notes carried over from past cooks ────────────────────── */
+.rp2__cook-notes {
+  margin: 0 0 18px; padding: 12px 14px;
+  border: 1.5px solid var(--border); border-left: 4px solid var(--sage);
+  border-radius: var(--radius-sm); background: var(--parchment);
+}
+.rp2__cook-notes__hd {
+  display: flex; align-items: center; gap: 7px; margin-bottom: 8px;
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--sage);
+}
+.rp2__cook-note {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 7px 0; border-top: 1px solid var(--border);
+}
+.rp2__cook-note:first-of-type { border-top: none; padding-top: 0; }
+.rp2__cook-note__body { flex: 1; min-width: 0; }
+.rp2__cook-note__text { margin: 0; font-size: 0.86rem; line-height: 1.45; color: var(--text); }
+.rp2__cook-note__meta { margin: 3px 0 0; font-size: 0.72rem; color: var(--warm-gray); }
+.rp2__cook-note__stars { color: #f5a623; }
+.rp2__cook-note__dismiss {
+  flex-shrink: 0; padding: 3px 10px;
+  border: 1.5px solid var(--border); border-radius: 20px; background: none;
+  font-family: var(--font-body); font-size: 0.72rem; font-weight: 600;
+  color: var(--warm-gray); cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+.rp2__cook-note__dismiss:hover { border-color: var(--sage); color: var(--sage); }
+
+/* ─── Cook history: per-entry actions ────────────────────────────────────── */
+.cook-timeline__actions {
+  display: flex; gap: 6px; margin-top: 10px;
+  opacity: 0; transition: opacity var(--transition-fast);
+}
+.cook-timeline__card:hover .cook-timeline__actions,
+.cook-timeline__card:focus-within .cook-timeline__actions { opacity: 1; }
+.cook-timeline__action {
+  padding: 3px 10px; border: 1.5px solid var(--border); border-radius: 20px;
+  background: none; font-family: var(--font-body); font-size: 0.72rem; font-weight: 600;
+  color: var(--warm-gray); cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+.cook-timeline__action:hover { border-color: var(--terracotta); color: var(--terracotta); }
+.cook-timeline__action--danger:hover { border-color: var(--terracotta); color: var(--terracotta); }
+/* Touch has no hover, so keep the actions permanently visible there */
+@media (hover: none) { .cook-timeline__actions { opacity: 1; } }
+
+.cook-edit__stars { display: flex; align-items: center; gap: 4px; }
+.cook-edit__star {
+  background: none; border: none; cursor: pointer; padding: 0 2px;
+  font-size: 1.35rem; line-height: 1; color: var(--border);
+  transition: color var(--transition-fast);
+}
+.cook-edit__star--on { color: #f5a623; }
+/* No hover preview: CSS can only reach *later* siblings with ~, so a fill-up-to
+   -cursor effect would highlight the wrong stars. Selection state is enough. */
+.cook-edit__star:hover { color: #f5a623; }
+
+.cooked-modal__date-section { margin-bottom: 14px; }
+.cooked-modal__label {
+  display: block; margin-bottom: 6px;
+  font-size: 0.8rem; font-weight: 600; color: var(--text);
+}
+.cooked-modal__date-input { width: 100%; box-sizing: border-box; }
+
 /* ─── Backup & Restore panel ─────────────────────────────────────────────── */
 .restore-panel__select {
   width: 100%;
@@ -3123,6 +3188,13 @@ body {
 .ing-resolver__new-wrap  { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .ing-resolver__new-hint  { font-size: 0.8rem; color: var(--warm-gray); white-space: nowrap; }
 .ing-resolver__edit-name { flex: 1; }
+.ing-resolver__tab--skip { margin-left: auto; }
+.ing-resolver__tab--skip.ing-resolver__tab--active {
+  background: var(--ash); border-color: var(--ash); color: #fff;
+}
+.ing-resolver__ignore-hint {
+  margin: 8px 0 0; font-size: 0.8rem; color: var(--warm-gray); font-style: italic;
+}
 .ing-resolver__map-wrap { position: relative; margin-top: 6px; }
 .ing-resolver__search { width: 100%; box-sizing: border-box; }
 .ing-resolver__dropdown { position: static; margin-top: 4px; }
@@ -4732,11 +4804,10 @@ body {
 .profile-view .cook-timeline { max-width: 100%; }
 .profile-view .profile-section--settings { max-width: 100%; }
 .cook-timeline__month-group { max-width: 100%; }
-/* Two-column timeline on wide screens */
-@media (min-width: 860px) {
-  .cook-timeline { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; align-items: start; }
-  .cook-timeline__month-group { break-inside: avoid; }
-}
+/* Deliberately a single column. A two-column grid here ran time left-to-right
+   then back down-left (Oct | Sep, then Aug below Oct), which reads wrong for a
+   chronology, and unequal month heights left large gaps between rows. */
+.cook-timeline__month-group { break-inside: avoid; }
 
 /* ─── Cookbook overhaul — new entry row (cbentry) ─────────────────────────── */
 .cbentry {

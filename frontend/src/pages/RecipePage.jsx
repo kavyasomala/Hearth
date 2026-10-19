@@ -257,8 +257,16 @@ function PlanButton({ recipeId, session }) {
   );
 }
 
-const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [], session }) => {
+const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [], session, cookLog = [], dismissedCookNotes = [], onDismissCookNote }) => {
   const apiFetch = authFetch || fetch;
+
+  // Notes you wrote after cooking this before — "needed more salt", etc.
+  // Surfaced here so they're visible while cooking, not buried in Profile.
+  const pastCookNotes = useMemo(() => (cookLog || [])
+    .filter(e => e.recipe_id === recipe?.id && e.notes?.trim())
+    .filter(e => !dismissedCookNotes.includes(e.id))
+    .sort((a, b) => new Date(b.cooked_at) - new Date(a.cooked_at)),
+    [cookLog, recipe?.id, dismissedCookNotes]);
   const [checkedIngredients, setCheckedIngredients] = useState(new Set());
   const [doneSteps, setDoneSteps] = useState(new Set());
   const [showIngredientsModal, setShowIngredientsModal] = useState(false);
@@ -1195,6 +1203,34 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           </div>
           );
         })(), document.body)}
+
+        {/* -- What you noted last time you cooked this -- */}
+        {pastCookNotes.length > 0 && (
+          <div className="rp2__cook-notes">
+            <div className="rp2__cook-notes__hd">
+              <Icon name="lightbulb" size={15} strokeWidth={2} />
+              <span>From when you made this before</span>
+            </div>
+            {pastCookNotes.map(e => (
+              <div key={e.id} className="rp2__cook-note">
+                <div className="rp2__cook-note__body">
+                  <p className="rp2__cook-note__text">{e.notes}</p>
+                  <p className="rp2__cook-note__meta">
+                    {new Date(e.cooked_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {e.rating > 0 && <span className="rp2__cook-note__stars"> {'★'.repeat(e.rating)}</span>}
+                  </p>
+                </div>
+                {onDismissCookNote && (
+                  <button
+                    className="rp2__cook-note__dismiss"
+                    onClick={() => onDismissCookNote(e.id)}
+                    title="Dismiss — use once you've worked this into the recipe"
+                  >Done</button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* -- Ingredients -- */}
         <div className="rp2__ingredients">

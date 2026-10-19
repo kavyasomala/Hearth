@@ -4,6 +4,54 @@ export const haptic = (pattern = [10]) => {
   try { if (navigator.vibrate) navigator.vibrate(pattern); } catch {}
 };
 
+// ─── Ingredient substitutions ────────────────────────────────────────────────
+// Ingredients that stand in for each other well enough that a recipe should
+// still be suggested. Deliberately conservative: swapping within a group should
+// change the dish a little, never break it. Matching is exact-after-normalising
+// rather than substring, so "coconut milk" is not treated as "milk".
+
+const SUBSTITUTE_GROUPS = [
+  ['ground beef', 'ground turkey', 'ground chicken', 'ground pork', 'ground lamb', 'ground veal'],
+  ['chicken breast', 'chicken thigh', 'turkey breast'],
+  ['chicken stock', 'chicken broth', 'vegetable stock', 'vegetable broth', 'beef stock', 'beef broth'],
+  ['olive oil', 'vegetable oil', 'canola oil', 'sunflower oil', 'avocado oil', 'grapeseed oil'],
+  ['white vinegar', 'apple cider vinegar', 'rice vinegar', 'white wine vinegar', 'red wine vinegar'],
+  ['onion', 'red onion', 'white onion', 'yellow onion', 'brown onion'],
+  ['scallion', 'spring onion', 'green onion'],
+  ['milk', 'whole milk', 'oat milk', 'almond milk', 'soy milk'],
+  ['heavy cream', 'double cream', 'whipping cream'],
+  ['butter', 'unsalted butter', 'salted butter'],
+  ['parmesan', 'pecorino', 'grana padano'],
+  ['soy sauce', 'tamari', 'coconut amino'],
+  ['cilantro', 'coriander leaf', 'fresh coriander'],
+  ['caster sugar', 'white sugar', 'granulated sugar'],
+  ['basmati rice', 'jasmine rice', 'long grain rice', 'white rice'],
+  ['penne', 'rigatoni', 'fusilli', 'farfalle'],
+  ['cannellini bean', 'butter bean', 'navy bean', 'white bean'],
+];
+
+// Lowercase, trim, drop a trailing plural "s" so "thighs" meets "thigh"
+const normIng = (s) => String(s ?? '').toLowerCase().trim().replace(/s$/, '');
+
+const SUBSTITUTE_INDEX = (() => {
+  const m = new Map();
+  SUBSTITUTE_GROUPS.forEach((group, i) => group.forEach(member => m.set(normIng(member), i)));
+  return m;
+})();
+
+// True when two ingredient names sit in the same substitution group
+export function areInterchangeable(a, b) {
+  const ga = SUBSTITUTE_INDEX.get(normIng(a));
+  return ga !== undefined && ga === SUBSTITUTE_INDEX.get(normIng(b));
+}
+
+// What the user actually has that could stand in for `needed`, if anything
+export function findSubstitute(needed, kitchenItems) {
+  const g = SUBSTITUTE_INDEX.get(normIng(needed));
+  if (g === undefined) return null;
+  return kitchenItems.find(k => SUBSTITUTE_INDEX.get(normIng(k)) === g) || null;
+}
+
 // ─── Ingredient amounts ──────────────────────────────────────────────────────
 // Amounts are stored as free text so things like "a pinch" or "1-2" survive
 // round-tripping. These helpers give numeric amounts one canonical display form
@@ -63,6 +111,66 @@ export const formatAmount = (n) => toFraction(n, EXACT_FRACS, 1e-6);
 
 // Approximate — for scaled results, where "1/3 cup" beats "0.333 cup".
 export const formatScaledAmount = (n) => toFraction(n, COOK_FRACS, 0.05);
+
+// ─── Units ───────────────────────────────────────────────────────────────────
+// One spelling per unit. Recipes arrive with "Tbsp.", "tablespoons", "T" and
+// "tbs" all meaning the same thing, which makes amounts look inconsistent and
+// breaks any grouping that compares units as strings.
+
+const UNIT_CANON = {
+  // Single-letter t/T are handled separately — they differ only by case
+  tsp:  ['tsp', 'teaspoon'],
+  tbsp: ['tbsp', 'tablespoon', 'tbs', 'tbl'],
+  cup:  ['cup', 'c'],
+  oz:   ['oz', 'ounce'],
+  'fl oz': ['fl oz', 'floz', 'fluid ounce'],
+  lb:   ['lb', 'pound', '#'],
+  g:    ['g', 'gram', 'gm'],
+  kg:   ['kg', 'kilogram', 'kilo'],
+  ml:   ['ml', 'milliliter', 'millilitre', 'cc'],
+  l:    ['l', 'liter', 'litre'],
+  qt:   ['qt', 'quart'],
+  pt:   ['pt', 'pint'],
+  gal:  ['gal', 'gallon'],
+  clove: ['clove'],
+  can:  ['can', 'tin'],
+  pkg:  ['pkg', 'package', 'packet'],
+  slice: ['slice'],
+  piece: ['piece', 'pc'],
+  bunch: ['bunch'],
+  stalk: ['stalk', 'rib'],
+  head: ['head'],
+  sprig: ['sprig'],
+  pinch: ['pinch'],
+  dash: ['dash'],
+  handful: ['handful'],
+  stick: ['stick'],
+};
+
+const UNIT_LOOKUP = (() => {
+  const m = new Map();
+  for (const [canon, forms] of Object.entries(UNIT_CANON)) {
+    for (const f of forms) m.set(f.toLowerCase(), canon);
+  }
+  return m;
+})();
+
+// Canonical unit, or the original text when it isn't a unit we know.
+// Case and a trailing period/plural are stripped before lookup, so "Tbsp.",
+// "tablespoons" and "TBSP" all land on "tbsp".
+export function normalizeUnit(unit) {
+  const raw = String(unit ?? '').trim();
+  if (!raw) return '';
+  // Recipe convention: capital T is tablespoon, lowercase t is teaspoon.
+  // These must be checked before lowercasing, or one silently overwrites the other.
+  const bare = raw.replace(/\.$/, '');
+  if (bare === 'T') return 'tbsp';
+  if (bare === 't') return 'tsp';
+  const key = bare.toLowerCase();
+  return UNIT_LOOKUP.get(key)            // exact ("tbsp", "cup")
+      ?? UNIT_LOOKUP.get(key.replace(/s$/, ''))   // plural ("cups", "cloves")
+      ?? raw;                            // leave anything unrecognised alone
+}
 
 // Canonical display form of a stored amount; non-numeric text passes through.
 export function normalizeAmount(str) {

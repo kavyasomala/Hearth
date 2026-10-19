@@ -4,7 +4,7 @@ import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Icon } from '../icons';
 import { API, TAG_FILTERS, ALL_CUISINES } from '../constants';
-import { haptic } from '../utils';
+import { haptic, normalizeUnit } from '../utils';
 import { AutoGrowTextarea, DRAG_SENSORS } from '../components/ui';
 import { IngFlatRow, IngGroupRow, StepSortableItem, CookbookAutocomplete } from '../components/IngredientEditor';
 import { autoCategory } from '../KitchenTab';
@@ -83,8 +83,8 @@ function parseIngLine(raw) {
   const name = line.toLowerCase().trim();
   if (!name) return null;
     // Strip a trailing period first ("tbsp."), then a plural "s" ("cups")
-  const cleanUnit = unit.replace(/\.$/, '').replace(/s$/, '');
-  return { name, amount, unit: cleanUnit, prep_note: combined, optional: /optional/i.test(raw) };
+  // One canonical spelling so imported recipes match hand-entered ones
+  return { name, amount, unit: normalizeUnit(unit), prep_note: combined, optional: /optional/i.test(raw) };
 }
 
 function parseRecipeText(text) {
@@ -252,6 +252,12 @@ function IngredientResolver({ unknowns, allIngredients, onResolve, onCancel }) {
                   className={`ing-resolver__tab${res.action === 'map' ? ' ing-resolver__tab--active' : ''}`}
                   onClick={() => setRes(key, { action: 'map', mappedTo: '' })}
                 >Map to existing</button>
+                {/* Escape hatch for parser noise — "for garnish", a stray heading,
+                    a duplicate line. Keeps junk out of the catalog entirely. */}
+                <button
+                  className={`ing-resolver__tab ing-resolver__tab--skip${res.action === 'ignore' ? ' ing-resolver__tab--active' : ''}`}
+                  onClick={() => setRes(key, { action: 'ignore' })}
+                >Ignore</button>
               </div>
 
               {res.action === 'new' && (
@@ -260,6 +266,12 @@ function IngredientResolver({ unknowns, allIngredients, onResolve, onCancel }) {
                   <input className="editor-input ing-resolver__edit-name" placeholder="Ingredient name"
                     value={res.name} onChange={e => setRes(key, { name: e.target.value })} />
                 </div>
+              )}
+
+              {res.action === 'ignore' && (
+                <p className="ing-resolver__ignore-hint">
+                  Skipped — won't be added to this recipe or your kitchen.
+                </p>
               )}
 
               {res.action === 'map' && (
@@ -395,10 +407,15 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved,
     if (newIngs.length > 0 && addIngredient) {
       await Promise.all(newIngs.map(name => addIngredient(name, autoCategory(name))));
     }
-    // Apply resolutions: use edited amount/unit/prep_note + resolved name
+    // Apply resolutions: use edited amount/unit/prep_note + resolved name.
+    // Anything marked "ignore" is dropped here, so it never reaches the recipe
+    // or the catalog — that's the point of the option.
     const resolved = {
       ...parsedData,
-      ingredients: (parsedData.ingredients || []).map(ing => {
+      ingredients: (parsedData.ingredients || []).filter(ing => {
+        const res = resolutions[ing.name?.toLowerCase().trim()];
+        return res?.action !== 'ignore';
+      }).map(ing => {
         const original = ing.name?.toLowerCase().trim();
         const res = resolutions[original];
         if (!res) return ing;

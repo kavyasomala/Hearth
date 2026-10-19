@@ -3,7 +3,7 @@ import './App.css';
 
 import { Icon } from './icons';
 import { API, PROGRESS_FILTERS, GEO_CUISINES, CUISINE_ICON, TAG_FILTERS } from './constants';
-import { toNum, checkDietaryConflicts } from './utils';
+import { toNum, checkDietaryConflicts, findSubstitute } from './utils';
 import { ErrorBoundary, HScrollRow } from './components/ui';
 import RecipeCard from './components/RecipeCard';
 import { StatBar, TonightHero, WeekStrip, startOfWeek } from './components/HomeDashboard';
@@ -208,6 +208,7 @@ const DEFAULT_PREFS = {
   hideIncompatible: false,
   customCuisines: [],
   feedbackReports: [],
+  dismissedCookNotes: [],
 };
 
 function AppInner() {
@@ -540,6 +541,13 @@ function AppInner() {
   const setCustomCuisines   = (fn) =>
     savePref({ customCuisines: typeof fn === 'function' ? fn(prefs.customCuisines) : fn });
 
+  // Cook-log note ids the user has marked as handled
+  const dismissedCookNotes = prefs.dismissedCookNotes || [];
+  const dismissCookNote = (id) => {
+    if (!id || dismissedCookNotes.includes(id)) return;
+    savePref({ dismissedCookNotes: [...dismissedCookNotes, id] });
+  };
+
   const feedbackList    = prefs.feedbackReports;
   const setFeedbackList = (fn) =>
     savePref({ feedbackReports: typeof fn === 'function' ? fn(prefs.feedbackReports) : fn });
@@ -662,10 +670,20 @@ function AppInner() {
     };
     const m = recipes.map(recipe => {
       const recipeIngredients = recipe.ingredients || [];
-      const have    = recipeIngredients.filter(i => hasMatch(i));
-      const missing = recipeIngredients.filter(i => !hasMatch(i));
+      const have = [], missing = [], substitutions = [];
+      for (const ing of recipeIngredients) {
+        if (hasMatch(ing)) { have.push(ing); continue; }
+        // Nothing exact, but something interchangeable may be on hand —
+        // ground turkey covers a recipe calling for ground chicken.
+        const sub = findSubstitute(ing, kitchenArr);
+        if (sub) { have.push(ing); substitutions.push({ needed: ing, using: sub }); }
+        else missing.push(ing);
+      }
       const matchScore = recipeIngredients.length === 0 ? 0 : have.length / recipeIngredients.length;
-      return { id: recipe.id, have, missing, matchScore, canMake: missing.length === 0 && recipeIngredients.length > 0 };
+      return {
+        id: recipe.id, have, missing, substitutions, matchScore,
+        canMake: missing.length === 0 && recipeIngredients.length > 0,
+      };
     });
     m.sort((a, b) => { if (a.canMake && !b.canMake) return -1; if (!a.canMake && b.canMake) return 1; return b.matchScore - a.matchScore; });
     return m;
@@ -1005,6 +1023,9 @@ function AppInner() {
           >
         <RecipePage
           recipe={selectedRecipe} bodyIngredients={recipeBodyIngredients} instructions={recipeInstructions} notes={recipeNotes} cookingNotes={cookingNotes}
+          cookLog={cookLog}
+          dismissedCookNotes={dismissedCookNotes}
+          onDismissCookNote={dismissCookNote}
           loading={recipeLoading} onBack={() => setView(lastView)}
           allIngredients={allIngredients}
           cookbooks={cookbooks}

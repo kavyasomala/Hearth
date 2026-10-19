@@ -8,6 +8,12 @@ const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpda
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [notes, setNotes] = useState('');
+  // Local date parts — toISOString() converts to UTC first and can land on
+  // the wrong calendar day depending on the timezone.
+  const [cookedOn, setCookedOn] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -57,7 +63,12 @@ const perishableCatOf = (name) => {
         recipe_name: recipe.name,
         rating: rating || null,
         notes: notes.trim() || null,
-        cooked_at: new Date().toISOString(),
+        cooked_at: (() => {
+          const [y, m, d] = cookedOn.split('-').map(Number);
+          const now = new Date();
+          // Keep the current clock time so same-day entries stay ordered
+          return new Date(y, m - 1, d, now.getHours(), now.getMinutes()).toISOString();
+        })(),
       };
       if (isRealRecipe) payload.recipe_id = recipe.id;
       const res = await apiFetch(`${API}/api/user/cook-log`, {
@@ -128,6 +139,18 @@ const perishableCatOf = (name) => {
                 ))}
                 {displayRating > 0 && <span className="cooked-modal__rating-label">{RATING_LABELS[displayRating]}</span>}
               </div>
+            </div>
+
+            <div className="cooked-modal__date-section">
+              <label className="cooked-modal__label" htmlFor="cooked-on">When did you make this?</label>
+              <input
+                id="cooked-on"
+                type="date"
+                className="editor-input cooked-modal__date-input"
+                value={cookedOn}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={e => setCookedOn(e.target.value)}
+              />
             </div>
 
             <div className="cooked-modal__notes-section">

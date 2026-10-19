@@ -40,6 +40,10 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
   const [cookHistory, setCookHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyView, setHistoryView] = useState('timeline');
+  const [editingEntry, setEditingEntry] = useState(null);   // cook-log row being edited
+  const [entryDraft, setEntryDraft] = useState({ cooked_at: '', rating: 0, notes: '' });
+  const [entrySaving, setEntrySaving] = useState(false);
+  const [entryError, setEntryError] = useState('');
   const [calendarDate, setCalendarDate] = useState(() => { const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() }; });
 
   // ── Profile editing ──
@@ -286,6 +290,63 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
     }
   };
 
+  // ── Cook history edit / delete ───────────────────────────────────────────
+  const localDateInput = (iso) => {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    // Local parts, not toISOString(), which can shift the calendar day
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  };
+
+  const startEditEntry = (entry) => {
+    setEntryError('');
+    setEditingEntry(entry);
+    setEntryDraft({
+      cooked_at: localDateInput(entry.cooked_at),
+      rating: entry.rating || 0,
+      notes: entry.notes || '',
+    });
+  };
+
+  const saveEntry = async () => {
+    if (!editingEntry) return;
+    setEntrySaving(true); setEntryError('');
+    try {
+      const [y, m, d] = entryDraft.cooked_at.split('-').map(Number);
+      const prev = new Date(editingEntry.cooked_at);
+      // Keep the original time of day so same-day entries keep their order
+      const when = new Date(y, m - 1, d, prev.getHours() || 12, prev.getMinutes() || 0);
+      const res = await authFetch(`${API}/api/user/cook-log/${editingEntry.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cooked_at: when.toISOString(),
+          rating: entryDraft.rating || null,
+          notes: entryDraft.notes.trim() || null,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not save');
+      const { entry } = await res.json();
+      setCookHistory(prev => prev.map(e => e.id === entry.id ? entry : e));
+      setEditingEntry(null);
+    } catch (e) {
+      setEntryError(e.message);
+    } finally {
+      setEntrySaving(false);
+    }
+  };
+
+  const deleteEntry = async (entry) => {
+    if (!window.confirm('Delete this entry from your cooking history?')) return;
+    const before = cookHistory;
+    setCookHistory(prev => prev.filter(e => e.id !== entry.id));   // optimistic
+    try {
+      const res = await authFetch(`${API}/api/user/cook-log/${entry.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('delete failed');
+    } catch {
+      setCookHistory(before);   // put it back if the server refused
+    }
+  };
+
   const submitFeedback = () => {
     if (!feedbackText.trim()) return;
     const entry = { id: Date.now(), text: feedbackText.trim(), date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), done: false };
@@ -451,6 +512,11 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                               </div>
                             </div>
                             {entry.notes && <p className="cook-timeline__notes">"{entry.notes}"</p>}
+                            <div className="cook-timeline__actions">
+                              <button className="cook-timeline__action" onClick={() => startEditEntry(entry)}>Edit</button>
+                              <button className="cook-timeline__action cook-timeline__action--danger"
+                                onClick={() => deleteEntry(entry)}>Delete</button>
+                            </div>
                           </div>
                         </div>
                       );
@@ -658,6 +724,70 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
           </div>
         )}
       </Section>
+
+      {/* ── Edit a cooking-history entry ─────────────────────────── */}
+      {editingEntry && (
+        <div className="create-modal-overlay" onClick={() => !entrySaving && setEditingEntry(null)}>
+          <div className="create-modal" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
+            <div className="create-modal__header">
+              <h2 className="create-modal__title">
+                <Icon name="calendar" size={18} strokeWidth={2} /> Edit cook
+              </h2>
+              <button className="ing-modal__close" onClick={() => setEditingEntry(null)} disabled={entrySaving}>✕</button>
+            </div>
+            <div className="create-modal__body" style={{ gap: 14 }}>
+              <div className="create-modal__field">
+                <label className="create-modal__field-label" htmlFor="entry-date">Date cooked</label>
+                <input
+                  id="entry-date" type="date" className="editor-input"
+                  value={entryDraft.cooked_at}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={e => setEntryDraft(p => ({ ...p, cooked_at: e.target.value }))}
+                />
+              </div>
+
+              <div className="create-modal__field">
+                <span className="create-modal__field-label">Rating</span>
+                <div className="cook-edit__stars">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button
+                      key={n} type="button"
+                      className={`cook-edit__star${n <= entryDraft.rating ? ' cook-edit__star--on' : ''}`}
+                      onClick={() => setEntryDraft(p => ({ ...p, rating: p.rating === n ? 0 : n }))}
+                      aria-label={`${n} star${n === 1 ? '' : 's'}`}
+                    >★</button>
+                  ))}
+                  {entryDraft.rating > 0 && (
+                    <span className="cook-timeline__rating-label">{STAR_LABELS[entryDraft.rating]}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="create-modal__field">
+                <label className="create-modal__field-label" htmlFor="entry-notes">Notes</label>
+                <textarea
+                  id="entry-notes" className="editor-textarea" rows={3}
+                  value={entryDraft.notes}
+                  placeholder="What would you change next time?"
+                  onChange={e => setEntryDraft(p => ({ ...p, notes: e.target.value }))}
+                />
+              </div>
+
+              {entryError && (
+                <p className="restore-panel__error">
+                  <Icon name="alertTriangle" size={13} strokeWidth={2} /> {entryError}
+                </p>
+              )}
+            </div>
+            <div className="create-modal__footer">
+              <button className="btn btn--primary" onClick={saveEntry} disabled={entrySaving || !entryDraft.cooked_at}>
+                {entrySaving ? 'Saving…' : 'Save changes'}
+              </button>
+              <button className="btn btn--ghost" onClick={() => setEditingEntry(null)} disabled={entrySaving}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Backup & Restore (admin only) ────────────────────────── */}
       {isAdmin && (

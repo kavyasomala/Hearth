@@ -5,7 +5,7 @@ import { DndContext, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Icon } from '../icons';
 import { COMMON_UNITS } from '../constants';
-import { haptic, normalizeAmount } from '../utils';
+import { haptic, normalizeAmount, normalizeUnit } from '../utils';
 import { AutoGrowTextarea, DRAG_SENSORS } from './ui';
 import { useIngredientCatalog } from '../IngredientCatalogContext';
 
@@ -121,7 +121,7 @@ const IngredientAutocomplete = ({ value, onChange, allIngredients }) => {
   );
 };
 
-const UnitAutocomplete = ({ value, onChange }) => {
+const UnitAutocomplete = ({ value, onChange, onBlur }) => {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
   const wrapperRef = useRef(null);
@@ -151,7 +151,7 @@ const UnitAutocomplete = ({ value, onChange }) => {
 
   return (
     <div className="ing-ac-wrap" ref={wrapperRef}>
-      <input className="editor-input editor-input--sm" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} onKeyDown={onKeyDown} placeholder="tbsp" autoComplete="off" />
+      <input className="editor-input editor-input--sm" value={value} onChange={e => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => { setOpen(false); onBlur?.(); }, 150)} onKeyDown={onKeyDown} placeholder="tbsp" autoComplete="off" />
       {open && suggestions.length > 0 && (
         <ul className="ing-ac-dropdown">
           {suggestions.map((u, i) => {
@@ -287,7 +287,11 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
             placeholder="Qty"
           />
           <div className="ing-flat-row__unit-wrap">
-            <UnitAutocomplete value={ing.unit} onChange={v => onUpdate('unit', v)} />
+            <UnitAutocomplete
+              value={ing.unit}
+              onChange={v => onUpdate('unit', v)}
+              onBlur={() => { const n = normalizeUnit(ing.unit); if (n !== ing.unit) onUpdate('unit', n); }}
+            />
           </div>
           <div className="ing-flat-row__name-wrap">
             <IngredientAutocomplete value={ing.name} onChange={v => onUpdate('name', v)} allIngredients={allIngredients} />

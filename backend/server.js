@@ -1357,6 +1357,41 @@ app.post('/api/user/cook-log', authenticateToken, async (req, res) => {
   res.json({ entry });
 });
 
+// Edit a past cook — correct the date, rating or notes after the fact.
+// COALESCE leaves any omitted field at its current value.
+app.put('/api/user/cook-log/:id', authenticateToken, async (req, res) => {
+  const { rating, notes, cooked_at } = req.body;
+  try {
+    const { rows: [entry] } = await q(
+      `UPDATE user_cook_log
+          SET rating    = COALESCE($1, rating),
+              notes     = COALESCE($2, notes),
+              cooked_at = COALESCE($3, cooked_at)
+        WHERE id = $4 AND user_id = $5
+        RETURNING *`,
+      [rating ?? null, notes?.trim() ?? null, cooked_at || null, req.params.id, req.user.id]
+    );
+    // Scoped by user_id, so a missing row means it is not theirs to edit
+    if (!entry) return res.status(404).json({ error: 'Cook log entry not found' });
+    res.json({ entry });
+  } catch (err) {
+    console.error('PUT /api/user/cook-log/:id error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/user/cook-log/:id', authenticateToken, async (req, res) => {
+  try {
+    const result = await q('DELETE FROM user_cook_log WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]);
+    if (!result.rowCount) return res.status(404).json({ error: 'Cook log entry not found' });
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error('DELETE /api/user/cook-log/:id error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // â”€â”€â”€ Grocery List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.post('/api/grocery-list', async (req, res) => {
