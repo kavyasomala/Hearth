@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Icon } from '../icons';
 import { API } from '../constants';
-import { haptic, consolidateItems, normalizePrep, formatUnit, formatIngName } from '../utils';
+import { haptic, consolidateItems, normalizePrep, formatUnit, formatIngName, findSubstitute, cleanIngName } from '../utils';
 
 const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients, setInventoryHave }) => {
   const [categories, setCategories] = useState([]);
@@ -81,6 +81,34 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
       });
     });
     navigator.clipboard.writeText(lines.join('\n')).catch(() => {});
+  };
+
+  // What each ingredient could be swapped for, from the recipes on this list.
+  // A recipe's own "chicken or tofu" beats the global list, same as in the
+  // kitchen match.
+  const recipeAlts = useMemo(() => {
+    const m = new Map();
+    for (const r of recipes) {
+      if (!makeSoonIds.includes(r.id)) continue;
+      for (const a of r.ingredient_alts || []) {
+        const k = cleanIngName(a.name).toLowerCase();
+        m.set(k, [...(m.get(k) || []), ...(a.alts || [])]);
+      }
+    }
+    return m;
+  }, [recipes, makeSoonIds]);
+
+  const kitchenArr = useMemo(() => [...allMyIngredients], [allMyIngredients]);
+
+  // A suggestion only. The line always stays on the list -- you decide at the
+  // shop whether to use the stand-in or buy the real thing.
+  const swapOnHand = (name) => {
+    const k = cleanIngName(name).toLowerCase();
+    if (allMyIngredients.has(k)) return null;          // you have the real thing
+    const declared = (recipeAlts.get(k) || [])
+      .find(alt => allMyIngredients.has(cleanIngName(alt).toLowerCase()));
+    if (declared) return cleanIngName(declared);
+    return findSubstitute(name, kitchenArr);
   };
 
   const totalItems = consolidatedCategories.reduce((sum, cat) => sum + cat.items.length, 0);
@@ -199,6 +227,10 @@ const GroceryListTab = ({ recipes, makeSoonIds, allMyIngredients, allIngredients
                               {' '}{formatIngName(item.name, item.amount, item.unit)}
                             </span>
                             {normalizePrep(item.prep_note) && <span className="grocery-item__note">{normalizePrep(item.prep_note)}</span>}
+                            {!inKitchen && (() => {
+                              const swap = swapOnHand(item.name);
+                              return swap ? <span className="grocery-item__swap">or use the {swap} you have</span> : null;
+                            })()}
                             {inKitchen && <span className="grocery-item__kitchen-tag">in kitchen · tap to remove</span>}
                             {!inKitchen && !isChecked && <span className="grocery-item__tap-hint">tap to check off → adds to kitchen</span>}
                             {isChecked && !inKitchen && <span className="grocery-item__tap-hint">tap to uncheck → removes from kitchen</span>}

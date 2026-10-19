@@ -28,6 +28,15 @@ const SUBSTITUTE_GROUPS = [
   ['basmati rice', 'jasmine rice', 'long grain rice', 'white rice'],
   ['penne', 'rigatoni', 'fusilli', 'farfalle'],
   ['cannellini bean', 'butter bean', 'navy bean', 'white bean'],
+  // Seafood. "fish" is deliberately in with the shellfish rather than in its
+  // own group, because swapping fish for shrimp is the case this was added
+  // for. Salmon and trout stay separate -- they are oily and strongly
+  // flavoured, and standing one in for shrimp makes a different dish.
+  ['fish', 'white fish', 'cod', 'haddock', 'tilapia', 'pollock', 'halibut',
+   'sea bass', 'basa', 'shrimp', 'prawn', 'scallop', 'langoustine'],
+  ['salmon', 'trout', 'arctic char', 'steelhead'],
+  ['crab', 'crabmeat', 'lobster', 'crawfish'],
+  ['squid', 'calamari', 'octopus'],
 ];
 
 // Lowercase, trim, drop a trailing plural "s" so "thighs" meets "thigh"

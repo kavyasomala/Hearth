@@ -53,6 +53,22 @@ const RecipeCard = ({ recipe, match, onClick, isHearted, onToggleHeart, isMakeSo
                     ) : (
                       <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: 0 }}>✓ You have everything!</p>
                     )}
+                    {/* A match reached through a swap is not the same as having
+                        the ingredient, so say which stand-in was counted. */}
+                    {match?.substitutions?.length > 0 && (
+                      <div style={{ marginTop: match?.missing?.length > 0 ? 10 : 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.12)' }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.5)', margin: '0 0 6px' }}>
+                          Using instead
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {match.substitutions.map(sub => (
+                            <span key={sub.needed} style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>
+                              · {sub.using} <span style={{ color: 'rgba(255,255,255,0.45)' }}>for {sub.needed}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

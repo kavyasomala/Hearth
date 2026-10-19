@@ -5,7 +5,7 @@ import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } 
 import { CSS } from '@dnd-kit/utilities';
 import { Icon } from '../icons';
 import { API, TAG_FILTERS, COMMON_UNITS, STAR_LABELS, GEO_CUISINES } from '../constants';
-import { haptic, pct, toNum, checkDietaryConflicts, unitType, formatWeight, formatVolume, scaleAmount, formatAmount, parseAmount, normalizePrep, formatUnit, formatIngName } from '../utils';
+import { haptic, pct, toNum, cleanIngName, checkDietaryConflicts, unitType, formatWeight, formatVolume, scaleAmount, formatAmount, parseAmount, normalizePrep, formatUnit, formatIngName } from '../utils';
 import { DRAG_SENSORS, AutoGrowTextarea, Badge, SectionPencil, AnchoredPopover, useAnchoredPopover, DateField } from '../components/ui';
 import { HeroImage, HeroTagsButton } from '../components/HeroComponents';
 import MarkCookedModal from '../components/MarkCookedModal';
@@ -171,20 +171,43 @@ const StepItem = ({ step, done, isCurrent, enlarge, grouped, onToggle, matchedNo
   );
 };
 
-const IngredientItem = ({ ing, isChecked, amountStr, onToggle }) => (
-  <li className={`rp2__ing-item ${isChecked ? 'rp2__ing-item--checked' : ''}`} onClick={onToggle}>
-    <div className={`rp2__ing-check ${isChecked ? 'rp2__ing-check--done' : ''}`}>
-      {isChecked && <Icon name="check" size={10} strokeWidth={3} />}
-    </div>
-    <div className="rp2__ing-text">
-      <span className="rp2__ing-line">
-        {amountStr && <span className="rp2__ing-amount">{amountStr} </span>}
-        <span className="rp2__ing-name">{formatIngName(ing.name, ing.amount, ing.unit)}{normalizePrep(ing.prep_note) ? <span className="rp2__ing-prep">, {normalizePrep(ing.prep_note)}</span> : ''}</span>
-        {ing.optional && <span className="rp2__ing-optional">optional</span>}
-      </span>
-    </div>
-  </li>
-);
+const IngredientItem = ({ ing, isChecked, amountStr, onToggle, onHand = new Set() }) => {
+  const alts = ing.alternatives || [];
+  // The swap is only worth shouting about when you actually have it and do
+  // not have the real thing; otherwise it is just a note on the recipe.
+  const haveMain = onHand.has(cleanIngName(ing.name).toLowerCase());
+  return (
+    <li className={`rp2__ing-item ${isChecked ? 'rp2__ing-item--checked' : ''}`} onClick={onToggle}>
+      <div className={`rp2__ing-check ${isChecked ? 'rp2__ing-check--done' : ''}`}>
+        {isChecked && <Icon name="check" size={10} strokeWidth={3} />}
+      </div>
+      <div className="rp2__ing-text">
+        <span className="rp2__ing-line">
+          {amountStr && <span className="rp2__ing-amount">{amountStr} </span>}
+          <span className="rp2__ing-name">{formatIngName(ing.name, ing.amount, ing.unit)}{normalizePrep(ing.prep_note) ? <span className="rp2__ing-prep">, {normalizePrep(ing.prep_note)}</span> : ''}</span>
+          {ing.optional && <span className="rp2__ing-optional">optional</span>}
+        </span>
+        {alts.length > 0 && (
+          <span className="rp2__ing-alts">
+            or {alts.map((a, i) => {
+              const have = !haveMain && onHand.has(cleanIngName(a.name).toLowerCase());
+              return (
+                <React.Fragment key={a.ingredient_id || a.name}>
+                  {i > 0 && ' / '}
+                  <span className={`rp2__ing-alt${have ? ' rp2__ing-alt--have' : ''}`}>
+                    {cleanIngName(a.name)}
+                    {a.note ? ` (${normalizePrep(a.note)})` : ''}
+                    {have && ' — you have this'}
+                  </span>
+                </React.Fragment>
+              );
+            })}
+          </span>
+        )}
+      </div>
+    </li>
+  );
+};
 
 // --- Sortable Note Row (for drag-to-reorder notes inline editor) -----------
 const SortableNoteRow = ({ note, onUpdate, onRemove }) => {
@@ -252,7 +275,7 @@ function PlanButton({ recipeId, session }) {
   );
 }
 
-const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [], session, cookLog = [], dismissedCookNotes = [], onDismissCookNote }) => {
+const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSaved, onDelete, loading, isHearted, onToggleHeart, isMakeSoon, onToggleMakeSoon, allIngredients = [], allMyIngredients = new Set(), cookbooks = [], onMarkCooked, dietaryFilters = [], authFetch, isAdmin, cookingNotes = [], session, cookLog = [], dismissedCookNotes = [], onDismissCookNote }) => {
   const apiFetch = authFetch || fetch;
 
   // Notes you wrote after cooking this before — "needed more salt", etc.
@@ -1310,6 +1333,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                           ing={ing}
                           isChecked={isChecked}
                           amountStr={amountStr}
+                          onHand={allMyIngredients}
                           onToggle={() => toggleIngredient(key)}
                         />
                       );

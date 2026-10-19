@@ -650,14 +650,24 @@ function AppInner() {
 
   const allMyIngredients = useMemo(() => new Set(inventoryHave.map(i => i.toLowerCase().trim())), [inventoryHave]);
 
+  // Archiving takes a recipe out of circulation: it should not surface in the
+  // library, on the home page, in kitchen matches, in search or on the grocery
+  // list. The only ways back to it are the Archived progress filter and a
+  // direct link. Cook history keeps the full list so past entries can still
+  // resolve an archived recipe's name.
+  const activeRecipes = useMemo(
+    () => recipes.filter(r => r.status !== 'archived'),
+    [recipes]
+  );
+
   // Every recipe id that appears in the cook log at least once
   const cookedRecipeIds = useMemo(
     () => new Set((cookLog || []).map(e => e.recipe_id).filter(Boolean)),
     [cookLog]
   );
   const neverCookedCount = useMemo(
-    () => recipes.filter(r => !cookedRecipeIds.has(r.id)).length,
-    [recipes, cookedRecipeIds]
+    () => activeRecipes.filter(r => !cookedRecipeIds.has(r.id)).length,
+    [activeRecipes, cookedRecipeIds]
   );
 
   const matches = useMemo(() => {
@@ -668,15 +678,27 @@ function AppInner() {
       const r = recipeIng.toLowerCase().trim();
       return kitchenArr.some(k => r.includes(k) || k.includes(r));
     };
-    const m = recipes.map(recipe => {
+    const m = activeRecipes.map(recipe => {
       const recipeIngredients = recipe.ingredients || [];
+      // Swaps this recipe declares for itself, e.g. "chicken or tofu" on a
+      // Thai curry. Checked before the global list, because the recipe's own
+      // claim is the more specific one.
+      const ownAlts = new Map(
+        (recipe.ingredient_alts || []).map(a => [String(a.name).toLowerCase().trim(), a.alts || []])
+      );
       const have = [], missing = [], substitutions = [];
       for (const ing of recipeIngredients) {
         if (hasMatch(ing)) { have.push(ing); continue; }
+        const declared = (ownAlts.get(String(ing).toLowerCase().trim()) || []).find(hasMatch);
+        if (declared) {
+          have.push(ing);
+          substitutions.push({ needed: ing, using: declared, source: 'recipe' });
+          continue;
+        }
         // Nothing exact, but something interchangeable may be on hand —
         // ground turkey covers a recipe calling for ground chicken.
         const sub = findSubstitute(ing, kitchenArr);
-        if (sub) { have.push(ing); substitutions.push({ needed: ing, using: sub }); }
+        if (sub) { have.push(ing); substitutions.push({ needed: ing, using: sub, source: 'global' }); }
         else missing.push(ing);
       }
       const matchScore = recipeIngredients.length === 0 ? 0 : have.length / recipeIngredients.length;
@@ -687,13 +709,15 @@ function AppInner() {
     });
     m.sort((a, b) => { if (a.canMake && !b.canMake) return -1; if (!a.canMake && b.canMake) return 1; return b.matchScore - a.matchScore; });
     return m;
-  }, [allMyIngredients, recipes]);
+  }, [allMyIngredients, activeRecipes]);
 
   const matchById = useMemo(() => { const map = new Map(); for (const m of matches) map.set(m.id, m); return map; }, [matches]);
 
   useEffect(() => { setLibraryPage(1); }, [librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, activeCookbooks]);
   const libraryRecipes = useMemo(() => {
-    let list = recipes;
+    // The one surface archived recipes can come back on, and only when the
+    // Archived filter is explicitly chosen.
+    let list = activeProgresses.includes('__archived') ? recipes : activeRecipes;
     const q = librarySearch.toLowerCase().trim();
     if (q) list = list.filter(r => r.name.toLowerCase().includes(q));
     if (activeCuisines.length) list = list.filter(r => activeCuisines.includes(r.cuisine || ''));
@@ -759,7 +783,7 @@ function AppInner() {
       });
     }
     return list;
-  }, [recipes, cookbooks, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById, hideIncompatible, dietaryFilters, activeCookbooks, makeSoonIds]);
+  }, [recipes, activeRecipes, cookbooks, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById, hideIncompatible, dietaryFilters, activeCookbooks, makeSoonIds]);
 
   const hasActiveFilters = !!(librarySearch || activeTags.length || activeCuisines.length || activeProgresses.length || maxCalories !== null || maxMinutes !== null || activeCookbooks.length);
   // Filter button highlight: only when filter chips/sliders are active (not search text)
@@ -847,7 +871,7 @@ function AppInner() {
                   onKeyDown={e => {
                     if (e.key === 'Enter') {
                       const q = mobileSearchQuery.toLowerCase().trim();
-                      const hits = recipes.filter(r => r.name.toLowerCase().includes(q));
+                      const hits = activeRecipes.filter(r => r.name.toLowerCase().includes(q));
                       if (hits.length === 1) {
                         setMobileSearchOpen(false);
                         openRecipe(hits[0]);
@@ -870,7 +894,7 @@ function AppInner() {
                 {/* Autocomplete dropdown with images */}
                 {mobileSearchQuery && !mobileSearchSubmitted && (() => {
                   const q = mobileSearchQuery.toLowerCase().trim();
-                  const suggestions = recipes.filter(r => r.name.toLowerCase().includes(q)).slice(0, 6);
+                  const suggestions = activeRecipes.filter(r => r.name.toLowerCase().includes(q)).slice(0, 6);
                   return suggestions.length > 0 ? (
                     <div className="mobile-search-dropdown">
                       {suggestions.map(r => (
@@ -1028,6 +1052,7 @@ function AppInner() {
           onDismissCookNote={dismissCookNote}
           loading={recipeLoading} onBack={() => setView(lastView)}
           allIngredients={allIngredients}
+          allMyIngredients={allMyIngredients}
           cookbooks={cookbooks}
           dietaryFilters={dietaryFilters}
           authFetch={authFetch}
@@ -1113,7 +1138,7 @@ function AppInner() {
           <StatBar
             displayName={authUser?.display_name || authUser?.username}
             cookLog={cookLog}
-            recipeCount={recipes.length}
+            recipeCount={activeRecipes.length}
           />
 
           <div className="home-grid">
@@ -1129,7 +1154,7 @@ function AppInner() {
               const candidates = matches
                 .filter(m => m.matchScore > 0)
                 .slice(0, 10)
-                .map(m => ({ match: m, recipe: recipes.find(r => r.id === m.id) }))
+                .map(m => ({ match: m, recipe: activeRecipes.find(r => r.id === m.id) }))
                 .filter(c => c.recipe);
               return (
                 <TonightHero
@@ -1143,7 +1168,7 @@ function AppInner() {
 
             {/* -- â± Make Soon -- */}
             {(() => {
-              const makeSoonRecipes = recipes.filter(r => makeSoonIds.includes(r.id));
+              const makeSoonRecipes = activeRecipes.filter(r => makeSoonIds.includes(r.id));
               return (
                 <div className="home-section">
                   <div className="home-section__header">
@@ -1200,7 +1225,7 @@ function AppInner() {
                   ) : goodMatches.length > 0 ? (
                     <HScrollRow count={goodMatches.length}>
                       {goodMatches.map(m => {
-                          const r = recipes.find(x => x.id === m.id);
+                          const r = activeRecipes.find(x => x.id === m.id);
                           if (!r) return null;
                           return <RecipeCard key={r.id} recipe={r} match={m} onClick={openRecipe}
                             isHearted={heartedIds.includes(r.id)} onToggleHeart={() => toggleHeart(r.id)}
@@ -1215,7 +1240,7 @@ function AppInner() {
 
             {/* -- Favorites -- */}
             {(() => {
-              const favs = recipes.filter(r => heartedIds.includes(r.id));
+              const favs = activeRecipes.filter(r => heartedIds.includes(r.id));
               if (!favs.length) return null;
               return (
                 <div className="home-section">
@@ -1240,7 +1265,7 @@ function AppInner() {
 
             {/* -- Recently added -- */}
             {(() => {
-              const recent = [...recipes]
+              const recent = [...activeRecipes]
                 .filter(r => r.created_at)
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
                 .slice(0, 12);
@@ -1667,9 +1692,9 @@ function AppInner() {
         );
       })()}
 
-      {view === 'grocery' && <GroceryListTab recipes={recipes} makeSoonIds={makeSoonIds} allMyIngredients={allMyIngredients} allIngredients={allIngredients} setInventoryHave={setInventoryHave} />}
+      {view === 'grocery' && <GroceryListTab recipes={activeRecipes} makeSoonIds={makeSoonIds} allMyIngredients={allMyIngredients} allIngredients={allIngredients} setInventoryHave={setInventoryHave} />}
 
-      {view === 'plan' && <MealPlanTab session={session} recipes={recipes} onOpenRecipe={openRecipe} onPlanned={addToMakeSoon} />}
+      {view === 'plan' && <MealPlanTab session={session} recipes={activeRecipes} onOpenRecipe={openRecipe} onPlanned={addToMakeSoon} />}
 
       {view === 'add' && (
         <AddRecipeTab
@@ -1694,7 +1719,7 @@ function AppInner() {
         <CookbooksTab
           cookbooks={cookbooks}
           setCookbooks={setCookbooks}
-          recipes={recipes}
+          recipes={activeRecipes}
           onOpenRecipe={openRecipe}
           allIngredients={allIngredients}
           setCookingRecipe={setCookingRecipe}
@@ -1706,6 +1731,8 @@ function AppInner() {
         />
       )}
 
+      {/* ProfileTab gets the full list on purpose: a history entry for an
+          archived recipe still needs to resolve its name and stay clickable. */}
       {view === 'profile' && (
         <ProfileTab
           recipes={recipes}

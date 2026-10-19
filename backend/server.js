@@ -140,6 +140,36 @@ async function findOrCreateIngredient(client, name, category) {
   return row;
 }
 
+// Writes a recipe's ingredient rows and their per-recipe alternatives.
+// Shared so create and update cannot drift apart -- they already had two
+// copies of this loop.
+async function writeRecipeIngredients(client, recipeId, ingredients) {
+  for (const ing of ingredients) {
+    const ingredientId = await resolveIngredientId(client, ing);
+    if (!ingredientId) continue;
+    const { rows: [row] } = await client.query(
+      `INSERT INTO recipe_ingredients (recipe_id,ingredient_id,amount,unit,prep_note,optional,group_label,order_index)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      [recipeId, ingredientId, String(ing.amount ?? '').trim() || null, normalizeUnit(ing.unit),
+       normalizePrep(ing.prep_note), Boolean(ing.optional),
+       String(ing.group_label ?? '').trim() || null, ing.order_index ?? 0]
+    );
+    const alts = Array.isArray(ing.alternatives) ? ing.alternatives : [];
+    let altIdx = 0;
+    const seen = new Set([ingredientId]);   // an ingredient cannot replace itself
+    for (const alt of alts) {
+      const altId = await resolveIngredientId(client, alt);
+      if (!altId || seen.has(altId)) continue;
+      seen.add(altId);
+      await client.query(
+        `INSERT INTO recipe_ingredient_alternatives (recipe_ingredient_id,ingredient_id,note,order_index)
+         VALUES ($1,$2,$3,$4)`,
+        [row.id, altId, normalizePrep(alt.note), altIdx++]
+      );
+    }
+  }
+}
+
 // A row the editor loaded carries both ingredient_id and name. Trusting the id
 // would silently throw away a rename, so the name wins whenever it is present
 // and only falls back to the id when the caller sent no name at all.
@@ -253,6 +283,17 @@ async function initDB() {
       optional      BOOLEAN NOT NULL DEFAULT FALSE,
       group_label   TEXT,
       order_index   INTEGER DEFAULT 0
+    )`,
+
+    // Per-recipe ingredient swaps. Deliberately NOT the global substitute
+    // list: tofu stands in for chicken in a Thai curry and nowhere near a
+    // chicken soup, so the claim belongs to one recipe, not to the ingredient.
+    `CREATE TABLE IF NOT EXISTS recipe_ingredient_alternatives (
+      id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      recipe_ingredient_id UUID NOT NULL REFERENCES recipe_ingredients(id) ON DELETE CASCADE,
+      ingredient_id        UUID NOT NULL REFERENCES ingredients(id) ON DELETE RESTRICT,
+      note                 TEXT,
+      order_index          INTEGER DEFAULT 0
     )`,
 
     `CREATE TABLE IF NOT EXISTS recipe_steps (
@@ -405,7 +446,8 @@ async function initDB() {
     // Recipe children â€” most queried FKs
     `CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe     ON recipe_ingredients(recipe_id)`,
     `CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_ingredient ON recipe_ingredients(ingredient_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_recipe_steps_recipe       ON recipe_steps(recipe_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_ri_alternatives_ri ON recipe_ingredient_alternatives(recipe_ingredient_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_recipe_steps_recipe ON recipe_steps(recipe_id)`,
     `CREATE INDEX IF NOT EXISTS idx_recipe_notes_recipe       ON recipe_notes(recipe_id)`,
 
     // Cookbook join table â€” both directions
@@ -802,7 +844,24 @@ app.get('/api/recipes', async (req, res) => {
              COALESCE(
                json_agg(i.name ORDER BY ri.order_index)
                FILTER (WHERE i.name IS NOT NULL), '[]'
-             ) AS ingredients
+             ) AS ingredients,
+             -- Only the rows that actually declare a swap, so the payload for
+             -- the library list stays small. Kitchen matching reads this to
+             -- tell "you have tofu, which this recipe says can stand in".
+             COALESCE((
+               SELECT json_agg(json_build_object(
+                        'name', i2.name,
+                        'alts', (SELECT COALESCE(json_agg(ai.name ORDER BY a.order_index), '[]')
+                                   FROM recipe_ingredient_alternatives a
+                                   JOIN ingredients ai ON ai.id = a.ingredient_id
+                                  WHERE a.recipe_ingredient_id = ri2.id)
+                      ) ORDER BY ri2.order_index)
+                 FROM recipe_ingredients ri2
+                 JOIN ingredients i2 ON i2.id = ri2.ingredient_id
+                WHERE ri2.recipe_id = r.id
+                  AND EXISTS (SELECT 1 FROM recipe_ingredient_alternatives a2
+                               WHERE a2.recipe_ingredient_id = ri2.id)
+             ), '[]') AS ingredient_alts
       FROM recipes r
       LEFT JOIN recipe_ingredients ri ON ri.recipe_id = r.id
       LEFT JOIN ingredients i         ON i.id = ri.ingredient_id
@@ -821,7 +880,18 @@ app.get('/api/recipes/:id', async (req, res) => {
     const { rows: [recipe] } = await q('SELECT * FROM recipes WHERE id = $1', [req.params.id]);
     if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
     const { rows: ings  } = await q(
-      `SELECT ri.*, i.name, i.category
+      `SELECT ri.*, i.name, i.category,
+              COALESCE((
+                SELECT json_agg(json_build_object(
+                         'ingredient_id', a.ingredient_id,
+                         'name',          ai.name,
+                         'category',      ai.category,
+                         'note',          a.note
+                       ) ORDER BY a.order_index)
+                  FROM recipe_ingredient_alternatives a
+                  JOIN ingredients ai ON ai.id = a.ingredient_id
+                 WHERE a.recipe_ingredient_id = ri.id
+              ), '[]') AS alternatives
          FROM recipe_ingredients ri
          JOIN ingredients i ON i.id = ri.ingredient_id
         WHERE ri.recipe_id = $1
@@ -867,17 +937,7 @@ app.post('/api/recipes', authenticateToken, async (req, res) => {
       ]
     );
     if (Array.isArray(ingredients)) {
-      for (const ing of ingredients) {
-        const ingredientId = await resolveIngredientId(client, ing);
-        if (!ingredientId) continue;
-        await client.query(
-          `INSERT INTO recipe_ingredients (recipe_id,ingredient_id,amount,unit,prep_note,optional,group_label,order_index)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-          [id, ingredientId, String(ing.amount ?? '').trim() || null, normalizeUnit(ing.unit),
-           normalizePrep(ing.prep_note), Boolean(ing.optional),
-           String(ing.group_label ?? '').trim() || null, ing.order_index??0]
-        );
-      }
+      await writeRecipeIngredients(client, id, ingredients);
     }
     if (Array.isArray(instructions)) {
       for (const step of instructions) {
@@ -955,17 +1015,7 @@ app.put('/api/recipes/:id', authenticateToken, async (req, res) => {
     }
     if (ingredients !== undefined) {
       await client.query('DELETE FROM recipe_ingredients WHERE recipe_id = $1', [id]);
-      for (const ing of ingredients) {
-        const ingredientId = await resolveIngredientId(client, ing);
-        if (!ingredientId) continue;
-        await client.query(
-          `INSERT INTO recipe_ingredients (recipe_id,ingredient_id,amount,unit,prep_note,optional,group_label,order_index)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-          [id, ingredientId, String(ing.amount ?? '').trim() || null, normalizeUnit(ing.unit),
-           normalizePrep(ing.prep_note), Boolean(ing.optional),
-           String(ing.group_label ?? '').trim() || null, ing.order_index??0]
-        );
-      }
+      await writeRecipeIngredients(client, id, ingredients);
     }
     if (instructions !== undefined) {
       await client.query('DELETE FROM recipe_steps WHERE recipe_id = $1', [id]);
@@ -1273,6 +1323,7 @@ app.post('/api/admin/restore', authenticateToken, requireAdmin, async (req, res)
         'recipes',     (SELECT COALESCE(json_agg(r), '[]') FROM recipes r),
         'ingredients', (SELECT COALESCE(json_agg(i), '[]') FROM ingredients i),
         'recipe_ingredients', (SELECT COALESCE(json_agg(ri), '[]') FROM recipe_ingredients ri),
+        'recipe_ingredient_alternatives',(SELECT COALESCE(json_agg(a), '[]') FROM recipe_ingredient_alternatives a),
         'recipe_steps',(SELECT COALESCE(json_agg(s), '[]') FROM recipe_steps s),
         'recipe_notes',(SELECT COALESCE(json_agg(n), '[]') FROM recipe_notes n)
       ) AS snapshot`).then(r => r.rows[0].snapshot).catch(() => null);

@@ -315,8 +315,45 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
           >
             {ing.optional ? 'optional' : 'required'}
           </button>
+          {/* Per-recipe swap, e.g. "chicken or tofu" on a Thai curry. Scoped to
+              this recipe on purpose -- the same claim is wrong elsewhere. */}
+          <button
+            className="ing-alt-add"
+            type="button"
+            tabIndex={-1}
+            title="Add an alternative for this recipe"
+            onClick={() => onUpdate('alternatives', [...(ing.alternatives || []), { name: '', note: '' }])}
+          >or…</button>
           <button className="editor-remove-btn" onClick={onRemove} tabIndex={-1}>✕</button>
         </div>
+        {(ing.alternatives || []).length > 0 && (
+          <div className="ing-flat-row__alts">
+            {(ing.alternatives || []).map((alt, i) => (
+              <div className="ing-alt-row" key={i}>
+                <span className="ing-alt-row__or">or</span>
+                <div className="ing-alt-row__name">
+                  <IngredientAutocomplete
+                    value={alt.name || ''}
+                    onChange={v => onUpdate('alternatives',
+                      (ing.alternatives || []).map((a, j) => j === i ? { ...a, name: v } : a))}
+                    allIngredients={allIngredients}
+                  />
+                </div>
+                <input
+                  className="editor-input ing-alt-row__note"
+                  value={alt.note || ''}
+                  placeholder="note (optional)"
+                  onChange={e => onUpdate('alternatives',
+                    (ing.alternatives || []).map((a, j) => j === i ? { ...a, note: e.target.value } : a))}
+                />
+                <button
+                  className="editor-remove-btn" type="button" tabIndex={-1}
+                  onClick={() => onUpdate('alternatives', (ing.alternatives || []).filter((_, j) => j !== i))}
+                >✕</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

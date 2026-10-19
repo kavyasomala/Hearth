@@ -1382,6 +1382,38 @@ body {
 .rp2__ing-amount { font-weight: 600; color: var(--charcoal); }
 .rp2__ing-name { color: var(--charcoal); }
 .rp2__ing-prep { font-size: 0.9em; color: var(--warm-gray); font-style: italic; }
+/* --- Per-recipe ingredient alternatives ---------------------------------- */
+.rp2__ing-alts {
+  display: block; margin-top: 2px;
+  font-size: 0.82em; color: var(--warm-gray);
+}
+.rp2__ing-alt { font-style: italic; }
+/* Only the swap you actually own gets emphasis; the rest stay as notes */
+.rp2__ing-alt--have { color: var(--sage); font-style: normal; font-weight: 600; }
+
+.ing-flat-row__alts { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.ing-alt-row { display: flex; align-items: center; gap: 6px; padding-left: 10px; }
+.ing-alt-row__or {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--ash); flex-shrink: 0;
+}
+.ing-alt-row__name { flex: 2; min-width: 0; }
+.ing-alt-row__note { flex: 1; min-width: 0; font-size: 12px !important; padding: 5px 8px !important; }
+.ing-alt-add {
+  padding: 3px 9px; border: 1.5px dashed var(--border); border-radius: 20px;
+  background: none; cursor: pointer; flex-shrink: 0;
+  font-family: var(--font-body); font-size: 0.72rem; font-weight: 600;
+  color: var(--warm-gray);
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+.ing-alt-add:hover { border-color: var(--sage); color: var(--sage); }
+
+/* Grocery list: a swap you own is a suggestion, never a reason to drop the
+   line -- you still decide at the shop. */
+.grocery-item__swap {
+  display: block; font-size: 0.76rem; color: var(--sage); font-weight: 600; margin-top: 2px;
+}
+
 .rp2__ing-optional { font-size: 11px; background: var(--parchment); border-radius: 999px; padding: 1px 6px; color: var(--warm-gray); margin-left: 4px; vertical-align: middle; }
 
 /* Instructions */
