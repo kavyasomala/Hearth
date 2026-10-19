@@ -471,13 +471,34 @@ function AppInner() {
     });
   }, [authToken, authFetch]);
 
-  const toggleMakeSoon = useCallback((id) => {
-    setMakeSoonIds(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
-      if (authToken) authFetch(`${API}/api/user/make-soon`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ makeSoon: next }) }).catch(() => {});
-      return next;
-    });
+  // Single place that writes the Make Soon list to the server. Updating
+  // setMakeSoonIds on its own only changes local state, so the change was lost
+  // on the next reload — that's why cooking a recipe didn't actually remove it.
+  const persistMakeSoon = useCallback((next) => {
+    if (authToken) {
+      authFetch(`${API}/api/user/make-soon`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ makeSoon: next }),
+      }).catch(() => {});
+    }
+    return next;
   }, [authToken, authFetch]);
+
+  const toggleMakeSoon = useCallback((id) => {
+    setMakeSoonIds(prev => persistMakeSoon(prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  }, [persistMakeSoon]);
+
+  // Cooking something means you're no longer planning to cook it
+  const removeFromMakeSoon = useCallback((id) => {
+    setMakeSoonIds(prev => prev.includes(id) ? persistMakeSoon(prev.filter(x => x !== id)) : prev);
+  }, [persistMakeSoon]);
+
+  // Putting a recipe on the calendar is a statement of intent, so it belongs in
+  // Make Soon too — which also pulls its ingredients into the grocery list.
+  const addToMakeSoon = useCallback((id) => {
+    if (!id) return;
+    setMakeSoonIds(prev => prev.includes(id) ? prev : persistMakeSoon([...prev, id]));
+  }, [persistMakeSoon]);
 
   // --- Settings & Appearance -------------------------------------------------
   // All of these persist to users.preferences (JSONB) via /api/user/preferences.
@@ -621,6 +642,16 @@ function AppInner() {
 
   const allMyIngredients = useMemo(() => new Set(inventoryHave.map(i => i.toLowerCase().trim())), [inventoryHave]);
 
+  // Every recipe id that appears in the cook log at least once
+  const cookedRecipeIds = useMemo(
+    () => new Set((cookLog || []).map(e => e.recipe_id).filter(Boolean)),
+    [cookLog]
+  );
+  const neverCookedCount = useMemo(
+    () => recipes.filter(r => !cookedRecipeIds.has(r.id)).length,
+    [recipes, cookedRecipeIds]
+  );
+
   const matches = useMemo(() => {
     if (allMyIngredients.size === 0) return [];
     const kitchenArr = [...allMyIngredients]; // array for substring checks
@@ -659,6 +690,9 @@ function AppInner() {
         if (p === '__favorite') return heartedIds.includes(r.id);
         if (p === '__complete') return r.status === 'made it';
         if (p === '__totry') return r.status === 'to try';
+        // Based on the actual cook log, not the status field — a recipe can be
+        // marked "made it" without ever having been logged, and vice versa.
+        if (p === '__nevercooked') return !cookedRecipeIds.has(r.id);
         return false;
       }));
     }
@@ -979,11 +1013,14 @@ function AppInner() {
           session={session}
           isAdmin={isAdmin || !!(authUser && selectedRecipe?.created_by === authUser.id)}
           onMarkCooked={(recipeId, toRemove) => {
-            setMakeSoonIds(prev => prev.filter(id => id !== recipeId));
+            // Persisted — a bare setMakeSoonIds was lost on the next reload
+            removeFromMakeSoon(recipeId);
             if (toRemove?.length) {
               const lower = toRemove.map(n => n.toLowerCase().trim());
-              setFridgeIngredients(prev => prev.filter(x => !lower.includes(x.toLowerCase().trim())));
-              setPantryStaples(prev => prev.filter(x => !lower.includes(x.toLowerCase().trim())));
+              // setFridgeIngredients/setPantryStaples were removed in the localStorage
+              // migration and threw a ReferenceError here. inventoryHave is the current
+              // kitchen list and syncs to the server via its own debounced effect.
+              setInventoryHave(prev => prev.filter(x => !lower.includes(x.toLowerCase().trim())));
             }
             authFetch(`${API}/api/user/cook-log`).then(r => r.json()).then(d => setCookLog(d.entries || [])).catch(() => {});
           }}
@@ -1213,6 +1250,27 @@ function AppInner() {
           {/* -- Right column: at-a-glance, secondary to the recipe rows -- */}
           <aside className="home-sidebar">
             <WeekStrip mealPlans={mealPlans} onOpenPlan={() => setView('plan')} />
+
+            {/* Surfaces the backlog of recipes saved but never actually made */}
+            {neverCookedCount > 0 && (
+              <button
+                className="home-try-new"
+                onClick={() => {
+                  setActiveTags([]); setActiveCuisines([]); setActiveCookbooks([]);
+                  setActiveProgresses(['__nevercooked']);
+                  setLibrarySearch(''); setLibraryPage(1); setView('recipes');
+                }}
+              >
+                <span className="home-try-new__icon"><Icon name="zap" size={18} strokeWidth={2} /></span>
+                <span className="home-try-new__text">
+                  <span className="home-try-new__title">Try something new!</span>
+                  <span className="home-try-new__sub">
+                    {neverCookedCount} recipe{neverCookedCount === 1 ? '' : 's'} you've never made
+                  </span>
+                </span>
+                <span className="home-try-new__arrow">→</span>
+              </button>
+            )}
 
             <div className="home-card">
               <h3 className="home-card__title">Jump back in</h3>
@@ -1593,7 +1651,7 @@ function AppInner() {
 
       {view === 'grocery' && <GroceryListTab recipes={recipes} makeSoonIds={makeSoonIds} allMyIngredients={allMyIngredients} allIngredients={allIngredients} setInventoryHave={setInventoryHave} />}
 
-      {view === 'plan' && <MealPlanTab session={session} recipes={recipes} onOpenRecipe={openRecipe} />}
+      {view === 'plan' && <MealPlanTab session={session} recipes={recipes} onOpenRecipe={openRecipe} onPlanned={addToMakeSoon} />}
 
       {view === 'add' && (
         <AddRecipeTab
@@ -1659,11 +1717,14 @@ function AppInner() {
           bodyIngredients={cookingRecipe._bodyIngredients || []}
           authFetch={authFetch}
           onSave={({ toRemove }) => {
-            setMakeSoonIds(prev => prev.filter(id => id !== cookingRecipe.id));
+            // Persisted — a bare setMakeSoonIds was lost on the next reload
+            removeFromMakeSoon(cookingRecipe.id);
             if (toRemove?.length) {
               const lower = toRemove.map(n => n.toLowerCase().trim());
-              setFridgeIngredients(prev => prev.filter(x => !lower.includes(x.toLowerCase().trim())));
-              setPantryStaples(prev => prev.filter(x => !lower.includes(x.toLowerCase().trim())));
+              // setFridgeIngredients/setPantryStaples were removed in the localStorage
+              // migration and threw a ReferenceError here. inventoryHave is the current
+              // kitchen list and syncs to the server via its own debounced effect.
+              setInventoryHave(prev => prev.filter(x => !lower.includes(x.toLowerCase().trim())));
             }
             setCookingRecipe(null);
             authFetch(`${API}/api/user/cook-log`).then(r => r.json()).then(d => setCookLog(d.entries || [])).catch(() => {});

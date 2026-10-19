@@ -1978,6 +1978,30 @@ body {
 .home-quick:hover { border-color: var(--terracotta); color: var(--terracotta); background: var(--parchment); }
 .home-quick--full { justify-content: center; font-weight: 600; }
 
+/* ─── Home: "Try something new" ──────────────────────────────────────────── */
+.home-try-new {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 14px 16px; cursor: pointer; text-align: left;
+  border: 1.5px solid var(--terracotta); border-radius: var(--radius);
+  background: var(--parchment); font-family: var(--font-body);
+  transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.home-try-new:hover {
+  background: var(--terracotta); transform: translateY(-1px); box-shadow: var(--shadow);
+}
+.home-try-new__icon { color: var(--terracotta); flex-shrink: 0; display: flex; }
+.home-try-new__text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.home-try-new__title { font-family: var(--font-display); font-size: 0.98rem; font-weight: 700; color: var(--charcoal); }
+.home-try-new__sub { font-size: 0.76rem; color: var(--warm-gray); }
+.home-try-new__arrow { color: var(--terracotta); flex-shrink: 0; font-size: 1.05rem; }
+/* On hover the card goes solid terracotta, so everything inside flips to white */
+.home-try-new:hover .home-try-new__icon,
+.home-try-new:hover .home-try-new__title,
+.home-try-new:hover .home-try-new__sub,
+.home-try-new:hover .home-try-new__arrow { color: #fff; }
+
+@media (prefers-reduced-motion: reduce) { .home-try-new { transition: none; } }
+
 /* ─── Home: week strip ───────────────────────────────────────────────────── */
 .home-week {
   display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;

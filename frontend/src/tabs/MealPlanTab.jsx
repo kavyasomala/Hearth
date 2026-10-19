@@ -360,7 +360,7 @@ function DayDetailPanel({ dateStr, plans, onClose, onAddMeal, onRemove, onMarkCo
 
 // ─── MealPlanTab ──────────────────────────────────────────────────────────────
 
-export default function MealPlanTab({ session, recipes = [], onOpenRecipe }) {
+export default function MealPlanTab({ session, recipes = [], onOpenRecipe, onPlanned }) {
   const now = new Date();
   const [viewMode,     setViewMode]     = useState('month');
   const [year,         setYear]         = useState(now.getFullYear());
@@ -453,8 +453,14 @@ export default function MealPlanTab({ session, recipes = [], onOpenRecipe }) {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ recipe_id: recipeId, planned_date: date, meal_type: mealType }),
     });
-    if (res.ok) { const newPlan = await res.json(); setPlans(prev => [...prev, newPlan]); }
-  }, [session]);
+    if (res.ok) {
+      const newPlan = await res.json();
+      setPlans(prev => [...prev, newPlan]);
+      // Planning a meal is intent to cook it, so mirror it into Make Soon —
+      // that's also what feeds the grocery list.
+      onPlanned?.(recipeId);
+    }
+  }, [session, onPlanned]);
 
   const removePlan = useCallback(async (id) => {
     setPlans(prev => prev.filter(p => p.id !== id));

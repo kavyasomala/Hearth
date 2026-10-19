@@ -26,8 +26,9 @@ const UNITS = new Set([
 const INSTR_HEADER = /^(instructions?|directions?|method|steps?|how to (make|prepare|cook)|preparation|procedure)\s*:?\s*$/i;
 const ING_HEADER   = /^(ingredients?)\s*:?\s*$/i;
 const META_LINE    = /^(prep|cook|total|ready|servings?|serves?|yield|calories?|time|makes?|active)\b/i;
-// Amount: integer, decimal, fraction (1/2), or unicode vulgar fractions
-const AMT_RE       = /^([¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\d+(?:[.,]\d+)?(?:\s*[\/⁄]\s*\d+)?(?:\s*[-–]\s*\d+(?:[.,]\d+)?(?:\s*[\/⁄]\s*\d+)?)?)\s*/;
+// Amount, longest alternative first so "1 1/2" is not truncated to "1".
+// Order: mixed number | number+vulgar | fraction | vulgar | decimal/range.
+const AMT_RE       = /^(\d+\s+\d+\s*[\/⁄]\s*\d+|\d+\s*[¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\d+\s*[\/⁄]\s*\d+|[¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\d+(?:[.,]\d+)?(?:\s*[-–]\s*\d+(?:[.,]\d+)?)?)\s*/;
 
 // Words that can precede an ingredient name as preparation descriptors
 const PREP_WORDS = new Set([
@@ -81,7 +82,9 @@ function parseIngLine(raw) {
 
   const name = line.toLowerCase().trim();
   if (!name) return null;
-  return { name, amount, unit: unit.replace(/s\.?$/, ''), prep_note: combined, optional: /optional/i.test(raw) };
+    // Strip a trailing period first ("tbsp."), then a plural "s" ("cups")
+  const cleanUnit = unit.replace(/\.$/, '').replace(/s$/, '');
+  return { name, amount, unit: cleanUnit, prep_note: combined, optional: /optional/i.test(raw) };
 }
 
 function parseRecipeText(text) {
@@ -340,40 +343,44 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved,
     [inventoryConfig]
   );
 
+  // Fuzzy-match every ingredient against the catalog, then either open the
+  // resolver (unknown names) or go straight to the recipe modal. Shared by the
+  // paste-text and import-from-URL flows so they behave identically.
+  const ingestRecipe = (recipe, source, onAccepted) => {
+    const resolved = recipe.ingredients.map(ing => {
+      const m = fuzzyMatch(ing.name, catalogArr);
+      if (m && m.score >= 80) return { ...ing, name: m.match };  // auto-apply high-confidence
+      return ing;  // low/medium — goes to resolver
+    });
+    recipe.ingredients = resolved;
+
+    // Collect unknowns (full objects, deduplicated by name)
+    const seen = new Set();
+    const unknownObjs = resolved.filter(i => {
+      const n = i.name?.toLowerCase().trim();
+      if (!n || catalogNames.has(n) || seen.has(n)) return false;
+      seen.add(n);
+      return true;
+    });
+
+    setParsedData(recipe);
+    setImportedFrom(source);
+    if (unknownObjs.length > 0) {
+      setUnknownIngs(unknownObjs);
+      setShowResolver(true);
+    } else {
+      openModalWithData(recipe);
+    }
+    onAccepted?.();
+  };
+
   const parseFromText = () => {
     if (!pasteText.trim()) return;
     setParsing(true); setParseError(null);
     try {
       const recipe = parseRecipeText(pasteText.trim());
-
-      // Fuzzy-match each ingredient name against catalog
-      const resolved = recipe.ingredients.map(ing => {
-        const m = fuzzyMatch(ing.name, catalogArr);
-        if (m && m.score >= 80) return { ...ing, name: m.match };  // auto-apply high-confidence
-        return ing;  // low/medium — goes to resolver
-      });
-      recipe.ingredients = resolved;
-
-      // Collect unknowns (full objects, deduplicated by name)
-      const seen = new Set();
-      const unknownObjs = resolved.filter(i => {
-        const n = i.name?.toLowerCase().trim();
-        if (!n || catalogNames.has(n) || seen.has(n)) return false;
-        seen.add(n);
-        return true;
-      });
-
-      setParsedData(recipe);
-      if (unknownObjs.length > 0) {
-        setUnknownIngs(unknownObjs);
-        setShowTextModal(false);
-        setShowResolver(true);
-      } else {
-        setImportedFrom('text');
-        setShowTextModal(false);
-        openModalWithData(recipe);
-        setPasteText('');
-      }
+      setShowTextModal(false);
+      ingestRecipe(recipe, 'text', () => setPasteText(''));
     } catch (e) { setParseError(e.message); }
     finally { setParsing(false); }
   };
@@ -486,10 +493,24 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Import failed');
-      try { setImportedFrom(new URL(importUrl.trim()).hostname.replace(/^www\./, '')); } catch {}
-      setImportUrl('');
+      let host = 'url';
+      try { host = new URL(importUrl.trim()).hostname.replace(/^www\./, ''); } catch {}
+
+      // The backend returns each ingredient as one raw line ("2 tbsp olive oil")
+      // with empty amount/unit, because schema.org gives no structured amounts.
+      // Run it through the same parser the paste-text flow uses so quantities
+      // actually land in their own fields instead of being buried in the name.
+      const recipe = {
+        ...data.recipe,
+        ingredients: (data.recipe.ingredients || []).map(ing => {
+          if (ing.amount || ing.unit) return ing;        // already structured
+          const parsed = parseIngLine(ing.name || '');
+          return parsed ? { ...ing, ...parsed } : ing;
+        }),
+      };
+
       setShowUrlModal(false);
-      openModalWithData(data.recipe);
+      ingestRecipe(recipe, host, () => setImportUrl(''));
     } catch (e) {
       setImportError(e.message);
     } finally {
