@@ -6,7 +6,7 @@ import { Icon } from '../icons';
 import { API, TAG_FILTERS, ALL_CUISINES } from '../constants';
 import { haptic, normalizeUnit } from '../utils';
 import { AutoGrowTextarea, DRAG_SENSORS } from '../components/ui';
-import { IngFlatRow, IngGroupRow, StepSortableItem, CookbookAutocomplete } from '../components/IngredientEditor';
+import { IngFlatRow, IngGroupRow, StepSortableItem, StepGroupRow, CookbookAutocomplete } from '../components/IngredientEditor';
 import { autoCategory } from '../KitchenTab';
 
 // ─── Local recipe text parser ─────────────────────────────────────────────────
@@ -487,12 +487,27 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved,
         ? data.ingredients.map((ing, i) => ({ _id: `imp-ing-${i}`, ...ing }))
         : [{ _id: 'imp-ing-empty', name: '', amount: '', unit: '', prep_note: '', optional: false, group_label: '' }]
     );
+    // Every row needs its own _id: the editors key off it, and a list of rows
+    // all sharing `undefined` makes typing in one step overwrite the others.
+    // The text parser emits none, which is why only URL imports were editable.
     setSteps(
       data.steps?.length
-        ? data.steps
+        ? (() => {
+            const flat = [];
+            const emitted = new Set();
+            data.steps.forEach((step, i) => {
+              const g = step.group_label || '';
+              if (g && !emitted.has(g)) {
+                emitted.add(g);
+                flat.push({ _id: `imp-step-grp-${i}`, _isGroup: true, name: g });
+              }
+              flat.push({ ...step, _id: step._id || `imp-step-${i}`, group_label: g || null });
+            });
+            return flat;
+          })()
         : [{ _id: 'imp-step-empty', step_number: 1, body_text: '' }]
     );
-    setNotesList(data.notes || []);
+    setNotesList((data.notes || []).map((n, i) => ({ ...n, _id: n._id || `imp-note-${i}` })));
     setSaveError(null);
     setImgPreviewError(false);
     setShowModal(true);
@@ -560,8 +575,9 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved,
         },
         ingredients: flatIngs.map((i, idx) => ({ ...i, order_index: idx })),
         instructions: (() => {
-          const result = []; let stepNum = 1;
+          const result = []; let stepNum = 1; let stepGrp = '';
           for (const item of steps) {
+            if (item._isGroup) { stepGrp = item.name || ''; continue; }
             if (item._isTimer) {
               const secs = (parseInt(item.h)||0)*3600 + (parseInt(item.m)||0)*60 + (parseInt(item.s)||0);
               if (result.length > 0) result[result.length-1].timer_seconds = secs > 0 ? secs : null;
@@ -569,7 +585,8 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved,
               const bodyText = item._tip?.trim()
                 ? item.body_text + '\n\u26D4TIP\u26D4' + item._tip.trim()
                 : item.body_text;
-              result.push({ ...item, body_text: bodyText, step_number: stepNum++, timer_seconds: item.timer_seconds ?? null });
+              result.push({ ...item, body_text: bodyText, step_number: stepNum++,
+                timer_seconds: item.timer_seconds ?? null, group_label: stepGrp || null });
             }
           }
           return result;
@@ -902,6 +919,24 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved,
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => haptic([8])} onDragEnd={onStepDragEnd}>
                   <SortableContext items={steps.map(s => s._id)} strategy={verticalListSortingStrategy}>
                     {steps.map((item, idx) => {
+                      if (item._isGroup) return (
+                        <StepGroupRow key={item._id} grp={item}
+                          onLabelChange={v => setSteps(prev => prev.map(st => st._id === item._id ? { ...st, name: v } : st))}
+                          onRemove={() => setSteps(prev => prev.filter(st => st._id !== item._id))}
+                          onAddStep={() => setSteps(prev => {
+                            // Append to the end of this group, i.e. just before
+                            // the next header rather than right under this one.
+                            let insertIdx = prev.findIndex(st => st._id === item._id);
+                            for (let j = insertIdx + 1; j < prev.length; j++) {
+                              if (prev[j]._isGroup) break;
+                              insertIdx = j;
+                            }
+                            const next = [...prev];
+                            next.splice(insertIdx + 1, 0, { _id: `step-${Date.now()}`, body_text: '', timer_seconds: null });
+                            return next;
+                          })}
+                        />
+                      );
                       if (item._isTimer) return (
                         <div key={item._id} className="rp2__ed-timer-row">
                           <span className="rp2__ed-timer-row__icon"><Icon name="timer" size={14} strokeWidth={2} /></span>
@@ -916,7 +951,7 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved,
                           <button className="editor-remove-btn" onClick={() => removeStep(item._id)}>✕</button>
                         </div>
                       );
-                      const stepNum = steps.slice(0, idx).filter(s => !s._isTimer).length + 1;
+                      const stepNum = steps.slice(0, idx).filter(s => !s._isTimer && !s._isGroup).length + 1;
                       return (
                         <StepSortableItem key={item._id} id={item._id} stepNum={stepNum}>
                           <AutoGrowTextarea className="editor-textarea" value={item.body_text} onChange={e => updateStep(item._id, e.target.value)} placeholder="Describe this step..." minRows={2} />
@@ -937,7 +972,10 @@ const AddRecipeTab = ({ allIngredients, inventoryConfig, addIngredient, onSaved,
                     })}
                   </SortableContext>
                 </DndContext>
-                <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
+                <div className="ing-flat-add-row">
+                  <button className="btn btn--ghost editor-add-btn" onClick={addStep}>+ Add Step</button>
+                  <button className="btn btn--ghost editor-add-btn ing-add-group-btn" onClick={() => setSteps(prev => [...prev, { _id: `step-grp-${Date.now()}`, _isGroup: true, name: '' }])}>+ Add Group</button>
+                </div>
               </div>
 
               {/* Notes */}

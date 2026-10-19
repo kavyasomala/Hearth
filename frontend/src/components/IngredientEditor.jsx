@@ -5,7 +5,7 @@ import { DndContext, closestCenter } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Icon } from '../icons';
 import { COMMON_UNITS } from '../constants';
-import { haptic, normalizeAmount, normalizeUnit } from '../utils';
+import { haptic, normalizeAmount, normalizeUnit, normalizePrep } from '../utils';
 import { AutoGrowTextarea, DRAG_SENSORS } from './ui';
 import { useIngredientCatalog } from '../IngredientCatalogContext';
 
@@ -299,7 +299,14 @@ const IngFlatRow = ({ ing, onUpdate, onRemove, allIngredients = [] }) => {
         </div>
         {/* Row 2 */}
         <div className="ing-flat-row__row2">
-          <input className="editor-input ing-flat-row__prep" value={ing.prep_note || ''} onChange={e => onUpdate('prep_note', e.target.value)} placeholder="Prep note (e.g. finely chopped)" />
+          {/* Settled on blur, not while typing, so the caret does not jump */}
+          <input
+            className="editor-input ing-flat-row__prep"
+            value={ing.prep_note || ''}
+            onChange={e => onUpdate('prep_note', e.target.value)}
+            onBlur={e => { const n = normalizePrep(e.target.value); if (n !== e.target.value) onUpdate('prep_note', n); }}
+            placeholder="Prep note (e.g. finely chopped)"
+          />
           <button
             className={`ing-opt-toggle ${ing.optional ? 'ing-opt-toggle--on' : ''}`}
             onClick={() => onUpdate('optional', !ing.optional)}

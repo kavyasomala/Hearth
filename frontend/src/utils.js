@@ -155,9 +155,10 @@ const UNIT_LOOKUP = (() => {
   return m;
 })();
 
-// Canonical unit, or the original text when it isn't a unit we know.
+// Canonical unit, or the lower-cased original when it isn't one we know.
 // Case and a trailing period/plural are stripped before lookup, so "Tbsp.",
-// "tablespoons" and "TBSP" all land on "tbsp".
+// "tablespoons" and "TBSP" all land on "tbsp". Must agree with the copy in
+// backend/server.js, which normalises the same values on write.
 export function normalizeUnit(unit) {
   const raw = String(unit ?? '').trim();
   if (!raw) return '';
@@ -169,7 +170,16 @@ export function normalizeUnit(unit) {
   const key = bare.toLowerCase();
   return UNIT_LOOKUP.get(key)            // exact ("tbsp", "cup")
       ?? UNIT_LOOKUP.get(key.replace(/s$/, ''))   // plural ("cups", "cloves")
-      ?? raw;                            // leave anything unrecognised alone
+      ?? key;                            // unknown units still land in lower case
+}
+
+// Prep notes are free text, so only case and stray edge punctuation are
+// touched. Rows written before normalisation existed still read as "Day old",
+// so display calls this too rather than trusting what is stored.
+export function normalizePrep(note) {
+  const clean = String(note ?? '').trim()
+    .replace(/^[,;]+\s*/, '').replace(/[,;]+\s*$/, '').trim();
+  return clean ? clean.toLowerCase() : '';
 }
 
 // Canonical display form of a stored amount; non-numeric text passes through.

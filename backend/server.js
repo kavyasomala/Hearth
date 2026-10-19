@@ -64,6 +64,60 @@ async function findOrCreateIngredient(client, name, category) {
   return row;
 }
 
+// A row the editor loaded carries both ingredient_id and name. Trusting the id
+// would silently throw away a rename, so the name wins whenever it is present
+// and only falls back to the id when the caller sent no name at all.
+async function resolveIngredientId(client, ing) {
+  const name = (ing.name || '').trim();
+  if (name) {
+    const row = await findOrCreateIngredient(client, name, ing.category);
+    if (row) return row.id;
+  }
+  return ing.ingredient_id || null;
+}
+
+// --- Write-time normalisation ---------------------------------------------
+// Every recipe-ingredient write funnels through here so stored rows stay
+// consistent no matter which screen produced them. Mixed casing ("Cup" vs
+// "cup", "Day old" vs "day old") used to leak into the DB and then into the
+// grocery list, where the same thing could show up twice.
+const UNIT_CANON = {
+  tsp: ['tsp','teaspoon'], tbsp: ['tbsp','tablespoon','tbs','tbl'],
+  cup: ['cup','c'], oz: ['oz','ounce'], 'fl oz': ['fl oz','floz','fluid ounce'],
+  lb: ['lb','pound','#'], g: ['g','gram','gm'], kg: ['kg','kilogram','kilo'],
+  ml: ['ml','milliliter','millilitre','cc'], l: ['l','liter','litre'],
+  qt: ['qt','quart'], pt: ['pt','pint'], gal: ['gal','gallon'],
+  clove: ['clove'], can: ['can','tin'], pkg: ['pkg','package','packet'],
+  slice: ['slice'], piece: ['piece','pc'], bunch: ['bunch'],
+  stalk: ['stalk','rib'], head: ['head'], sprig: ['sprig'],
+  pinch: ['pinch'], dash: ['dash'], handful: ['handful'], stick: ['stick'],
+};
+const UNIT_LOOKUP = new Map();
+for (const [canon, forms] of Object.entries(UNIT_CANON)) {
+  for (const f of forms) UNIT_LOOKUP.set(f, canon);
+}
+
+function normalizeUnit(unit) {
+  const raw = String(unit ?? '').trim();
+  if (!raw) return null;
+  // Recipe convention: capital T is tablespoon, lowercase t is teaspoon, so
+  // these two must be settled before anything gets lowercased.
+  const bare = raw.replace(/\.$/, '');
+  if (bare === 'T') return 'tbsp';
+  if (bare === 't') return 'tsp';
+  const key = bare.toLowerCase();
+  return UNIT_LOOKUP.get(key)
+      ?? UNIT_LOOKUP.get(key.replace(/s$/, ''))
+      ?? key;                       // unknown units still land in lower case
+}
+
+// Prep notes are free text, so only case and stray edge punctuation are touched.
+function normalizePrep(note) {
+  const clean = String(note ?? '').trim()
+    .replace(/^[,;]+\s*/, '').replace(/[,;]+\s*$/, '').trim();
+  return clean ? clean.toLowerCase() : null;
+}
+
 // â”€â”€â”€ Schema â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function initDB() {
@@ -713,7 +767,7 @@ app.post('/api/recipes', authenticateToken, async (req, res) => {
         parseInt(details.calories)   || null,
         details.cover_image_url      || null,
         details.status               || null,
-        details.reference            || null,
+        details.reference ?? details.page_number ?? null,
         details.source_url           || null,
         Array.isArray(details.tags) ? details.tags : [],
         req.user.id,
@@ -722,18 +776,14 @@ app.post('/api/recipes', authenticateToken, async (req, res) => {
     );
     if (Array.isArray(ingredients)) {
       for (const ing of ingredients) {
-        // Accept an explicit catalog id, or resolve/create the ingredient by name
-        let ingredientId = ing.ingredient_id || null;
-        if (!ingredientId) {
-          const row = await findOrCreateIngredient(client, ing.name, ing.category);
-          if (!row) continue;
-          ingredientId = row.id;
-        }
+        const ingredientId = await resolveIngredientId(client, ing);
+        if (!ingredientId) continue;
         await client.query(
           `INSERT INTO recipe_ingredients (recipe_id,ingredient_id,amount,unit,prep_note,optional,group_label,order_index)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-          [id, ingredientId, ing.amount||null, ing.unit||null,
-           ing.prep_note||null, Boolean(ing.optional), ing.group_label||null, ing.order_index??0]
+          [id, ingredientId, String(ing.amount ?? '').trim() || null, normalizeUnit(ing.unit),
+           normalizePrep(ing.prep_note), Boolean(ing.optional),
+           String(ing.group_label ?? '').trim() || null, ing.order_index??0]
         );
       }
     }
@@ -779,41 +829,49 @@ app.put('/api/recipes/:id', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query(
-      `UPDATE recipes SET
-         name=$1, cuisine=$2, time_minutes=$3, servings=$4, calories=$5,
-         cover_image_url=$6, status=$7, reference=$8, source_url=$9,
-         tags=$10, visibility=$11
-       WHERE id=$12`,
-      [
-        details.name,
-        details.cuisine     || null,
-        parseInt(details.time_minutes ?? details.time) || null,
-        parseInt(details.servings)   || null,
-        parseInt(details.calories)   || null,
-        details.cover_image_url      || null,
-        details.status               || null,
-        details.reference            || null,
-        details.source_url           || null,
-        Array.isArray(details.tags) ? details.tags : [],
-        details.visibility || 'private',
-        id,
-      ]
-    );
+    // Only touch columns the caller actually sent. The old version wrote every
+    // column on every save, so editing just the title wiped tags, status, the
+    // cookbook page reference and the source URL, and reset visibility to
+    // private -- each screen sends a different subset of `details`.
+    const COLUMN_FOR = {
+      name: d => (d.name || '').trim() || null,
+      cuisine: d => d.cuisine || null,
+      time_minutes: d => parseInt(d.time_minutes ?? d.time) || null,
+      servings: d => parseInt(d.servings) || null,
+      calories: d => parseInt(d.calories) || null,
+      cover_image_url: d => d.cover_image_url || null,
+      status: d => d.status || null,
+      reference: d => d.reference ?? d.page_number ?? null,
+      source_url: d => d.source_url || null,
+      tags: d => (Array.isArray(d.tags) ? d.tags : []),
+      visibility: d => d.visibility || 'private',
+    };
+    // `time` and `page_number` are the names the editors use for two of these.
+    const SENT_AS = { time_minutes: ['time_minutes', 'time'], reference: ['reference', 'page_number'] };
+    const sets = [], vals = [];
+    for (const [col, read] of Object.entries(COLUMN_FOR)) {
+      const keys = SENT_AS[col] || [col];
+      if (!keys.some(k => details?.[k] !== undefined)) continue;
+      const value = read(details);
+      if (col === 'name' && !value) continue;   // name is NOT NULL
+      vals.push(value);
+      sets.push(`${col}=$${vals.length}`);
+    }
+    if (sets.length) {
+      vals.push(id);
+      await client.query(`UPDATE recipes SET ${sets.join(', ')} WHERE id=$${vals.length}`, vals);
+    }
     if (ingredients !== undefined) {
       await client.query('DELETE FROM recipe_ingredients WHERE recipe_id = $1', [id]);
       for (const ing of ingredients) {
-        let ingredientId = ing.ingredient_id || null;
-        if (!ingredientId) {
-          const row = await findOrCreateIngredient(client, ing.name, ing.category);
-          if (!row) continue;
-          ingredientId = row.id;
-        }
+        const ingredientId = await resolveIngredientId(client, ing);
+        if (!ingredientId) continue;
         await client.query(
           `INSERT INTO recipe_ingredients (recipe_id,ingredient_id,amount,unit,prep_note,optional,group_label,order_index)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-          [id, ingredientId, ing.amount||null, ing.unit||null,
-           ing.prep_note||null, Boolean(ing.optional), ing.group_label||null, ing.order_index??0]
+          [id, ingredientId, String(ing.amount ?? '').trim() || null, normalizeUnit(ing.unit),
+           normalizePrep(ing.prep_note), Boolean(ing.optional),
+           String(ing.group_label ?? '').trim() || null, ing.order_index??0]
         );
       }
     }

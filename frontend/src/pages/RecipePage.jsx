@@ -5,7 +5,7 @@ import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } 
 import { CSS } from '@dnd-kit/utilities';
 import { Icon } from '../icons';
 import { API, TAG_FILTERS, COMMON_UNITS, STAR_LABELS, GEO_CUISINES } from '../constants';
-import { haptic, pct, toNum, pluralizeIng, checkDietaryConflicts, unitType, formatWeight, formatVolume, scaleAmount, formatAmount, parseAmount } from '../utils';
+import { haptic, pct, toNum, pluralizeIng, checkDietaryConflicts, unitType, formatWeight, formatVolume, scaleAmount, formatAmount, parseAmount, normalizeUnit, normalizePrep } from '../utils';
 import { DRAG_SENSORS, AutoGrowTextarea, Badge, SectionPencil, AnchoredPopover, useAnchoredPopover } from '../components/ui';
 import { HeroImage, HeroTagsButton } from '../components/HeroComponents';
 import MarkCookedModal from '../components/MarkCookedModal';
@@ -179,7 +179,7 @@ const IngredientItem = ({ ing, isChecked, amountStr, onToggle }) => (
     <div className="rp2__ing-text">
       <span className="rp2__ing-line">
         {amountStr && <span className="rp2__ing-amount">{amountStr} </span>}
-        <span className="rp2__ing-name">{pluralizeIng(ing.name, ing.amount)}{ing.prep_note ? <span className="rp2__ing-prep">, {ing.prep_note}</span> : ''}</span>
+        <span className="rp2__ing-name">{pluralizeIng((ing.name || '').trim(), ing.amount)}{normalizePrep(ing.prep_note) ? <span className="rp2__ing-prep">, {normalizePrep(ing.prep_note)}</span> : ''}</span>
         {ing.optional && <span className="rp2__ing-optional">optional</span>}
       </span>
     </div>
@@ -498,14 +498,18 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
           cookbook:        section === 'cookbook' ? draftCookbook.cookbook : (recipe.cookbook || ''),
           page_number:     section === 'cookbook' ? draftCookbook.reference : (recipe.reference || ''),
         },
-        ingredients:  section === 'ingredients'  ? (() => {
+        // Only the section being edited is sent. The backend leaves out any key
+        // it does not receive, so editing the title can no longer reach the
+        // ingredient rows at all -- previously every save re-sent whatever
+        // `bodyIngredients` happened to hold and deleted the rest.
+        ...(section !== 'ingredients' ? {} : { ingredients: (() => {
           let grp = '';
           return draftIngs
             .map(i => { if (i._isGroup) { grp = i.name || ''; return null; } return { ...i, group_label: grp }; })
             .filter(Boolean)
             .map((i, idx) => ({ ...i, order_index: idx }));
-        })() : (bodyIngredients || []),
-        instructions: section === 'instructions' ? (() => {
+        })() }),
+        ...(section !== 'instructions' ? {} : { instructions: (() => {
           const result = [];
           let stepNum = 1;
           for (const item of draftSteps) {
@@ -530,8 +534,8 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
             }
           }
           return result;
-        })() : (instructions || []),
-        notes:        section === 'notes'        ? draftNotes.map((n, idx) => ({ ...n, order_index: idx }))  : (notes || []),
+        })() }),
+        ...(section !== 'notes' ? {} : { notes: draftNotes.map((n, idx) => ({ ...n, order_index: idx })) }),
       };
       const res = await apiFetch(`${API}/api/recipes/${recipe.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
@@ -1304,7 +1308,7 @@ const RecipePage = ({ recipe, bodyIngredients, instructions, notes, onBack, onSa
                       const isChecked = checkedIngredients.has(key);
                       // Also canonicalises at scale 1, so a stored "0.5" shows as "1/2"
                       const scaledAmt = scaleAmount(ing.amount, scale);
-                      const amountStr = [scaledAmt, ing.unit].filter(Boolean).join(' ');
+                      const amountStr = [scaledAmt, normalizeUnit(ing.unit)].filter(Boolean).join(' ');
                       return (
                         <IngredientItem
                           key={key}

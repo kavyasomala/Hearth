@@ -2229,20 +2229,39 @@ body {
    -cursor effect would highlight the wrong stars. Selection state is enough. */
 .cook-edit__star:hover { color: #f5a623; }
 
-.date-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.date-chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 13px; border: 1.5px solid var(--border); border-radius: 20px;
-  background: var(--warm-white); cursor: pointer;
-  font-family: var(--font-body); font-size: 0.82rem; font-weight: 600;
-  color: var(--text);
-  transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+/* --- Date field: a real field, with the OS picker layered invisibly on top -- */
+.date-field {
+  position: relative; display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 36px 9px 12px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--warm-white);
+  font-family: var(--font-body); font-size: 0.9rem; font-weight: 600;
+  color: var(--charcoal);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
-.date-chip:hover { border-color: var(--terracotta-light); }
-.date-chip--on {
-  background: var(--terracotta); border-color: var(--terracotta); color: #fff;
+.date-field:hover { border-color: var(--terracotta-light); }
+/* The transparent input is the real control, so focus has to show on the shell */
+.date-field:focus-within { border-color: var(--terracotta); background: var(--parchment); }
+.date-field__icon { display: inline-flex; color: var(--warm-gray); flex-shrink: 0; }
+.date-field__text { white-space: nowrap; }
+/* Caret drawn in CSS: the icon set has no chevron */
+.date-field::after {
+  content: ''; position: absolute; right: 13px; top: 50%;
+  width: 6px; height: 6px; margin-top: -4px;
+  border-right: 1.5px solid var(--warm-gray); border-bottom: 1.5px solid var(--warm-gray);
+  transform: rotate(45deg); pointer-events: none;
 }
-.cooked-modal__date-section .cooked-modal__date-input { margin-top: 8px; }
+/* Covers the whole field so a tap anywhere opens the picker. Kept in the layout
+   (not display:none) because a hidden input will not open one. */
+.date-field__input {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; border: none; padding: 0; margin: 0; cursor: pointer;
+  font: inherit; color: transparent; background: transparent;
+}
+.date-field__input::-webkit-calendar-picker-indicator {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer;
+}
 
 .cooked-modal__date-section { margin-bottom: 14px; }
 .cooked-modal__label {
