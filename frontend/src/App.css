@@ -2157,6 +2157,10 @@ body {
 
 /* ─── Recipe page: notes carried over from past cooks ────────────────────── */
 .rp2__cook-notes {
+  /* .rp2__body is a 280px/1fr grid. Without spanning both columns this panel
+     consumed column 1, pushing Ingredients into column 2 and wrapping
+     Instructions onto the next row — which swapped the two sections. */
+  grid-column: 1 / -1;
   margin: 0 0 18px; padding: 12px 14px;
   border: 1.5px solid var(--border); border-left: 4px solid var(--sage);
   border-radius: var(--radius-sm); background: var(--parchment);
@@ -2185,19 +2189,31 @@ body {
 .rp2__cook-note__dismiss:hover { border-color: var(--sage); color: var(--sage); }
 
 /* ─── Cook history: per-entry actions ────────────────────────────────────── */
+/* Absolutely positioned so showing them costs no height — the previous inline
+   row made every card taller whether or not you were hovering it. */
+.cook-timeline__card { position: relative; }
+/* Only entries we can resolve to a recipe are clickable */
+.cook-timeline__card--clickable { cursor: pointer; }
+.cook-timeline__card--clickable:hover { border-color: var(--terracotta-light); }
+.cook-timeline__card--clickable:focus-visible {
+  outline: 2px solid var(--terracotta); outline-offset: 2px;
+}
 .cook-timeline__actions {
-  display: flex; gap: 6px; margin-top: 10px;
+  position: absolute; top: 8px; right: 8px;
+  display: flex; gap: 4px;
   opacity: 0; transition: opacity var(--transition-fast);
 }
 .cook-timeline__card:hover .cook-timeline__actions,
 .cook-timeline__card:focus-within .cook-timeline__actions { opacity: 1; }
 .cook-timeline__action {
-  padding: 3px 10px; border: 1.5px solid var(--border); border-radius: 20px;
-  background: none; font-family: var(--font-body); font-size: 0.72rem; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0;
+  border: 1.5px solid var(--border); border-radius: 50%;
+  background: var(--warm-white);
   color: var(--warm-gray); cursor: pointer;
-  transition: border-color var(--transition-fast), color var(--transition-fast);
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
 }
-.cook-timeline__action:hover { border-color: var(--terracotta); color: var(--terracotta); }
+.cook-timeline__action:hover { border-color: var(--sage); color: var(--sage); background: var(--parchment); }
 .cook-timeline__action--danger:hover { border-color: var(--terracotta); color: var(--terracotta); }
 /* Touch has no hover, so keep the actions permanently visible there */
 @media (hover: none) { .cook-timeline__actions { opacity: 1; } }
@@ -2212,6 +2228,21 @@ body {
 /* No hover preview: CSS can only reach *later* siblings with ~, so a fill-up-to
    -cursor effect would highlight the wrong stars. Selection state is enough. */
 .cook-edit__star:hover { color: #f5a623; }
+
+.date-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.date-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 13px; border: 1.5px solid var(--border); border-radius: 20px;
+  background: var(--warm-white); cursor: pointer;
+  font-family: var(--font-body); font-size: 0.82rem; font-weight: 600;
+  color: var(--text);
+  transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+}
+.date-chip:hover { border-color: var(--terracotta-light); }
+.date-chip--on {
+  background: var(--terracotta); border-color: var(--terracotta); color: #fff;
+}
+.cooked-modal__date-section .cooked-modal__date-input { margin-top: 8px; }
 
 .cooked-modal__date-section { margin-bottom: 14px; }
 .cooked-modal__label {

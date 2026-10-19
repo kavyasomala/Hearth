@@ -2,6 +2,26 @@ import React, { useState, useMemo } from 'react';
 import { Icon } from '../icons';
 import { API } from '../constants';
 
+// Today / yesterday / the day before, as local YYYY-MM-DD keys.
+// Built from local date parts because toISOString() converts to UTC first and
+// can report the wrong calendar day.
+const localKey = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const DAY_OPTIONS = (() => {
+  const out = [];
+  for (let i = 0; i < 3; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    out.push({
+      key: localKey(d),
+      label: i === 0 ? 'Today' : i === 1 ? 'Yesterday'
+           : d.toLocaleDateString(undefined, { weekday: 'long' }),
+    });
+  }
+  return out;
+})();
+
 const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpdateKitchen, authFetch }) => {
   const apiFetch = authFetch || fetch;
   const [step, setStep] = useState(1); // 1 = rate/notes, 2 = ingredient cleanup
@@ -10,10 +30,8 @@ const MarkCookedModal = ({ recipe, bodyIngredients = [], onSave, onClose, onUpda
   const [notes, setNotes] = useState('');
   // Local date parts — toISOString() converts to UTC first and can land on
   // the wrong calendar day depending on the timezone.
-  const [cookedOn, setCookedOn] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [cookedOn, setCookedOn] = useState(DAY_OPTIONS[0].key);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -142,15 +160,36 @@ const perishableCatOf = (name) => {
             </div>
 
             <div className="cooked-modal__date-section">
-              <label className="cooked-modal__label" htmlFor="cooked-on">When did you make this?</label>
-              <input
-                id="cooked-on"
-                type="date"
-                className="editor-input cooked-modal__date-input"
-                value={cookedOn}
-                max={new Date().toISOString().slice(0, 10)}
-                onChange={e => setCookedOn(e.target.value)}
-              />
+              <p className="cooked-modal__label">When did you make this?</p>
+              {/* Most cooks are logged same-day or next morning, so those are one
+                  tap. The OS date control only appears if you actually need it. */}
+              <div className="date-chips">
+                {DAY_OPTIONS.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`date-chip${cookedOn === key ? ' date-chip--on' : ''}`}
+                    onClick={() => { setCookedOn(key); setShowDatePicker(false); }}
+                  >{label}</button>
+                ))}
+                <button
+                  type="button"
+                  className={`date-chip${showDatePicker || !DAY_OPTIONS.some(o => o.key === cookedOn) ? ' date-chip--on' : ''}`}
+                  onClick={() => setShowDatePicker(v => !v)}
+                >
+                  <Icon name="calendar" size={13} strokeWidth={2} /> Another day
+                </button>
+              </div>
+              {(showDatePicker || !DAY_OPTIONS.some(o => o.key === cookedOn)) && (
+                <input
+                  type="date"
+                  className="editor-input cooked-modal__date-input"
+                  value={cookedOn}
+                  max={DAY_OPTIONS[0].key}
+                  onChange={e => setCookedOn(e.target.value)}
+                  aria-label="Date cooked"
+                />
+              )}
             </div>
 
             <div className="cooked-modal__notes-section">

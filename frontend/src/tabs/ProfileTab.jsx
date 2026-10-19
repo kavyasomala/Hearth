@@ -32,7 +32,7 @@ const fmtBackupDate = (iso) => {
   });
 };
 
-const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser, onLogout, onAuthUserUpdate, darkMode = false, setDarkMode, tabBarTabs, setTabBarTabs, feedbackList = [], setFeedbackList }) => {
+const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnits, totalRecipes, hideIncompatible, setHideIncompatible, authFetch, authUser, onLogout, onAuthUserUpdate, darkMode = false, setDarkMode, tabBarTabs, setTabBarTabs, feedbackList = [], setFeedbackList, onOpenRecipe }) => {
   const apiFetch = authFetch || fetch;
   const isAdmin = authUser?.role === 'admin';
 
@@ -493,7 +493,15 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                         <div key={entry.id || i} className="cook-timeline__entry">
                           <div className="cook-timeline__dot" />
                           <div className="cook-timeline__line" />
-                          <div className="cook-timeline__card">
+                          <div
+                            className={`cook-timeline__card${recipe && onOpenRecipe ? ' cook-timeline__card--clickable' : ''}`}
+                            onClick={recipe && onOpenRecipe ? () => onOpenRecipe(recipe) : undefined}
+                            role={recipe && onOpenRecipe ? 'button' : undefined}
+                            tabIndex={recipe && onOpenRecipe ? 0 : undefined}
+                            onKeyDown={recipe && onOpenRecipe
+                              ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenRecipe(recipe); } }
+                              : undefined}
+                          >
                             <div className="cook-timeline__card-top">
                               {recipe?.coverImage ? (
                                 <img className="cook-timeline__thumb" src={recipe.coverImage} alt={recipeName} />
@@ -513,9 +521,16 @@ const ProfileTab = ({ recipes, dietaryFilters, setDietaryFilters, units, setUnit
                             </div>
                             {entry.notes && <p className="cook-timeline__notes">"{entry.notes}"</p>}
                             <div className="cook-timeline__actions">
-                              <button className="cook-timeline__action" onClick={() => startEditEntry(entry)}>Edit</button>
-                              <button className="cook-timeline__action cook-timeline__action--danger"
-                                onClick={() => deleteEntry(entry)}>Delete</button>
+                              <button
+                                className="cook-timeline__action"
+                                onClick={e => { e.stopPropagation(); startEditEntry(entry); }}
+                                title="Edit this entry" aria-label="Edit this entry"
+                              ><Icon name="pencil" size={14} strokeWidth={2} /></button>
+                              <button
+                                className="cook-timeline__action cook-timeline__action--danger"
+                                onClick={e => { e.stopPropagation(); deleteEntry(entry); }}
+                                title="Delete this entry" aria-label="Delete this entry"
+                              ><Icon name="trash2" size={14} strokeWidth={2} /></button>
                             </div>
                           </div>
                         </div>

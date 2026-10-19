@@ -1729,6 +1729,7 @@ function AppInner() {
           setTabBarTabs={setTabBarTabs}
           feedbackList={feedbackList}
           setFeedbackList={setFeedbackList}
+          onOpenRecipe={openRecipe}
         />
       )}
 
