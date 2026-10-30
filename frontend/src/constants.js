@@ -34,6 +34,10 @@ export const PROGRESS_FILTERS = [
   { key: '__complete',      label: 'Made It',         icon: 'checkCircle' },
   { key: '__archived',      label: 'Archived',        icon: 'archive'     },
   { key: '__totry',         label: 'To Try',          icon: 'bookMarked'  },
+  // Set by the home page's "Try something new!" button. It was missing here,
+  // so the filter panel showed no chip for it and the active-filter pill
+  // rendered with an empty label (PROGRESS_FILTERS.find(...)?.label).
+  { key: '__nevercooked',   label: 'Never Made',      icon: 'zap'         },
 ];
 
 export const QUICK_CHIP_KEYS = new Set(TAG_FILTERS.map(f => f.key));

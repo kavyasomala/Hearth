@@ -660,14 +660,31 @@ function AppInner() {
     [recipes]
   );
 
-  // Every recipe id that appears in the cook log at least once
-  const cookedRecipeIds = useMemo(
-    () => new Set((cookLog || []).map(e => e.recipe_id).filter(Boolean)),
-    [cookLog]
+  // Has this recipe ever been cooked? Matched on id AND on name, because a
+  // cook-log entry is not guaranteed to carry a recipe_id: user_cook_log.
+  // recipe_id is ON DELETE SET NULL, and entries logged against a cookbook
+  // reference never had one. The rest of the app already treats the id as
+  // optional (ProfileTab falls back to recipe_name everywhere), so matching
+  // on id alone made genuinely-cooked recipes keep showing up as new.
+  const cookedRecipeKeys = useMemo(() => {
+    const ids = new Set(), names = new Set();
+    for (const e of cookLog || []) {
+      if (e.recipe_id) ids.add(e.recipe_id);
+      const n = (e.recipe_name || '').toLowerCase().trim();
+      if (n) names.add(n);
+    }
+    return { ids, names };
+  }, [cookLog]);
+
+  const hasBeenCooked = useCallback(
+    (r) => cookedRecipeKeys.ids.has(r.id)
+        || cookedRecipeKeys.names.has((r.name || '').toLowerCase().trim()),
+    [cookedRecipeKeys]
   );
+
   const neverCookedCount = useMemo(
-    () => activeRecipes.filter(r => !cookedRecipeIds.has(r.id)).length,
-    [activeRecipes, cookedRecipeIds]
+    () => activeRecipes.filter(r => !hasBeenCooked(r)).length,
+    [activeRecipes, hasBeenCooked]
   );
 
   const matches = useMemo(() => {
@@ -734,7 +751,7 @@ function AppInner() {
         if (p === '__totry') return r.status === 'to try';
         // Based on the actual cook log, not the status field — a recipe can be
         // marked "made it" without ever having been logged, and vice versa.
-        if (p === '__nevercooked') return !cookedRecipeIds.has(r.id);
+        if (p === '__nevercooked') return !hasBeenCooked(r);
         return false;
       }));
     }
@@ -783,7 +800,7 @@ function AppInner() {
       });
     }
     return list;
-  }, [recipes, activeRecipes, cookbooks, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById, hideIncompatible, dietaryFilters, activeCookbooks, makeSoonIds]);
+  }, [recipes, activeRecipes, cookbooks, librarySearch, activeTags, activeCuisines, activeProgresses, maxCalories, calDir, maxMinutes, matchById, hideIncompatible, dietaryFilters, activeCookbooks, makeSoonIds, hasBeenCooked, heartedIds]);
 
   const hasActiveFilters = !!(librarySearch || activeTags.length || activeCuisines.length || activeProgresses.length || maxCalories !== null || maxMinutes !== null || activeCookbooks.length);
   // Filter button highlight: only when filter chips/sliders are active (not search text)
